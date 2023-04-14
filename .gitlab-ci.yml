@@ -43,7 +43,7 @@ test:
   script:
     - pip3 install dist/*.whl
     - cd tests/
-    - coverage ravvi_poker_backend_db create tests
+    - coverage run ravvi_poker_backend_db create tests
     - coverage run --append -m pytest --junitxml=tests.xml .
     - coverage report
     - coverage xml
