@@ -34,18 +34,20 @@ setuptools.setup(
     description="Ravvi Poker Backend",
     packages=packages,
     package_data={
+        'ravvi_poker_backend.db.schema': ['*.sql']
     },
 
     entry_points={
         'console_scripts': [
-        #    'ravvi_pysample=ravvi_pysample.cli:main',
+            'ravvi_poker_backend_db=ravvi_poker_backend.db.cli:main',
         ]
     },
 
-    data_files= [
+    data_files = [
     ],
 
     install_requires=[
+        "psycopg"
     ],
     
     cmdclass={

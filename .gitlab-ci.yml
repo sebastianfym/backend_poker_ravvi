@@ -30,12 +30,21 @@ test:
   cache:
     paths:
       - ${PIP_CACHE_DIR}
+  services:
+    - postgres:15.2
+  variables:
+    POSTGRES_PASSWORD: password
+    RAVVI_POKER_DB_HOST: postgres
+    RAVVI_POKER_DB_PORT: 5432
+    RAVVI_POKER_DB_USER: postgres
+    RAVVI_POKER_DB_PASSWORD: ${POSTGRES_PASSWORD}
   before_script:
     - source ~/.profile
   script:
     - pip3 install dist/*.whl
     - cd tests/
-    - coverage run -m pytest --junitxml=tests.xml .
+    - coverage ravvi_poker_backend_db create tests
+    - coverage run --append -m pytest --junitxml=tests.xml .
     - coverage report
     - coverage xml
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'

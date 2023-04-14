@@ -1,0 +1,23 @@
+# Adding network_mode: bridge to each service in your docker-compose.yml will stop compose from creating a network.
+version: '3.7'
+services:
+  ravvi_py:
+    container_name: 'ci_python'
+    image: cr.yandex/crpa15giodgbluup12vl/ci_python:latest
+    volumes:
+      - ../:/home/ravvi/code
+    network_mode: host
+    # keep container alive
+    command: tail -f /dev/null
+    init: true
+  
+  postgres:
+    container_name: 'postgres'
+    image: "postgres:15.2"
+    environment:
+      - POSTGRES_PASSWORD=password
+    ports:
+    - "15432:5432"
+    network_mode: bridge
+    healthcheck:
+      test: pg_isready -U postgres
