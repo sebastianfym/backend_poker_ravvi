@@ -1,0 +1,48 @@
+image: cr.yandex/crpa15giodgbluup12vl/ci_python:latest
+
+stages:
+- build
+- test
+
+variables:
+  PIP_CACHE_DIR: "/home/ravvi/.cache/pip"
+
+build:
+  stage: build
+  cache:
+    paths:
+      - ${PIP_CACHE_DIR}
+  before_script:
+    - source ~/.profile
+  script:
+    - python3 ./setup.py bdist_wheel
+  artifacts:
+    name: "$CI_JOB_NAME"
+    paths:
+      - dist/
+
+test:
+  stage: test
+  needs:
+    - build
+  dependencies:
+    - build
+  cache:
+    paths:
+      - ${PIP_CACHE_DIR}
+  before_script:
+    - source ~/.profile
+  script:
+    - pip3 install dist/*.whl
+    - cd tests/
+    - coverage run -m pytest --junitxml=tests.xml .
+    - coverage report
+    - coverage xml
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    when: always
+    reports:
+      junit: tests/tests.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: tests/coverage.xml
