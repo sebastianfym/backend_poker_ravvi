@@ -38,6 +38,7 @@ test:
     RAVVI_POKER_DB_PORT: 5432
     RAVVI_POKER_DB_USER: postgres
     RAVVI_POKER_DB_PASSWORD: ${POSTGRES_PASSWORD}
+    COVERAGE_RCFILE: ${CI_PROJECT_DIR}/.coveragerc
   before_script:
     - source ~/.profile
   script:
