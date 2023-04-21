@@ -2,36 +2,35 @@ import logging
 import argparse
 
 from .dbi import DBI
-from .schema import getSQLFiles as getSchemaFiles
+from . import schema
+from . import deploy
 
-def cmdCreate(args):
-    db = DBI()
-    db.db_name = None
-    db.connect(autocommit=True)
-    try:
-        db.execute(f"CREATE DATABASE {args.database} TEMPLATE template0")
-    finally:
-        db.close()
 
-    db.db_name = args.database
-    db.connect()
-    try:
-        for name, sql in getSchemaFiles():
-            sql = sql.replace('%','%%')
+def cmd_create_database(args):
+    """ Create and init database from schema files = production state"""
+    DBI.create_database(args.database)
+
+    with DBI(db_name=args.database) as db:
+        for name, sql in schema.getSQLFiles():
+            sql = sql.replace("%", "%%")
             print("===", name, "===")
             db.execute(sql)
         db.commit()
-    finally:
-        db.close()
 
-def cmdDrop(args):
-    db = DBI()
-    db.db_name = None
-    db.connect(autocommit=True)
-    try:
-        db.execute(f"DROP DATABASE IF EXISTS {args.database}")
-    finally:
-        db.close()
+
+def cmd_drop_database(args):
+    """ Drops database (expected to be used during tests)"""
+    DBI.drop_database(args.database)
+
+
+def cmd_deploy_changes(args):
+    """ Apply schema changes and data manipulation during version upgrade"""
+    with DBI(db_name=args.database) as db:
+        for name, sql in deploy.getSQLFiles():
+            sql = sql.replace("%", "%%")
+            print("===", name, "===")
+            db.execute(sql)
+        db.commit()
 
 
 def main():
@@ -39,14 +38,21 @@ def main():
     parser.set_defaults(func=None)
     parser.add_argument("--debug", action="store_true", help="Debug logging")
     commands = parser.add_subparsers()
+
     # CREATE
     cmd = commands.add_parser("create", help="Creates database")
-    cmd.set_defaults(func=cmdCreate)
+    cmd.set_defaults(func=cmd_create_database)
     cmd.add_argument("database", help="Name of database")
+
     # DROP
     cmd = commands.add_parser("drop", help="Dropes database")
-    cmd.set_defaults(func=cmdDrop)
+    cmd.set_defaults(func=cmd_drop_database)
     cmd.add_argument("database", help="Name of database")
+
+    # DEPLOY (UPGRADE)
+    cmd = commands.add_parser("deploy", help="Deploy schema changes")
+    cmd.set_defaults(func=cmd_deploy_changes)
+    cmd.add_argument("database", nargs="?", help="Name of database")
 
     args = parser.parse_args()
     if not args.func:
