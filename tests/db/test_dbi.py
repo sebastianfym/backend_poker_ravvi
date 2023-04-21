@@ -1,5 +1,6 @@
 from ravvi_poker_backend.db import DBI
 
+
 class TEST_DBI(DBI):
     pass
 
@@ -25,17 +26,14 @@ def test_create_drop():
 
 
 def test_create_device():
-    device_props = dict(
-        name = 'TEST',
-        model = 'TEST 1.0'
-    )
+    device_props = dict(name="TEST", model="TEST 1.0")
     with TEST_DBI() as dbi:
         device0 = dbi.create_device(device_props)
         assert device0.id
         assert device0.uuid
 
     with TEST_DBI() as dbi:
-        device = dbi.get_device(id = device0.id)
+        device = dbi.get_device(id=device0.id)
         assert device.id == device0.id
         assert device.uuid == device0.uuid
         assert device.created
@@ -49,18 +47,16 @@ def test_create_user():
         assert user0.uuid
 
     with TEST_DBI() as dbi:
-        user = dbi.get_user(id = user0.id)
+        user = dbi.get_user(id=user0.id)
         assert user.id == user0.id
         assert user.uuid == user0.uuid
         assert user.created
-        assert hasattr(user, 'username')
-        assert hasattr(user, 'password')
+        assert hasattr(user, "username")
+        assert hasattr(user, "password")
+
 
 def test_register_user():
-    device_props = dict(
-        name = 'TEST',
-        model = 'TEST 1.0'
-    )
+    device_props = dict(name="TEST", model="TEST 1.0")
     with TEST_DBI() as dbi:
         user, device, login, session = dbi.register_user(None, device_props)
     assert user.uuid
@@ -68,5 +64,6 @@ def test_register_user():
     assert login.uuid
     assert session.uuid
 
-#if __name__ == "__main__":
+
+# if __name__ == "__main__":
 #    test_connect()

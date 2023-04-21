@@ -7,7 +7,7 @@ from . import deploy
 
 
 def cmd_create_database(args):
-    """ Create and init database from schema files = production state"""
+    """Create and init database from schema files = production state"""
     DBI.create_database(args.database)
 
     with DBI(db_name=args.database) as db:
@@ -19,12 +19,12 @@ def cmd_create_database(args):
 
 
 def cmd_drop_database(args):
-    """ Drops database (expected to be used during tests)"""
+    """Drops database (expected to be used during tests)"""
     DBI.drop_database(args.database)
 
 
 def cmd_deploy_changes(args):
-    """ Apply schema changes and data manipulation during version upgrade"""
+    """Apply schema changes and data manipulation during version upgrade"""
     with DBI(db_name=args.database) as db:
         for name, sql in deploy.getSQLFiles():
             sql = sql.replace("%", "%%")
