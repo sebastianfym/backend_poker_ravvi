@@ -38,14 +38,19 @@ test:
     RAVVI_POKER_DB_PORT: 5432
     RAVVI_POKER_DB_USER: postgres
     RAVVI_POKER_DB_PASSWORD: ${POSTGRES_PASSWORD}
+    RAVVI_POKER_DB_NAME: test_ci
     COVERAGE_RCFILE: ${CI_PROJECT_DIR}/.coveragerc
   before_script:
     - source ~/.profile
   script:
     - pip3 install dist/*.whl
     - cd tests/
-    - coverage run ~/.local/bin/ravvi_poker_backend_db create tests
+    # init tests database
+    - coverage run ~/.local/bin/ravvi_poker_backend_db create ${RAVVI_POKER_DB_NAME}
+    - coverage run --append ~/.local/bin/ravvi_poker_backend_db deploy ${RAVVI_POKER_DB_NAME}
+    # run tests
     - coverage run --append -m pytest --junitxml=tests.xml .
+    # coverage info
     - coverage report
     - coverage xml
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'

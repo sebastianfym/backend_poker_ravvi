@@ -24,17 +24,16 @@ with open(os.path.join(BASEDIR, "ravvi_poker_backend", "build.py"), "w") as f:
     f.write(f'__version__ = "{VERSION}"\n')
 
 
-packages=setuptools.find_packages()
-
 setuptools.setup(
     name="ravvi-poker-backend",
     version=VERSION,
     author="Alexander Keda",
     author_email="alexander.keda@ravvi.net",
     description="Ravvi Poker Backend",
-    packages=packages,
+    packages=setuptools.find_packages(),
     package_data={
-        'ravvi_poker_backend.db.schema': ['*.sql']
+        'ravvi_poker_backend.db.schema': ['*.sql'],
+        'ravvi_poker_backend.db.deploy': ['*.sql']
     },
 
     entry_points={
