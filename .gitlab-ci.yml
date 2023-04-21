@@ -39,11 +39,10 @@ test:
     RAVVI_POKER_DB_USER: postgres
     RAVVI_POKER_DB_PASSWORD: ${POSTGRES_PASSWORD}
     RAVVI_POKER_DB_NAME: test_ci
-    COVERAGE_RCFILE: ${CI_PROJECT_DIR}/.coveragerc
   before_script:
     - source ~/.profile
   script:
-    - pip3 install dist/*.whl
+    - pip3 install -f ./dist ravvi-poker-backend
     - cd tests/
     # init tests database
     - coverage run ~/.local/bin/ravvi_poker_backend_db create ${RAVVI_POKER_DB_NAME}
