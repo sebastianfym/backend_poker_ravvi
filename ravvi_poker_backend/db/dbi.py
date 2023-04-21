@@ -70,3 +70,42 @@ class DBI:
     def execute(self, query, **kwargs):
         return self.dbi.execute(query, params=kwargs)
     
+    def create_device(self, device_props):
+        device_props = json.dumps(device_props) if device_props else None
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute('INSERT INTO user_device (props) VALUES (%s) RETURNING id, uuid', (device_props,));
+            return cursor.fetchone()
+        
+    def get_device(self, id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute('SELECT * FROM user_device WHERE id=%s', (id,));
+            return cursor.fetchone()
+
+    def create_user(self):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute('INSERT INTO user_account (username, password) VALUES (null, null) RETURNING id, uuid');
+            return cursor.fetchone()
+
+    def get_user(self, id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute('SELECT * FROM user_account WHERE id=%s', (id,));
+            return cursor.fetchone()
+
+    def create_user_login(self, user_id, device_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute('INSERT INTO user_login (user_id, device_id) VALUES (%s, %s) RETURNING id, uuid', (user_id, device_id));
+            return cursor.fetchone()
+
+    def create_user_session(self, user_login_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute('INSERT INTO user_session (user_login_id) VALUES (%s) RETURNING id, uuid', (user_login_id,));
+            return cursor.fetchone()
+        
+    def register_user(self, device_uuid, device_props):
+        user = self.create_user()
+        device = self.create_device(device_props)
+        login = self.create_user_login(user.id, device.id)
+        session = self.create_user_session(login.id)
+        return user, device, login, session
+            
+
