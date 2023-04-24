@@ -38,16 +38,26 @@ setuptools.setup(
     entry_points={
         "console_scripts": [
             "ravvi_poker_backend_db=ravvi_poker_backend.db.cli:main",
+            "ravvi_poker_backend_api=ravvi_poker_backend.api.cli:main",
         ]
     },
-    data_files=[],
-    install_requires=["psycopg"],
+    #data_files=[],
+    install_requires=[
+        "psycopg",
+        "fastapi",
+        "python-multipart",
+        "passlib",
+        "PyJWT",
+        "uvicorn",
+        "gunicorn",
+    ],
     extras_require={
         "tests": [
             "coverage",
             "pytest",
             "pytest-cov",
             "pytest-asyncio",
+            "httpx"
         ]
     },
     cmdclass={},

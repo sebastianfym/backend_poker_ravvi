@@ -36,34 +36,28 @@ def test_create_device():
         device = dbi.get_device(id=device0.id)
         assert device.id == device0.id
         assert device.uuid == device0.uuid
-        assert device.created
+        assert device.created_ts
         assert device.props
+
+        device = dbi.get_device(uuid=device0.uuid)
+        assert device.id == device0.id
+        assert device.uuid == device0.uuid
+        assert device.props
+        assert device.created_ts
 
 
 def test_create_user():
     with TEST_DBI() as dbi:
-        user0 = dbi.create_user()
+        user0 = dbi.create_user_account()
         assert user0.id
         assert user0.uuid
+        assert user0.username
 
     with TEST_DBI() as dbi:
         user = dbi.get_user(id=user0.id)
         assert user.id == user0.id
         assert user.uuid == user0.uuid
-        assert user.created
-        assert hasattr(user, "username")
-        assert hasattr(user, "password")
-
-
-def test_register_user():
-    device_props = dict(name="TEST", model="TEST 1.0")
-    with TEST_DBI() as dbi:
-        user, device, login, session = dbi.register_user(None, device_props)
-    assert user.uuid
-    assert device.uuid
-    assert login.uuid
-    assert session.uuid
-
-
-# if __name__ == "__main__":
-#    test_connect()
+        assert user.username
+        assert user.password_hash is None
+        assert user.created_ts
+        assert user.closed_ts is None

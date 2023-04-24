@@ -45,7 +45,8 @@ test:
     - pip3 install -f ./dist ravvi-poker-backend
     - cd tests/
     # init tests database
-    - coverage run ~/.local/bin/ravvi_poker_backend_db create ${RAVVI_POKER_DB_NAME}
+    - coverage erase
+    - coverage run --append ~/.local/bin/ravvi_poker_backend_db create ${RAVVI_POKER_DB_NAME}
     - coverage run --append ~/.local/bin/ravvi_poker_backend_db deploy ${RAVVI_POKER_DB_NAME}
     # run tests
     - coverage run --append -m pytest --junitxml=tests.xml .
