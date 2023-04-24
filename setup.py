@@ -31,6 +31,7 @@ setuptools.setup(
     author_email="alexander.keda@ravvi.net",
     description="Ravvi Poker Backend",
     packages=setuptools.find_packages(),
+    # fmt: off
     package_data={
         "ravvi_poker_backend.db.schema": ["*.sql"],
         "ravvi_poker_backend.db.deploy": ["*.sql"],
@@ -60,5 +61,6 @@ setuptools.setup(
             "httpx"
         ]
     },
+    # fmt: on
     cmdclass={},
 )
