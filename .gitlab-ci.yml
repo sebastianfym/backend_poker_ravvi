@@ -42,7 +42,7 @@ test:
   before_script:
     - source ~/.profile
   script:
-    - pip3 install -f ./dist ravvi-poker-backend
+    - pip3 install -f ./dist ravvi-poker-backend[tests]
     - cd tests/
     # init tests database
     - coverage erase
