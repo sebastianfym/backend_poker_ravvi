@@ -81,19 +81,49 @@ class DBI:
             )
             return cursor.fetchone()
 
-    def get_device(self, id):
+    def get_device(self, *, id=None, uuid=None):
+        sql = "SELECT * FROM user_device WHERE "
+        if id:
+            sql += "id=%s"
+            args = [id]
+        elif uuid:
+            sql += "uuid=%s"
+            args = [uuid]
+        else:
+            return None
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("SELECT * FROM user_device WHERE id=%s", (id,))
+            cursor.execute(sql, args)
             return cursor.fetchone()
 
-    def create_user(self):
+    def create_user_account(self):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("INSERT INTO user_account (username, password) VALUES (null, null) RETURNING id, uuid")
+            cursor.execute("INSERT INTO user_profile (username) VALUES (NULL) RETURNING id, uuid")
+            user = cursor.fetchone()
+            username = f"u{user.id}"
+            cursor.execute("UPDATE user_profile SET username=%s WHERE id=%s RETURNING id, uuid, username, password_hash", (username, user.id))
+            user = cursor.fetchone()
+            return user
+
+    def get_user(self, *, id=None, uuid=None, username=None):
+        sql = "SELECT * FROM user_profile WHERE "
+        if id:
+            sql += "id=%s"
+            args = [id]
+        elif uuid:
+            sql += "uuid=%s"
+            args = [uuid]
+        elif username:
+            sql += "username=%s"
+            args = [username]
+        else:
+            return None
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute(sql, args)
             return cursor.fetchone()
 
-    def get_user(self, id):
+    def update_user_password(self, id, password_hash):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("SELECT * FROM user_account WHERE id=%s", (id,))
+            cursor.execute("UPDATE user_profile SET password_hash=%s WHERE id=%s RETURNING id, uuid, username", (password_hash, id))
             return cursor.fetchone()
 
     def create_user_login(self, user_id, device_id):
@@ -103,18 +133,54 @@ class DBI:
                 (user_id, device_id),
             )
             return cursor.fetchone()
+        
+    def get_user_login(self, *, id=None, uuid=None):
+        sql = "SELECT * FROM user_login WHERE "
+        if id:
+            sql += "id=%s"
+            args = [id]
+        elif uuid:
+            sql += "uuid=%s"
+            args = [uuid]
+        else:
+            return None
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute(sql, args)
+            return cursor.fetchone()
 
-    def create_user_session(self, user_login_id):
+    def close_user_login(self, *, uuid=None):
+        if not uuid:
+            return
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            self.dbi.execute("UPDATE user_login SET closed_ts=NOW() WHERE uuid=%s", (uuid,))
+
+    def create_user_session(self, login_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute(
-                "INSERT INTO user_session (user_login_id) VALUES (%s) RETURNING id, uuid",
-                (user_login_id,),
+                "INSERT INTO user_session (login_id) VALUES (%s) RETURNING id, uuid",
+                (login_id,),
             )
             return cursor.fetchone()
 
-    def register_user(self, device_uuid, device_props):
-        user = self.create_user()
-        device = self.create_device(device_props)
-        login = self.create_user_login(user.id, device.id)
-        session = self.create_user_session(login.id)
-        return user, device, login, session
+    def get_session_info(self, *, uuid):
+        sql = """
+            SELECT 
+                s.id session_id, s.uuid session_uuid, 
+                l.id login_id, l.uuid login_uuid,
+                d.id device_id, d.uuid device_uuid,
+                l.user_id
+            FROM user_session s
+            JOIN user_login l ON l.id=s.login_id
+            JOIN user_device d ON d.id=l.device_id
+            WHERE s.uuid=%s
+            """
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute(sql, (uuid,))
+            return cursor.fetchone()
+
+    def close_user_session(self, *, session_id, login_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            if session_id:
+                self.dbi.execute("UPDATE user_session SET closed_ts=NOW() WHERE id=%s", (session_id,))
+            if login_id:
+                self.dbi.execute("UPDATE user_login SET closed_ts=NOW() WHERE id=%s", (login_id,))

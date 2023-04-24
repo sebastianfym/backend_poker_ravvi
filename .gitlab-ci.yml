@@ -1,14 +1,22 @@
 image: cr.yandex/crpa15giodgbluup12vl/ci_python:latest
 
 stages:
-- build
-- test
+  - build
+  - test
+  - docker
 
 variables:
   PIP_CACHE_DIR: "/home/ravvi/.cache/pip"
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+  CONTAINER_REGISTRY_PATH: cr.yandex/crpa15giodgbluup12vl
+  IMAGE_NAME: poker_backend
+  IMAGE_PATH: ${CONTAINER_REGISTRY_PATH}/${IMAGE_NAME}
 
-build:
+build_py:
   stage: build
+  rules:
+    - if: $CI_COMMIT_BRANCH
   cache:
     paths:
       - ${PIP_CACHE_DIR}
@@ -17,16 +25,15 @@ build:
   script:
     - python3 ./setup.py bdist_wheel
   artifacts:
-    name: "$CI_JOB_NAME"
     paths:
       - dist/
 
-test:
+test_py:
   stage: test
+  rules:
+    - if: $CI_COMMIT_BRANCH
   needs:
-    - build
-  dependencies:
-    - build
+    - build_py
   cache:
     paths:
       - ${PIP_CACHE_DIR}
@@ -42,10 +49,11 @@ test:
   before_script:
     - source ~/.profile
   script:
-    - pip3 install -f ./dist ravvi-poker-backend
+    - pip3 install -f ./dist ravvi-poker-backend[tests]
     - cd tests/
     # init tests database
-    - coverage run ~/.local/bin/ravvi_poker_backend_db create ${RAVVI_POKER_DB_NAME}
+    - coverage erase
+    - coverage run --append ~/.local/bin/ravvi_poker_backend_db create ${RAVVI_POKER_DB_NAME}
     - coverage run --append ~/.local/bin/ravvi_poker_backend_db deploy ${RAVVI_POKER_DB_NAME}
     # run tests
     - coverage run --append -m pytest --junitxml=tests.xml .
@@ -60,3 +68,21 @@ test:
       coverage_report:
         coverage_format: cobertura
         path: tests/coverage.xml
+
+docker_build:
+  stage: docker
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+  needs:
+    - build_py
+    - test_py
+  image: docker:23.0.3
+  services:
+    - name: docker:23.0.3-dind
+  script:
+    # build
+    - docker build -t ${IMAGE_PATH}:develop .
+    # push
+    - docker push ${IMAGE_PATH}:develop
+    # cleanup
+    - docker image rmi ${IMAGE_PATH}:develop
