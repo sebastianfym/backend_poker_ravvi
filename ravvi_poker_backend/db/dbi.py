@@ -9,7 +9,7 @@ class DBI:
     DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "15432"))
     DB_USER = os.getenv("RAVVI_POKER_DB_USER", "postgres")
     DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
-    DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "tests")
+    DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "develop")
 
     @classmethod
     def create_database(cls, db_name):
@@ -71,6 +71,9 @@ class DBI:
 
     def execute(self, query, **kwargs):
         return self.dbi.execute(query, params=kwargs)
+    
+    def cursor(self, *args, row_factory=namedtuple_row, **kwargs):
+        return self.dbi.cursor(*args, row_factory=row_factory, **kwargs)
 
     def create_device(self, device_props):
         device_props = json.dumps(device_props) if device_props else None

@@ -2,7 +2,7 @@
 version: '3.7'
 services:
   ravvi_py:
-    container_name: 'ci_python'
+    container_name: 'ravvi_py'
     image: cr.yandex/crpa15giodgbluup12vl/ci_python:latest
     volumes:
       - ../:/home/ravvi/code
