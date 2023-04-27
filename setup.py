@@ -51,6 +51,7 @@ setuptools.setup(
         "PyJWT",
         "uvicorn",
         "gunicorn",
+        "websockets"
     ],
     extras_require={
         "tests": [
