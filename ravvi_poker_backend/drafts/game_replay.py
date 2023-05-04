@@ -42,6 +42,8 @@ class GameReplay:
         game_active = False
         while not self._stop_flag:
             for event in self.events:
+                if self._stop_flag:
+                    break
                 #print(seats)
                 if event.event_type==Events.TABLE_INFO:
                     seats = event.event_props.get('seats')

@@ -4,7 +4,7 @@ import websockets
 
 async def hello():
 
-    uri = "ws://localhost:5000/v1/ws_test"
+    uri = "ws://localhost:15000/v1/ws_test"
 
     async with websockets.connect(uri) as ws:
         while True:
