@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from . import utils
 
 from ..db.dbi import DBI
-from .auth import RequireSessionUUID
+from .auth import RequireSessionUUID, get_session_and_user
 
 router = APIRouter(prefix="/clubs", tags=["clubs"])
 
@@ -23,16 +23,6 @@ class ClubProfile(BaseModel):
     name: str
     description: str|None = None
     user_role: str|None = None
-
-def get_session_and_user(dbi, session_uuid):
-    session = dbi.get_session_info(uuid=session_uuid)
-    if not session:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid session")
-    user = dbi.get_user(id=session.user_id)
-    if not user:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid user")
-    return session, user
-
 
 @router.post("", response_model=ClubProfile, summary="Create new club")
 async def v1_create_club(params: ClubProps, session_uuid: RequireSessionUUID):
@@ -96,3 +86,4 @@ async def v1_update_club(club_id: int, params: ClubProps, session_uuid: RequireS
         name = club.name, description=club.description,
         user_role="OWNER" if club.founder_id == user.id else None
         )
+

@@ -111,6 +111,16 @@ async def get_current_session_uuid(access_token: Annotated[str, Depends(oauth2_s
 RequireSessionUUID = Annotated[str, Depends(get_current_session_uuid)]
 
 
+def get_session_and_user(dbi, session_uuid):
+    session = dbi.get_session_info(uuid=session_uuid)
+    if not session:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid session")
+    user = dbi.get_user(id=session.user_id)
+    if not user:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid user")
+    return session, user
+
+
 class UserChangePassword(BaseModel):
     current_password: str | None = None
     new_password: str | None
