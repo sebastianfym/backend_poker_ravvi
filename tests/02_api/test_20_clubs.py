@@ -62,3 +62,26 @@ def test_20_clubs():
     club_B_v2 = response.json()
     assert club_B_v2["name"] == "test_20_C"
 
+
+def test_21_club_join():
+    # register new guest - owner
+    access_token, username = register_guest()
+    headers_owner = {"Authorization": "Bearer " + access_token}
+
+    # create clubas owner
+    params = dict(name="test_21")
+    response = client.post("/v1/clubs", headers=headers_owner, json=params)
+    assert response.status_code == 200
+    club = response.json()
+    assert club["id"]
+    assert club["name"] == "test_21"
+    club_id = club["id"]
+
+    # register new guest - player
+    access_token, username = register_guest()
+    headers_player = {"Authorization": "Bearer " + access_token}
+
+
+    response = client.put(f"/v1/clubs/{club_id}/members", headers=headers_player)
+    assert response.status_code == 200
+    result = response.json()
