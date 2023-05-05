@@ -82,6 +82,6 @@ def test_21_club_join():
     headers_player = {"Authorization": "Bearer " + access_token}
 
 
-    response = client.put(f"/v1/clubs/{club_id}/members", headers=headers_player)
+    response = client.post(f"/v1/clubs/{club_id}/members", headers=headers_player)
     assert response.status_code == 200
     result = response.json()
