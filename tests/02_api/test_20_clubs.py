@@ -40,6 +40,7 @@ def test_20_clubs():
     assert response.status_code == 200
     clubs = response.json()
     assert isinstance(clubs, list)
+    assert len(clubs)==2
     clubs.sort(key=lambda x: x['name'])
     club_A = clubs[0]
     assert club_A['name'] == "test_20_A"

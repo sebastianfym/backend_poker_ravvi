@@ -209,3 +209,20 @@ class DBI:
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("SELECT * FROM club WHERE founder_id=%s",(user_id,))
             return cursor.fetchall()
+        
+    # TABLES
+
+    def create_table(self, *, club_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("INSERT INTO poker_table (club_id) VALUES (%s) RETURNING *",(club_id,))
+            return cursor.fetchone()
+
+    def get_table(self, table_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("SELECT * FROM poker_table WHERE id=%s",(table_id,))
+            return cursor.fetchone()
+        
+    def get_tables_for_club(self, *, club_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("SELECT * FROM poker_table WHERE club_id=%s",(club_id,))
+            return cursor.fetchall()
