@@ -87,3 +87,14 @@ async def v1_update_club(club_id: int, params: ClubProps, session_uuid: RequireS
         user_role="OWNER" if club.founder_id == user.id else None
         )
 
+
+@router.post("/{club_id}/members", summary="Submit join request")
+async def v1_club_join_request(club_id: int, session_uuid: RequireSessionUUID):
+    
+    with DBI() as dbi:
+        session, user = get_session_and_user(dbi, session_uuid)
+        club = dbi.get_club(club_id)
+        #TODO
+    
+    return {}
+
