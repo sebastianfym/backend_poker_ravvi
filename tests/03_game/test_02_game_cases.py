@@ -3,11 +3,12 @@ import os
 import json
 import pytest
 
-from ravvi_poker_backend.game.table import User
+#from ravvi_poker_backend.game.table import User
+from ravvi_poker_backend.game.client import Client
 from ravvi_poker_backend.game.game import Game
 
-
-def test_case(case_file):
+@pytest.mark.asyncio
+async def test_case(case_file):
     print(case_file)
     with open(case_file,'r') as f:
         data = json.load(f)
@@ -15,7 +16,7 @@ def test_case(case_file):
     deck = data.get('deck')
     moves = data.get('moves')
 
-    users = [User(u) for u in users]
+    users = [Client(u) for u in users]
     game = Game(users)
     game.deck = list(deck)
 
@@ -48,6 +49,3 @@ def pytest_generate_tests(metafunc):
     if "case_file" in metafunc.fixturenames:
         metafunc.parametrize("case_file", load_game_cases())
 
-
-if __name__=="__main__":
-   pytest.main()
