@@ -3,8 +3,7 @@ import os
 import json
 import pytest
 
-#from ravvi_poker_backend.game.table import User
-from ravvi_poker_backend.game.client import Client
+from ravvi_poker_backend.game.user import User
 from ravvi_poker_backend.game.game import Game
 
 @pytest.mark.asyncio
@@ -16,11 +15,11 @@ async def test_case(case_file):
     deck = data.get('deck')
     moves = data.get('moves')
 
-    users = [Client(u) for u in users]
+    users = [User(u, 'u'+str(u), 1000) for u in users]
     game = Game(users)
     game.deck = list(deck)
 
-    def do_player_move(timeout):
+    async def do_player_move(timeout):
         if not moves:
             raise StopIteration()
         user_id, bet_name, amount = moves.pop(0)
@@ -30,7 +29,7 @@ async def test_case(case_file):
         game.current_player.bet_amount = amount
 
     game.sleep = do_player_move
-    game.run()
+    await game.run()
 
 
 def load_game_cases():

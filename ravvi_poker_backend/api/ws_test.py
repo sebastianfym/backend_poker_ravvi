@@ -16,12 +16,18 @@ async def app_shutdown():
     await manager.stop()
 
 class WS_Session:
-    def __init__(self, websocket) -> None:
+    def __init__(self, websocket: WebSocket) -> None:
         self.ws = websocket
-    
-    async def run(self):
+
+    async def handle_game_event(self, event):
+        await self.ws.send_json(event)
+
+    async def proccess_incoming_commands(self):
         while True:
-            data = await self.ws.receive_json()
+            command = await self.ws.receive_json()
+            
+
+    async def run(self):
 
 
 @router.websocket("/ws_test")

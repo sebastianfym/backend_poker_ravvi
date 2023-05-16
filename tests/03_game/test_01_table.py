@@ -4,10 +4,10 @@ from ravvi_poker_backend.game.game import Game, Player
 
 def test_01_table():
     t = Table(9)
-    t.seats[1] = User(111)
-    t.seats[3] = User(333)
-    t.seats[4] = User(444)
-    t.seats[7] = User(777)
+    t.seats[1] = t.add_user(111).user_id
+    t.seats[3] = t.add_user(333).user_id
+    t.seats[4] = t.add_user(444).user_id
+    t.seats[7] = t.add_user(777).user_id
 
     players = t.get_players(min_size=3)
     assert len(players) == 4
@@ -26,7 +26,7 @@ def test_01_table():
     assert players[2].user_id == 111
 
     # user 555 joined
-    t.seats[5] = User(555)
+    t.seats[5] = t.add_user(555).user_id
 
     players = t.get_players(min_size=3)
     assert len(players) == 4
@@ -36,7 +36,7 @@ def test_01_table():
     assert players[3].user_id == 333
 
     # user 222 joined
-    t.seats[2] = User(222)
+    t.seats[2] = t.add_user(222).user_id
 
     players = t.get_players(min_size=3)
     assert len(players) == 5

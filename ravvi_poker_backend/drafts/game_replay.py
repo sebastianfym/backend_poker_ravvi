@@ -80,7 +80,7 @@ class GameReplay:
                 await self.on_event(payload)
 
                 # sleep
-                if event.event_type in (Events.PLAYER_CARDS, Events.PLAYER_BID):
+                if event.event_type in (Events.PLAYER_CARDS, Events.PLAYER_BET):
                     continue
                 sleep_seconds = 2 
                 if event.event_type==Events.GAME_PLAYER_MOVE:
