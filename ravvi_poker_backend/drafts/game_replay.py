@@ -42,6 +42,8 @@ class GameReplay:
         game_active = False
         while not self._stop_flag:
             for event in self.events:
+                if self._stop_flag:
+                    break
                 #print(seats)
                 if event.event_type==Events.TABLE_INFO:
                     seats = event.event_props.get('seats')
@@ -78,7 +80,7 @@ class GameReplay:
                 await self.on_event(payload)
 
                 # sleep
-                if event.event_type in (Events.PLAYER_CARDS, Events.PLAYER_BID):
+                if event.event_type in (Events.PLAYER_CARDS, Events.PLAYER_BET):
                     continue
                 sleep_seconds = 2 
                 if event.event_type==Events.GAME_PLAYER_MOVE:

@@ -1,0 +1,18 @@
+{
+    "users": [111, 333, 444, 777],
+    "deck": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21],
+    "moves": [
+        [777, "CALL", null],
+        [111, "CALL", null],
+        [333, "CALL", null],
+        [444, "CALL", null],
+        [333, "FOLD", null],
+        [444, "CHECK", null],
+        [777, "CHECK", null],
+        [111, "FOLD", null],
+        [444, "CHECK", null],
+        [777, "CHECK", null],
+        [444, "CHECK", null],
+        [777, "CHECK", null]
+    ]
+}
