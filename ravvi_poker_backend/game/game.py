@@ -203,10 +203,9 @@ class Game:
         for p in players[1:]:
             if p.bet_amount==self.bet_level:
                 continue
-            if isinstance(p.bet_amount, int):
-                if self.bet_level==p.bet_amount:
-                    continue
-                self.bet_level = max(self.bet_level, p.bet_amount)
+            if self.bet_level==p.bet_amount:
+                continue
+            self.bet_level = max(self.bet_level, p.bet_amount)
             self.bets_all_same = False
         print(f"status: active_count:{self.active_count} bet_level:{self.bet_level} all_same:{self.bets_all_same}")
 

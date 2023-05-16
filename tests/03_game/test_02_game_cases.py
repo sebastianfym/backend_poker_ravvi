@@ -26,7 +26,8 @@ async def test_case(case_file):
         if game.current_player.user_id != user_id:
             raise ValueError()
         game.current_player.bet_type = Game.bet_code(bet_name)
-        game.current_player.bet_amount = amount
+        if amount:
+            game.current_player.bet_amount = amount
 
     game.sleep = do_player_move
     await game.run()
