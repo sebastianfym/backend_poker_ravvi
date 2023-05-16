@@ -24,7 +24,7 @@ class UserAccessTokens(BaseModel):
 
 
 @router.post("/register")
-async def register(params: DeviceInfo) -> UserAccessTokens:
+async def register_guest(params: DeviceInfo) -> UserAccessTokens:
     """Register user account (guest)"""
 
     device_uuid = utils.jwt_get(params.device_token, "device_uuid")
@@ -44,8 +44,8 @@ async def register(params: DeviceInfo) -> UserAccessTokens:
 
 
 @router.post("/device")
-async def register(params: DeviceInfo) -> UserAccessTokens:
-    """Register user account (guest)"""
+async def v1_device_login(params: DeviceInfo) -> UserAccessTokens:
+    """Login with device token"""
     device_uuid, login_uuid = utils.jwt_get(params.device_token, "device_uuid", "login_uuid")
     with DBI() as dbi:
         device = dbi.get_device(uuid=device_uuid)
@@ -66,7 +66,8 @@ async def register(params: DeviceInfo) -> UserAccessTokens:
   
 
 @router.post("/login", responses={400: {}, 401: {}})
-async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+async def v1_user_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    """Login with username / password"""
     device_token = form_data.client_id
     device_uuid, login_uuid = utils.jwt_get(device_token, "device_uuid", "login_uuid")
 
@@ -110,6 +111,16 @@ async def get_current_session_uuid(access_token: Annotated[str, Depends(oauth2_s
 RequireSessionUUID = Annotated[str, Depends(get_current_session_uuid)]
 
 
+def get_session_and_user(dbi, session_uuid):
+    session = dbi.get_session_info(uuid=session_uuid)
+    if not session:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid session")
+    user = dbi.get_user(id=session.user_id)
+    if not user:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid user")
+    return session, user
+
+
 class UserChangePassword(BaseModel):
     current_password: str | None = None
     new_password: str | None
@@ -117,6 +128,7 @@ class UserChangePassword(BaseModel):
 
 @router.post("/password")
 async def v1_user_password(params: UserChangePassword, session_uuid: RequireSessionUUID):
+    """Change password"""
     if not params.new_password:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Bad password")
     with DBI() as dbi:
@@ -136,6 +148,7 @@ async def v1_user_password(params: UserChangePassword, session_uuid: RequireSess
 
 @router.post("/logout")
 async def v1_user_logout(session_uuid: RequireSessionUUID):
+    """Logout"""    
     with DBI() as dbi:
         session = dbi.get_session_info(uuid=session_uuid)
         if session:

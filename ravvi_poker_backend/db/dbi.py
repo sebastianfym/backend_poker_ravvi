@@ -187,3 +187,42 @@ class DBI:
                 self.dbi.execute("UPDATE user_session SET closed_ts=NOW() WHERE id=%s", (session_id,))
             if login_id:
                 self.dbi.execute("UPDATE user_login SET closed_ts=NOW() WHERE id=%s", (login_id,))
+
+    # CLUBS
+
+    def create_club(self, *, founder_id, name):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("INSERT INTO club (founder_id, name) VALUES (%s,%s) RETURNING *",(founder_id, name))
+            return cursor.fetchone()
+        
+    def get_club(self, club_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("SELECT * FROM club WHERE id=%s",(club_id,))
+            return cursor.fetchone()
+        
+    def update_club(self, club_id, *, name, description):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("UPDATE club SET name=%s, description=%s WHERE id=%s RETURNING *",(name, description, club_id,))
+            return cursor.fetchone()
+        
+    def get_clubs_for_user(self, *, user_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("SELECT * FROM club WHERE founder_id=%s",(user_id,))
+            return cursor.fetchall()
+        
+    # TABLES
+
+    def create_table(self, *, club_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("INSERT INTO poker_table (club_id) VALUES (%s) RETURNING *",(club_id,))
+            return cursor.fetchone()
+
+    def get_table(self, table_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("SELECT * FROM poker_table WHERE id=%s",(table_id,))
+            return cursor.fetchone()
+        
+    def get_tables_for_club(self, *, club_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("SELECT * FROM poker_table WHERE club_id=%s",(club_id,))
+            return cursor.fetchall()
