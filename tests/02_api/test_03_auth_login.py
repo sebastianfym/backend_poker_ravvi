@@ -35,3 +35,5 @@ def test_auth_login():
     assert isinstance(result1["device_token"], str)
     assert isinstance(result1["access_token"], str)
     assert result1["token_type"] == "bearer"
+    assert isinstance(result1["user_id"], int)
+    assert isinstance(result1["username"], str)
