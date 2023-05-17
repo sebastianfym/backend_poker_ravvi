@@ -29,4 +29,5 @@ def test_register_and_logout():
     assert result1
     assert isinstance(result1["device_token"], str)
     assert result1["access_token"] is None
+    assert result1["user_id"] is None
     assert result1["username"] is None

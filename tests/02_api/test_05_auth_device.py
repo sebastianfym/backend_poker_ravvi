@@ -26,3 +26,5 @@ def test_auth_device():
     result = response.json()
     assert result["device_token"] == device_token
     assert result["access_token"] != access_token
+    assert isinstance(result["user_id"], int)
+    assert isinstance(result["username"], str)

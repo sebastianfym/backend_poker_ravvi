@@ -20,6 +20,7 @@ class UserAccessTokens(BaseModel):
     device_token: str | None
     access_token: str | None
     token_type: str = "bearer"
+    user_id: int | None
     username: str | None
 
 
@@ -40,7 +41,13 @@ async def register_guest(params: DeviceInfo) -> UserAccessTokens:
         device_token = utils.jwt_encode(device_uuid=str(device.uuid), login_uuid=str(login.uuid))
         access_token = utils.jwt_encode(session_uuid=str(session.uuid))
 
-    return UserAccessTokens(device_token=device_token, access_token=access_token, username=user.username)
+    response = UserAccessTokens(
+            device_token=device_token, 
+            access_token=access_token,
+            user_id=user.id, 
+            username=user.username
+        )
+    return response
 
 
 @router.post("/device")
@@ -56,13 +63,21 @@ async def v1_device_login(params: DeviceInfo) -> UserAccessTokens:
             session = dbi.create_user_session(login.id)
             device_token = utils.jwt_encode(device_uuid=str(device.uuid), login_uuid=str(login.uuid))
             access_token = utils.jwt_encode(session_uuid=str(session.uuid))
+            user_id = user.id
             username = user.username
         elif device:
             device_token = utils.jwt_encode(device_uuid=str(device.uuid))
             access_token = None
+            user_id = None
             username = None
 
-    return UserAccessTokens(device_token=device_token, access_token=access_token, username=username)
+    response =  UserAccessTokens(
+        device_token=device_token, 
+        access_token=access_token, 
+        user_id=user_id,
+        username=username
+        )
+    return response
   
 
 @router.post("/login", responses={400: {}, 401: {}})
@@ -91,11 +106,16 @@ async def v1_user_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends(
         device_token = utils.jwt_encode(device_uuid=str(device.uuid), login_uuid=str(login.uuid))
         access_token = utils.jwt_encode(session_uuid=str(session.uuid))
 
-    return UserAccessTokens(device_token=device_token, access_token=access_token, username=user.username)
+    response = UserAccessTokens(
+            device_token=device_token, 
+            access_token=access_token,
+            user_id=user.id, 
+            username=user.username
+        )
+    return response
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/auth/login")
-
 
 async def get_current_session_uuid(access_token: Annotated[str, Depends(oauth2_scheme)]):
     session_uuid = utils.jwt_get(access_token, "session_uuid")
@@ -157,4 +177,4 @@ async def v1_user_logout(session_uuid: RequireSessionUUID):
         else:
             device_token = None
 
-    return UserAccessTokens(device_token=device_token, access_token=None, username=None)
+    return UserAccessTokens(device_token=device_token)
