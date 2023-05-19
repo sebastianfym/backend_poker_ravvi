@@ -4,6 +4,7 @@ import json
 import pytest
 
 from ravvi_poker_backend.game.user import User
+from ravvi_poker_backend.game.bet import Bet
 from ravvi_poker_backend.game.game import Game
 
 @pytest.mark.asyncio
@@ -19,17 +20,16 @@ async def test_case(case_file):
     game = Game(users)
     game.deck = list(deck)
 
-    async def do_player_move(timeout):
+    async def do_player_move():
         if not moves:
             raise StopIteration()
         user_id, bet_name, amount = moves.pop(0)
         if game.current_player.user_id != user_id:
             raise ValueError()
-        game.current_player.bet_type = Game.bet_code(bet_name)
-        if amount:
-            game.current_player.bet_amount = amount
+        bet_code = getattr(Bet, bet_name)
+        game.handle_bet(user_id, Bet(bet_code), amount)
 
-    game.sleep = do_player_move
+    game.wait_for_player = do_player_move
     await game.run()
 
 

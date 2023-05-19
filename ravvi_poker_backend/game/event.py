@@ -1,3 +1,4 @@
+
 class Event(dict):
     
     CMD_TABLE_JOIN  = 11
@@ -36,6 +37,9 @@ class Event(dict):
     def __init__(self, type, **kwargs) -> None:
         super().__init__(type=type, **kwargs)
 
+    def clone(self):
+        return Event(**self)
+
     @property
     def type(self):
         return self.get('type')
@@ -44,42 +48,32 @@ class Event(dict):
         return self.get(attr_name, None)
     
 
-class TABLE_INFO(Event):
-    def __init__(self, **kwargs) -> None:
-        super().__init__(Event.TABLE_INFO, **kwargs)
+def TABLE_INFO(**kwargs):
+    return Event(Event.TABLE_INFO, **kwargs)
 
-class PLAYER_ENTER(Event):
-    def __init__(self, **kwargs) -> None:
-        super().__init__(Event.PLAYER_ENTER, **kwargs)
+def PLAYER_ENTER(**kwargs):
+    return Event(Event.PLAYER_ENTER, **kwargs)
 
-class PLAYER_EXIT(Event):
-    def __init__(self, **kwargs) -> None:
-        super().__init__(Event.PLAYER_EXIT, **kwargs)
+def PLAYER_EXIT(**kwargs):
+    return Event(Event.PLAYER_EXIT, **kwargs)
 
-class PLAYER_CARDS(Event):
-    def __init__(self, **kwargs) -> None:
-        super().__init__(Event.PLAYER_CARDS, **kwargs)
+def PLAYER_CARDS(**kwargs):
+    return Event(Event.PLAYER_CARDS, **kwargs)
 
-class PLAYER_BET(Event):
-    def __init__(self, **kwargs) -> None:
-        super().__init__(Event.PLAYER_BET, **kwargs)
+def PLAYER_BET(**kwargs):
+    return Event(Event.PLAYER_BET, **kwargs)
 
-class GAME_BEGIN(Event):
-    def __init__(self, **kwargs) -> None:
-        super().__init__(Event.GAME_BEGIN, **kwargs)
+def GAME_BEGIN(**kwargs):
+    return Event(Event.GAME_BEGIN, **kwargs)
 
-class GAME_ROUND(Event):
-    def __init__(self, **kwargs) -> None:
-        super().__init__(Event.GAME_ROUND, **kwargs)
+def GAME_ROUND(**kwargs):
+    return Event(Event.GAME_ROUND, **kwargs)
 
-class GAME_CARDS(Event):
-    def __init__(self, **kwargs) -> None:
-        super().__init__(Event.GAME_CARDS, **kwargs)
+def GAME_CARDS(**kwargs):
+    return Event(Event.GAME_CARDS, **kwargs)
 
-class GAME_PLAYER_MOVE(Event):
-    def __init__(self, **kwargs) -> None:
-        super().__init__(Event.GAME_PLAYER_MOVE, **kwargs)
+def GAME_PLAYER_MOVE(**kwargs):
+    return Event(Event.GAME_PLAYER_MOVE, **kwargs)
 
-class GAME_END(Event):
-    def __init__(self, **kwargs) -> None:
-        super().__init__(Event.GAME_END, **kwargs)
+def GAME_END(**kwargs):
+    return Event(Event.GAME_END, **kwargs)

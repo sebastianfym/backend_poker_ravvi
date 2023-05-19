@@ -11,22 +11,26 @@ class Client:
     async def send(self, event):
         await self.queue.put(event)
 
-    async def process_game_events(self):
+    async def process_queue(self):
         while True:
             event : Event = await self.queue.get()
-            if event.type == Event.PLAYER_CARDS:
-                if event.user_id != self.user_id and not event.cards_open:
-                    cards = [0 for _ in event.cards]
-                    event = Event(**event)
-                    event.update(cards=cards, cards_open=None)
-            elif event.type == Event.GAME_PLAYER_MOVE:
-                if event.user_id != self.user_id:
-                    event = Event(**event)
-                    event.update(options=None)
-            await self.handle_game_event(event)
+            event = self.process_event(event)
+            await self.handle_event(event)
             self.queue.task_done()
 
-    async def handle_game_event(self, event):
-        pass
+    def process_event(self, event: Event):
+        if event.type == Event.PLAYER_CARDS:
+            if event.user_id != self.user_id and not event.cards_open:
+                event = event.clone()
+                cards = [0 for _ in event.cards]
+                event.update(cards=cards, cards_open=None)
+        elif event.type == Event.GAME_PLAYER_MOVE:
+            if event.user_id != self.user_id:
+                event = event.clone()
+                event.update(options=None)
+        return event
     
+    async def handle_event(self, event):
+        pass
+
 

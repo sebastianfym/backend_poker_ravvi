@@ -1,104 +1,209 @@
+from typing import List
 import logging
 import time
 import random
 import asyncio
 
+from .bet import Bet
 from .event import Event, GAME_BEGIN, PLAYER_CARDS, GAME_CARDS, PLAYER_BET, GAME_PLAYER_MOVE, GAME_ROUND, GAME_END
-from .user import User
+from .player import Player, User
 
-class Player:
+from enum import IntEnum, unique
 
-    ROLE_DEALER = "D"
-    ROLE_SMALL_BLIND = "SB"
-    ROLE_BIG_BLIND = "BB"
-    ROLE_PLAYER = "P"
-
-    def __init__(self, user: User) -> None:
-        self.user = user
-        self.role = None
-        self.cards = None
-        self.cards_open = False
-        self.active = True
-        self.bet_type = None
-        self.bet_amount = 0
-        self.bet_delta = 0
-
-    @property
-    def user_id(self) -> int:
-        return self.user.user_id
-   
-    @property
-    def user_balance(self) -> int:
-        return self.user.balance
-    
-    @property
-    def bet_max(self):
-        return self.bet_amount + self.user_balance
+@unique
+class Round(IntEnum):    
+    PREFLOP = 1
+    FLOP = 2
+    TERN = 3
+    RIVER = 4
+    SHOWDOWN = 5
 
 
 class Game:
 
     logger = logging.getLogger(__name__)
 
-    ROUND_PREFLOP = 0
-    ROUND_FLOP = 1
-    ROUND_TERN = 2
-    ROUND_RIVER = 3
-    ROUND_SHOWDOWN = 4
-
-    BET_FOLD = 1
-    BET_SMALL_BLIND = 11
-    BET_BIG_BLIND = 12
-    BET_CALL = 21
-    BET_CHECK = 22
-    BET_RAISE = 30
-    BET_ALLIN = 99
-
-    def __init__(self, users, *, deck=None) -> None:
+    def __init__(self, users: List[User], *, deck=None) -> None:
         self.table = None
         self.game_id = None
+        self.round = None
         self.players = [Player(u) for u in users]
         self.dealer_id = self.players[0].user_id
-        self.bank = 0
         self.active_count = 0
         self.bet_level = 0
         self.bets_all_same = False
+        self.bank = 0
         self.wait_timeout = 60
         if deck:
-            self.deck = reversed(deck)
+            self.deck = list(reversed(deck))
         else:
             self.deck = list(range(1,53))
             random.shuffle(self.deck)
         self.cards = None
 
-    @classmethod
-    def rounds(cls):
-        if not hasattr(cls, '_rounds'):
-            cls._rounds = {v:k[6:] for k, v in cls.__dict__.items() if k[:6]=='ROUND_'}
-        return cls._rounds
-
-    @classmethod
-    def round_name(cls, code: int):
-        return cls.rounds().get(code)
-
-    @classmethod
-    def bets(cls):
-        if not hasattr(cls, '_bets'):
-            cls._bets = {v:k[4:] for k, v in cls.__dict__.items() if k[:4]=='BET_'}
-        return cls._bets
-
-    @classmethod
-    def bet_name(cls, code: int):
-        return cls.bets().get(code)
-
-    @classmethod
-    def bet_code(cls, name: str):
-        return getattr(cls, f'BET_{name}', -1)
-    
     @property
     def current_player(self):
         return self.players[0]
     
+    async def run(self):
+        self.logger.info("begin")
+        await self.on_begin()
+        while await self.run_step():
+            pass
+        await self.on_end()
+        self.logger.info("end")
+
+    async def on_begin(self):
+        assert self.round is None
+        # init 
+        self.round = Round.PREFLOP
+        await self.broadcast_GAME_BEGIN()
+
+        # cards
+        self.cards = []
+        for p in self.players:
+            p.cards = []
+            for _ in range(2):
+                p.cards.append(self.deck.pop())
+        for p in self.players:
+            await self.broadcast_PLAYER_CARDS(p)
+            
+        # assign playes roles
+        # dealer
+        p = self.players[0]
+        p.role = Player.ROLE_DEALER
+
+        # small blind
+        p = self.rotate_players()
+        p.role = Player.ROLE_SMALL_BLIND
+        p.bet_type = Bet.SMALL_BLIND
+        p.bet_delta = 1
+        p.bet_amount += p.bet_delta
+        p.user.balance -= p.bet_delta
+        await self.broadcast_PLAYER_BET()
+
+        # big blind
+        p = self.rotate_players()
+        p.role = Player.ROLE_BIG_BLIND
+        p.bet_type = Bet.BIG_BLIND
+        p.bet_delta = 2
+        p.bet_amount += p.bet_delta
+        p.user.balance -= p.bet_delta
+        await self.broadcast_PLAYER_BET()
+
+        self.update_status()        
+        self.rotate_players()
+
+    async def run_step(self):
+        player = self.current_player
+
+        if player.has_bet_opions:
+            await self.player_move()
+            self.update_status()
+        
+        if self.active_count<2:
+            await self.round_end(None)
+            return False
+
+        if self.round == Round.PREFLOP and player.role==Player.ROLE_BIG_BLIND and self.bets_all_same:
+            await self.round_end(Round.FLOP)
+            self.rotate_players(forward=False)
+        elif self.round in (Round.FLOP, Round.TERN, Round.RIVER) and player.role==Player.ROLE_DEALER and self.bets_all_same:
+            await self.round_end(self.round+1)
+            self.rotate_players(forward=True)
+        else:
+            self.rotate_players(forward=True)
+
+        return self.round != Round.SHOWDOWN
+    
+    
+    def update_status(self):
+        # filter players with bet options
+        players = [p for p in self.players if p.has_bet_opions]        
+        self.active_count = len(players)
+        self.bet_level = 0
+        self.bets_all_same = True
+        if not self.active_count:
+            return
+        self.bet_level = players[0].bet_amount
+        for p in players[1:]:
+            if p.bet_amount==self.bet_level:
+                continue
+            self.bet_level = max(self.bet_level, p.bet_amount)
+            self.bets_all_same = False
+        self.logger.info(f"status: active_count:{self.active_count} bet_level:{self.bet_level} all_same:{self.bets_all_same}")
+    
+    async def player_move(self):
+        player = self.current_player
+        player.bet_type = None
+        await self.broadcast_PLAYER_MOVE()
+        await self.wait_for_player()
+        if player.bet_type is None:
+            player.bet_type = Bet.FOLD
+        await self.broadcast_PLAYER_BET()
+
+    async def wait_for_player(self):
+        player = self.current_player
+        deadline = time.time() + self.wait_timeout
+        while time.time()<deadline:
+            await asyncio.sleep(1)
+            if player.bet_type:
+                break
+
+    def handle_bet(self, user_id, bet, amount):
+        p = self.current_player
+        assert p.user_id == user_id
+        assert Bet.verify(bet)
+        raise_min = self.bet_level*2
+        raise_max = p.bet_max
+
+        if bet == Bet.FOLD:
+            p.bet_delta = 0
+        elif bet == Bet.CHECK:
+            if p.bet_amount!=self.bet_level:
+                raise ValueError(f"player {p.user_id}: bet {p.bet_amount} != current_level {self.bet_level}")
+            p.bet_delta = 0
+        elif bet == Bet.CALL:
+            assert p.bet_amount<self.bet_level
+            p.bet_delta = self.bet_level-p.bet_amount
+        elif bet == Bet.RAISE:
+            assert raise_min<=amount and amount<=raise_max
+            p.bet_delta = amount-p.bet_amount
+        elif bet == Bet.ALLIN:
+            p.bet_delta = p.balance
+        else:
+            raise ValueError('inalid bet type')
+
+        p.bet_type = bet
+        p.bet_amount += p.bet_delta
+        p.user.balance -= p.bet_delta
+        self.logger.debug("player %s: delta %s -> %s / %s", p.user_id, p.bet_delta, p.bet_amount, p.balance)
+
+    async def on_end(self):
+        while self.current_player.role != Player.ROLE_SMALL_BLIND:
+            self.rotate_players()
+        players = [p for p in self.players if p.bet_type != Bet.FOLD]
+        if len(players)>1:
+            for i, p in enumerate(self.players):
+                if i!=0:
+                    await asyncio.sleep(1)
+                self.logger.info("player %s: open cards %s", p.user_id, p.cards)
+                p.cards_open = True
+                await self.broadcast_PLAYER_CARDS(p)
+        winners = []
+        p = players[0]
+        balance_delta = self.bank
+        p.user.balance += balance_delta
+        w = dict(
+            user_id = p.user_id,
+            balance = p.balance,
+            delta = balance_delta
+        )
+        self.logger.info("winner: %s", w)
+        winners.append(w)
+        event = GAME_END(winners=winners)
+        await self.broadcast(event)
+
     async def broadcast(self, event: Event):
         if self.table:
             await self.table.broadcast(event)
@@ -126,100 +231,39 @@ class Game:
         await self.broadcast(event)
        
     async def broadcast_PLAYER_BET(self):
-        player = self.players[0]
+        player = self.current_player
         event = PLAYER_BET(
             user_id = player.user_id,
             bet = player.bet_type,
             delta = player.bet_delta,
             amount = player.bet_amount,
-            balance = player.user_balance
+            balance = player.balance
         )
         await self.broadcast(event)
         
     async def broadcast_PLAYER_MOVE(self):
-        player = self.players[0]
-        options = [self.BET_FOLD]
-        min_delta = self.bet_level-player.bet_amount
-        min_raise, max_raise = self.bet_level*2, player.bet_max
-        if min_delta==0:
-            options.append(self.BET_CHECK)
-        elif min_delta<player.user_balance:
-            options.append(self.BET_CALL)
-        if min_raise<max_raise:
-            options.append(self.BET_RAISE)
-        else:
-            min_raise = None
-        if player.user_balance>0:
-            options.append(self.BET_ALLIN)
-
+        player = self.current_player
+        options, params = player.get_bet_options(self.bet_level)
         event = GAME_PLAYER_MOVE(
             user_id = player.user_id,
-            options = options
+            options = options, 
+            **params
         )
-        if min_raise:
-            event.update(
-                raise_min = min_raise, 
-                raise_max = max_raise
-            )
         await self.broadcast(event)
 
-    async def sleep(self, timeout):
-        player = self.current_player
-        deadline = time.time() + timeout
-        while time.time()<deadline:
-            await asyncio.sleep(1)
-            if player.bet_type:
-                break
-
-    async def wait_for_player(self):
-        player = self.current_player
-        player.bet_type = None
-        await self.broadcast_PLAYER_MOVE()
-        await self.sleep(self.wait_timeout)
-        if player.bet_type in (self.BET_CALL, self.BET_CHECK):
-            player.bet_delta = self.bet_level-player.bet_amount
-            player.bet_amount += player.bet_delta
-            player.user.balance -= player.bet_delta
-        elif player.bet_type == self.BET_RAISE:
-            pass
-        elif player.bet_type == self.BET_ALLIN:
-            player.bet_delta = player.user.balance
-            player.bet_amount += player.bet_delta
-            player.user.balance -= player.bet_delta
-        else:
-            player.bet_type = self.BET_FOLD
-            
-        await self.broadcast_PLAYER_BET()
-
-    def update_round_stat(self):
-        # filter active players
-        players = [p for p in self.players if p.bet_type!=self.BET_FOLD]
-        self.active_count = len(players)
-        self.bet_level = 0
-        self.bets_all_same = True
-        if self.active_count<1:
-            return
-        self.bet_level = players[0].bet_amount
-        for p in players[1:]:
-            if p.bet_amount==self.bet_level:
-                continue
-            if self.bet_level==p.bet_amount:
-                continue
-            self.bet_level = max(self.bet_level, p.bet_amount)
-            self.bets_all_same = False
-        print(f"status: active_count:{self.active_count} bet_level:{self.bet_level} all_same:{self.bets_all_same}")
-
     async def round_end(self, next_round):
-        self.logger.info("<- %s", self.round_name(self.round))
+        self.logger.info("<- %s", self.round)
         
         bank_delta = 0
         for p in self.players:
             bank_delta += p.bet_amount
             p.bet_amount = 0
             p.bet_delta = 0
-            if p.bet_type != self.BET_FOLD:
+            if p.bet_type != Bet.FOLD:
                 p.bet_type = None
         self.bank += bank_delta
+        self.bet_level = 0
+        self.bets_all_same = True
 
         event = GAME_ROUND(amount = self.bank, delta = bank_delta)
         await self.broadcast(event)
@@ -227,99 +271,18 @@ class Game:
             return
 
         self.round = next_round
-        if self.round == self.ROUND_FLOP:
+        if self.round == Round.FLOP:
             for _ in range(3):
                 self.cards.append(self.deck.pop())
             await self.broadcast_GAME_CARDS()
-        elif self.round in (self.ROUND_TERN, self.ROUND_RIVER):
+        elif self.round in (Round.TERN, Round.RIVER):
             self.cards.append(self.deck.pop())
             await self.broadcast_GAME_CARDS()
                        
-        self.logger.info("-> %s", self.round_name(self.round))
-
-    async def on_begin(self):
-        self.players[0].role = Player.ROLE_DEALER
-        self.players[1].role = Player.ROLE_SMALL_BLIND
-        self.players[2].role = Player.ROLE_BIG_BLIND
-        self.round = self.ROUND_PREFLOP
-        await self.broadcast_GAME_BEGIN()
-        for p in self.players:
-            self.logger.info('%s: balance=%s', p.user_id, p.user_balance)
-
-        self.cards = []
-        for p in self.players:
-            p.cards = []
-            for _ in range(2):
-                p.cards.append(self.deck.pop())
-        for p in self.players:
-            await self.broadcast_PLAYER_CARDS(p)
-            
-        p = self.rotate()
-        p.bet_type = self.BET_SMALL_BLIND
-        p.bet_delta = 1
-        p.bet_amount += p.bet_delta
-        p.user.balance -= p.bet_delta
-        await self.broadcast_PLAYER_BET()
-
-        p = self.rotate()
-        p.bet_type = self.BET_BIG_BLIND
-        p.bet_delta = 2
-        p.bet_amount += p.bet_delta
-        p.user.balance -= p.bet_delta
-        await self.broadcast_PLAYER_BET()
-
-        self.update_round_stat()
-        
-        self.rotate()
-
-    async def run_step(self):
-        player = self.current_player
-
-        if player.bet_type not in [self.BET_FOLD, self.BET_ALLIN]:
-            await self.wait_for_player()
-            
-        self.update_round_stat()
-        if self.active_count<2:
-            await self.round_end(None)
-            return False
-
-        if self.round == self.ROUND_PREFLOP and player.role==Player.ROLE_BIG_BLIND and self.bets_all_same:
-            await self.round_end(self.ROUND_FLOP)
-            self.rotate(forward=False)
-        elif self.round in (self.ROUND_FLOP, self.ROUND_TERN, self.ROUND_RIVER) and player.role==Player.ROLE_DEALER and self.bets_all_same:
-            await self.round_end(self.round+1)
-            self.rotate(forward=True)
-        else:
-            self.rotate(forward=True)
-
-        return self.round != self.ROUND_SHOWDOWN
-
-    async def on_end(self):
-        players = [p for p in self.players if p.bet_type!=self.BET_FOLD]
-        winners = []
-        if len(players):
-            p = players[0]
-            balance_delta = self.bank
-            p.user.balance += balance_delta
-            w = dict(
-                user_id = p.user_id,
-                balance = p.user_balance,
-                delta = balance_delta
-            )
-            winners.append(w)
-        event = GAME_END(winners=winners)
-        await self.broadcast(event)
-
-    async def run(self):
-        self.logger.info("begin")
-        await self.on_begin()
-        while await self.run_step():
-            pass
-        await self.on_end()
-        self.logger.info("end")
+        self.logger.info("-> %s bank: %s", self.round, self.bank)
 
 
-    def rotate(self, forward=True):
+    def rotate_players(self, forward=True):
         if forward:
             self.players.append(self.players.pop(0))
         else:

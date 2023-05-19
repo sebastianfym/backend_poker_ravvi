@@ -2,7 +2,6 @@ from typing import List, Mapping
 from dataclasses import dataclass, asdict
 import asyncio
 from asyncio import Task
-from ravvi_poker_backend.events import Events
 from .event import Event, TABLE_INFO, PLAYER_ENTER
 from .client import Client
 from .game import Game
@@ -84,9 +83,10 @@ class Table:
                 players.append(p.user_id)
             info.update(
                 game_id = self.game.game_id,
+                bank_amount = self.game.bank,
+                cards = self.game.cards,
                 players = players,
                 dealer_id = self.game.dealer_id,
-                bank_amount = self.game.bank,
                 current_user_id = self.game.current_player.user_id
             )
         info.update(
@@ -127,17 +127,14 @@ class Table:
         except ValueError:
             pass
     
-    async def handle_command(self, command):
-        type = command.get('type', None)
-        user_id = command.get('user_id', None)
-        bet = command.get('bet', None)
-        if type == Events.CMD_PLAYER_BET and self.game:
-            if self.game.current_player.user_id == user_id:
-                self.game.current_player.bet_type = bet
+    async def handle_command(self, command: Event):
+        if command.type == Event.CMD_PLAYER_BET and self.game:
+            p = self.game.current_player
+            if command.user_id == p.user_id:
+                self.game.handle_bet(command.user_id, command.bet, command.amount)
 
     async def broadcast(self, event: Event):
-        if 'table_id' not in event:
-            event.update(table_id=self.table_id)
+        event.update(table_id=self.table_id)
         for client in self.clients:
             await client.send(event)
 
