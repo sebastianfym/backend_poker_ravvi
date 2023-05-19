@@ -14,6 +14,7 @@ class Player:
         self.role = Player.ROLE_DEFAULT
         self.cards = None
         self.cards_open = False
+        self.hand = None
         self.active = True
         self.bet_type = None
         self.bet_amount = 0
