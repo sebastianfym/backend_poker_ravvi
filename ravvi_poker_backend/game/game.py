@@ -7,6 +7,7 @@ import asyncio
 from .bet import Bet
 from .event import Event, GAME_BEGIN, PLAYER_CARDS, GAME_CARDS, PLAYER_BET, GAME_PLAYER_MOVE, GAME_ROUND, GAME_END
 from .player import Player, User
+from .cards import get_player_best_hand
 
 from enum import IntEnum, unique
 
@@ -179,21 +180,65 @@ class Game:
         p.user.balance -= p.bet_delta
         self.logger.debug("player %s: delta %s -> %s / %s", p.user_id, p.bet_delta, p.bet_amount, p.balance)
 
+    async def round_end(self, next_round):
+        self.logger.info("<- %s", self.round)
+        bank_delta = 0
+        for p in self.players:
+            bank_delta += p.bet_amount
+            p.bet_amount = 0
+            p.bet_delta = 0
+            if p.bet_type != Bet.FOLD:
+                p.bet_type = None
+        self.bank += bank_delta
+        self.bet_level = 0
+        self.bets_all_same = True
+        event = GAME_ROUND(amount = self.bank, delta = bank_delta)
+        await self.broadcast(event)
+        if not next_round:
+            return
+        self.round = next_round
+        if self.round == Round.FLOP:
+            for _ in range(3):
+                self.cards.append(self.deck.pop())
+            await self.broadcast_GAME_CARDS()
+        elif self.round in (Round.TERN, Round.RIVER):
+            self.cards.append(self.deck.pop())
+            await self.broadcast_GAME_CARDS()
+        self.logger.info("-> %s bank: %s", self.round, self.bank)
+
+    def rotate_players(self, forward=True):
+        if forward:
+            self.players.append(self.players.pop(0))
+        else:
+            self.players.insert(0, self.players.pop(-1))
+        return self.players[0]
+    
+    def get_player_hand_rank(self, p):
+        cards = p.cards + self.cards
+
+
     async def on_end(self):
         while self.current_player.role != Player.ROLE_SMALL_BLIND:
             self.rotate_players()
         players = [p for p in self.players if p.bet_type != Bet.FOLD]
+        winners = []
         if len(players)>1:
             for i, p in enumerate(self.players):
                 if i!=0:
                     await asyncio.sleep(1)
-                self.logger.info("player %s: open cards %s", p.user_id, p.cards)
                 p.cards_open = True
+                p.hand = get_player_best_hand(p.cards, self.cards)
                 await self.broadcast_PLAYER_CARDS(p)
-        winners = []
+                self.logger.info("player %s: open cards %s", p.user_id, p.cards, p.hand, p.hand.rank)
+            players.sort(reverse=True, key=lambda x: x.hand.rank)
+        
         p = players[0]
+        winners.append(p)
+
         balance_delta = self.bank
+        p = winners[0]
         p.user.balance += balance_delta
+
         w = dict(
             user_id = p.user_id,
             balance = p.balance,
@@ -251,41 +296,3 @@ class Game:
         )
         await self.broadcast(event)
 
-    async def round_end(self, next_round):
-        self.logger.info("<- %s", self.round)
-        
-        bank_delta = 0
-        for p in self.players:
-            bank_delta += p.bet_amount
-            p.bet_amount = 0
-            p.bet_delta = 0
-            if p.bet_type != Bet.FOLD:
-                p.bet_type = None
-        self.bank += bank_delta
-        self.bet_level = 0
-        self.bets_all_same = True
-
-        event = GAME_ROUND(amount = self.bank, delta = bank_delta)
-        await self.broadcast(event)
-        if not next_round:
-            return
-
-        self.round = next_round
-        if self.round == Round.FLOP:
-            for _ in range(3):
-                self.cards.append(self.deck.pop())
-            await self.broadcast_GAME_CARDS()
-        elif self.round in (Round.TERN, Round.RIVER):
-            self.cards.append(self.deck.pop())
-            await self.broadcast_GAME_CARDS()
-                       
-        self.logger.info("-> %s bank: %s", self.round, self.bank)
-
-
-    def rotate_players(self, forward=True):
-        if forward:
-            self.players.append(self.players.pop(0))
-        else:
-            self.players.insert(0, self.players.pop(-1))
-        return self.players[0]
-    
