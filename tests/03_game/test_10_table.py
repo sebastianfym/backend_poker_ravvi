@@ -1,6 +1,4 @@
-from ravvi_poker_backend.game.table import Table, User
-from ravvi_poker_backend.game.game import Game, Player
-
+from ravvi_poker_backend.game.table import Table
 
 def test_01_table():
     t = Table(9)

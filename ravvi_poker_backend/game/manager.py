@@ -1,6 +1,5 @@
 import logging
 from typing import Mapping
-from ..events import Events
 from .table import Table
 from .bot import Bot
 
@@ -24,7 +23,7 @@ class Manager:
     async def dispatch_command(self, client, command):
         command.update(user_id = client.user_id)
         self.logger.debug("dispatch -> %s", command)
-        table_id = command.get('table_id', None)
+        table_id = command.table_id
         if not table_id:
             return
         table = self.tables.get(table_id, None)

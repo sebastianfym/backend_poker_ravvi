@@ -5,15 +5,18 @@
         [777, "CALL", null],
         [111, "CALL", null],
         [333, "CALL", null],
-        [444, "CALL", null],
+        [444, "CHECK", null],
+
         [333, "CHECK", null],
         [444, "CHECK", null],
         [777, "CHECK", null],
         [111, "CHECK", null],
+
         [333, "CHECK", null],
         [444, "CHECK", null],
         [777, "CHECK", null],
         [111, "CHECK", null],
+        
         [333, "CHECK", null],
         [444, "CHECK", null],
         [777, "CHECK", null],
