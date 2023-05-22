@@ -4,6 +4,13 @@ from ravvi_poker_backend.game.user import User
 from ravvi_poker_backend.game.bet import Bet
 from ravvi_poker_backend.game.game import Game, Round, Player
 
+def prepare_player_bet(game, user_id, bet, amount, check_amount=None):
+    async def _handler():
+        assert game.current_player.user_id == user_id
+        game.handle_bet(user_id, bet, amount)
+        if check_amount is not None:
+            assert game.current_player.bet_amount == check_amount
+    game.wait_for_player = _handler
 
 @pytest.mark.asyncio
 async def test_30_game_acceptance():
@@ -51,45 +58,65 @@ async def test_30_game_acceptance():
     assert p.cards == [5,6]
     assert p.cards_open == False
 
-    async def move_1():
-        game.handle_bet(111, Bet.CALL, None)
-        assert game.current_player.bet_amount == 2
-
-    game.wait_for_player = move_1
+    prepare_player_bet(game, 111, Bet.CALL, None, 2)
     await game.run_step()
 
-    async def move_2():
-        game.handle_bet(333, Bet.CALL, None)
-        assert game.current_player.bet_amount == 2
-
-    game.wait_for_player = move_2
+    prepare_player_bet(game, 333, Bet.CALL, None, 2)
     await game.run_step()
 
-    async def move_3():
-        game.handle_bet(444, Bet.CHECK, None)
-        assert game.current_player.bet_amount == 2
-
-    game.wait_for_player = move_3
+    prepare_player_bet(game, 444, Bet.CHECK, None, 2)
     await game.run_step()
 
     assert game.round == Round.FLOP
+    assert game.bank == 6
+    assert game.active_count == 3
 
-    async def move_4():
-        game.handle_bet(333, Bet.CHECK, None)
-
-    game.wait_for_player = move_4
+    prepare_player_bet(game, 333, Bet.CHECK, None, 0)
     await game.run_step()
 
-    async def move_5():
-        game.handle_bet(444, Bet.CHECK, None)
-
-    game.wait_for_player = move_5
+    prepare_player_bet(game, 444, Bet.CHECK, None, 0)
     await game.run_step()
 
-    async def move_6():
-        game.handle_bet(111, Bet.CHECK, None)
-
-    game.wait_for_player = move_6
+    prepare_player_bet(game, 111, Bet.CHECK, None, 0)
     await game.run_step()
 
     assert game.round == Round.TERN
+    assert game.bank == 6
+    assert game.active_count == 3
+
+    prepare_player_bet(game, 333, Bet.CHECK, None, 0)
+    await game.run_step()
+
+    prepare_player_bet(game, 444, Bet.RAISE, 4, 4)
+    await game.run_step()
+
+    prepare_player_bet(game, 111, Bet.CALL, None, 4)
+    await game.run_step()
+
+    prepare_player_bet(game, 333, Bet.CALL, None, 4)
+    await game.run_step()
+
+    prepare_player_bet(game, 444, Bet.CHECK, None, 4)
+    await game.run_step()
+
+    prepare_player_bet(game, 111, Bet.CHECK, None, 4)
+    await game.run_step()
+
+    assert game.round == Round.RIVER
+    assert game.bank == 6+12
+    assert game.active_count == 3
+
+    prepare_player_bet(game, 333, Bet.CHECK, None, 0)
+    await game.run_step()
+
+    prepare_player_bet(game, 444, Bet.FOLD, None, 0)
+    await game.run_step()
+
+    prepare_player_bet(game, 111, Bet.CHECK, None, 0)
+    await game.run_step()
+
+    assert game.round == Round.SHOWDOWN
+    assert game.bank == 18
+    assert game.active_count == 2
+
+    await game.on_end()

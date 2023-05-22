@@ -1,3 +1,4 @@
+import logging
 from typing import List, Mapping
 from dataclasses import dataclass, asdict
 import asyncio
@@ -8,6 +9,10 @@ from .game import Game
 from .user import User
 
 class Table:
+
+    logger = logging.getLogger(__name__)
+
+    NEW_GAME_DELAY = 7
 
     def __init__(self, n_seats=9):
         self.table_id = None
@@ -32,13 +37,13 @@ class Table:
     async def run(self):
         try:
             while True:
+                await asyncio.sleep(self.NEW_GAME_DELAY)
                 users = self.get_players(3)
                 if users:
                     self.game = Game(users)
                     self.game.table = self
                     await self.game.run()
                     self.game = None
-                await asyncio.sleep(5)
         except asyncio.CancelledError:
             pass
 
@@ -53,7 +58,7 @@ class Table:
             self.users[user_id] = user
         return user
 
-    def get_info(self, target_user_id=None):
+    def get_info(self, target_user_id):
         info = TABLE_INFO(
             table_id = self.table_id,
         )
@@ -95,9 +100,10 @@ class Table:
         )
         return info
 
-    async def add_client(self, client: Client, join):
+    async def add_client(self, client: Client, join: bool):
         # send current table stage to client
         info = self.get_info(client.user_id)
+        self.logger.debug(info)
         await client.send(info)
         # register
         self.clients.append(client)

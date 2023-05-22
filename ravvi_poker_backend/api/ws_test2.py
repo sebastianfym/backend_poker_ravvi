@@ -1,10 +1,11 @@
 import asyncio
 from fastapi import APIRouter, Depends, Query
 from fastapi import WebSocket, WebSocketDisconnect, WebSocketException, status
+
+from .utils import jwt_get
 from ..game.manager import Manager
 from ..game.client import Client
 from ..game.event import Event
-from ..api.utils import jwt_get
 from ..db.dbi import DBI
 
 router = APIRouter(tags=["ws"])
@@ -24,14 +25,12 @@ class WS_Client(Client):
     def __init__(self, websocket: WebSocket, user_id) -> None:
         super().__init__(manager, user_id)
         self.ws = websocket
+        self.ws.state
 
-    async def handle_event(self, event):
-        event = Event(**event)
-        if event.user_id != self.user_id:
-            event.update(options=[])
+    async def handle_event(self, event: Event):
         await self.ws.send_json(event)
 
-    async def proccess_commands(self):
+    async def process_commands(self):
         while True:
             command = await self.ws.receive_json()
             command = Event(**command)
@@ -39,7 +38,7 @@ class WS_Client(Client):
 
     async def run(self):
         await manager._add_client(self)
-        t1 = asyncio.create_task(self.proccess_commands())
+        t1 = asyncio.create_task(self.process_commands())
         t2 = asyncio.create_task(self.process_queue())
         await t1
         await t2
