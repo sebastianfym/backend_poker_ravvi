@@ -34,7 +34,7 @@ class Client:
         elif event.type == Event.GAME_PLAYER_MOVE:
             if event.user_id != self.user_id:
                 event = event.clone()
-                event.update(options=[])
+                event.update(options=None)
         return event
     
     async def handle_event(self, event: Event):
