@@ -1,7 +1,11 @@
+import logging
+
 from asyncio import Queue
 from .event import Event
 
 class Client:
+
+    logger = logging.getLogger(__name__)
 
     def __init__(self, manager, user_id) -> None:
         self.manager = manager
@@ -15,7 +19,10 @@ class Client:
         while True:
             event : Event = await self.queue.get()
             event = self.process_event(event)
-            await self.handle_event(event)
+            try:
+                await self.handle_event(event)
+            except Exception as ex:
+                self.logger.exception(" %s: %s", self.user_id, ex)
             self.queue.task_done()
 
     def process_event(self, event: Event):
@@ -30,7 +37,7 @@ class Client:
                 event.update(options=None)
         return event
     
-    async def handle_event(self, event):
+    async def handle_event(self, event: Event):
         pass
 
 

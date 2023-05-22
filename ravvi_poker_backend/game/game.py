@@ -213,10 +213,6 @@ class Game:
             self.players.insert(0, self.players.pop(-1))
         return self.players[0]
     
-    def get_player_hand_rank(self, p):
-        cards = p.cards + self.cards
-
-
     async def on_end(self):
         while self.current_player.role != Player.ROLE_SMALL_BLIND:
             self.rotate_players()
@@ -229,7 +225,7 @@ class Game:
                 p.cards_open = True
                 p.hand = get_player_best_hand(p.cards, self.cards)
                 await self.broadcast_PLAYER_CARDS(p)
-                self.logger.info("player %s: open cards %s", p.user_id, p.cards, p.hand, p.hand.rank)
+                self.logger.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.rank)
             players.sort(reverse=True, key=lambda x: x.hand.rank)
         
         p = players[0]
@@ -239,6 +235,7 @@ class Game:
         p = winners[0]
         p.user.balance += balance_delta
 
+        winners = []
         w = dict(
             user_id = p.user_id,
             balance = p.balance,
@@ -250,6 +247,7 @@ class Game:
         await self.broadcast(event)
 
     async def broadcast(self, event: Event):
+        self.logger.debug("%s: broadcast: %s", self.game_id, event)
         if self.table:
             await self.table.broadcast(event)
 

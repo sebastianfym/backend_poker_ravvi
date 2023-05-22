@@ -49,6 +49,7 @@ setuptools.setup(
         "python-multipart",
         "passlib",
         "PyJWT",
+        "PyYAML",
         "uvicorn",
         "gunicorn",
         "websockets"
@@ -63,5 +64,4 @@ setuptools.setup(
         ]
     },
     # fmt: on
-    cmdclass={},
 )
