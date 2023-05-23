@@ -41,6 +41,6 @@ def logging_configure(args):
         logging.basicConfig(
             level=logging.DEBUG if args.log_debug else logging.INFO,
             handlers=handlers,
-            format='%(asctime)s.%(msecs)d: %(process)d: %(levelname)s: %(name)s: %(message)s',
+            format='%(asctime)s.%(msecs)03d: %(process)d: %(levelname)s: %(name)s: %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S'
         )

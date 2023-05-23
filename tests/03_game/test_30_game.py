@@ -1,8 +1,8 @@
 import pytest
 
-from ravvi_poker_backend.game.user import User
-from ravvi_poker_backend.game.bet import Bet
-from ravvi_poker_backend.game.game import Game, Round, Player
+from ravvi_poker.game.user import User
+from ravvi_poker.game.bet import Bet
+from ravvi_poker.game.game import Game, Round, Player
 
 def prepare_player_bet(game, user_id, bet, amount, check_amount=None):
     async def _handler():

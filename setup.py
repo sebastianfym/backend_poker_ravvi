@@ -20,26 +20,26 @@ else:
     VERSION += ".dev0"
 VERSION = str(packaging.version.parse(VERSION))
 
-with open(os.path.join(BASEDIR, "ravvi_poker_backend", "build.py"), "w") as f:
+with open(os.path.join(BASEDIR, "ravvi_poker", "build.py"), "w") as f:
     f.write(f'__version__ = "{VERSION}"\n')
 
 
 setuptools.setup(
-    name="ravvi-poker-backend",
+    name="ravvi-poker",
     version=VERSION,
     author="Alexander Keda",
     author_email="alexander.keda@ravvi.net",
-    description="Ravvi Poker Backend",
+    description="Ravvi Poker",
     packages=setuptools.find_packages(),
     # fmt: off
     package_data={
-        "ravvi_poker_backend.db.schema": ["*.sql"],
-        "ravvi_poker_backend.db.deploy": ["*.sql"],
+        "ravvi_poker.db.schema": ["*.sql"],
+        "ravvi_poker.db.deploy": ["*.sql"],
     },
     entry_points={
         "console_scripts": [
-            "ravvi_poker_backend_db=ravvi_poker_backend.db.cli:main",
-            "ravvi_poker_backend_api=ravvi_poker_backend.api.cli:main",
+            "ravvi_poker_db=ravvi_poker.db.cli:main",
+            "ravvi_poker_api=ravvi_poker.api.cli:main",
         ]
     },
     #data_files=[],

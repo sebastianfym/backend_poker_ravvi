@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from ravvi_poker_backend.api.main import app
+from ravvi_poker.api.main import app
 
 client = TestClient(app)
 

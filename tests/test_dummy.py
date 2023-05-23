@@ -1,5 +1,5 @@
 import os
-import ravvi_poker_backend
+import ravvi_poker
 
 
 def test_dummy():
