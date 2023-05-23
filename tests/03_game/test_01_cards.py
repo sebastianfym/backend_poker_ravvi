@@ -1,4 +1,4 @@
-from ravvi_poker_backend.game.cards import Card, Hand
+from ravvi_poker.game.cards import Card, Hand
 
 def test_01_cards():
     # 2S

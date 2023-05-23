@@ -1,4 +1,4 @@
-from ravvi_poker_backend.db import DBI
+from ravvi_poker.db import DBI
 
 
 class TEST_DBI(DBI):

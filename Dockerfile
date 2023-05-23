@@ -6,20 +6,22 @@ RUN apt update
 RUN apt upgrade -y
 RUN apt install -y mc postgresql-client python3 python3-pip
 
-RUN useradd --create-home --shell /bin/bash ravvi
+RUN groupadd --gid 2002 poker
+RUN useradd --create-home --shell /bin/bash --uid 2002 --gid 2002 poker
 
-USER ravvi
-WORKDIR /home/ravvi
+USER poker
+WORKDIR /home/poker
 
-# create directories with ravvi owner
-RUN mkdir -p /home/ravvi/bin
-RUN mkdir -p /home/ravvi/.local/bin
-RUN mkdir -p /home/ravvi/.cache
-RUN mkdir -p /home/ravvi/.cache/pip
-RUN mkdir -p /home/ravvi/dist
+# create directories with poker owner
+RUN mkdir -p /home/poker/bin
+RUN mkdir -p /home/poker/.local/bin
+RUN mkdir -p /home/poker/.cache
+RUN mkdir -p /home/poker/.cache/pip
+RUN mkdir -p /home/poker/dist
+RUN mkdir -p /home/poker/log
 
-COPY --chown=ravvi:ravvi dist dist
-RUN pip3 install --user -f dist ravvi-poker-backend
+COPY --chown=poker:poker dist dist
+RUN pip3 install --user -f dist ravvi-poker
 
 ENTRYPOINT [ "/bin/bash", "-l", "-c"]
 CMD [ "env" ]

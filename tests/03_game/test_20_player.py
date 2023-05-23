@@ -1,4 +1,4 @@
-from ravvi_poker_backend.game.player import User, Player
+from ravvi_poker.game.player import User, Player
 
 def test_21_player():
     u = User(77, 'u77', 1000)

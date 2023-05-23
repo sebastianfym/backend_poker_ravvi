@@ -1,6 +1,6 @@
 # .coveragerc to control coverage.py
 [run]
-source = ravvi_poker_backend
+source = ravvi_poker
 branch = True
 cover_pylib = False
 

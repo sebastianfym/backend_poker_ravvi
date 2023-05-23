@@ -4,6 +4,7 @@ stages:
   - build
   - test
   - docker
+  - deploy
 
 variables:
   PIP_CACHE_DIR: "/home/ravvi/.cache/pip"
@@ -49,12 +50,12 @@ test_py:
   before_script:
     - source ~/.profile
   script:
-    - pip3 install -f ./dist ravvi-poker-backend[tests]
+    - pip3 install -f ./dist ravvi-poker[tests]
     - cd tests/
     # init tests database
     - coverage erase
-    - coverage run --append ~/.local/bin/ravvi_poker_backend_db create ${RAVVI_POKER_DB_NAME}
-    - coverage run --append ~/.local/bin/ravvi_poker_backend_db deploy ${RAVVI_POKER_DB_NAME}
+    - coverage run --append ~/.local/bin/ravvi_poker_db create ${RAVVI_POKER_DB_NAME}
+    - coverage run --append ~/.local/bin/ravvi_poker_db deploy ${RAVVI_POKER_DB_NAME}
     # run tests
     - coverage run --append -m pytest --junitxml=tests.xml .
     # coverage info
@@ -86,3 +87,17 @@ docker_build:
     - docker push ${IMAGE_PATH}:develop
     # cleanup
     - docker image rmi ${IMAGE_PATH}:develop
+
+deploy_dev:
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'develop'
+      when: manual
+  environment: develop
+  needs:
+    - docker_build
+  before_script:
+    - eval $(ssh-agent -s)
+    - echo "${POKER_DEV_SSH_KEY}" | tr -d '\r' | ssh-add -
+  script:
+    - ssh -o StrictHostKeyChecking=no ${POKER_DEV_HOST} '~/bin/deploy.sh'

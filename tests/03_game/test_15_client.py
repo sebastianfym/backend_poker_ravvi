@@ -1,7 +1,7 @@
 import pytest
 
-from ravvi_poker_backend.game.client import Client
-from ravvi_poker_backend.game.event import Event, PLAYER_CARDS, GAME_PLAYER_MOVE
+from ravvi_poker.game.client import Client
+from ravvi_poker.game.event import Event, PLAYER_CARDS, GAME_PLAYER_MOVE
 
 
 def test_1_PLAYER_CARDS():

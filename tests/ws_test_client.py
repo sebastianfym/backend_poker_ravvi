@@ -3,7 +3,7 @@ import requests
 from urllib.parse import urlencode
 import websockets
 import json
-from ravvi_poker_backend.game.event import Event, PLAYER_BET
+from ravvi_poker.game.event import Event, PLAYER_BET
 
 API_URL = "localhost:5000"
 

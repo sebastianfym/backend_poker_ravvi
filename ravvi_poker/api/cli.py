@@ -9,11 +9,11 @@ from ..logging import logging_add_parser_args, logging_configure
 logger = logging.getLogger(__name__)
 
 def cmd_run(args):
-    uvicorn.run("ravvi_poker_backend.api.main:app", host="0.0.0.0", port=5000, log_level="info")
+    uvicorn.run("ravvi_poker.api.main:app", host="0.0.0.0", port=5000, log_level="info")
 
 
 def main():
-    parser = argparse.ArgumentParser(usage='ravvi_poker_backend_api [-h] OPTIONS COMMAND ...')
+    parser = argparse.ArgumentParser(usage='ravvi_poker_api [-h] OPTIONS COMMAND ...')
     parser.set_defaults(func=None)
     
     # add logging options

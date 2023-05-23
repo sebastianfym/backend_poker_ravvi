@@ -3,9 +3,9 @@ import os
 import json
 import pytest
 
-from ravvi_poker_backend.game.user import User
-from ravvi_poker_backend.game.bet import Bet
-from ravvi_poker_backend.game.game import Game
+from ravvi_poker.game.user import User
+from ravvi_poker.game.bet import Bet
+from ravvi_poker.game.game import Game
 
 @pytest.mark.asyncio
 async def test_case(case_file):
