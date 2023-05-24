@@ -74,7 +74,7 @@ docker_build:
   stage: docker
   rules:
     - if: $CI_COMMIT_BRANCH == "develop"
-    - if: $CI_COMMIT_BRANCH == "feature/game_events_db"
+    #- if: $CI_COMMIT_BRANCH == "feature/game_events_db"
   needs:
     - build_py
     - test_py
