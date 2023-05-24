@@ -49,7 +49,7 @@ class WS_Client(Client):
             await t1
             await t2
         finally:
-            self.manager.remove_client(self)
+            await self.manager.remove_client(self)
             self.log_info("end")
 
 

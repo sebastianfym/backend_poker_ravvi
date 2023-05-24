@@ -26,6 +26,8 @@ def test_20_clubs():
     club1 = response.json()
     assert club1["id"]
     assert club1["name"] == "test_20_A"
+    assert club1["user_role"] == "OWNER"
+    assert club1["user_approved"] == True
 
     # create club
     params = dict(name="test_20_B")
@@ -34,6 +36,8 @@ def test_20_clubs():
     club2 = response.json()
     assert club2["id"]
     assert club2["name"] == "test_20_B"
+    assert club2["user_role"] == "OWNER"
+    assert club2["user_approved"] == True
 
     # list clubs
     response = client.get("/v1/clubs", headers=headers)
@@ -46,15 +50,19 @@ def test_20_clubs():
     club_A = clubs[0]
     assert club_A['name'] == "test_20_A"
     assert club_A['user_role'] == "OWNER"
+    assert club_A['user_approved'] == True
     club_B = clubs[1]
     assert club_B['name'] == "test_20_B"
     assert club_B['user_role'] == "OWNER"
+    assert club_B['user_approved'] == True
 
     # get club
     response = client.get(f"/v1/clubs/{club1['id']}", headers=headers)
     assert response.status_code == 200
     club_A_v1 = response.json()
     assert club_A_v1["name"] == "test_20_A"
+    assert club_A_v1['user_role'] == "OWNER"
+    assert club_A_v1['user_approved'] == True
 
     # update club
     params = dict(name="test_20_C")
@@ -62,11 +70,13 @@ def test_20_clubs():
     assert response.status_code == 200
     club_B_v2 = response.json()
     assert club_B_v2["name"] == "test_20_C"
+    assert club_B_v2['user_role'] == "OWNER"
+    assert club_B_v2['user_approved'] == True
 
 
 def test_21_club_join():
     # register new guest - owner
-    access_token, username = register_guest()
+    access_token, owner_username = register_guest()
     headers_owner = {"Authorization": "Bearer " + access_token}
 
     # create clubas owner
@@ -76,13 +86,51 @@ def test_21_club_join():
     club = response.json()
     assert club["id"]
     assert club["name"] == "test_21"
+    assert club['user_role'] == "OWNER"
+    assert club['user_approved'] == True
+
     club_id = club["id"]
 
     # register new guest - player
-    access_token, username = register_guest()
+    access_token, player_username = register_guest()
     headers_player = {"Authorization": "Bearer " + access_token}
 
 
     response = client.post(f"/v1/clubs/{club_id}/members", headers=headers_player)
     assert response.status_code == 200
     result = response.json()
+    assert result["id"]
+    assert result["name"] == "test_21"
+    assert result['user_role'] == "PLAYER"
+    assert result['user_approved'] == True
+
+    # list clubs
+    response = client.get("/v1/clubs", headers=headers_player)
+    assert response.status_code == 200
+    clubs = response.json()
+    
+    assert isinstance(clubs, list)
+    assert len(clubs)==1
+    clubs.sort(key=lambda x: x['name'])
+    club_A = clubs[0]
+    assert club_A['name'] == "test_21"
+    assert club_A['user_role'] == "PLAYER"
+    assert club_A['user_approved'] == True
+
+    # list memebers
+    response = client.get(f"/v1/clubs/{club_id}/members", headers=headers_player)
+    assert response.status_code == 200
+    members = response.json()
+    
+    assert isinstance(members, list)
+    assert len(members)==2
+    clubs.sort(key=lambda x: x['id'])
+    owner = members[0]
+    assert owner['username'] == owner_username
+    assert owner['user_role'] == "OWNER"
+    assert owner['user_approved'] == True
+
+    player = members[1]
+    assert player['username'] == player_username
+    assert player['user_role'] == "PLAYER"
+    assert player['user_approved'] == True
