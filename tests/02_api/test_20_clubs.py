@@ -76,7 +76,7 @@ def test_20_clubs():
 
 def test_21_club_join():
     # register new guest - owner
-    access_token, username = register_guest()
+    access_token, owner_username = register_guest()
     headers_owner = {"Authorization": "Bearer " + access_token}
 
     # create clubas owner
@@ -92,7 +92,7 @@ def test_21_club_join():
     club_id = club["id"]
 
     # register new guest - player
-    access_token, username = register_guest()
+    access_token, player_username = register_guest()
     headers_player = {"Authorization": "Bearer " + access_token}
 
 
@@ -116,3 +116,21 @@ def test_21_club_join():
     assert club_A['name'] == "test_21"
     assert club_A['user_role'] == "PLAYER"
     assert club_A['user_approved'] == True
+
+    # list memebers
+    response = client.get(f"/v1/clubs/{club_id}/members", headers=headers_player)
+    assert response.status_code == 200
+    members = response.json()
+    
+    assert isinstance(members, list)
+    assert len(members)==2
+    clubs.sort(key=lambda x: x['id'])
+    owner = members[0]
+    assert owner['username'] == owner_username
+    assert owner['user_role'] == "OWNER"
+    assert owner['user_approved'] == True
+
+    player = members[1]
+    assert player['username'] == player_username
+    assert player['user_role'] == "PLAYER"
+    assert player['user_approved'] == True

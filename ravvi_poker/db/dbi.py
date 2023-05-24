@@ -204,6 +204,12 @@ class DBI:
             cursor.execute("SELECT * FROM club WHERE id=%s",(club_id,))
             return cursor.fetchone()
         
+    def get_club_members(self, club_id):
+        sql = "SELECT u.*, x.user_role, x.approved_ts FROM club_user x JOIN user_profile u ON u.id=x.user_id WHERE x.club_id=%s"
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute(sql,(club_id,))
+            return cursor.fetchall()
+
     def get_club_user(self, club_id, user_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("SELECT * FROM club_user WHERE club_id=%s AND user_id=%s",(club_id,user_id))

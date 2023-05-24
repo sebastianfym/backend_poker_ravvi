@@ -97,6 +97,23 @@ async def v1_update_club(club_id: int, params: ClubProps, session_uuid: RequireS
         user_approved = club_user.approved_ts is not None if club_user else None
         )
 
+@router.get("/{club_id}/members", summary="Get club memebrs")
+async def v1_club_join_request(club_id: int, session_uuid: RequireSessionUUID):
+    with DBI() as dbi:
+        session, user = get_session_and_user(dbi, session_uuid)
+        club = dbi.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+        response = []
+        for row in dbi.get_club_members(club_id=club.id):
+            response.append(dict(
+                id = row.id,
+                username = row.username,
+                user_role = row.user_role,
+                user_approved = row.approved_ts is not None
+            ))
+    return response
+
 
 @router.post("/{club_id}/members", summary="Submit join request")
 async def v1_club_join_request(club_id: int, session_uuid: RequireSessionUUID):
