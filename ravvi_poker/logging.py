@@ -4,6 +4,7 @@ import yaml
 import logging
 from logging.handlers import TimedRotatingFileHandler
 
+
 def logging_add_parser_args(parser):
     """Добавление необходимых параметров в argsparser для поддержки логирования
     * --log-config LOG_CONFIG_PATH
@@ -11,17 +12,25 @@ def logging_add_parser_args(parser):
     * --log-debug
     """
 
-    parser.add_argument("--log-config", type=str, default="", help="Path to log config file")
+    parser.add_argument(
+        "--log-config", type=str, default="", help="Path to log config file"
+    )
     parser.add_argument("--log-file", type=str, default="", help="Path to log file")
-    parser.add_argument("--log-debug", action='store_true', default=False, help="Log DEBUG level")
+    parser.add_argument(
+        "--log-debug", action="store_true", default=False, help="Log DEBUG level"
+    )
+
 
 def logging_configure(args):
     """Настройка логирования в соответствии с параметрами указаными в командной строке
-    
-       см logging_add_parser_args
+
+    см logging_add_parser_args
     """
     if args.log_config and (args.log_file or args.log_debug):
-        print("ERROR: --log-config and --log-file|debug are mutually exclusive", file=sys.stderr)
+        print(
+            "ERROR: --log-config and --log-file|debug are mutually exclusive",
+            file=sys.stderr,
+        )
         exit(os.EX_CONFIG)
     if args.log_config:
         try:
@@ -33,14 +42,45 @@ def logging_configure(args):
             print("Failed lo load config: %s", ex, file=sys.stderr)
             exit(os.EX_CONFIG)
     else:
-        handlers=[logging.StreamHandler(sys.stderr)]
+        handlers = [logging.StreamHandler(sys.stderr)]
         if args.log_file:
             path = os.path.expanduser(args.log_file)
-            handler = TimedRotatingFileHandler(filename=path, when='D')
+            handler = TimedRotatingFileHandler(filename=path, when="D")
             handlers.append(handler)
         logging.basicConfig(
             level=logging.DEBUG if args.log_debug else logging.INFO,
             handlers=handlers,
-            format='%(asctime)s.%(msecs)03d: %(process)d: %(levelname)s: %(name)s: %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
+            format="%(asctime)s.%(msecs)03d: %(process)d: %(levelname)s: %(name)s: %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
+
+
+class Logger_MixIn:
+    def log_prefix(self):
+        return ""
+
+    def log_debug(self, msg, *args, **kwargs):
+        prefix = self.log_prefix()
+        self.logger.debug(prefix + msg, *args, **kwargs)
+
+    def log_info(self, msg, *args, **kwargs):
+        prefix = self.log_prefix()
+        self.logger.info(prefix + msg, *args, **kwargs)
+
+    def log_warning(self, msg, *args, **kwargs):
+        prefix = self.log_prefix()
+        self.logger.warning(prefix + msg, *args, **kwargs)
+
+    def log_error(self, msg, *args, **kwargs):
+        prefix = self.log_prefix()
+        self.logger.error(prefix + msg, *args, **kwargs)
+
+    def log_exception(self, msg, *args, **kwargs):
+        prefix = self.log_prefix()
+        self.logger.exception(prefix + msg, *args, **kwargs)
+
+
+class ObjectLogger(Logger_MixIn):
+    def __init__(self, logger_name) -> None:
+        super().__init__()
+        self.logger = logging.getLogger(logger_name)
