@@ -74,6 +74,7 @@ docker_build:
   stage: docker
   rules:
     - if: $CI_COMMIT_BRANCH == "develop"
+    #- if: $CI_COMMIT_BRANCH == "feature/game_events_db"
   needs:
     - build_py
     - test_py
@@ -82,11 +83,11 @@ docker_build:
     - name: docker:23.0.3-dind
   script:
     # build
-    - docker build -t ${IMAGE_PATH}:develop .
+    - docker build -t ${IMAGE_PATH}:${CI_COMMIT_REF_SLUG} .
     # push
-    - docker push ${IMAGE_PATH}:develop
+    - docker push ${IMAGE_PATH}:${CI_COMMIT_REF_SLUG}
     # cleanup
-    - docker image rmi ${IMAGE_PATH}:develop
+    - docker image rmi ${IMAGE_PATH}:${CI_COMMIT_REF_SLUG}
 
 deploy_dev:
   stage: deploy

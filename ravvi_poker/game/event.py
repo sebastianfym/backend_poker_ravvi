@@ -3,9 +3,11 @@ class Event(dict):
     
     CMD_TABLE_JOIN  = 11
     CMD_TABLE_LEAVE = 12
+    CMD_TAKE_SEAT = 13
     CMD_PLAYER_BET  = 21
 
     TABLE_INFO = 101
+    TABLE_ERROR = 102
 
     PLAYER_ENTER = 201
     PLAYER_SEAT = 202
@@ -31,7 +33,7 @@ class Event(dict):
         for k, v in cls.iter_events():
             if v==code:
                 return k
-        return '???'
+        return None
     
     
     def __init__(self, type, **kwargs) -> None:
@@ -48,8 +50,14 @@ class Event(dict):
         return self.get(attr_name, None)
     
 
+def CMD_TABLE_JOIN(*, table_id, take_seat):
+    return Event(Event.CMD_TABLE_JOIN, table_id=table_id, take_seat=take_seat)
+
 def TABLE_INFO(**kwargs):
     return Event(Event.TABLE_INFO, **kwargs)
+
+def TABLE_ERROR(**kwargs):
+    return Event(Event.TABLE_ERROR, **kwargs)
 
 def PLAYER_ENTER(**kwargs):
     return Event(Event.PLAYER_ENTER, **kwargs)

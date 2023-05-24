@@ -3,15 +3,13 @@ import asyncio
 import random
 from .client import Client
 from .bet import Bet
-from .event import Event
+from .event import Event, CMD_TABLE_JOIN
 
 
 class Bot(Client):
 
-    logger = logging.getLogger(__name__)
-
     def __init__(self, manager, user_id) -> None:
-        super().__init__(manager, user_id)
+        super().__init__(manager, user_id, logger_name=__name__+f".{user_id}")
         self.task : asyncio.Task = None
 
     async def start(self):
@@ -26,31 +24,43 @@ class Bot(Client):
         self.task = None
 
     async def run(self):
-        self.logger.info(" %s: begin", self.user_id)
+        self.log_info("begin")
         try:
+            cmd = CMD_TABLE_JOIN(table_id=1, take_seat=True)
+            await self.dispatch_command(cmd)
             await self.process_queue()
         except asyncio.CancelledError:
             pass
-        self.logger.info(" %s: end", self.user_id)
+        self.log_info("end")
+
+    def bet_weight(self, x):
+        if x in [Bet.CHECK, Bet.CALL]:
+            return 10
+        if x == Bet.RAISE:
+            return 5
+        if x == Bet.FOLD:
+            return 1
+        return 0
 
     async def handle_event(self, event: Event):
         table_id = event.get('table_id', None)
+        event_id = id(event)
         if event.type != Event.GAME_PLAYER_MOVE:
             return
         if not event.options:
             return
-        self.logger.debug(" %s: table_id:%s options:%s raise:[%s - %s]", 
-                          self.user_id, event.table_id, 
-                          event.options, event.raise_min, event.raise_max
+        self.log_debug("table_id:%s options:%s raise:[%s - %s]", 
+                          event.table_id, event.options, event.raise_min, event.raise_max
                           )
         # select option
         sleep_seconds = random.randint(3,7)
-        self.logger.debug(" %s: thinking %s sec ...", self.user_id, sleep_seconds)        
+        self.log_debug("thinking %s sec ...", sleep_seconds)
         await asyncio.sleep(sleep_seconds)
-        options = [x for x in event.options if x!=Bet.ALLIN]
-        choice = random.choice(options)
+        options = [x for x in event.options]
+        weights = [self.bet_weight(x) for x in options]
+        choice = random.choices(options, weights)[0]
         amount = event.raise_min if choice==Bet.RAISE else None
-        self.logger.debug(" %s: choice %s %s", self.user_id, choice, amount)
+        self.log_debug("choice %s %s", choice, amount)
         #
         command = Event(
             type = Event.CMD_PLAYER_BET,
@@ -58,5 +68,5 @@ class Bot(Client):
             bet = choice,
             amount = amount
         )
-        await self.manager.dispatch_command(self, command)
+        await self.dispatch_command(command)
         

@@ -16,7 +16,7 @@ def prepare_player_bet(game, user_id, bet, amount, check_amount=None):
 async def test_30_game_acceptance():
     users = [User(x, f"u{x}", 1000) for x in [111, 333, 444]]
     deck  = [1,2,3,4,5,6,7,8,9,10,11,12,13,14]
-    game = Game(users, deck=deck)
+    game = Game(None, 1, users, deck=deck)
 
     assert len(game.players) == 3
     assert game.players[0].user_id == 111

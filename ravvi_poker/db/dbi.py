@@ -1,8 +1,10 @@
+import logging
 import os
 import json
 import psycopg
 from psycopg.rows import namedtuple_row
 
+logger = logging.getLogger(__name__)
 
 class DBI:
     DB_HOST = os.getenv("RAVVI_POKER_DB_HOST", "localhost")
@@ -226,3 +228,43 @@ class DBI:
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("SELECT * FROM poker_table WHERE club_id=%s",(club_id,))
             return cursor.fetchall()
+
+    # temporary method to get list of tables
+    def get_active_tables(self):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("SELECT * FROM poker_table")
+            return cursor.fetchall()
+        
+    # GAMES
+    def game_begin(self, *, table_id, users):
+        game = None
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("INSERT INTO poker_game (table_id) VALUES (%s) RETURNING *",(table_id,))
+            game = cursor.fetchone()
+            params_seq = [(game.id, x.user_id) for x in users]
+            cursor.executemany("INSERT INTO poker_game_user (game_id, user_id) VALUES (%s, %s)", params_seq)
+        return game
+
+    def game_end(self, game_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("UPDATE poker_game SET end_ts=NOW() WHERE id=%s RETURNING *",(game_id,))
+            return cursor.fetchone()
+        
+    def save_event(self, *, type, table_id, game_id=None, user_id=None, props: dict=None):
+        if props:
+            data = {}
+            for k, v in props.items():
+                if k in ('type', 'table_id', 'game_id'):
+                    continue
+                if k=='user_id' and user_id is not None:
+                    continue
+                data[k] = v
+            data = json.dumps(data)
+        else:
+            data = None
+        #logger.debug("%s %s %s %s save: %s", type, table_id, game_id, user_id, data)
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("INSERT INTO poker_event (table_id, game_id, user_id, event_type, event_props) VALUES (%s, %s, %s, %s, %s) RETURNING id, event_ts",
+                           (table_id, game_id, user_id, type, data))
+            return cursor.fetchone()
+        
