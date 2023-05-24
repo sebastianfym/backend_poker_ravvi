@@ -1,7 +1,7 @@
 from ravvi_poker.game.table import Table
 
 def test_01_table():
-    t = Table(9)
+    t = Table(1, 9)
     t.seats[1] = t.add_user(111).user_id
     t.seats[3] = t.add_user(333).user_id
     t.seats[4] = t.add_user(444).user_id

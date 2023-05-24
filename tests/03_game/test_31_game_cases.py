@@ -17,7 +17,7 @@ async def test_case(case_file):
     moves = data.get('moves')
 
     users = [User(u, 'u'+str(u), 1000) for u in users]
-    game = Game(users)
+    game = Game(None, 1, users)
     game.deck = list(deck)
 
     async def do_player_move():

@@ -21,7 +21,7 @@ def test_01_ws_broken_access():
     access_token = 'broken'
     params = urlencode(dict(access_token=access_token))
     with pytest.raises(WebSocketDisconnect) as ex_info:
-        with client.websocket_connect(f"/v1/ws_test?{params}") as websocket:
+        with client.websocket_connect(f"/v1/ws?{params}") as websocket:
             pass
     assert ex_info.value.code == 1008
     
@@ -30,12 +30,12 @@ def test_02_ws_valid_token():
     access_token, username = register_guest()
 
     params = urlencode(dict(access_token=access_token))
-    with client.websocket_connect(f"/v1/ws_test?{params}") as websocket:
+    with client.websocket_connect(f"/v1/ws?{params}") as websocket:
         pass
 
     access_token = 'broken'
     params = urlencode(dict(access_token=access_token))
     with pytest.raises(WebSocketDisconnect) as ex_info:
-        with client.websocket_connect(f"/v1/ws_test?{params}") as websocket:
+        with client.websocket_connect(f"/v1/ws?{params}") as websocket:
             pass
     assert ex_info.value.code == 1008
