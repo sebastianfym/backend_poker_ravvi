@@ -4,6 +4,7 @@ import time
 import random
 import asyncio
 
+from ..logging import ObjectLogger
 from .bet import Bet
 from .event import Event, GAME_BEGIN, PLAYER_CARDS, GAME_CARDS, PLAYER_BET, GAME_PLAYER_MOVE, GAME_ROUND, GAME_END
 from .player import Player, User
@@ -20,13 +21,12 @@ class Round(IntEnum):
     SHOWDOWN = 5
 
 
-class Game:
+class Game(ObjectLogger):
 
-    logger = logging.getLogger(__name__)
-
-    def __init__(self, users: List[User], *, deck=None) -> None:
-        self.table = None
-        self.game_id = None
+    def __init__(self, table, game_id, users: List[User], *, deck=None) -> None:
+        super().__init__(__name__+f".{game_id}")
+        self.table = table
+        self.game_id = game_id
         self.round = None
         self.players = [Player(u) for u in users]
         self.dealer_id = self.players[0].user_id
@@ -47,12 +47,12 @@ class Game:
         return self.players[0]
     
     async def run(self):
-        self.logger.info("begin")
+        self.log_info("begin")
         await self.on_begin()
         while await self.run_step():
             pass
         await self.on_end()
-        self.logger.info("end")
+        self.log_info("end")
 
     async def on_begin(self):
         assert self.round is None
@@ -92,8 +92,8 @@ class Game:
         p.user.balance -= p.bet_delta
         await self.broadcast_PLAYER_BET()
 
-        self.update_status()        
         self.rotate_players()
+        self.update_status()        
 
     async def run_step(self):
         player = self.current_player
@@ -132,7 +132,7 @@ class Game:
                 continue
             self.bet_level = max(self.bet_level, p.bet_amount)
             self.bets_all_same = False
-        self.logger.info(f"status: active_count:{self.active_count} bet_level:{self.bet_level} all_same:{self.bets_all_same}")
+        self.log_info(f"status: active_count:{self.active_count} bet_level:{self.bet_level} all_same:{self.bets_all_same}")
     
     async def player_move(self):
         player = self.current_player
@@ -152,6 +152,7 @@ class Game:
                 break
 
     def handle_bet(self, user_id, bet, amount):
+        self.log_info("handle_bet: %s %s %s", user_id, bet, amount)
         p = self.current_player
         assert p.user_id == user_id
         assert Bet.verify(bet)
@@ -178,10 +179,10 @@ class Game:
         p.bet_type = bet
         p.bet_amount += p.bet_delta
         p.user.balance -= p.bet_delta
-        self.logger.debug("player %s: delta %s -> %s / %s", p.user_id, p.bet_delta, p.bet_amount, p.balance)
+        self.log_debug("player %s: balance: %s -> %s -> %s", p.user_id, p.balance, p.bet_delta, p.bet_amount)
 
     async def round_end(self, next_round):
-        self.logger.info("<- %s", self.round)
+        self.log_info("<- %s", self.round)
         bank_delta = 0
         for p in self.players:
             bank_delta += p.bet_amount
@@ -204,7 +205,7 @@ class Game:
         elif self.round in (Round.TERN, Round.RIVER):
             self.cards.append(self.deck.pop())
             await self.broadcast_GAME_CARDS()
-        self.logger.info("-> %s bank: %s", self.round, self.bank)
+        self.log_info("-> %s bank: %s", self.round, self.bank)
 
     def rotate_players(self, forward=True):
         if forward:
@@ -219,14 +220,16 @@ class Game:
         players = [p for p in self.players if p.bet_type != Bet.FOLD]
         winners = []
         if len(players)>1:
-            for i, p in enumerate(self.players):
+            for i, p in enumerate(players):
                 if i!=0:
                     await asyncio.sleep(1)
                 p.cards_open = True
                 p.hand = get_player_best_hand(p.cards, self.cards)
                 await self.broadcast_PLAYER_CARDS(p)
-                self.logger.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.rank)
+                self.log_info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.rank)
             players.sort(reverse=True, key=lambda x: x.hand.rank)
+            for i, p in enumerate(players):
+                self.log_info("%s: %s: open cards %s -> %s, %s", i+1, p.user_id, p.cards, p.hand, p.hand.rank)
         
         p = players[0]
         winners.append(p)
@@ -241,13 +244,13 @@ class Game:
             balance = p.balance,
             delta = balance_delta
         )
-        self.logger.info("winner: %s", w)
+        self.log_info("winner: %s", w)
         winners.append(w)
         event = GAME_END(winners=winners)
         await self.broadcast(event)
 
     async def broadcast(self, event: Event):
-        self.logger.debug("%s: broadcast: %s", self.game_id, event)
+        self.log_info("broadcast: %s", event)
         if self.table:
             await self.table.broadcast(event)
 
