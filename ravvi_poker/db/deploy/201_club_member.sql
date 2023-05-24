@@ -1,4 +1,4 @@
-create table club_user (
+create table club_member (
     id bigserial primary key,
     club_id bigint not null references club(id),
     user_id bigint not null references user_profile(id),
@@ -8,5 +8,5 @@ create table club_user (
     approved_by bigint null references user_profile(id)
 );
 
-create unique index club_user_unq ON club_user (club_id, user_id);
-create index club_user_idx1 ON club_user (user_id);
+create unique index club_member_unq ON club_member (club_id, user_id);
+create index club_member_idx1 ON club_member (user_id);

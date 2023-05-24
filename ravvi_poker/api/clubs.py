@@ -66,14 +66,14 @@ async def v1_get_club(club_id: int, session_uuid: RequireSessionUUID):
         club = dbi.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        club_user = dbi.get_club_user(club_id, user.id)
+        club_member = dbi.get_club_member(club_id, user.id)
     
     return ClubProfile(
         id=club.id, 
         name = club.name, 
         description=club.description,
-        user_role = club_user.user_role if club_user else None,
-        user_approved = club_user.approved_ts is not None if club_user else None
+        user_role = club_member.user_role if club_member else None,
+        user_approved = club_member.approved_ts is not None if club_member else None
         )
       
 @router.put("/{club_id}", response_model=ClubProfile, summary="Update club profile")
@@ -83,8 +83,8 @@ async def v1_update_club(club_id: int, params: ClubProps, session_uuid: RequireS
         club = dbi.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        club_user = dbi.get_club_user(club_id, user.id)        
-        if not club_user or club_user.user_role!="OWNER":
+        club_member = dbi.get_club_member(club_id, user.id)        
+        if not club_member or club_member.user_role!="OWNER":
             # TODO: proper error code
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid role")
         club = dbi.update_club(club_id, name=params.name, description=params.description)
@@ -93,8 +93,8 @@ async def v1_update_club(club_id: int, params: ClubProps, session_uuid: RequireS
         id=club.id, 
         name = club.name, 
         description=club.description,
-        user_role = club_user.user_role if club_user else None,
-        user_approved = club_user.approved_ts is not None if club_user else None
+        user_role = club_member.user_role if club_member else None,
+        user_approved = club_member.approved_ts is not None if club_member else None
         )
 
 @router.get("/{club_id}/members", summary="Get club memebrs")
@@ -124,12 +124,12 @@ async def v1_club_join_request(club_id: int, session_uuid: RequireSessionUUID):
         club = dbi.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        club_user = dbi.create_join_club_request(club_id=club.id, user_id=user.id, user_role=user_role)
+        club_member = dbi.create_join_club_request(club_id=club.id, user_id=user.id, user_role=user_role)
     
     return ClubProfile(
         id=club.id, 
         name = club.name, description=club.description,
-        user_role = club_user.user_role if club_user else None,
-        user_approved = club_user.approved_ts is not None if club_user else None
+        user_role = club_member.user_role if club_member else None,
+        user_approved = club_member.approved_ts is not None if club_member else None
         )
 

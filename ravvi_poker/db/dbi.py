@@ -196,7 +196,7 @@ class DBI:
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("INSERT INTO club (founder_id, name) VALUES (%s,%s) RETURNING *",(founder_id, name))
             club = cursor.fetchone()
-            cursor.execute("INSERT INTO club_user (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,'OWNER',NOW(),0)",(club.id, founder_id))
+            cursor.execute("INSERT INTO club_member (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,'OWNER',NOW(),0)",(club.id, founder_id))
             return club
         
     def get_club(self, club_id):
@@ -205,14 +205,14 @@ class DBI:
             return cursor.fetchone()
         
     def get_club_members(self, club_id):
-        sql = "SELECT u.*, x.user_role, x.approved_ts FROM club_user x JOIN user_profile u ON u.id=x.user_id WHERE x.club_id=%s"
+        sql = "SELECT u.*, x.user_role, x.approved_ts FROM club_member x JOIN user_profile u ON u.id=x.user_id WHERE x.club_id=%s"
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute(sql,(club_id,))
             return cursor.fetchall()
 
-    def get_club_user(self, club_id, user_id):
+    def get_club_member(self, club_id, user_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("SELECT * FROM club_user WHERE club_id=%s AND user_id=%s",(club_id,user_id))
+            cursor.execute("SELECT * FROM club_member WHERE club_id=%s AND user_id=%s",(club_id,user_id))
             return cursor.fetchone()
         
     def update_club(self, club_id, *, name, description):
@@ -221,14 +221,14 @@ class DBI:
             return cursor.fetchone()
         
     def get_clubs_for_user(self, *, user_id):
-        sql = "SELECT c.*, u.user_role, u.approved_ts FROM club_user u JOIN club c ON c.id=u.club_id WHERE u.user_id=%s"
+        sql = "SELECT c.*, u.user_role, u.approved_ts FROM club_member u JOIN club c ON c.id=u.club_id WHERE u.user_id=%s"
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute(sql,(user_id,))
             return cursor.fetchall()
         
     def create_join_club_request(self, *, club_id, user_id, user_role):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("INSERT INTO club_user (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,%s,NOW(),0) RETURNING *",(club_id, user_id, user_role))
+            cursor.execute("INSERT INTO club_member (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,%s,NOW(),0) RETURNING *",(club_id, user_id, user_role))
             return cursor.fetchone()
         
     # TABLES
