@@ -5,7 +5,7 @@ import asyncio
 
 from ..logging import ObjectLogger
 from ..db import DBI
-from .event import Event, TABLE_INFO, PLAYER_ENTER
+from .event import Event, TABLE_INFO, PLAYER_ENTER, PLAYER_EXIT
 from .client import Client
 from .game import Game
 from .user import User
@@ -39,16 +39,36 @@ class Table(ObjectLogger):
         try:
             while True:
                 await asyncio.sleep(self.NEW_GAME_DELAY)
+                # try to start new game
                 users = self.get_players(3)
-                if not users:
-                    continue
-                with DBI() as db:
-                    row = db.game_begin(table_id=self.table_id, users=users)
-                self.game = Game(self, row.id, users)
-                await self.game.run()
-                with DBI() as db:
-                    row = db.game_end(game_id=self.game.game_id)
-                self.game = None
+                if users:
+                    # ok to start
+                    with DBI() as db:
+                        row = db.game_begin(table_id=self.table_id, users=users)
+                    self.game = Game(self, row.id, users)
+                    await self.game.run()
+                    with DBI() as db:
+                        row = db.game_end(game_id=self.game.game_id)
+                    self.game = None
+              
+                # remove diconnected users
+                await asyncio.sleep(3)
+                users_not_connected = []
+                for user in self.users.values():
+                    #self.log_debug("user_id=%s connected=%s", user.user_id, user.connected)
+                    if not user.connected:
+                        users_not_connected.append(user.user_id)
+                #self.log_info("users_not_connected: %s", len(users_not_connected))
+                for user_id in users_not_connected:
+                    del self.users[user_id]
+                    seat_idx = None
+                    if user_id in self.seats:
+                        seat_idx = self.seats.index(user_id)
+                        self.seats[seat_idx] = None
+                    event = PLAYER_EXIT(table_id = self.table_id, user_id=user_id)
+                    await self.broadcast(event)
+                    self.log_info("user %s removed, seat = %s", user_id, seat_idx)
+
         except asyncio.CancelledError:
             pass
         except Exception as ex:
@@ -65,6 +85,7 @@ class Table(ObjectLogger):
                 balance=1000
                 )
             self.users[user_id] = user
+        user.connected += 1
         return user
 
     def get_info(self, target_user_id):
@@ -120,8 +141,12 @@ class Table(ObjectLogger):
                 if user_id==client.user_id:
                     user_seat_idx = i
             # take a seat
-            if user_seat_idx is None and seats_available:
+            if user_seat_idx:
                 user = self.add_user(client.user_id)
+                client.tables.add(self.table_id)
+            elif user_seat_idx is None and seats_available:
+                user = self.add_user(client.user_id)
+                client.tables.add(self.table_id)
                 user_seat_idx = seats_available[0]
                 self.seats[user_seat_idx] = client.user_id
                 # broadcast PLAYER_ENTER event
@@ -143,17 +168,20 @@ class Table(ObjectLogger):
         return user_seat_idx
     
     async def remove_client(self, client):
-        try:
+        if self.table_id in client.tables:
+            user = self.users.get(client.user_id)
+            user.connected -= 1
+            client.tables.remove(self.table_id)
+            self.log_info("client %s removed, user(%s).connected=%s", client.client_id, user.user_id, user.connected)
+        if client in self.clients:
             self.clients.remove(client)
-        except ValueError:
-            pass
     
     async def handle_command(self, client: Client, command: Event):
         if command.type == Event.CMD_TABLE_JOIN:
             self.save_event(command.type, client.user_id, command)
             await self.add_client(client, command.take_seat)
         elif command.type == Event.CMD_TABLE_LEAVE:
-            pass
+            await self.remove_client(client)
         elif command.type == Event.CMD_PLAYER_BET:
             if self.game:
                 self.save_event(command.type, client.user_id, command)
@@ -162,6 +190,7 @@ class Table(ObjectLogger):
             raise ValueError('Invalid command')
         
     async def broadcast(self, event: Event):
+        self.log_info("broadcast: %s", event)
         if event.type not in [Event.GAME_BEGIN]:
             self.save_event(event.type, None, event)
         event.update(table_id=self.table_id)
@@ -179,7 +208,14 @@ class Table(ObjectLogger):
             )
 
     def get_players(self, min_size) -> List[User]:
-        players = [(i, user_id) for i, user_id in enumerate(self.seats) if user_id is not None]
+        players = []
+        for i, user_id in enumerate(self.seats):
+            if user_id is None:
+                continue
+            user = self.users.get(user_id, None)
+            if not user or not user.connected:
+                continue
+            players.append((i, user))
         if len(players)<min_size:
             return None
         max_idx = players[-1][0]
@@ -190,4 +226,4 @@ class Table(ObjectLogger):
             p = players.pop(0)
             players.append(p)
         self.dealer_idx = players[0][0]
-        return [self.users[user_id] for _, user_id in players]
+        return [user for _, user in players]

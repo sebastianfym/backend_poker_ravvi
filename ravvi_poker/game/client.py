@@ -1,6 +1,4 @@
-import logging
-
-from asyncio import Queue
+import asyncio
 from ..logging import ObjectLogger
 from .event import Event
 
@@ -15,7 +13,11 @@ class Client(ObjectLogger):
         self.manager = manager
         self.user_id = user_id
         self.tables = set()
-        self.queue = Queue()
+        self.queue = asyncio.Queue()
+
+    @property
+    def is_connected(self):
+        return True
 
     async def dispatch_command(self, command):
         try:
@@ -29,16 +31,21 @@ class Client(ObjectLogger):
         await self.queue.put(event)
 
     async def process_queue(self):
-        while True:
-            event : Event = await self.queue.get()
-            event = self.process_event(event)
-            try:
-                self.log_debug("handle_event: %s", event)
-                await self.handle_event(event)
-            except Exception as ex:
-                self.log_exception("handle_event: %s", ex)
-            finally:
-                self.queue.task_done()
+            while self.is_connected:
+                try:
+                    event : Event = await self.queue.get()
+                    event = self.process_event(event)
+                except asyncio.CancelledError:
+                    break
+                try:
+                    self.log_debug("handle_event: %s", event)
+                    await self.handle_event(event)
+                except asyncio.CancelledError:
+                    break
+                except Exception as ex:
+                    self.log_exception("handle_event: %s", ex)
+                finally:
+                    self.queue.task_done()
 
     def process_event(self, event: Event):
         event = event.clone()

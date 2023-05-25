@@ -53,6 +53,9 @@ class Event(dict):
 def CMD_TABLE_JOIN(*, table_id, take_seat):
     return Event(Event.CMD_TABLE_JOIN, table_id=table_id, take_seat=take_seat)
 
+def CMD_PLAYER_BET(*, table_id, bet, amount=None):
+    return Event(Event.CMD_PLAYER_BET, table_id=table_id, bet=bet, amount=amount)
+
 def TABLE_INFO(**kwargs):
     return Event(Event.TABLE_INFO, **kwargs)
 
