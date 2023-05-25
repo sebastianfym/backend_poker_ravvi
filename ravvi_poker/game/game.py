@@ -250,7 +250,6 @@ class Game(ObjectLogger):
         await self.broadcast(event)
 
     async def broadcast(self, event: Event):
-        self.log_info("broadcast: %s", event)
         if self.table:
             await self.table.broadcast(event)
 

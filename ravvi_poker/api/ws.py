@@ -2,6 +2,7 @@ import logging
 import asyncio
 from fastapi import APIRouter
 from fastapi import WebSocket, WebSocketDisconnect, WebSocketException, status
+from starlette.websockets import WebSocketState
 
 from .utils import jwt_get
 from ..game.manager import Manager
@@ -29,17 +30,26 @@ class WS_Client(Client):
         super().__init__(manager, user_id)
         self.ws = websocket
 
+    @property
+    def is_connected(self):
+        return self.ws.client_state == WebSocketState.CONNECTED
+
     async def handle_event(self, event: Event):
-        await self.ws.send_json(event)
+        if self.is_connected:
+            await self.ws.send_json(event)
 
     async def process_commands(self):
         try:
-            while True:
+            while self.is_connected:
                 command = await self.ws.receive_json()
                 command = Event(**command)
                 await self.dispatch_command(command)
+        except asyncio.CancelledError:
+            self.log_debug("CancelledError")
+        except WebSocketDisconnect:
+            self.log_debug("WebSocketDisconnect")
         except Exception as ex:
-            self.exception(" %s: %s", self.user_id, ex)
+            self.log_exception(" %s: %s", self.user_id, ex)
 
     async def run(self):
         self.log_info("begin")
@@ -47,6 +57,7 @@ class WS_Client(Client):
             t1 = asyncio.create_task(self.process_commands())
             t2 = asyncio.create_task(self.process_queue())
             await t1
+            t2.cancel()
             await t2
         finally:
             await self.manager.remove_client(self)
@@ -70,4 +81,4 @@ async def websocket_endpoint(websocket: WebSocket, access_token: str = None):
         client = WS_Client(websocket, user_id=user.id)
         await client.run()
     except Exception as ex:
-        logger.error("ws: %s", ex)
+        logger.exception("ws: %s", ex)

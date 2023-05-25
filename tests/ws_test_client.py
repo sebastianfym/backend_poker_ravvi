@@ -3,7 +3,7 @@ import requests
 from urllib.parse import urlencode
 import websockets
 import json
-from ravvi_poker.game.event import Event, PLAYER_BET
+from ravvi_poker.game.event import Event, CMD_PLAYER_BET, CMD_TABLE_JOIN
 
 API_URL = "localhost:5000"
 
@@ -18,9 +18,13 @@ def register_guest():
 async def hello():
     access_token, username = register_guest()
     params = urlencode(dict(access_token=access_token))
-    uri = f"ws://{API_URL}/v1/ws_test?access_token={access_token}"
+    uri = f"ws://{API_URL}/v1/ws?access_token={access_token}"
 
     async with websockets.connect(uri) as ws:
+
+        cmd = CMD_TABLE_JOIN(table_id=3, take_seat=True)
+        await ws.send(json.dumps(cmd))
+
         while True:
             msg = await ws.recv()
             kwargs = json.loads(msg)
@@ -29,13 +33,8 @@ async def hello():
             if event.type == Event.GAME_PLAYER_MOVE and event.options:
                 print("Enter bet code:")
                 choice = int(input())
-                command = Event(
-                    type=Event.CMD_PLAYER_BET, 
-                    table_id=event.table_id, 
-                    user_id=event.user_id,
-                    bet=choice
-                )
-                await ws.send(json.dumps(command))
+                cmd = CMD_PLAYER_BET(table_id=event.table_id, bet=choice)
+                await ws.send(json.dumps(cmd))
 
 
 if __name__ == "__main__":
