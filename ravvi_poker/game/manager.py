@@ -65,8 +65,8 @@ class Manager(Logger_MixIn):
             await table.start()
             if row.club_id:
                 continue
-            #for bot in self.bots:
-            #    await bot.join_table(table.table_id)
+            for bot in self.bots:
+                await bot.join_table(table.table_id)
 
         self.logger.info('Manager: started: %s tables, %s bots', len(self.tables), len(self.bots))
 
