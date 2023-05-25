@@ -10,19 +10,19 @@ def brutforce():
 
 
     c = list(combinations(cards, 5))
-    street_flash_count = 0
+    street_flush_count = 0
     has_pairs_count = 0
     t0 = time_ns()
     for h in c:
         hand = Hand(h)
-        flash = hand.check_flash()
+        flush = hand.check_flush()
         street = hand.check_straight()
-        if street and flash:
-            street_flash_count += 1
+        if street and flush:
+            street_flush_count += 1
         same_rank = hand.check_same_rank()
-        #print(hand, flash, street, same_rank)
+        #print(hand, flush, street, same_rank)
     t1 = time_ns()
-    print(street_flash_count)
+    print(street_flush_count)
     print((t1-t0)/len(c))
 
 def random_hand():
@@ -35,7 +35,7 @@ def random_hand():
     results = []
     for h in combinations(gcards, 5):
         hand = Hand(h)
-        rank = hand.check_hand()
+        rank = hand.get_rank()
         #print(hand, hand.cards, rank)
         results.append((hand,rank))
     results.sort(reverse=True, key=lambda x: x[1])
@@ -49,7 +49,7 @@ def random_hand():
 def test_hand():
     h = Hand([1, 2, 3, 4, 5])
     print(h)
-    result = h.check_hand()
+    result = h.get_rank()
     print(result)
 
 

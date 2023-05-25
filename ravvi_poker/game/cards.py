@@ -52,7 +52,7 @@ class HandRank(IntEnum):
     TWO_PAIR = 3
     THREE_OF_KIND = 4
     STRAIGHT = 5
-    FLASH = 6
+    FLUSH = 6
     FULL_HOUSE = 7
     FOUR_OF_KIND = 8
     STRAIGHT_FLUSH = 9
@@ -61,50 +61,40 @@ class HandRank(IntEnum):
 class Hand:
     
     def __init__(self, hand) -> None:
-        self.hand = [x if isinstance(x,Card) else Card(x) for x in hand]
+        self.cards = [x if isinstance(x,Card) else Card(x) for x in hand]
         self.mask = 0
-        for c in self.hand:
+        for c in self.cards:
             self.mask |= c.mask
 
     def __str__(self) -> str:
-        s = ' '.join([str(c) for c in reversed(self.hand)])
+        cards = sorted(self.cards, key=lambda x: (x.rank, x.suit), reverse=True)
+        s = ' '.join([str(c) for c in cards])
         return s
     
-    @property
-    def cards(self):
-        cards = [c for c in self.hand]
-        cards.sort(reverse=True, key=lambda x: x.rank)
-        return [c.code for c in cards]
-
-    def get_cards_by_rank_reversed(self):
-        cards = [c for c in self.hand]
-        cards.sort(reverse=True, key=lambda x: x.rank)
-        return cards
-    
-    def check_hand(self):
-        flash = self.check_flash()
+    def get_rank(self):
+        flush = self.check_flush()
         straight = self.check_straight()
-        if flash and straight:
+        if flush and straight:
             return HandRank.STRAIGHT_FLUSH, straight[1]
-        elif flash:
-            return flash
+        elif flush:
+            return flush
         elif straight:
             return straight
         return self.check_same_rank()
 
-    def check_flash(self):
+    def check_flush(self):
         for suit_index in range(4):
             suit_index *= 13
             suit_mask = (self.mask >> suit_index) & 0b1111111111111
             match = bin(suit_mask)[2:]
             cards_rank = [i for i, b in enumerate(reversed(match), 2) if b=='1']
             if len(cards_rank)==5:
-                return HandRank.FLASH, max(cards_rank)
+                return HandRank.FLUSH, max(cards_rank)
         return None
 
 
     def check_straight(self):
-        flash_masks = [
+        flush_masks = [
             0b1000000001111, # 05
             0b0000000011111, # 06
             0b0000000111110, # 07
@@ -121,36 +111,35 @@ class Hand:
             suit_index *= 13
             suit_mask = (self.mask >> suit_index) & 0b1111111111111            
             rank_mask |= suit_mask
-        for i, mask in enumerate(flash_masks, 5):
+        for i, mask in enumerate(flush_masks, 5):
             if rank_mask & mask == mask:
                 return HandRank.STRAIGHT, i
         return None
     
     def check_same_rank(self):
-        cards = list(self.hand)
         result = []
         mask = 0
         for _ in range(4):
             mask = mask << 13
             mask |= 1
         for rank_idx in range(0, 13):
-            hm = mask<<rank_idx
-            match = self.mask & hm
-            counter = bin(match).count('1')
+            rank_mask = mask<<rank_idx
+            match = self.mask & rank_mask
+            counter = bin(match)[2:].count('1')
             if counter>1:
-                result.append((counter, rank_idx+1))
+                result.append((counter, rank_idx+2))
+        other_ranks = [c.rank for c in self.cards]
         for _, rank in result:
-            cards = [c for c in cards if c.rank!=rank]
-        cards.sort(reverse=True, key=lambda x: x.rank)
-        cards = [c.code for c in cards]
+            other_ranks = [r for r in other_ranks if r!=rank]
+        other_ranks.sort(reverse=True)
         if len(result)==1:
             counter, rank = result[0]
             if counter==4:
-                return HandRank.FOUR_OF_KIND, rank, *cards
+                return HandRank.FOUR_OF_KIND, rank, *other_ranks
             elif counter==3:
-                return HandRank.THREE_OF_KIND, rank, *cards
+                return HandRank.THREE_OF_KIND, rank, *other_ranks
             elif counter==2:
-                return HandRank.ONE_PAIR, rank, *cards
+                return HandRank.ONE_PAIR, rank, *other_ranks
             else:
                 raise ValueError('error')
         elif len(result)==2:
@@ -158,19 +147,20 @@ class Hand:
             c1, r1 = result[0]
             c2, r2 = result[1]
             if c1==3 and c2==2:
-                return HandRank.FULL_HOUSE, r1, r2, *cards
+                return HandRank.FULL_HOUSE, r1, r2, *other_ranks
             elif c1==2 and c2==2:
-                return HandRank.TWO_PAIR, r1, r2, *cards
+                return HandRank.TWO_PAIR, r1, r2, *other_ranks
             else:
                 raise ValueError('error')
-        return HandRank.HIGH_CARD, *cards
+        return HandRank.HIGH_CARD, *other_ranks
+
 
 def get_player_best_hand(player_cards, game_cards):
     cards = player_cards+game_cards
     results = []
     for h in combinations(cards, 5):
         hand = Hand(h)
-        hand.rank = hand.check_hand()
+        hand.rank = hand.get_rank()
         results.append(hand)
     results.sort(reverse=True, key=lambda x: x.rank)
     return results[0]
