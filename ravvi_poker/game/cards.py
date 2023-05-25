@@ -1,5 +1,4 @@
 from itertools import combinations
-from time import time_ns
 from enum import IntEnum, unique
 
 class Card:
@@ -8,29 +7,52 @@ class Card:
     suit_map = ['S','C','D','H'] # Spades(♠) Clubs (♣) Diamonds (♦) Hearts (♥) 
     suit_s_map = ['♠','♣','♦','♥']
     
-    def __init__(self, card_id) -> None:
-        self.code = card_id
-        self.rank_idx = (self.code-1)%13
-        self.suit_idx = int((self.code-1)/13)
+    def __init__(self, code=None, *, rank=None, suit=None) -> None:
+        if code is None:
+            code = self.encode(rank, suit)
+        assert 0 <= code and code <= 52
+        self.code = code
+        if self.code:
+            self.rank_idx = (self.code-1)%13
+            self.suit_idx = int((self.code-1)/13)
+        else:
+            self.rank_idx = None
+
+    @classmethod
+    def encode(cls, rank, suit):
+        assert 2 <= rank and rank <= 14
+        assert 1 <= suit and suit <= 4
+        return (suit-1)*13 + (rank-1)
 
     @property
-    def mask(self):
-        return 1 << self.code-1
+    def rank(self):
+        if 1 <= self.code and self.code <= 52:
+            return (self.code-1)%13+2
+        else:
+            return 0
     
     @property
-    def rank(self):
-        return self.rank_idx+2
+    def suit(self):
+        if 1 <= self.code and self.code <= 52:
+            return int((self.code-1)/13)+1
+        else:
+            return 0
+    
+    @property
+    def mask(self):
+        return 1 << self.code-1 if self.code else 0
     
     def __str__(self) -> str:
         return f"{self.rank_map[self.rank_idx]}{self.suit_s_map[self.suit_idx]}"
 
+@unique
 class HandRank(IntEnum):
     HIGH_CARD = 1
     ONE_PAIR = 2
     TWO_PAIR = 3
     THREE_OF_KIND = 4
     STRAIGHT = 5
-    FLUSH = 6
+    FLASH = 6
     FULL_HOUSE = 7
     FOUR_OF_KIND = 8
     STRAIGHT_FLUSH = 9
@@ -39,7 +61,7 @@ class HandRank(IntEnum):
 class Hand:
     
     def __init__(self, hand) -> None:
-        self.hand = [Card(x) if isinstance(x,int) else x for x in hand]
+        self.hand = [x if isinstance(x,Card) else Card(x) for x in hand]
         self.mask = 0
         for c in self.hand:
             self.mask |= c.mask
@@ -71,60 +93,38 @@ class Hand:
         return self.check_same_rank()
 
     def check_flash(self):
-        for si in range(4):
-            si *= 13
-            match = self.mask & (0b1111111111111<<si)
-            match >>= si
-            bs = reversed(bin(match)[2:])
-            cards = [i+1 for i, b in enumerate(bs) if b=='1']
-            if len(cards)==5:
-                cards.reverse()
-                return HandRank.FLUSH, *cards
+        for suit_index in range(4):
+            suit_index *= 13
+            suit_mask = (self.mask >> suit_index) & 0b1111111111111
+            match = bin(suit_mask)[2:]
+            cards_rank = [i for i, b in enumerate(reversed(match), 2) if b=='1']
+            if len(cards_rank)==5:
+                return HandRank.FLASH, max(cards_rank)
         return None
 
 
     def check_straight(self):
         flash_masks = [
-            0b1000000001111, # 04
-            0b0000000011111, # 05
-            0b0000000111110, # 06
-            0b0000001111100, # 07
-            0b0000011111000, # 08
-            0b0000111110000, # 09
-            0b0001111100000, # 10
-            0b0011111000000, # 11
-            0b0111110000000, # 12
-            0b1111100000000  # 13
+            0b1000000001111, # 05
+            0b0000000011111, # 06
+            0b0000000111110, # 07
+            0b0000001111100, # 08
+            0b0000011111000, # 09
+            0b0000111110000, # 10
+            0b0001111100000, # 11
+            0b0011111000000, # 12
+            0b0111110000000, # 13
+            0b1111100000000  # 14
         ]
         rank_mask = 0
-        for si in range(4):
-            si *= 13
-            rank_mask |= (self.mask & (0b1111111111111<<si)) >> si
-        for i, mask in enumerate(flash_masks, 4):
+        for suit_index in range(4):
+            suit_index *= 13
+            suit_mask = (self.mask >> suit_index) & 0b1111111111111            
+            rank_mask |= suit_mask
+        for i, mask in enumerate(flash_masks, 5):
             if rank_mask & mask == mask:
                 return HandRank.STRAIGHT, i
         return None
-    
-
-    def check_straight_flash(self):
-        flash_masks = [
-            0b1000000001111, # 04
-            0b0000000011111, # 05
-            0b0000000111110, # 06
-            0b0000001111100, # 07
-            0b0000011111000, # 08
-            0b0000111110000, # 09
-            0b0001111100000, # 10
-            0b0011111000000, # 11
-            0b0111110000000, # 12
-            0b1111100000000  # 13
-        ]
-        for si in range(4):
-            for i, mask in enumerate(flash_masks, 4):
-                mask <<= si*13
-                if self.mask & mask == mask:
-                    return i
-        return 0
     
     def check_same_rank(self):
         cards = list(self.hand)
@@ -166,7 +166,6 @@ class Hand:
         return HandRank.HIGH_CARD, *cards
 
 def get_player_best_hand(player_cards, game_cards):
-    t0 = time_ns()
     cards = player_cards+game_cards
     results = []
     for h in combinations(cards, 5):
@@ -174,59 +173,4 @@ def get_player_best_hand(player_cards, game_cards):
         hand.rank = hand.check_hand()
         results.append(hand)
     results.sort(reverse=True, key=lambda x: x.rank)
-    t1 = time_ns()
     return results[0]
-
-def brutforce():
-    cards = list(range(1, 53))
-    for x in cards:
-        c = Card(x)
-        print(f"{x:02d} {str(c)} {c.mask:052b}")
-
-
-    c = list(combinations(cards, 5))
-    street_flash_count = 0
-    has_pairs_count = 0
-    t0 = time_ns()
-    for h in c:
-        hand = Hand(h)
-        flash = hand.check_flash()
-        street = hand.check_straight()
-        if street and flash:
-            street_flash_count += 1
-        same_rank = hand.check_same_rank()
-        #print(hand, flash, street, same_rank)
-    t1 = time_ns()
-    print(street_flash_count)
-    print((t1-t0)/len(c))
-
-def random_hand():
-    import random
-    cards = list(range(1, 53))
-    random.shuffle(cards)
-
-    t0 = time_ns()
-    gcards = cards[:7]
-    results = []
-    for h in combinations(gcards, 5):
-        hand = Hand(h)
-        rank = hand.check_hand()
-        #print(hand, hand.cards, rank)
-        results.append((hand,rank))
-    results.sort(reverse=True, key=lambda x: x[1])
-    t1 = time_ns()
-
-    for hand, rank in results:
-        print(hand, hand.cards, rank)
-
-    print((t1-t0)/1000000000)
-
-def test_hand():
-    h = Hand([1, 2, 3, 4, 5])
-    print(h)
-    result = h.check_hand()
-    print(result)
-
-
-if __name__=="__main__":
-    random_hand()
