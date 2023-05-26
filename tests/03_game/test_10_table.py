@@ -1,45 +1,130 @@
+import pytest
+from ravvi_poker.game.event import Event
 from ravvi_poker.game.table import Table
+from ravvi_poker.game.client import Client
 
-def test_01_table():
-    t = Table(1, 9)
-    t.seats[1] = t.add_user(111).user_id
-    t.seats[3] = t.add_user(333).user_id
-    t.seats[4] = t.add_user(444).user_id
-    t.seats[7] = t.add_user(777).user_id
 
-    players = t.get_players(min_size=3)
+class TableMock(Table):
+
+    def __init__(self, table_id, n_seats=9):
+        super().__init__(table_id, n_seats)
+        self._test_events = []
+
+    async def broadcast(self, event: Event):
+        self._test_events.append(event)
+
+
+def test_01_table_players():
+    table = TableMock(1, 9)
+    table.seats[1] = table.get_user(111, connected=1)
+    table.seats[3] = table.get_user(333, connected=1)
+    table.seats[4] = table.get_user(444, connected=1)
+    table.seats[7] = table.get_user(777, connected=1)
+
+    players = table.get_players(min_size=3)
     assert len(players) == 4
-    assert players[0].user_id == 111
-    assert players[1].user_id == 333
-    assert players[2].user_id == 444
-    assert players[3].user_id == 777
+    assert players[0].id == 111
+    assert players[1].id == 333
+    assert players[2].id == 444
+    assert players[3].id == 777
 
     # user 444 left table
-    t.seats[4] = None
+    table.seats[4] = None
 
-    players = t.get_players(min_size=3)
+    players = table.get_players(min_size=3)
     assert len(players) == 3
-    assert players[0].user_id == 333
-    assert players[1].user_id == 777
-    assert players[2].user_id == 111
+    assert players[0].id == 333
+    assert players[1].id == 777
+    assert players[2].id == 111
 
     # user 555 joined
-    t.seats[5] = t.add_user(555).user_id
+    table.seats[5] = table.get_user(555, connected=1)
 
-    players = t.get_players(min_size=3)
+    players = table.get_players(min_size=3)
     assert len(players) == 4
-    assert players[0].user_id == 555
-    assert players[1].user_id == 777
-    assert players[2].user_id == 111
-    assert players[3].user_id == 333
+    assert players[0].id == 555
+    assert players[1].id == 777
+    assert players[2].id == 111
+    assert players[3].id == 333
 
     # user 222 joined
-    t.seats[2] = t.add_user(222).user_id
+    table.seats[2] = table.get_user(222, connected=1)
 
-    players = t.get_players(min_size=3)
+    players = table.get_players(min_size=3)
     assert len(players) == 5
-    assert players[0].user_id == 777
-    assert players[1].user_id == 111
-    assert players[2].user_id == 222
-    assert players[3].user_id == 333
-    assert players[4].user_id == 555
+    assert players[0].id == 777
+    assert players[1].id == 111
+    assert players[2].id == 222
+    assert players[3].id == 333
+    assert players[4].id == 555
+
+@pytest.mark.asyncio
+async def test_01_table_clients():
+    table = TableMock(1, 9)
+    # no seats occupied
+    assert all(x is None for x in table.seats)
+
+    # new client connected
+    client_0 = Client(None, 111)
+
+    # requested to join as viewer
+    await table.add_client(client_0, take_seat=False)
+    # no seats occupied
+    assert all(x is None for x in table.seats)
+    assert table.clients[0] == client_0
+    assert client_0.tables == set()
+    assert not table._test_events
+
+    # new client connected
+    client_1 = Client(None, 222)
+
+    # requested to join as viewer
+    await table.add_client(client_1, take_seat=False)
+    assert all(x is None for x in table.seats)
+    assert table.clients[1] == client_1
+    assert client_1.tables == set()
+    assert not table._test_events
+
+    # requested to join as player
+    await table.add_client(client_1, take_seat=True)
+    user = table.seats[0]
+    assert user.id == 222
+    assert user.connected == 1
+    assert table.clients[1] == client_1
+    assert client_1.tables == set([1])
+    assert table._test_events[0]
+    event = table._test_events[0]
+    assert event.type == Event.PLAYER_ENTER
+
+    # new client connected
+    client_2 = Client(None, 222)
+
+    # requested to join as player
+    table._test_events = []
+    await table.add_client(client_2, take_seat=True)
+    user = table.seats[0]
+    assert user.id == 222
+    assert user.connected == 2
+    assert table.clients[2] == client_2
+    assert client_1.tables == set([1])
+    assert not table._test_events
+
+    # exit from server
+    table._test_events = []
+    await table.remove_client(client_1)
+    user = table.seats[0]
+    assert user.id == 222
+    assert user.connected == 1
+    assert len(table.clients) == 2
+    assert client_1.tables == set()
+    assert not table._test_events
+
+    # exit from server
+    table._test_events = []
+    await table.remove_client(client_2)
+    user = table.seats[0]
+    assert user.id == 222
+    assert user.connected == 0
+    assert len(table.clients) == 1
+    assert client_1.tables == set()
+    assert not table._test_events
