@@ -22,7 +22,7 @@ class Player:
 
     @property
     def user_id(self) -> int:
-        return self.user.user_id
+        return self.user.id
    
     @property
     def balance(self) -> int:
