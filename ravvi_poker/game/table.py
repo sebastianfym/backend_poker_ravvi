@@ -43,7 +43,7 @@ class Table(ObjectLogger):
                 if users:
                     # ok to start
                     with DBI() as db:
-                        row = db.game_begin(table_id=self.table_id, users=users)
+                        row = db.game_begin(table_id=self.table_id, user_ids=[u.id for u in users])
                     self.game = Game(self, row.id, users)
                     await self.game.run()
                     with DBI() as db:
@@ -54,6 +54,8 @@ class Table(ObjectLogger):
                 # remove diconnected users
                 for seat_idx, user in enumerate(self.seats):
                     #self.log_debug("user_id=%s connected=%s", user.user_id, user.connected)
+                    if not user:
+                        continue
                     if user.connected:
                         continue
                     self.seats[seat_idx] = None
