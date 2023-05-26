@@ -50,6 +50,7 @@ class Table(ObjectLogger):
                         row = db.game_end(game_id=self.game.game_id)
                     self.game = None
               
+                await asyncio.sleep(2)
                 # remove diconnected users
                 for seat_idx, user in enumerate(self.seats):
                     #self.log_debug("user_id=%s connected=%s", user.user_id, user.connected)
@@ -59,6 +60,7 @@ class Table(ObjectLogger):
                     event = PLAYER_EXIT(table_id = self.table_id, user_id=user.id)
                     await self.broadcast(event)
                     self.log_info("user %s removed, seat %s available", user.id, seat_idx)
+                   
 
         except asyncio.CancelledError:
             pass
