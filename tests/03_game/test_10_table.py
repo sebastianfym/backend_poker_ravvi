@@ -1,4 +1,5 @@
 import pytest
+import json
 from ravvi_poker.game.event import Event
 from ravvi_poker.game.table import Table
 from ravvi_poker.game.client import Client
@@ -13,6 +14,16 @@ class TableMock(Table):
     async def broadcast(self, event: Event):
         self._test_events.append(event)
 
+class ClientMock(Client):
+    def __init__(self, manager, user_id, *, logger_name=None) -> None:
+        super().__init__(manager, user_id, logger_name=logger_name)
+        self._test_events = []
+
+    async def send_event(self, event):
+        self._test_events.append(event)
+
+    def comsume_events(self):
+        self._test_events = []
 
 def test_01_table_players():
     table = TableMock(1, 9)
@@ -58,6 +69,15 @@ def test_01_table_players():
     assert players[3].id == 333
     assert players[4].id == 555
 
+
+def check_TABLE_INFO(client):
+    assert len(client._test_events)==1
+    event = client._test_events[0]
+    assert event.type == Event.TABLE_INFO
+    json.dumps(event)
+    client.comsume_events()
+
+
 @pytest.mark.asyncio
 async def test_01_table_clients():
     table = TableMock(1, 9)
@@ -65,7 +85,7 @@ async def test_01_table_clients():
     assert all(x is None for x in table.seats)
 
     # new client connected
-    client_0 = Client(None, 111)
+    client_0 = ClientMock(None, 111)
 
     # requested to join as viewer
     await table.add_client(client_0, take_seat=False)
@@ -75,8 +95,10 @@ async def test_01_table_clients():
     assert client_0.tables == set()
     assert not table._test_events
 
+    check_TABLE_INFO(client_0)
+
     # new client connected
-    client_1 = Client(None, 222)
+    client_1 = ClientMock(None, 222)
 
     # requested to join as viewer
     await table.add_client(client_1, take_seat=False)
@@ -85,6 +107,8 @@ async def test_01_table_clients():
     assert client_1.tables == set()
     assert not table._test_events
 
+    check_TABLE_INFO(client_1)
+
     # requested to join as player
     await table.add_client(client_1, take_seat=True)
     user = table.seats[0]
@@ -92,12 +116,16 @@ async def test_01_table_clients():
     assert user.connected == 1
     assert table.clients[1] == client_1
     assert client_1.tables == set([1])
-    assert table._test_events[0]
+
+    assert len(table._test_events)==1
     event = table._test_events[0]
     assert event.type == Event.PLAYER_ENTER
+    json.dumps(event)
+
+    client_1.comsume_events()    
 
     # new client connected
-    client_2 = Client(None, 222)
+    client_2 = ClientMock(None, 222)
 
     # requested to join as player
     table._test_events = []
@@ -108,6 +136,8 @@ async def test_01_table_clients():
     assert table.clients[2] == client_2
     assert client_1.tables == set([1])
     assert not table._test_events
+
+    check_TABLE_INFO(client_2)
 
     # exit from server
     table._test_events = []

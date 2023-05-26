@@ -107,7 +107,7 @@ class Table(ObjectLogger):
                 current_user_id = self.game.current_player.user_id
             )
         info.update(
-            seats = list(self.seats),
+            seats = [None if u is None else u.id for u in self.seats],
             users = list(users.values())
         )
         return info
