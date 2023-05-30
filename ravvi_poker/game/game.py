@@ -42,12 +42,14 @@ class Game(ObjectLogger):
             random.shuffle(self.deck)
         self.cards = None
 
+        self.bet_event = asyncio.Event()
+
     @property
     def current_player(self):
         return self.players[0]
     
     async def run(self):
-        self.log_info("begin")
+        self.log_info("begin players: %s", [p.user_id for p in self.players])
         await self.on_begin()
         while await self.run_step():
             pass
@@ -102,21 +104,30 @@ class Game(ObjectLogger):
             await self.player_move()
             self.update_status()
         
-        if self.active_count<2:
-            await self.round_end(None)
-            return False
+        #if self.active_count<2:
+        #    await self.round_end(None)
+        #    return False
 
-        if self.round == Round.PREFLOP and player.role==Player.ROLE_BIG_BLIND and self.bets_all_same:
-            await self.round_end(Round.FLOP)
-            self.rotate_players(forward=False)
-        elif self.round in (Round.FLOP, Round.TERN, Round.RIVER) and player.role==Player.ROLE_DEALER and self.bets_all_same:
-            await self.round_end(self.round+1)
-            self.rotate_players(forward=True)
+        if self.round == Round.PREFLOP and player.role==Player.ROLE_BIG_BLIND:
+            if self.bets_all_same:
+                await self.round_end(next_round=Round.FLOP)
+                self.rotate_players(forward=False)
+        elif self.round == Round.FLOP and player.role==Player.ROLE_DEALER:
+            if self.bets_all_same:
+                await self.round_end(next_round=Round.TERN)
+                self.rotate_players(forward=True)
+        elif self.round == Round.TERN and player.role==Player.ROLE_DEALER:
+            if self.bets_all_same:
+                await self.round_end(next_round=Round.RIVER)
+                self.rotate_players(forward=True)
+        elif self.round == Round.RIVER and player.role==Player.ROLE_DEALER:
+            if self.bets_all_same:
+                await self.round_end(next_round=Round.SHOWDOWN)
+                self.rotate_players(forward=True)
         else:
             self.rotate_players(forward=True)
 
         return self.round != Round.SHOWDOWN
-    
     
     def update_status(self):
         # filter players with bet options
@@ -138,18 +149,15 @@ class Game(ObjectLogger):
         player = self.current_player
         player.bet_type = None
         await self.broadcast_PLAYER_MOVE()
-        await self.wait_for_player()
-        if player.bet_type is None:
+        try:
+            self.bet_event.clear()
+            await asyncio.wait_for(self.wait_for_player_bet(), self.wait_timeout)
+        except TimeoutError:
             player.bet_type = Bet.FOLD
         await self.broadcast_PLAYER_BET()
 
-    async def wait_for_player(self):
-        player = self.current_player
-        deadline = time.time() + self.wait_timeout
-        while time.time()<deadline:
-            await asyncio.sleep(1)
-            if player.bet_type:
-                break
+    async def wait_for_player_bet(self):
+        await self.bet_event.wait()
 
     def handle_bet(self, user_id, bet, amount):
         self.log_info("handle_bet: %s %s %s", user_id, bet, amount)
@@ -180,6 +188,8 @@ class Game(ObjectLogger):
         p.bet_amount += p.bet_delta
         p.user.balance -= p.bet_delta
         self.log_debug("player %s: balance: %s -> %s -> %s", p.user_id, p.balance, p.bet_delta, p.bet_amount)
+        self.bet_event.set()
+
 
     async def round_end(self, next_round):
         self.log_info("<- %s", self.round)

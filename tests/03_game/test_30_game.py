@@ -4,17 +4,21 @@ from ravvi_poker.game.user import User
 from ravvi_poker.game.bet import Bet
 from ravvi_poker.game.game import Game, Round, Player
 
-def prepare_player_bet(game, user_id, bet, amount, check_amount=None):
+def prepare_player_bet(game: Game, user_id, bet, amount, check_amount=None):
     async def _handler():
         assert game.current_player.user_id == user_id
         game.handle_bet(user_id, bet, amount)
         if check_amount is not None:
             assert game.current_player.bet_amount == check_amount
-    game.wait_for_player = _handler
+    game.wait_for_player_bet = _handler
 
 @pytest.mark.asyncio
 async def test_30_game_acceptance():
     users = [User(x, f"u{x}", 1000) for x in [111, 333, 444]]
+    # game with random deck
+    game = Game(None, 1, users)
+
+    # game with predefined deck
     deck  = [1,2,3,4,5,6,7,8,9,10,11,12,13,14]
     game = Game(None, 1, users, deck=deck)
 
