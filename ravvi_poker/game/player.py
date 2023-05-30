@@ -19,6 +19,7 @@ class Player:
         self.bet_type = None
         self.bet_amount = 0
         self.bet_delta = 0
+        self.balance_0 = user.balance
 
     @property
     def user_id(self) -> int:
@@ -33,8 +34,12 @@ class Player:
         return self.bet_amount + self.balance
         
     @property
+    def in_the_game(self) -> bool:
+        return self.bet_type!=Bet.FOLD
+    
+    @property
     def has_bet_opions(self) -> bool:
-        return self.bet_type!=Bet.FOLD and self.balance
+        return self.in_the_game and self.balance
     
     def get_bet_options(self, game_level) -> Tuple[List[Bet], dict]:
         raise_min = max(game_level*2, 2)

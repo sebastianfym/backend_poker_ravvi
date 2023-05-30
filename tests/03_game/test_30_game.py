@@ -28,7 +28,7 @@ async def test_30_game_acceptance():
     assert game.players[2].user_id == 444
     assert game.dealer_id == 111
     assert not game.round
-    assert not game.active_count
+    assert not game.count_in_the_game
     assert not game.bet_level
     assert not game.bets_all_same
     assert not game.bank
@@ -39,7 +39,7 @@ async def test_30_game_acceptance():
 
     assert game.round == Round.PREFLOP
     assert game.bank == 0
-    assert game.active_count == 3
+    assert game.count_in_the_game == 3
 
     p = game.players[0]
     assert p.role == Player.ROLE_DEALER
@@ -64,16 +64,27 @@ async def test_30_game_acceptance():
 
     prepare_player_bet(game, 111, Bet.CALL, None, 2)
     await game.run_step()
+    assert game.count_in_the_game == 3
+    assert game.count_has_options == 3
+    assert game.current_player.user_id == 333
 
     prepare_player_bet(game, 333, Bet.CALL, None, 2)
     await game.run_step()
+    assert game.count_in_the_game == 3
+    assert game.count_has_options == 3
+    assert game.current_player.user_id == 444
 
     prepare_player_bet(game, 444, Bet.CHECK, None, 2)
     await game.run_step()
+    assert game.count_in_the_game == 3
+    assert game.count_has_options == 3
+    assert game.bet_level == 0
+    assert game.bets_all_same
 
+    assert game.current_player.user_id == 333
     assert game.round == Round.FLOP
     assert game.bank == 6
-    assert game.active_count == 3
+    assert game.count_in_the_game == 3
 
     prepare_player_bet(game, 333, Bet.CHECK, None, 0)
     await game.run_step()
@@ -86,7 +97,7 @@ async def test_30_game_acceptance():
 
     assert game.round == Round.TERN
     assert game.bank == 6
-    assert game.active_count == 3
+    assert game.count_in_the_game == 3
 
     prepare_player_bet(game, 333, Bet.CHECK, None, 0)
     await game.run_step()
@@ -108,7 +119,7 @@ async def test_30_game_acceptance():
 
     assert game.round == Round.RIVER
     assert game.bank == 6+12
-    assert game.active_count == 3
+    assert game.count_in_the_game == 3
 
     prepare_player_bet(game, 333, Bet.CHECK, None, 0)
     await game.run_step()
@@ -121,6 +132,12 @@ async def test_30_game_acceptance():
 
     assert game.round == Round.SHOWDOWN
     assert game.bank == 18
-    assert game.active_count == 2
+    assert game.count_in_the_game == 2
 
     await game.on_end()
+
+if __name__=="__main__":
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+    import asyncio
+    asyncio.run(test_30_game_acceptance())

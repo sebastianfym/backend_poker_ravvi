@@ -3,21 +3,24 @@ import os
 import json
 from typing import List
 import pytest
+from ravvi_poker.game.cards import Card
 from ravvi_poker.game.event import Event
 from ravvi_poker.game.user import User
 from ravvi_poker.game.bet import Bet
 from ravvi_poker.game.game import Game
+
 
 class GameCase(Game):
 
     def __init__(self, game_id, *, users, deck, moves, **kwargs) -> None:
         super().__init__(None, game_id, 
                          [User(**user) for user in users], 
-                         deck=deck
+                         deck=[Card.decode(x) for x in deck]
                          )
         self._check_steps = list(enumerate(moves, 1))
 
     async def broadcast(self, event: Event):
+        self.log_debug("%s", event)
         assert self._check_steps
         step_num, step = self._check_steps.pop(0)
         step_msg = f"broadcast {step_num}"
@@ -30,6 +33,8 @@ class GameCase(Game):
         check_event['type'] = getattr(Event, check_event['type'])
         check_event = Event(**check_event)
         for k, ev in check_event.items():
+            if k=='cards' and ev:
+                ev = [Card.decode(x) for x in ev]
             rv = event[k]
             assert ev == rv, f"{step_msg} - {k}"
 
@@ -44,7 +49,7 @@ class GameCase(Game):
         elif isinstance(step, dict):
             cmd = step
         else:
-            raise ValueError('invalid check entry', n)
+            raise ValueError('invalid check entry', step_num)
         if not cmd:
             # do nothing
             return
@@ -65,7 +70,8 @@ async def test_case(case_file):
     print(case_file)
     path = os.path.join(data_dir, case_file)
     with open(path,'r') as f:
-        case_data = json.load(f)
+        lines = [l for l in f.readlines() if l[:2]!='//']
+        case_data = json.loads(''.join(lines))
 
     game = GameCase(1, **case_data)
     await game.run()
@@ -87,8 +93,8 @@ def pytest_generate_tests(metafunc):
 
 if __name__=="__main__":
     import logging
-    logging.basicConfig(level=logging.DEBUG)
     import sys
     case_file = sys.argv[1]
     import asyncio
+    logging.basicConfig(level=logging.DEBUG)
     asyncio.run(test_case(case_file))

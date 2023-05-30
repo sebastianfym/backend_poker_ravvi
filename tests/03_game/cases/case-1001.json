@@ -1,0 +1,33 @@
+{
+    "users": [
+        {"id": 111, "username": "u1", "balance": 100},
+        {"id": 222, "username": "u2", "balance": 100},
+        {"id": 333, "username": "u3", "balance": 100}
+    ],
+    "deck": ["Q♣", "K♥", "Q♥", "A♠", "Q♠", "2♣"],
+    "moves": [
+        {"type": "GAME_BEGIN"}, 
+        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["Q♣", "K♥"]}, 
+        {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": ["Q♥", "A♠"]}, 
+        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["Q♠", "2♣"]},
+        {"type": "PLAYER_BET", "user_id": 222}, 
+        {"type": "PLAYER_BET", "user_id": 333}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 111}, 
+        {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "FOLD"}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 222}, 
+        {"user_id": 222, "type": "CMD_PLAYER_BET", "bet": "ALLIN"}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 333}, 
+        {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "FOLD"}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_ROUND"}, 
+
+        {"type": "GAME_END"}
+    ]
+}
+

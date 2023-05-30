@@ -27,10 +27,6 @@
         {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "FOLD"}, 
         {"type": "PLAYER_BET"}, 
 
-        {"type": "GAME_PLAYER_MOVE", "user_id": 444}, 
-        {"user_id": 444, "type": "CMD_PLAYER_BET", "bet": "FOLD"}, 
-        {"type": "PLAYER_BET"}, 
-
         {"type": "GAME_ROUND"}, 
 
         {"type": "GAME_END"}
