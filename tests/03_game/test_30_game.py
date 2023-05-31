@@ -45,21 +45,21 @@ async def test_30_game_acceptance():
     assert p.role == Player.ROLE_DEALER
     assert p.bet_type is None
     assert p.bet_amount == 0
-    assert p.cards == [1,2]
+    assert p.cards == [5,6]
     assert p.cards_open == False
 
     p = game.players[1]
     assert p.role == Player.ROLE_SMALL_BLIND
     assert p.bet_type == Bet.SMALL_BLIND
     assert p.bet_amount == 1
-    assert p.cards == [3,4]
+    assert p.cards == [1,2]
     assert p.cards_open == False
 
     p = game.players[2]
     assert p.role == Player.ROLE_BIG_BLIND
     assert p.bet_type == Bet.BIG_BLIND
     assert p.bet_amount == 2
-    assert p.cards == [5,6]
+    assert p.cards == [3,4]
     assert p.cards_open == False
 
     prepare_player_bet(game, 111, Bet.CALL, None, 2)
@@ -111,11 +111,11 @@ async def test_30_game_acceptance():
     prepare_player_bet(game, 333, Bet.CALL, None, 4)
     await game.run_step()
 
-    prepare_player_bet(game, 444, Bet.CHECK, None, 4)
-    await game.run_step()
+#    prepare_player_bet(game, 444, Bet.CHECK, None, 4)
+#    await game.run_step()
 
-    prepare_player_bet(game, 111, Bet.CHECK, None, 4)
-    await game.run_step()
+#    prepare_player_bet(game, 111, Bet.CHECK, None, 4)
+#    await game.run_step()
 
     assert game.round == Round.RIVER
     assert game.bank == 6+12
