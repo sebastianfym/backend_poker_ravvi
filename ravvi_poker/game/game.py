@@ -33,6 +33,8 @@ class Game(ObjectLogger):
         self.dealer_id = self.players[0].user_id
         self.count_in_the_game = 0
         self.count_has_options = 0
+        self.bet_id = None
+        self.bet_raise_id = None
         self.bet_level = 0
         self.bets_all_same = False
         self.bank = 0
@@ -87,28 +89,29 @@ class Game(ObjectLogger):
         #    # open cards
         #    pass
 
+        player = self.rotate_players()
+
         if self.round == Round.PREFLOP:
-            if player.role==Player.ROLE_BIG_BLIND and self.bets_all_same:
+            if player.user_id == self.bet_id and self.bets_all_same:
                 await self.round_end()
                 await self.round_begin(Round.FLOP)
                 return True
         elif self.round == Round.FLOP:
-            if  player.role==Player.ROLE_DEALER and self.bets_all_same:
+            if player.user_id == self.bet_id and self.bets_all_same:
                 await self.round_end()
                 await self.round_begin(Round.TERN)
                 return True
-        elif self.round == Round.TERN and player.role==Player.ROLE_DEALER:
-            if self.bets_all_same:
+        elif self.round == Round.TERN:
+            if player.user_id == self.bet_id and self.bets_all_same:
                 await self.round_end()
                 await self.round_begin(Round.RIVER)
                 return True
-        elif self.round == Round.RIVER and player.role==Player.ROLE_DEALER:
-            if self.bets_all_same:
+        elif self.round == Round.RIVER:
+            if player.user_id == self.bet_id and self.bets_all_same:
                 await self.round_end()
                 await self.round_begin(Round.SHOWDOWN)
                 return False
 
-        self.rotate_players()
         return True
     
     
@@ -154,7 +157,8 @@ class Game(ObjectLogger):
         p = self.current_player
         assert p.user_id == user_id
         assert Bet.verify(bet)
-        raise_min = self.bet_level*2
+        #raise_min = self.bet_level*2
+        raise_min = 2
         raise_max = p.bet_max
 
         if bet == Bet.FOLD:
@@ -171,13 +175,19 @@ class Game(ObjectLogger):
             p.bet_delta = amount-p.bet_amount
         elif bet == Bet.ALLIN:
             p.bet_delta = p.balance
+            self.bet_id = p.user_id
         else:
             raise ValueError('inalid bet type')
 
         p.bet_type = bet
         p.bet_amount += p.bet_delta
         p.user.balance -= p.bet_delta
-        self.log_debug("player %s: balance: %s -> %s -> %s", p.user_id, p.balance, p.bet_delta, p.bet_amount)
+
+        if self.bet_level<p.bet_amount:
+            self.bet_id = p.user_id
+            self.bet_raise_id = p.user_id
+
+        self.log_debug("player %s: balance: %s -> %s -> %s,  bet_id: %s", p.user_id, p.balance, p.bet_delta, p.bet_amount, self.bet_id)
         self.bet_event.set()
 
     async def round_begin(self, round):
@@ -224,6 +234,8 @@ class Game(ObjectLogger):
                 if p.role ==Player.ROLE_SMALL_BLIND:
                     break
         
+        self.bet_id = p.user_id
+        
         if self.round == Round.FLOP:
             for _ in range(3):
                 self.cards.append(self.deck.pop())
@@ -256,24 +268,30 @@ class Game(ObjectLogger):
     
     async def on_end(self):
         self.rotate_players(Player.ROLE_SMALL_BLIND)
+        if self.bet_raise_id:
+            while self.current_player.user_id != self.bet_raise_id:
+                self.rotate_players()
 
-        players = [p for p in self.players if p.in_the_game]
         winners = []
-        if len(players)>1:
-            for i, p in enumerate(players):
-                p.hand = get_player_best_hand(p.cards, self.cards)
-                if not p.cards_open:
-                    if i!=0:
-                        await asyncio.sleep(1)
-                    p.cards_open = True
-                    await self.broadcast_PLAYER_CARDS(p)
-                    self.log_info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.rank)
-            players.sort(reverse=True, key=lambda x: x.hand.rank)
-            for i, p in enumerate(players):
-                self.log_info("%s: %s: open cards %s -> %s, %s", i+1, p.user_id, p.cards, p.hand, p.hand.rank)
-        
-        p = players[0]
-        winners.append(p)
+        best_hand = None
+        for p in self.players:
+            if not p.in_the_game:
+                continue
+            if len(self.cards)<5:
+                winners.append(p)
+                continue
+            p.hand = get_player_best_hand(p.cards, self.cards)
+            if best_hand:
+                if p.hand.rank<best_hand.rank:
+                    continue
+                if p.hand.rank>best_hand.rank:
+                    winners = []
+            winners.append(p)
+            best_hand = p.hand
+            if not p.cards_open:
+                p.cards_open = True
+                await self.broadcast_PLAYER_CARDS(p)
+                self.log_info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.rank)
 
         balance_delta = self.bank
         p = winners[0]
