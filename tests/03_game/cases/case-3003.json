@@ -19,11 +19,11 @@
         {"type": "PLAYER_BET"}, 
 
         {"type": "GAME_PLAYER_MOVE", "user_id": 222}, 
-        {"user_id": 222, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 4}, 
+        {"user_id": 222, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 3}, 
         {"type": "PLAYER_BET"}, 
 
         {"type": "GAME_PLAYER_MOVE", "user_id": 333}, 
-        {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 6}, 
+        {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 4}, 
         {"type": "PLAYER_BET"}, 
 
         {"type": "GAME_PLAYER_MOVE", "user_id": 222}, 

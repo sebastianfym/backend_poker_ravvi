@@ -51,7 +51,7 @@
         {"type": "PLAYER_BET"}, 
 
         {"type": "GAME_PLAYER_MOVE", "user_id": 111}, 
-        {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 8}, 
+        {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 6}, 
         {"type": "PLAYER_BET"}, 
 
         {"type": "GAME_PLAYER_MOVE", "user_id": 222}, 
@@ -95,8 +95,8 @@
 
         {"type": "GAME_ROUND", "amount": 42, "delta": 0}, 
 // SHOWDOWN
+        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": true, "cards": ["Q♣", "8♦"]}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": ["A♦", "T♣"]}, 
-//        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": true, "cards": ["Q♣", "8♦"]}, 
 
         {"type": "GAME_END", "winners": [{"user_id": 111, "balance": 234, "delta": 28}]}
     ]

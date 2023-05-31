@@ -19,15 +19,15 @@
         {"user_id": 777, "type": "CMD_PLAYER_BET", "bet": "ALLIN"}, 
         {"type": "PLAYER_BET"}, 
 
-        {"type": "GAME_PLAYER_MOVE", "user_id": 111, "options": [1, 99]}, 
+        {"type": "GAME_PLAYER_MOVE", "user_id": 111, "options": [1, 21, 99]}, 
         {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "ALLIN"}, 
         {"type": "PLAYER_BET"}, 
 
-        {"type": "GAME_PLAYER_MOVE", "user_id": 333, "options": [1, 99]}, 
+        {"type": "GAME_PLAYER_MOVE", "user_id": 333, "options": [1, 21, 99]}, 
         {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "ALLIN"}, 
         {"type": "PLAYER_BET"}, 
 
-        {"type": "GAME_PLAYER_MOVE", "user_id": 444, "options": [1, 99]}, 
+        {"type": "GAME_PLAYER_MOVE", "user_id": 444, "options": [1, 21, 99]}, 
         {"user_id": 444, "type": "CMD_PLAYER_BET", "bet": "ALLIN"}, 
         {"type": "PLAYER_BET"}, 
 
