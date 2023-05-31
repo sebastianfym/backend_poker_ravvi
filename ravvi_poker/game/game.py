@@ -34,7 +34,6 @@ class Game(ObjectLogger):
         self.count_in_the_game = 0
         self.count_has_options = 0
         self.bet_id = None
-        self.bet_raise_id = None
         self.bet_level = 0
         self.bets_all_same = False
         self.bank = 0
@@ -152,14 +151,13 @@ class Game(ObjectLogger):
     async def wait_for_player_bet(self):
         await self.bet_event.wait()
 
-    def handle_bet(self, user_id, bet, amount):
-        self.log_info("handle_bet: %s %s %s", user_id, bet, amount)
+    def handle_bet(self, user_id, bet, delta):
+        self.log_info("handle_bet: %s %s %s", user_id, bet, delta)
         p = self.current_player
         assert p.user_id == user_id
         assert Bet.verify(bet)
-        #raise_min = self.bet_level*2
-        raise_min = 2
-        raise_max = p.bet_max
+
+        call_delta, raise_min, raise_max = p.get_bet_params(self.bet_level)
 
         if bet == Bet.FOLD:
             p.bet_delta = 0
@@ -168,14 +166,14 @@ class Game(ObjectLogger):
                 raise ValueError(f"player {p.user_id}: bet {p.bet_amount} != current_level {self.bet_level}")
             p.bet_delta = 0
         elif bet == Bet.CALL:
-            assert p.bet_amount<self.bet_level
-            p.bet_delta = self.bet_level-p.bet_amount
+            assert call_delta>0
+            p.bet_delta = call_delta
         elif bet == Bet.RAISE:
+            amount = p.bet_amount + delta
             assert raise_min<=amount and amount<=raise_max
-            p.bet_delta = amount-p.bet_amount
+            p.bet_delta = delta
         elif bet == Bet.ALLIN:
             p.bet_delta = p.balance
-            self.bet_id = p.user_id
         else:
             raise ValueError('inalid bet type')
 
@@ -185,7 +183,6 @@ class Game(ObjectLogger):
 
         if self.bet_level<p.bet_amount:
             self.bet_id = p.user_id
-            self.bet_raise_id = p.user_id
 
         self.log_debug("player %s: balance: %s -> %s -> %s,  bet_id: %s", p.user_id, p.balance, p.bet_delta, p.bet_amount, self.bet_id)
         self.bet_event.set()
@@ -234,8 +231,6 @@ class Game(ObjectLogger):
                 if p.role ==Player.ROLE_SMALL_BLIND:
                     break
         
-        self.bet_id = p.user_id
-        
         if self.round == Round.FLOP:
             for _ in range(3):
                 self.cards.append(self.deck.pop())
@@ -243,6 +238,10 @@ class Game(ObjectLogger):
         elif self.round in (Round.TERN, Round.RIVER):
             self.cards.append(self.deck.pop())
             await self.broadcast_GAME_CARDS()
+
+        if self.round != Round.SHOWDOWN:
+            self.bet_id = p.user_id
+            
 
     async def round_end(self):
         bank_delta = 0
@@ -267,10 +266,9 @@ class Game(ObjectLogger):
         return self.players[0]
     
     async def on_end(self):
-        self.rotate_players(Player.ROLE_SMALL_BLIND)
-        if self.bet_raise_id:
-            while self.current_player.user_id != self.bet_raise_id:
-                self.rotate_players()
+        #self.rotate_players(Player.ROLE_SMALL_BLIND)
+        while self.current_player.user_id != self.bet_id:
+            self.rotate_players()
 
         winners = []
         best_hand = None
