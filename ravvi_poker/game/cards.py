@@ -19,10 +19,26 @@ class Card:
             self.rank_idx = None
 
     @classmethod
-    def encode(cls, rank, suit):
+    def encode(cls, rank, suit) -> int:
         assert 2 <= rank and rank <= 14
         assert 1 <= suit and suit <= 4
         return (suit-1)*13 + (rank-1)
+    
+    @classmethod
+    def decode(cls, x) -> int:
+        if isinstance(x, str):
+            if len(x) != 2:
+                raise ValueError('invalid card value', x)
+            r, s = x[0].upper(), x[1].upper()
+            rank = cls.rank_map.index(r)+2
+            try:
+                suit = cls.suit_map.index(s)+1
+            except ValueError:
+                suit = cls.suit_s_map.index(s)+1
+            x = cls.encode(rank, suit)
+        if not isinstance(x, int):
+                raise ValueError('invalid card value', x)
+        return x
 
     @property
     def rank(self):

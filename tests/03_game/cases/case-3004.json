@@ -1,0 +1,104 @@
+{
+    "users": [
+        {"id": 111, "username": "u1", "balance": 206},
+        {"id": 222, "username": "u2", "balance": 95},
+        {"id": 333, "username": "u3", "balance": 100}
+    ],
+    "deck": ["Q♣", "8♦", "2♦", "7♦", "A♦", "T♣",  "5♠","5♦","6♣",  "T♠",  "A♠"],
+    "moves": [
+        {"type": "GAME_BEGIN"}, 
+        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["Q♣", "8♦"]}, 
+        {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": ["2♦", "7♦"]},
+        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["A♦", "T♣"]}, 
+
+        {"type": "PLAYER_BET", "user_id": 222}, 
+        {"type": "PLAYER_BET", "user_id": 333}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 111}, 
+        {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 6}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 222}, 
+        {"user_id": 222, "type": "CMD_PLAYER_BET", "bet": "CALL"}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 333}, 
+        {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "CALL"}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_ROUND", "amount": 18, "delta": 18}, 
+// FLOP        
+        {"type": "GAME_CARDS", "cards": ["5♠","5♦","6♣"]}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 222}, 
+        {"user_id": 222, "type": "CMD_PLAYER_BET", "bet": "CHECK"}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 333}, 
+        {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "CHECK"}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 111}, 
+        {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 2}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 222}, 
+        {"user_id": 222, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 4}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 333}, 
+        {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 6}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 111}, 
+        {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 8}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 222}, 
+        {"user_id": 222, "type": "CMD_PLAYER_BET", "bet": "CALL"}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 333}, 
+        {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "CALL"}, 
+        {"type": "PLAYER_BET"}, 
+// TERN
+        {"type": "GAME_ROUND", "amount": 42, "delta": 24}, 
+        {"type": "GAME_CARDS", "cards": ["5♠","5♦","6♣",  "T♠"]}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 222}, 
+        {"user_id": 222, "type": "CMD_PLAYER_BET", "bet": "CHECK"}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 333}, 
+        {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "CHECK"}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 111}, 
+        {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "CHECK"}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_ROUND", "amount": 42, "delta": 0}, 
+// RIVER
+        {"type": "GAME_CARDS", "cards": ["5♠","5♦","6♣",  "T♠",  "A♠"]}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 222}, 
+        {"user_id": 222, "type": "CMD_PLAYER_BET", "bet": "CHECK"}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 333}, 
+        {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "CHECK"}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 111}, 
+        {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "CHECK"}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_ROUND", "amount": 42, "delta": 0}, 
+// SHOWDOWN
+        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": ["A♦", "T♣"]}, 
+//        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": true, "cards": ["Q♣", "8♦"]}, 
+
+        {"type": "GAME_END", "winners": [{"user_id": 111, "balance": 234, "delta": 28}]}
+    ]
+}
+
