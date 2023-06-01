@@ -49,11 +49,12 @@ class Player:
     
     def get_bet_options(self, game_level) -> Tuple[List[Bet], dict]:
         call_delta, raise_min, raise_max = self.get_bet_params(game_level)
+        max_delta = raise_max-self.bet_amount
         options = [Bet.FOLD]
         params = dict()
         if call_delta==0:
             options.append(Bet.CHECK)
-        elif call_delta>0:
+        elif call_delta>0 and call_delta<max_delta:
             options.append(Bet.CALL)
             params.update(call=call_delta)
         if raise_min<=raise_max:

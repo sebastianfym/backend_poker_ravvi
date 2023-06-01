@@ -18,9 +18,6 @@ class Round(IntEnum):
     FLOP = 2
     TERN = 3
     RIVER = 4
-    SHOWDOWN = 5
-
-#logging.basicConfig(level=logging.DEBUG)
 
 class Game(ObjectLogger):
 
@@ -108,7 +105,6 @@ class Game(ObjectLogger):
         elif self.round == Round.RIVER:
             if player.user_id == self.bet_id and self.bets_all_same:
                 await self.round_end()
-                await self.round_begin(Round.SHOWDOWN)
                 return False
 
         return True
@@ -220,16 +216,6 @@ class Game(ObjectLogger):
             p.user.balance -= p.bet_delta
             await self.broadcast_PLAYER_BET()
             p = self.rotate_players()
-
-        elif not self.count_has_options:
-            while True:
-                if p.in_the_game and not p.cards_open:
-                    p.cards_open = True
-                    await self.broadcast_PLAYER_CARDS(p)
-                    self.log_info("player %s: open cards %s", p.user_id, p.cards)
-                p = self.rotate_players()
-                if p.role ==Player.ROLE_SMALL_BLIND:
-                    break
         
         if self.round == Round.FLOP:
             for _ in range(3):
@@ -239,11 +225,18 @@ class Game(ObjectLogger):
             self.cards.append(self.deck.pop())
             await self.broadcast_GAME_CARDS()
 
-        if self.round != Round.SHOWDOWN:
-            self.bet_id = p.user_id
+        self.bet_id = p.user_id
             
 
     async def round_end(self):
+        if self.count_in_the_game>1 and not self.count_has_options:
+            self.rotate_players(Player.ROLE_SMALL_BLIND)
+            for p in self.players:
+                if p.in_the_game and not p.cards_open:
+                    p.cards_open = True
+                    await self.broadcast_PLAYER_CARDS(p)
+                    self.log_info("player %s: open cards %s", p.user_id, p.cards)
+
         bank_delta = 0
         for p in self.players:
             bank_delta += p.bet_amount

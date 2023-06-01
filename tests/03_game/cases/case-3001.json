@@ -10,24 +10,27 @@
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["Q♣", "K♥"]}, 
         {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": ["Q♥", "A♠"]}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["Q♠", "2♣"]},
-        {"type": "PLAYER_BET", "user_id": 222}, 
-        {"type": "PLAYER_BET", "user_id": 333}, 
+        {"type": "PLAYER_BET", "user_id": 222, "bet": "SMALL_BLIND", "delta": 1, "amount": 1, "balance": 99}, 
+        {"type": "PLAYER_BET", "user_id": 333, "bet": "BIG_BLIND", "delta": 2, "amount": 2, "balance": 98},
 
-        {"type": "GAME_PLAYER_MOVE", "user_id": 111}, 
+        {"type": "GAME_PLAYER_MOVE", "user_id": 111, "options": ["FOLD", "CALL", "RAISE", "ALLIN"], 
+            "call": 2, "raise_min": 4, "raise_max": 100}, 
         {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "FOLD"}, 
-        {"type": "PLAYER_BET"}, 
+        {"type": "PLAYER_BET", "user_id": 111, "bet": "FOLD", "delta": 0, "amount": 0, "balance": 100}, 
 
-        {"type": "GAME_PLAYER_MOVE", "user_id": 222}, 
+        {"type": "GAME_PLAYER_MOVE", "user_id": 222, "options": ["FOLD", "CALL", "RAISE", "ALLIN"], 
+            "call": 1, "raise_min": 3, "raise_max": 99}, 
         {"user_id": 222, "type": "CMD_PLAYER_BET", "bet": "ALLIN"}, 
-        {"type": "PLAYER_BET"}, 
+        {"type": "PLAYER_BET", "user_id": 222, "bet": "ALLIN", "delta": 99, "amount": 100, "balance": 0}, 
 
-        {"type": "GAME_PLAYER_MOVE", "user_id": 333}, 
+        {"type": "GAME_PLAYER_MOVE", "user_id": 333, "options": ["FOLD", "ALLIN"], 
+            "raise_max": 98}, 
         {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "FOLD"}, 
-        {"type": "PLAYER_BET"}, 
+        {"type": "PLAYER_BET", "user_id": 333, "bet": "FOLD", "delta": 0, "amount": 2, "balance": 98}, 
 
-        {"type": "GAME_ROUND"}, 
+        {"type": "GAME_ROUND", "delta": 102, "amount": 102}, 
 
-        {"type": "GAME_END"}
+        {"type": "GAME_END", "winners": [{"user_id": 222, "balance": 102, "delta": 2}]}
     ]
 }
 
