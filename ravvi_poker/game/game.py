@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 import logging
 import time
 import random
@@ -137,6 +137,33 @@ class Game(ObjectLogger):
                     self.bets_all_same = False
         self.log_info(f"status: in_the_game:{self.count_in_the_game} has_options:{self.count_has_options} bet_level:{self.bet_level} bets_all_same:{self.bets_all_same}")
     
+    def get_bet_limits(self, player=None, BB=2):
+        p = player or self.current_player
+        call_delta = max(0, self.bet_level-p.bet_amount)
+        if self.count_has_options>2:
+            raise_min = call_delta + BB
+        else:
+            raise_min = call_delta + max(BB, call_delta)
+        raise_max = p.balance
+        return call_delta, raise_min, raise_max
+
+    def get_bet_options(self, player) -> Tuple[List[Bet], dict]:
+        call_delta, raise_min, raise_max = self.get_bet_limits(player)
+        options = [Bet.FOLD]
+        params = dict()
+        if call_delta==0:
+            options.append(Bet.CHECK)
+        elif call_delta>0 and call_delta<raise_max:
+            options.append(Bet.CALL)
+            params.update(call=call_delta)
+        if raise_min<raise_max:
+            options.append(Bet.RAISE)
+            params.update(raise_min = raise_min, raise_max = raise_max)
+        if raise_max:
+            options.append(Bet.ALLIN)
+            params.update(raise_max=raise_max)
+        return options, params
+    
     async def player_move(self):
         player = self.current_player
         player.bet_type = None
@@ -160,7 +187,7 @@ class Game(ObjectLogger):
         assert p.user_id == user_id
         assert Bet.verify(bet)
 
-        call_delta, raise_min, raise_max = p.get_bet_params(self.bet_level)
+        call_delta, raise_min, raise_max = self.get_bet_limits(p)
 
         if bet == Bet.FOLD:
             p.bet_delta = 0
@@ -172,8 +199,7 @@ class Game(ObjectLogger):
             assert call_delta>0
             p.bet_delta = call_delta
         elif bet == Bet.RAISE:
-            amount = p.bet_amount + delta
-            assert raise_min<=amount and amount<=raise_max
+            assert raise_min<=delta and delta<=raise_max
             p.bet_delta = delta
         elif bet == Bet.ALLIN:
             p.bet_delta = p.balance
@@ -227,6 +253,7 @@ class Game(ObjectLogger):
             p.user.balance -= p.bet_delta
             await self.broadcast_PLAYER_BET()
             p = self.rotate_players()
+        
         elif len(self.players)==2:
             p = self.rotate_players()
         
@@ -351,7 +378,7 @@ class Game(ObjectLogger):
         
     async def broadcast_PLAYER_MOVE(self):
         player = self.current_player
-        options, params = player.get_bet_options(self.bet_level)
+        options, params = self.get_bet_options(player)
         event = GAME_PLAYER_MOVE(
             user_id = player.user_id,
             options = options, 
