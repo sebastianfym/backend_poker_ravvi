@@ -140,7 +140,7 @@ class Game(ObjectLogger):
         await self.broadcast_PLAYER_MOVE()
         try:
             self.bet_event.clear()
-            self.log_info("wait for player %s ...", player.user_id)
+            self.log_info("wait (%ss) for player %s ...", self.wait_timeout, player.user_id)
             await asyncio.wait_for(self.wait_for_player_bet(), self.wait_timeout)
         except asyncio.exceptions.TimeoutError:
             self.log_info("player timeout: %s", player.user_id)

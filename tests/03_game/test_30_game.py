@@ -136,8 +136,27 @@ async def test_30_game_acceptance():
 
     await game.on_end()
 
+@pytest.mark.asyncio
+async def test_31_game_timeout():
+
+    users = [User(x, f"u{x}", 1000) for x in [111, 333, 444]]
+    # game with random deck
+    game = Game(None, 1, users)
+    game.wait_timeout = 3
+
+    await game.on_begin()
+    p = game.current_player
+    assert p.user_id == 111
+    assert p.has_bet_opions
+    
+    assert p.bet_type is None
+    await game.player_move()
+    assert p.bet_type == Bet.FOLD
+
+
+
 if __name__=="__main__":
     import logging
     logging.basicConfig(level=logging.DEBUG)
     import asyncio
-    asyncio.run(test_30_game_acceptance())
+    asyncio.run(test_31_game_timeout())
