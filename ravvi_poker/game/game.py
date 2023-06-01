@@ -61,9 +61,13 @@ class Game(ObjectLogger):
         # cards
         self.cards = []
         # roles
-        self.players[0].role = Player.ROLE_DEALER
-        self.players[1].role = Player.ROLE_SMALL_BLIND
-        self.players[2].role = Player.ROLE_BIG_BLIND
+        if len(self.players)>2:
+            self.players[0].role = Player.ROLE_DEALER
+            self.players[1].role = Player.ROLE_SMALL_BLIND
+            self.players[2].role = Player.ROLE_BIG_BLIND
+        else:
+            self.players[0].role = Player.ROLE_SMALL_BLIND
+            self.players[1].role = Player.ROLE_BIG_BLIND
 
         await self.broadcast_GAME_BEGIN()
         await self.round_begin(Round.PREFLOP)
@@ -193,6 +197,8 @@ class Game(ObjectLogger):
         p = self.rotate_players(Player.ROLE_SMALL_BLIND)
 
         if self.round == Round.PREFLOP:
+            if len(self.players)==2:
+                p = self.rotate_players()
             for p in self.players:
                 p.cards = []
                 p.cards.append(self.deck.pop())
@@ -201,6 +207,7 @@ class Game(ObjectLogger):
             for p in self.players:
                 await self.broadcast_PLAYER_CARDS(p)
             
+            p = self.rotate_players(Player.ROLE_SMALL_BLIND)
             p = self.players[0]
 
             # small blind
@@ -219,6 +226,8 @@ class Game(ObjectLogger):
             p.bet_amount += p.bet_delta
             p.user.balance -= p.bet_delta
             await self.broadcast_PLAYER_BET()
+            p = self.rotate_players()
+        elif len(self.players)==2:
             p = self.rotate_players()
         
         if self.round == Round.FLOP:
@@ -283,7 +292,7 @@ class Game(ObjectLogger):
                     winners = []
             winners.append(p)
             best_hand = p.hand
-            if not p.cards_open:
+            if not p.cards_open and self.count_in_the_game>1:
                 p.cards_open = True
                 await self.broadcast_PLAYER_CARDS(p)
                 self.log_info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.rank)
