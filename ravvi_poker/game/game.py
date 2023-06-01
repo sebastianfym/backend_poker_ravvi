@@ -190,14 +190,15 @@ class Game(ObjectLogger):
         p = self.rotate_players(Player.ROLE_SMALL_BLIND)
 
         if self.round == Round.PREFLOP:
-            while True:
+            for p in self.players:
                 p.cards = []
-                for _ in range(2):
-                    p.cards.append(self.deck.pop())
+                p.cards.append(self.deck.pop())
+            for p in self.players:
+                p.cards.append(self.deck.pop())
+            for p in self.players:
                 await self.broadcast_PLAYER_CARDS(p)
-                p = self.rotate_players()
-                if p.role ==Player.ROLE_SMALL_BLIND:
-                    break
+            
+            p = self.players[0]
 
             # small blind
             assert p.role == Player.ROLE_SMALL_BLIND
@@ -218,6 +219,7 @@ class Game(ObjectLogger):
             p = self.rotate_players()
         
         if self.round == Round.FLOP:
+            self.deck.pop()
             for _ in range(3):
                 self.cards.append(self.deck.pop())
             await self.broadcast_GAME_CARDS()
@@ -259,7 +261,6 @@ class Game(ObjectLogger):
         return self.players[0]
     
     async def on_end(self):
-        #self.rotate_players(Player.ROLE_SMALL_BLIND)
         while self.current_player.user_id != self.bet_id:
             self.rotate_players()
 

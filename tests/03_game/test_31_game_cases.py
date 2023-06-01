@@ -33,7 +33,7 @@ class GameCase(Game):
         check_event['type'] = getattr(Event, check_event['type'])
         check_event = Event(**check_event)
         for k, ev in check_event.items():
-            rv = event[k]
+            rv = event.get(k, None)
             if k=='cards' and ev:
                 ev = [Card.decode(x) for x in ev]
             elif k=='options' and ev:

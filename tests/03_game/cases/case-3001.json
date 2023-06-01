@@ -4,7 +4,7 @@
         {"id": 222, "username": "u2", "balance": 100},
         {"id": 333, "username": "u3", "balance": 100}
     ],
-    "deck": ["Q♣", "K♥", "Q♥", "A♠", "Q♠", "2♣"],
+    "deck": ["Q♣", "Q♥", "Q♠", "K♥", "A♠", "2♣"],
     "moves": [
         {"type": "GAME_BEGIN"}, 
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["Q♣", "K♥"]}, 
