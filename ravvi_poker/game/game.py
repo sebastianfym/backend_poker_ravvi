@@ -91,18 +91,21 @@ class Game(ObjectLogger):
             if player.user_id == self.bet_id and self.bets_all_same:
                 await self.round_end()
                 await self.round_begin(Round.FLOP)
-                return True
-        elif self.round == Round.FLOP:
+                if self.count_has_options>1:
+                    return True
+        if self.round == Round.FLOP:
             if player.user_id == self.bet_id and self.bets_all_same:
                 await self.round_end()
                 await self.round_begin(Round.TERN)
-                return True
-        elif self.round == Round.TERN:
+                if self.count_has_options>1:
+                    return True
+        if self.round == Round.TERN:
             if player.user_id == self.bet_id and self.bets_all_same:
                 await self.round_end()
                 await self.round_begin(Round.RIVER)
-                return True
-        elif self.round == Round.RIVER:
+                if self.count_has_options>1:
+                    return True
+        if self.round == Round.RIVER:
             if player.user_id == self.bet_id and self.bets_all_same:
                 await self.round_end()
                 return False
@@ -231,7 +234,7 @@ class Game(ObjectLogger):
             
 
     async def round_end(self):
-        if self.count_in_the_game>1 and not self.count_has_options:
+        if self.count_in_the_game>1 and self.count_has_options<=1:
             self.rotate_players(Player.ROLE_SMALL_BLIND)
             for p in self.players:
                 if p.in_the_game and not p.cards_open:
