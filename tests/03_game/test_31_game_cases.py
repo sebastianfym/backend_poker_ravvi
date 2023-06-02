@@ -12,6 +12,11 @@ from ravvi_poker.game.game import Game
 
 class GameCase(Game):
 
+    SLEEP_ROUND_BEGIN = 0
+    SLEEP_ROUND_END = 0
+    SLEEP_SHOWDOWN_CARDS = 0
+    SLEEP_GAME_END = 0
+
     def __init__(self, game_id, *, users, deck, moves, **kwargs) -> None:
         super().__init__(None, game_id, 
                          [User(**user) for user in users], 
