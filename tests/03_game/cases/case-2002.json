@@ -88,11 +88,11 @@
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": ["4♥", "J♥"]},
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": true, "cards": ["4♣", "3♣"]}, 
 
-        {"type": "GAME_ROUND", "delta": 9, "amount": 41}, 
+        {"type": "GAME_ROUND", "delta": 8, "amount": 40}, 
 // RIVER
         {"type": "GAME_CARDS", "cards": ["T♠", "5♥", "A♣", "T♦", "7♦"]}, 
         
-        {"type": "GAME_ROUND", "delta": 0, "amount": 41}, 
+        {"type": "GAME_ROUND", "delta": 0, "amount": 40}, 
 // SHOWDOWN
 
         {"type": "GAME_END", "winners": [{"user_id": 111, "balance": 80, "delta": 20}]}

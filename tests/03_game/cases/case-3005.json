@@ -33,7 +33,7 @@
         {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": true, "cards": ["6♠","7♠"]}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": ["Q♥","T♥"]},
 
-        {"type": "GAME_ROUND", "delta": 253}, 
+        {"type": "GAME_ROUND", "delta": 243, "amount": 243}, 
 // FLOP
 
         {"type": "GAME_CARDS", "cards": ["4♦","T♦","J♣"]}, 
@@ -50,7 +50,8 @@
         {"type": "GAME_ROUND", "delta": 0}, 
 // SHOWDOWN
 
-        {"type": "GAME_END", "winners": [{"user_id": 333, "balance": 401, "delta": 167}]}
+//        {"type": "GAME_END", "winners": [{"user_id": 333, "balance": 401, "delta": 167}]}
+        {"type": "GAME_END", "winners": [{"user_id": 333, "balance": 396, "delta": 162}]}
 ]
 }
 

@@ -277,17 +277,31 @@ class Game(ObjectLogger):
                     await self.broadcast_PLAYER_CARDS(p)
                     self.log_info("player %s: open cards %s", p.user_id, p.cards)
 
+        players = [p for p in self.players if p.bet_amount>0]
+        players.sort(key=lambda x: x.bet_amount)
+
+        level = 0
         bank_delta = 0
-        for p in self.players:
-            bank_delta += p.bet_amount
+        for p in players:
+            if p.bet_type == Bet.FOLD:
+                bank_delta += p.bet_amount
+                p.bet_amount = 0
+                p.bet_delta = 0
+                continue
+            elif not level:
+                level = p.bet_amount
+            bank_delta += level
+            p.user.balance += p.bet_amount-level
             p.bet_amount = 0
             p.bet_delta = 0
-            if p.bet_type != Bet.FOLD:
-                p.bet_type = None
+            if p.bet_type == Bet.FOLD:
+                continue
+            p.bet_type = None
+
         self.bank += bank_delta
         self.bet_level = 0
         self.bets_all_same = True
-        self.log_info("<- %s bank: %s", self.round, self.bank)
+        self.log_info("<- %s delta: %s bank: %s", self.round, bank_delta, self.bank)
         event = GAME_ROUND(amount = self.bank, delta = bank_delta)
         await self.broadcast(event)
 
