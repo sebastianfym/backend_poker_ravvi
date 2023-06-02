@@ -85,32 +85,30 @@ class Game(ObjectLogger):
             await self.round_end()
             return False
 
-        #if not self.count_has_options:
-        #    # open cards
-        #    pass
-
         player = self.rotate_players()
-
         if self.round == Round.PREFLOP:
             if player.user_id == self.bet_id and self.bets_all_same:
                 await self.round_end()
                 await self.round_begin(Round.FLOP)
                 if self.count_has_options>1:
                     return True
+        player = self.current_player
         if self.round == Round.FLOP:
-            if player.user_id == self.bet_id and self.bets_all_same:
+            if player.user_id == self.bet_id:
                 await self.round_end()
                 await self.round_begin(Round.TERN)
                 if self.count_has_options>1:
                     return True
+        player = self.current_player
         if self.round == Round.TERN:
-            if player.user_id == self.bet_id and self.bets_all_same:
+            if player.user_id == self.bet_id:
                 await self.round_end()
                 await self.round_begin(Round.RIVER)
                 if self.count_has_options>1:
                     return True
+        player = self.current_player
         if self.round == Round.RIVER:
-            if player.user_id == self.bet_id and self.bets_all_same:
+            if player.user_id == self.bet_id:
                 await self.round_end()
                 return False
 
@@ -135,7 +133,7 @@ class Game(ObjectLogger):
                 self.bet_level = p.bet_amount
                 if p.bet_type != Bet.ALLIN:
                     self.bets_all_same = False
-        self.log_info(f"status: in_the_game:{self.count_in_the_game} has_options:{self.count_has_options} bet_level:{self.bet_level} bets_all_same:{self.bets_all_same}")
+        self.log_info(f"status: in_the_game:{self.count_in_the_game} has_options:{self.count_has_options} bet_id: {self.bet_id} bet_level:{self.bet_level} bets_all_same:{self.bets_all_same}")
     
     def get_bet_limits(self, player=None, BB=2):
         p = player or self.current_player
@@ -176,6 +174,7 @@ class Game(ObjectLogger):
             self.log_info("player timeout: %s", player.user_id)
         if player.bet_type is None:
             player.bet_type = Bet.FOLD
+            player.bet_delta = 0
         await self.broadcast_PLAYER_BET()
 
     async def wait_for_player_bet(self):
