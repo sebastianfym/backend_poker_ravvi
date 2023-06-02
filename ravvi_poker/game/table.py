@@ -38,8 +38,17 @@ class Table(ObjectLogger):
         try:
             while True:
                 await asyncio.sleep(self.NEW_GAME_DELAY)
+
+                # set user balances
+                for u in self.seats:
+                    if not u:
+                        continue
+                    if u.balance<=0:
+                        u.balance = 1000
+
                 # try to start new game
                 users = self.get_players(2)
+
                 if users:
                     # ok to start
                     with DBI() as db:
