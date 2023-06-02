@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 import logging
 import time
 import random
@@ -18,9 +18,6 @@ class Round(IntEnum):
     FLOP = 2
     TERN = 3
     RIVER = 4
-    SHOWDOWN = 5
-
-#logging.basicConfig(level=logging.DEBUG)
 
 class Game(ObjectLogger):
 
@@ -64,9 +61,13 @@ class Game(ObjectLogger):
         # cards
         self.cards = []
         # roles
-        self.players[0].role = Player.ROLE_DEALER
-        self.players[1].role = Player.ROLE_SMALL_BLIND
-        self.players[2].role = Player.ROLE_BIG_BLIND
+        if len(self.players)>2:
+            self.players[0].role = Player.ROLE_DEALER
+            self.players[1].role = Player.ROLE_SMALL_BLIND
+            self.players[2].role = Player.ROLE_BIG_BLIND
+        else:
+            self.players[0].role = Player.ROLE_SMALL_BLIND
+            self.players[1].role = Player.ROLE_BIG_BLIND
 
         await self.broadcast_GAME_BEGIN()
         await self.round_begin(Round.PREFLOP)
@@ -84,31 +85,31 @@ class Game(ObjectLogger):
             await self.round_end()
             return False
 
-        #if not self.count_has_options:
-        #    # open cards
-        #    pass
-
         player = self.rotate_players()
-
         if self.round == Round.PREFLOP:
             if player.user_id == self.bet_id and self.bets_all_same:
                 await self.round_end()
                 await self.round_begin(Round.FLOP)
-                return True
-        elif self.round == Round.FLOP:
-            if player.user_id == self.bet_id and self.bets_all_same:
+                if self.count_has_options>1:
+                    return True
+        player = self.current_player
+        if self.round == Round.FLOP:
+            if player.user_id == self.bet_id:
                 await self.round_end()
                 await self.round_begin(Round.TERN)
-                return True
-        elif self.round == Round.TERN:
-            if player.user_id == self.bet_id and self.bets_all_same:
+                if self.count_has_options>1:
+                    return True
+        player = self.current_player
+        if self.round == Round.TERN:
+            if player.user_id == self.bet_id:
                 await self.round_end()
                 await self.round_begin(Round.RIVER)
-                return True
-        elif self.round == Round.RIVER:
-            if player.user_id == self.bet_id and self.bets_all_same:
+                if self.count_has_options>1:
+                    return True
+        player = self.current_player
+        if self.round == Round.RIVER:
+            if player.user_id == self.bet_id:
                 await self.round_end()
-                await self.round_begin(Round.SHOWDOWN)
                 return False
 
         return True
@@ -132,7 +133,34 @@ class Game(ObjectLogger):
                 self.bet_level = p.bet_amount
                 if p.bet_type != Bet.ALLIN:
                     self.bets_all_same = False
-        self.log_info(f"status: in_the_game:{self.count_in_the_game} has_options:{self.count_has_options} bet_level:{self.bet_level} bets_all_same:{self.bets_all_same}")
+        self.log_info(f"status: in_the_game:{self.count_in_the_game} has_options:{self.count_has_options} bet_id: {self.bet_id} bet_level:{self.bet_level} bets_all_same:{self.bets_all_same}")
+    
+    def get_bet_limits(self, player=None, BB=2):
+        p = player or self.current_player
+        call_delta = max(0, self.bet_level-p.bet_amount)
+        if self.count_has_options>2:
+            raise_min = call_delta + BB
+        else:
+            raise_min = call_delta + max(BB, call_delta)
+        raise_max = p.balance
+        return call_delta, raise_min, raise_max
+
+    def get_bet_options(self, player) -> Tuple[List[Bet], dict]:
+        call_delta, raise_min, raise_max = self.get_bet_limits(player)
+        options = [Bet.FOLD]
+        params = dict()
+        if call_delta==0:
+            options.append(Bet.CHECK)
+        elif call_delta>0 and call_delta<raise_max:
+            options.append(Bet.CALL)
+            params.update(call=call_delta)
+        if raise_min<raise_max:
+            options.append(Bet.RAISE)
+            params.update(raise_min = raise_min, raise_max = raise_max)
+        if raise_max:
+            options.append(Bet.ALLIN)
+            params.update(raise_max=raise_max)
+        return options, params
     
     async def player_move(self):
         player = self.current_player
@@ -146,6 +174,7 @@ class Game(ObjectLogger):
             self.log_info("player timeout: %s", player.user_id)
         if player.bet_type is None:
             player.bet_type = Bet.FOLD
+            player.bet_delta = 0
         await self.broadcast_PLAYER_BET()
 
     async def wait_for_player_bet(self):
@@ -157,7 +186,7 @@ class Game(ObjectLogger):
         assert p.user_id == user_id
         assert Bet.verify(bet)
 
-        call_delta, raise_min, raise_max = p.get_bet_params(self.bet_level)
+        call_delta, raise_min, raise_max = self.get_bet_limits(p)
 
         if bet == Bet.FOLD:
             p.bet_delta = 0
@@ -169,8 +198,7 @@ class Game(ObjectLogger):
             assert call_delta>0
             p.bet_delta = call_delta
         elif bet == Bet.RAISE:
-            amount = p.bet_amount + delta
-            assert raise_min<=amount and amount<=raise_max
+            assert raise_min<=delta and delta<=raise_max
             p.bet_delta = delta
         elif bet == Bet.ALLIN:
             p.bet_delta = p.balance
@@ -194,14 +222,18 @@ class Game(ObjectLogger):
         p = self.rotate_players(Player.ROLE_SMALL_BLIND)
 
         if self.round == Round.PREFLOP:
-            while True:
-                p.cards = []
-                for _ in range(2):
-                    p.cards.append(self.deck.pop())
-                await self.broadcast_PLAYER_CARDS(p)
+            if len(self.players)==2:
                 p = self.rotate_players()
-                if p.role ==Player.ROLE_SMALL_BLIND:
-                    break
+            for p in self.players:
+                p.cards = []
+                p.cards.append(self.deck.pop())
+            for p in self.players:
+                p.cards.append(self.deck.pop())
+            for p in self.players:
+                await self.broadcast_PLAYER_CARDS(p)
+            
+            p = self.rotate_players(Player.ROLE_SMALL_BLIND)
+            p = self.players[0]
 
             # small blind
             assert p.role == Player.ROLE_SMALL_BLIND
@@ -220,18 +252,12 @@ class Game(ObjectLogger):
             p.user.balance -= p.bet_delta
             await self.broadcast_PLAYER_BET()
             p = self.rotate_players()
-
-        elif not self.count_has_options:
-            while True:
-                if p.in_the_game and not p.cards_open:
-                    p.cards_open = True
-                    await self.broadcast_PLAYER_CARDS(p)
-                    self.log_info("player %s: open cards %s", p.user_id, p.cards)
-                p = self.rotate_players()
-                if p.role ==Player.ROLE_SMALL_BLIND:
-                    break
+        
+        elif len(self.players)==2:
+            p = self.rotate_players()
         
         if self.round == Round.FLOP:
+            self.deck.pop()
             for _ in range(3):
                 self.cards.append(self.deck.pop())
             await self.broadcast_GAME_CARDS()
@@ -239,22 +265,43 @@ class Game(ObjectLogger):
             self.cards.append(self.deck.pop())
             await self.broadcast_GAME_CARDS()
 
-        if self.round != Round.SHOWDOWN:
-            self.bet_id = p.user_id
+        self.bet_id = p.user_id
             
 
     async def round_end(self):
+        if self.count_in_the_game>1 and self.count_has_options<=1:
+            self.rotate_players(Player.ROLE_SMALL_BLIND)
+            for p in self.players:
+                if p.in_the_game and not p.cards_open:
+                    p.cards_open = True
+                    await self.broadcast_PLAYER_CARDS(p)
+                    self.log_info("player %s: open cards %s", p.user_id, p.cards)
+
+        players = [p for p in self.players if p.bet_amount>0]
+        players.sort(key=lambda x: x.bet_amount)
+
+        level = 0
         bank_delta = 0
-        for p in self.players:
-            bank_delta += p.bet_amount
+        for p in players:
+            if p.bet_type == Bet.FOLD:
+                bank_delta += p.bet_amount
+                p.bet_amount = 0
+                p.bet_delta = 0
+                continue
+            elif not level:
+                level = p.bet_amount
+            bank_delta += level
+            p.user.balance += p.bet_amount-level
             p.bet_amount = 0
             p.bet_delta = 0
-            if p.bet_type != Bet.FOLD:
-                p.bet_type = None
+            if p.bet_type == Bet.FOLD:
+                continue
+            p.bet_type = None
+
         self.bank += bank_delta
         self.bet_level = 0
         self.bets_all_same = True
-        self.log_info("<- %s bank: %s", self.round, self.bank)
+        self.log_info("<- %s delta: %s bank: %s", self.round, bank_delta, self.bank)
         event = GAME_ROUND(amount = self.bank, delta = bank_delta)
         await self.broadcast(event)
 
@@ -266,7 +313,6 @@ class Game(ObjectLogger):
         return self.players[0]
     
     async def on_end(self):
-        #self.rotate_players(Player.ROLE_SMALL_BLIND)
         while self.current_player.user_id != self.bet_id:
             self.rotate_players()
 
@@ -286,7 +332,7 @@ class Game(ObjectLogger):
                     winners = []
             winners.append(p)
             best_hand = p.hand
-            if not p.cards_open:
+            if not p.cards_open and self.count_in_the_game>1:
                 p.cards_open = True
                 await self.broadcast_PLAYER_CARDS(p)
                 self.log_info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.rank)
@@ -345,7 +391,7 @@ class Game(ObjectLogger):
         
     async def broadcast_PLAYER_MOVE(self):
         player = self.current_player
-        options, params = player.get_bet_options(self.bet_level)
+        options, params = self.get_bet_options(player)
         event = GAME_PLAYER_MOVE(
             user_id = player.user_id,
             options = options, 

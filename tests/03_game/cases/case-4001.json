@@ -1,0 +1,94 @@
+{
+    "users": [
+        {"id": 111, "username": "u1", "balance": 54.2},
+        {"id": 222, "username": "u2", "balance": 46},
+        {"id": 333, "username": "u3", "balance": 40},
+        {"id": 444, "username": "u4", "balance": 129}
+    ],
+    "deck": ["A♠", "T♠", "T♥", "5♠", "3♣", "K♣", "J♣", "7♥"],
+    "moves": [
+        {"type": "GAME_BEGIN"}, 
+        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["A♠", "3♣"]}, 
+        {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": ["T♠", "K♣"]}, 
+        {"type": "PLAYER_CARDS", "user_id": 444, "cards_open": false, "cards": ["T♥", "J♣"]},
+        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["5♠", "7♥"]},
+
+        {"type": "PLAYER_BET", "user_id": 222, "bet": "SMALL_BLIND", "delta": 1, "amount": 1, "balance": 45}, 
+        {"type": "PLAYER_BET", "user_id": 333, "bet": "BIG_BLIND", "delta": 2, "amount": 2, "balance": 38},
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 444, "options": ["FOLD", "CALL", "RAISE", "ALLIN"], 
+            "call": 2, "raise_min": 4, "raise_max": 129}, 
+        {"user_id": 444, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 4}, 
+        {"type": "PLAYER_BET", "user_id": 444, "bet": "RAISE", "delta": 4, "amount": 4, "balance": 125}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 111, "options": ["FOLD", "CALL", "RAISE", "ALLIN"], 
+            "call": 4, "raise_min": 6, "raise_max": 54.2}, 
+        {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 6}, 
+        {"type": "PLAYER_BET", "user_id": 111, "bet": "RAISE", "delta": 6, "amount": 6, "balance": 48.2}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 222, "options": ["FOLD", "CALL", "RAISE", "ALLIN"], 
+            "call": 5, "raise_min": 7, "raise_max": 45}, 
+        {"user_id": 222, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 7}, 
+        {"type": "PLAYER_BET", "user_id": 222, "bet": "RAISE", "delta": 7, "amount": 8, "balance": 38}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 333, "options": ["FOLD", "CALL", "RAISE", "ALLIN"], 
+            "call": 6, "raise_min": 8, "raise_max": 38}, 
+        {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 8}, 
+        {"type": "PLAYER_BET", "user_id": 333, "bet": "RAISE", "delta": 8, "amount": 10, "balance": 30}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 444, "options": ["FOLD", "CALL", "RAISE", "ALLIN"], 
+            "call": 6, "raise_min": 8, "raise_max": 125}, 
+        {"user_id": 444, "type": "CMD_PLAYER_BET", "bet": "FOLD"}, 
+        {"type": "PLAYER_BET", "user_id": 444, "bet": "FOLD", "delta": 0, "amount": 4, "balance": 125}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 111, "options": ["FOLD", "CALL", "RAISE", "ALLIN"], 
+            "call": 4, "raise_min": 6, "raise_max": 48.2}, 
+        {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 6}, 
+        {"type": "PLAYER_BET", "user_id": 111, "bet": "RAISE", "delta": 6, "amount": 12, "balance": 42.2}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 222, "options": ["FOLD", "CALL", "RAISE", "ALLIN"], 
+            "call": 4, "raise_min": 6, "raise_max": 38}, 
+        {"user_id": 222, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 6}, 
+        {"type": "PLAYER_BET", "user_id": 222, "bet": "RAISE", "delta": 6, "amount": 14, "balance": 32}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 333, "options": ["FOLD", "CALL", "RAISE", "ALLIN"], 
+            "call": 4, "raise_min": 6, "raise_max": 30}, 
+        {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 6}, 
+        {"type": "PLAYER_BET", "user_id": 333, "bet": "RAISE", "delta": 6, "amount": 16, "balance": 24}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 111, "options": ["FOLD", "CALL", "RAISE", "ALLIN"], 
+            "call": 4, "raise_min": 6, "raise_max": 42.2}, 
+        {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "FOLD"}, 
+        {"type": "PLAYER_BET", "user_id": 111, "bet": "FOLD", "delta": 0, "amount": 12, "balance": 42.2}, 
+    
+        {"type": "GAME_PLAYER_MOVE", "user_id": 222, "options": ["FOLD", "CALL", "RAISE", "ALLIN"], 
+            "call": 2, "raise_min": 4, "raise_max": 32}, 
+        {"user_id": 222, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 4}, 
+        {"type": "PLAYER_BET", "user_id": 222, "bet": "RAISE", "delta": 4, "amount": 18, "balance": 28}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 333, "options": ["FOLD", "CALL", "RAISE", "ALLIN"], 
+            "call": 2, "raise_min": 4, "raise_max": 24}, 
+// NOT MIN RAISE
+        {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 10}, 
+        {"type": "PLAYER_BET", "user_id": 333, "bet": "RAISE", "delta": 10, "amount": 26, "balance": 14}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 222, "options": ["FOLD", "CALL", "RAISE", "ALLIN"], 
+            "call": 8, "raise_min": 16, "raise_max": 28}, 
+        {"user_id": 222, "type": "CMD_PLAYER_BET", "bet": "RAISE", "amount": 16}, 
+        {"type": "PLAYER_BET", "user_id": 222, "bet": "RAISE", "delta": 16, "amount": 34, "balance": 12}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 333, "options": ["FOLD", "CALL", "ALLIN"], 
+            "call": 8, "raise_min": null, "raise_max": 14}, 
+        {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "ALLIN"}, 
+        {"type": "PLAYER_BET", "user_id": 333, "bet": "ALLIN", "delta": 14, "amount": 40, "balance": 0}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 222, "options": ["FOLD", "CALL", "ALLIN"], 
+            "call": 6, "raise_min": null, "raise_max": 12}, 
+        {"user_id": 222, "type": "CMD_PLAYER_BET", "bet": "FOLD"}, 
+        {"type": "PLAYER_BET", "user_id": 222, "bet": "FOLD", "delta": 0, "amount": 34, "balance": 12}, 
+
+        {"type": "GAME_ROUND", "delta": 90, "amount": 90}, 
+        {"type": "GAME_END", "winners": [{"user_id": 333, "balance": 90, "delta": 50}]}
+    ]
+}
+

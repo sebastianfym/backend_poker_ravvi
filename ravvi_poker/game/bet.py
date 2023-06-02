@@ -13,3 +13,11 @@ class Bet(IntEnum):
     @classmethod
     def verify(cls, value):
         return value in cls._value2member_map_
+    
+    @classmethod
+    def decode(cls, x):
+        if isinstance(x, str):
+            return cls.__members__[x]
+        return cls._value2member_map_[x]
+
+
