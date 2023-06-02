@@ -311,11 +311,13 @@ class Game(ObjectLogger):
         self.bet_level = 0
         self.bets_all_same = True
         self.log_info("<- %s delta: %s bank: %s", self.round, bank_delta, self.bank)
-        event = GAME_ROUND(amount = self.bank, delta = bank_delta)
-        await self.broadcast(event)
 
         # end round sleep
         await asyncio.sleep(self.SLEEP_ROUND_END)
+
+        event = GAME_ROUND(amount = self.bank, delta = bank_delta)
+        await self.broadcast(event)
+
 
     def rotate_players(self, role=None):
         while True:
