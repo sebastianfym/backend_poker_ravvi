@@ -39,7 +39,7 @@ class Game(ObjectLogger):
         self.bet_level = 0
         self.bets_all_same = False
         self.bank = 0
-        self.wait_timeout = 60
+        self.wait_timeout = 30
         if deck:
             self.deck = list(reversed(deck))
         else:
