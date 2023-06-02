@@ -261,11 +261,15 @@ class Game(ObjectLogger):
             for _ in range(3):
                 self.cards.append(self.deck.pop())
             await self.broadcast_GAME_CARDS()
+
         elif self.round in (Round.TERN, Round.RIVER):
             self.cards.append(self.deck.pop())
             await self.broadcast_GAME_CARDS()
 
         self.bet_id = p.user_id
+        
+        # round begin sleep
+        await asyncio.sleep(1.5)
             
 
     async def round_end(self):
@@ -305,6 +309,9 @@ class Game(ObjectLogger):
         event = GAME_ROUND(amount = self.bank, delta = bank_delta)
         await self.broadcast(event)
 
+        # end round sleep
+        await asyncio.sleep(1.5)
+
     def rotate_players(self, role=None):
         while True:
             self.players.append(self.players.pop(0))
@@ -336,6 +343,7 @@ class Game(ObjectLogger):
                 p.cards_open = True
                 await self.broadcast_PLAYER_CARDS(p)
                 self.log_info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.rank)
+                await asyncio.sleep(1.5)
 
         balance_delta = self.bank
         p = winners[0]
@@ -351,6 +359,7 @@ class Game(ObjectLogger):
         winners.append(w)
         event = GAME_END(winners=winners)
         await self.broadcast(event)
+        await asyncio.sleep(1.5)
 
     async def broadcast(self, event: Event):
         if self.table:
