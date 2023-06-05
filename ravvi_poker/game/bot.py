@@ -26,12 +26,14 @@ class Bot(Client):
     async def run(self):
         self.log_info("begin")
         try:
-            cmd = CMD_TABLE_JOIN(table_id=1, take_seat=True)
-            await self.dispatch_command(cmd)
             await self.process_queue()
         except asyncio.CancelledError:
             pass
         self.log_info("end")
+
+    async def join_table(self, table_id):
+        cmd = CMD_TABLE_JOIN(table_id=table_id, take_seat=True)
+        await self.dispatch_command(cmd)
 
     def bet_weight(self, x):
         if x in [Bet.CHECK, Bet.CALL]:

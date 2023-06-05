@@ -255,12 +255,12 @@ class DBI:
             return cursor.fetchall()
         
     # GAMES
-    def game_begin(self, *, table_id, users):
+    def game_begin(self, *, table_id, user_ids):
         game = None
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("INSERT INTO poker_game (table_id) VALUES (%s) RETURNING *",(table_id,))
             game = cursor.fetchone()
-            params_seq = [(game.id, x.user_id) for x in users]
+            params_seq = [(game.id, user_id) for user_id in user_ids]
             cursor.executemany("INSERT INTO poker_game_user (game_id, user_id) VALUES (%s, %s)", params_seq)
         return game
 

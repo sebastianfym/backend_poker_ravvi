@@ -21,16 +21,26 @@ class Manager(Logger_MixIn):
             await table.add_client(client, True)
 
     async def remove_client(self, client):
+        self.log_info("client %s -> %s", client.client_id, client.tables)
         for table in self.tables.values():
             await table.remove_client(client)
+        self.log_info("client %s removed", client.client_id)
 
     async def dispatch_command(self, client, command):
         self.log_debug("dispath: %s", command)
         table = self.tables.get(command.table_id, None)
-        if not table:
-            if command.type == Event.CMD_TABLE_JOIN:
+        if command.type == Event.CMD_TABLE_JOIN:
+            if not table:
+                with DBI() as db:
+                    row = db.get_table(command.table_id)
+                if row:
+                    self.log_info("table %s loaded", row.id) 
+                    table = self.add_table(row.id)
+                    await table.start()
+            if not table:
                 event = TABLE_ERROR(command.table_id, error_id=404, message='Table not found')
                 client.send(event)
+        if not table:
             return
         await table.handle_command(client, command)
 
@@ -40,26 +50,31 @@ class Manager(Logger_MixIn):
         return table
 
     async def start(self):
-        # get list of tables
-        with DBI() as db:
-            tables = db.get_active_tables()
-
-        for row in tables:
-            table = self.add_table(row.id)
-            await table.start()
-
         for i in range(1, 4):
             bot = Bot(self, i)
             self.bots.append(bot)
             await bot.start()
+
+        # get list of tables
+        with DBI() as db:
+            tables = db.get_active_tables()
+            self.log_info("loaded %s tables", len(tables))
+
+        for row in tables:
+            table = self.add_table(row.id)
+            await table.start()
+            if row.club_id:
+                continue
+            for bot in self.bots:
+                await bot.join_table(table.table_id)
+
         self.logger.info('Manager: started: %s tables, %s bots', len(self.tables), len(self.bots))
 
     async def stop(self):
         for bot in self.bots:
             await bot.stop()
-        self.bots = []
-
         for table in self.tables.values():
             await table.stop()
         self.tables = {}
+        self.bots = []
         self.logger.info('Manager: stopped')

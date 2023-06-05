@@ -2,9 +2,7 @@ from dataclasses import dataclass, asdict
 
 @dataclass
 class User:
-    user_id: int
+    id: int
     username: str
     balance: int
-
-    def asdict(self):
-        return asdict(self)
+    connected: int = 0
