@@ -126,6 +126,11 @@ class DBI:
             cursor.execute(sql, args)
             return cursor.fetchone()
 
+    def update_user(self, id, username):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("UPDATE user_profile SET username=%s WHERE id=%s RETURNING *",(username, id))
+            return cursor.fetchone()
+
     def update_user_password(self, id, password_hash):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("UPDATE user_profile SET password_hash=%s WHERE id=%s RETURNING id, uuid, username", (password_hash, id))
@@ -133,7 +138,7 @@ class DBI:
 
     def update_user_email(self, id, email):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("UPDATE user_profile SET email=%s WHERE id=%s RETURNING id, uuid, email", (email, id))
+            cursor.execute("UPDATE user_profile SET email=%s WHERE id=%s RETURNING *", (email, id))
             return cursor.fetchone()
 
     def create_user_login(self, user_id, device_id):
