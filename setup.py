@@ -54,6 +54,7 @@ setuptools.setup(
         "gunicorn",
         "websockets",
         "pydantic[email]",
+        "aiofiles",
     ],
     extras_require={
         "tests": [
