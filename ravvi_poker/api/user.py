@@ -59,6 +59,8 @@ async def save_base64_photo(base64_photo: str,
 
     Возвращает сгенерированное название фото.
     """
+    Path(upload_path).mkdir(parents=True, exist_ok=True)
+
     bytes_photo = base64.b64decode(base64_photo.encode())
     photo_name = str(uuid.uuid4())
     full_photo_path = upload_path.joinpath(photo_name)
@@ -96,14 +98,18 @@ async def v1_update_user_profile(params: UserUpdateFields,
             field_value = getattr(params, field, None)
             field_value = field_value if field_value else getattr(user, field)
             setattr(params, field, field_value)
-        user = dbi.update_user(user.id, params.username, params.photo)
+        user = dbi.update_user_profile(user.id, params.username, params.photo)
 
     return await get_user_profile(user)
 
 
-@router.delete("/profile")
-async def v1_delete_user_profile(session_uuid: RequireSessionUUID):
-    pass
+@router.delete("/profile", status_code=204)
+async def v1_deactivate_user(session_uuid: RequireSessionUUID):
+    with DBI() as dbi:
+        _, user = get_session_and_user(dbi, session_uuid)
+        dbi.deactivate_user(user.id)
+
+    return {}
 
 
 @router.post("/profile/email")
