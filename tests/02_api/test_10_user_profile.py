@@ -143,3 +143,48 @@ def test_set_user_email():
     assert profile2["username"] == profile1["username"]
     assert profile2["email"] == params["email"]
     assert profile2["has_password"] is False
+
+
+def test_deactivate_user():
+    # register new guest
+    response = client.post("/v1/auth/register", json={})
+    assert response.status_code == 200
+
+    result = response.json()
+    username = result["username"]
+    device_token = result["device_token"]
+
+    # login via device_token
+    params = {"device_token": device_token}
+    response = client.post("/v1/auth/device", json=params)
+    assert response.status_code == 200
+
+    # check user
+    profile1 = response.json()
+    assert profile1["username"] == username
+    assert profile1["device_token"] == device_token
+    # Должен ли выдаваться новый access_token посе логина через device?
+
+    # set user password
+    user_password = "test1234"
+    params = {"new_password": user_password}
+    headers = {"Authorization": "Bearer " + profile1["access_token"]}
+    response = client.post("/v1/auth/device", json=params, headers=headers)
+    assert response.status_code == 200
+
+    #  login via user_password
+    params = {"username": username, "password": user_password}
+    response = client.post("/v1/auth/login", json=params)
+    assert response.status_code == 200
+
+    profile2 = response.json()
+    assert profile2["username"] == username
+    assert profile2["device_token"] == device_token
+    # assert profile2["access_token"] == access_token
+
+    # Deactivate user
+    # headers = {"Authorization": "Bearer " + access_token}
+    response = client.post("/v1/user/profile", json=params, headers=headers)
+    assert response.status_code == 204
+
+    # TODO Закончить
