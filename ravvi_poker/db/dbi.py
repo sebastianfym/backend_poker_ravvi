@@ -126,9 +126,9 @@ class DBI:
             cursor.execute(sql, args)
             return cursor.fetchone()
 
-    def update_user(self, id, username):
+    def update_user(self, id, username, photo):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("UPDATE user_profile SET username=%s WHERE id=%s RETURNING *",(username, id))
+            cursor.execute("UPDATE user_profile SET username=%s, photo=%s WHERE id=%s RETURNING *",(username, photo, id))
             return cursor.fetchone()
 
     def update_user_password(self, id, password_hash):
