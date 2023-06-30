@@ -1,3 +1,4 @@
+import json
 from fastapi.testclient import TestClient
 
 from ravvi_poker.api.main import app
@@ -46,6 +47,7 @@ def test_user_profile():
     assert profile2["has_password"] is True
 
 
+# TODO проверить работу с передачей upload_path в photo
 def test_update_user_profile():
     # register new guest
     access_token, username = register_guest()
@@ -149,10 +151,10 @@ def test_deactivate_user():
     # register new guest
     response = client.post("/v1/auth/register", json={})
     assert response.status_code == 200
-
-    result = response.json()
-    username = result["username"]
-    device_token = result["device_token"]
+    profile = response.json()
+    device_token = profile["device_token"]
+    user_id = profile["user_id"]
+    username = profile["username"]
 
     # login via device_token
     params = {"device_token": device_token}
@@ -161,30 +163,55 @@ def test_deactivate_user():
 
     # check user
     profile1 = response.json()
-    assert profile1["username"] == username
     assert profile1["device_token"] == device_token
-    # Должен ли выдаваться новый access_token посе логина через device?
+    assert profile1["user_id"] == user_id
+    assert profile1["username"] == username
 
     # set user password
+    access_token = profile1["access_token"]
     user_password = "test1234"
     params = {"new_password": user_password}
-    headers = {"Authorization": "Bearer " + profile1["access_token"]}
-    response = client.post("/v1/auth/device", json=params, headers=headers)
+    headers = {"Authorization": "Bearer " + access_token}
+    response = client.post("/v1/auth/password", json=params, headers=headers)
     assert response.status_code == 200
 
-    #  login via user_password
-    params = {"username": username, "password": user_password}
-    response = client.post("/v1/auth/login", json=params)
-    assert response.status_code == 200
-
+    # check user password
+    headers = {"Authorization": "Bearer " + access_token}
+    response = client.get("/v1/user/profile", headers=headers)
     profile2 = response.json()
-    assert profile2["username"] == username
-    assert profile2["device_token"] == device_token
-    # assert profile2["access_token"] == access_token
+    assert profile2["id"] == profile1["user_id"]
+    assert profile2["username"] == profile1["username"]
+    assert profile2["has_password"] is True
 
-    # Deactivate user
-    # headers = {"Authorization": "Bearer " + access_token}
-    response = client.post("/v1/user/profile", json=params, headers=headers)
+    # login via username and password
+    params = {"username": username, "password": user_password}
+    response = client.post("/v1/auth/login", data=params)
+    assert response.status_code == 200
+
+    # check user
+    profile3 = response.json()
+    assert profile3["user_id"] == profile2["id"]
+    assert profile3["username"] == profile2["username"]
+
+    # deactivate user
+    access_token = profile3["access_token"]
+    headers = {"Authorization": "Bearer " + access_token}
+    response = client.delete("/v1/user/profile", headers=headers)
     assert response.status_code == 204
 
-    # TODO Закончить
+    # login via device_token
+    device_token = profile3["device_token"]
+    params = {"device_token": device_token}
+    response = client.post("/v1/auth/device", json=params)
+    assert response.status_code == 403
+
+    # login via old device_token
+    device_token = profile1["device_token"]
+    params = {"device_token": device_token}
+    response = client.post("/v1/auth/device", json=params)
+    assert response.status_code == 403
+
+    # login via username and password
+    params = {"username": username, "password": user_password}
+    response = client.post("/v1/auth/login", data=params)
+    assert response.status_code == 403
