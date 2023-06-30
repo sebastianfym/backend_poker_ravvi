@@ -33,6 +33,7 @@ class UserUpdateFields(BaseModel):
 
 
 async def get_user_profile(user) -> UserProfile:
+    """Return user profile"""
     photo = await return_base64_photo(user.photo) if user.photo else user.photo
     has_password = bool(user.password_hash)
 
@@ -47,6 +48,7 @@ async def get_user_profile(user) -> UserProfile:
 
 @router.get("/profile")
 async def v1_get_user_profile(session_uuid: RequireSessionUUID):
+    """Get user profile"""
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
 
@@ -55,9 +57,14 @@ async def v1_get_user_profile(session_uuid: RequireSessionUUID):
 
 async def save_base64_photo(base64_photo: str,
                             upload_path: Path = USER_PHOTO_PATH) -> str:
-    """Сохраняет base64 фотографии
+    """Save base64 user photo
 
-    Возвращает сгенерированное название фото.
+    Args:
+        base64_photo (str): base64 photo string
+        upload_path (Path): absolute path to photo upload folder
+
+    Returns:
+        str: generated photo name
     """
     Path(upload_path).mkdir(parents=True, exist_ok=True)
 
@@ -71,7 +78,15 @@ async def save_base64_photo(base64_photo: str,
 
 async def return_base64_photo(photo_name: str,
                               upload_path: Path = USER_PHOTO_PATH) -> str:
-    """Возвращает фото в формате base64"""
+    """Return encoded base64 photo
+    
+    Args:
+        photo_name (str): photo name
+        upload_path (Path): absolute path to photo upload folder
+    
+    Returns:
+        str: base64 photo string
+    """
     full_photo_path = upload_path.joinpath(photo_name)
     async with aiofiles.open(full_photo_path, "rb") as photo:
         base64_photo = base64.b64encode(await photo.read())
@@ -79,6 +94,7 @@ async def return_base64_photo(photo_name: str,
 
 
 async def update_user_photo(user, base64_photo, upload_path=USER_PHOTO_PATH):
+    """Update user profile photo"""
     if user.photo:
         full_old_photo_path = USER_PHOTO_PATH.joinpath(user.photo)
         full_old_photo_path.unlink(missing_ok=True)
@@ -89,6 +105,7 @@ async def update_user_photo(user, base64_photo, upload_path=USER_PHOTO_PATH):
 @router.patch("/profile")
 async def v1_update_user_profile(params: UserUpdateFields,
                                  session_uuid: RequireSessionUUID):
+    """Update user profile"""
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
 
@@ -105,6 +122,7 @@ async def v1_update_user_profile(params: UserUpdateFields,
 
 @router.delete("/profile", status_code=204)
 async def v1_deactivate_user(session_uuid: RequireSessionUUID):
+    """Deactivate user"""
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
         dbi.deactivate_user(user.id)
@@ -114,6 +132,7 @@ async def v1_deactivate_user(session_uuid: RequireSessionUUID):
 
 @router.post("/profile/email")
 async def v1_set_user_email(params: UserEmail, session_uuid: RequireSessionUUID):
+    """Set user email"""
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
         user = dbi.update_user_email(user.id, params.email)
