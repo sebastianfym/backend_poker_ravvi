@@ -46,7 +46,7 @@ async def get_user_profile(user) -> UserProfile:
     )
 
 
-@router.get("/profile")
+@router.get("/profile", response_model=UserProfile, summary="Get user profile")
 async def v1_get_user_profile(session_uuid: RequireSessionUUID):
     """Get user profile"""
     with DBI() as dbi:
@@ -102,7 +102,7 @@ async def update_user_photo(user, base64_photo, upload_path=USER_PHOTO_PATH):
     return await save_base64_photo(base64_photo)
 
 
-@router.patch("/profile")
+@router.patch("/profile", response_model=UserProfile, summary="Update user profile")
 async def v1_update_user_profile(params: UserUpdateFields,
                                  session_uuid: RequireSessionUUID):
     """Update user profile"""
@@ -120,7 +120,7 @@ async def v1_update_user_profile(params: UserUpdateFields,
     return await get_user_profile(user)
 
 
-@router.delete("/profile", status_code=204)
+@router.delete("/profile", status_code=204, summary="Deactivate user")
 async def v1_deactivate_user(session_uuid: RequireSessionUUID):
     """Deactivate user"""
     with DBI() as dbi:
@@ -130,7 +130,7 @@ async def v1_deactivate_user(session_uuid: RequireSessionUUID):
     return {}
 
 
-@router.post("/profile/email")
+@router.post("/profile/email", response_model=UserProfile, summary="Set user email")
 async def v1_set_user_email(params: UserEmail, session_uuid: RequireSessionUUID):
     """Set user email"""
     with DBI() as dbi:
