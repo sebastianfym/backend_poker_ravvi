@@ -126,9 +126,19 @@ class DBI:
             cursor.execute(sql, args)
             return cursor.fetchone()
 
+    def update_user_profile(self, id, username, photo):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("UPDATE user_profile SET username=%s, photo=%s WHERE id=%s RETURNING *",(username, photo, id))
+            return cursor.fetchone()
+
     def update_user_password(self, id, password_hash):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("UPDATE user_profile SET password_hash=%s WHERE id=%s RETURNING id, uuid, username", (password_hash, id))
+            return cursor.fetchone()
+
+    def update_user_email(self, id, email):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("UPDATE user_profile SET email=%s WHERE id=%s RETURNING *", (email, id))
             return cursor.fetchone()
 
     def create_user_login(self, user_id, device_id):
@@ -189,6 +199,21 @@ class DBI:
                 self.dbi.execute("UPDATE user_session SET closed_ts=NOW() WHERE id=%s", (session_id,))
             if login_id:
                 self.dbi.execute("UPDATE user_login SET closed_ts=NOW() WHERE id=%s", (login_id,))
+
+    def deactivate_user(self, user_id):
+        sql = """
+            UPDATE user_session
+            SET closed_ts=NOW()
+            WHERE login_id in (
+                SELECT id
+                FROM user_login
+                WHERE user_id=%s
+            )
+            """
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute(sql, (user_id,))
+            cursor.execute("UPDATE user_login SET closed_ts=NOW() WHERE user_id=%s", (user_id,))
+            cursor.execute("UPDATE user_profile SET closed_ts=NOW() WHERE id=%s", (user_id,))
 
     # CLUBS
 

@@ -52,7 +52,9 @@ setuptools.setup(
         "PyYAML",
         "uvicorn",
         "gunicorn",
-        "websockets"
+        "websockets",
+        "pydantic[email]",
+        "aiofiles",
     ],
     extras_require={
         "tests": [

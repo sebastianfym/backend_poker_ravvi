@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.exceptions import HTTPException
 from pydantic import BaseModel
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
 from . import utils
 from ..db.dbi import DBI
@@ -58,6 +58,9 @@ async def v1_device_login(params: DeviceInfo) -> UserAccessTokens:
         device = dbi.get_device(uuid=device_uuid)
         login  = dbi.get_user_login(uuid=login_uuid)
         user   = dbi.get_user(id=login.user_id)
+
+        if user and user.closed_ts:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="User deactivated")
         if device and login and user:
             # TODO: close any open session for login_id
             session = dbi.create_user_session(login.id)
@@ -99,6 +102,8 @@ async def v1_user_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends(
             raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
         if not utils.password_verify(form_data.password, user.password_hash):
             raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
+        if user and user.closed_ts:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="User deactivated")
 
         login = dbi.create_user_login(user.id, device.id)
         session = dbi.create_user_session(login.id)
