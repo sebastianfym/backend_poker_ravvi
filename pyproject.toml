@@ -36,8 +36,8 @@ tests = [
 ]
 
 [project.scripts]
-ravvi_poker_db = "ravvi_poker.db.cli:main",
-ravvi_poker_api = "ravvi_poker.api.cli:main",
+ravvi_poker_db = "ravvi_poker.db.cli:main"
+ravvi_poker_api = "ravvi_poker.api.cli:main"
 
 [tool.setuptools.package-data]
 "ravvi_poker.db.schema" = ["*.sql"]
