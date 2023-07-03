@@ -7,7 +7,7 @@ stages:
   - deploy
 
 variables:
-  PIP_CACHE_DIR: "/home/ravvi/.cache/pip"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: "/certs"
   CONTAINER_REGISTRY_PATH: cr.yandex/crpa15giodgbluup12vl
@@ -24,7 +24,7 @@ build_py:
   before_script:
     - source ~/.profile
   script:
-    - python3 ./setup.py bdist_wheel
+    - python3 -m build --wheel .
   artifacts:
     paths:
       - dist/
@@ -52,9 +52,10 @@ test_py:
   script:
     - pip3 install -f ./dist ravvi-poker[tests]
     - cd tests/
-    # init tests database
+    # init database
     - coverage erase
     - coverage run --append ~/.local/bin/ravvi_poker_db create ${RAVVI_POKER_DB_NAME}
+    # deploy db changes
     - coverage run --append ~/.local/bin/ravvi_poker_db deploy ${RAVVI_POKER_DB_NAME}
     # run tests
     - coverage run --append -m pytest --junitxml=tests.xml .
