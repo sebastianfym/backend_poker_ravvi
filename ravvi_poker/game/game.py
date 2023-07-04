@@ -432,18 +432,22 @@ def get_banks(players):
         p.extend(g)
     levels.reverse()
     banks = []
-    level, reminder = 0, 0
+    level = 0
     for l, group in levels:
-        group = list(group)
-        amount = reminder + sum([l-level for p in group])
+        amount = (l-level)*len(group)
         group = [p for p in group if p.in_the_game]
+        banks.append((amount, group))
         level = l
-        if group:
-            banks.append((amount, group))
-            reminder = 0
-        else:
-            reminder = amount
-
+    for i, (amount, group) in enumerate(banks):
+        if i==0:
+            continue
+        p_amount, p_group = banks[i-1]
+        p_ids = set(p.user_id for p in p_group)
+        ids = set(p.user_id for p in group)
+        if not p_ids or p_ids==ids:
+            banks[i-1] = None
+            banks[i] = (p_amount+amount, group)
+    banks = [b for b in banks if b]
     return banks
 
 
