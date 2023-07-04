@@ -212,6 +212,7 @@ class Game(ObjectLogger):
 
         p.bet_type = bet
         p.bet_amount += p.bet_delta
+        p.bet_total += p.bet_delta
         p.user.balance -= p.bet_delta
 
         if self.bet_level<p.bet_amount:
@@ -415,4 +416,38 @@ class Game(ObjectLogger):
             **params
         )
         await self.broadcast(event)
+
+def get_banks(players):
+    from itertools import groupby
+    players = list(players)
+    players.sort(key=lambda x: x.bet_total)
+    levels = []
+    for l, g in groupby(players, key=lambda x: x.bet_total):
+        g = list(g)
+        levels.append((l,g))
+    levels.reverse()
+    for i in range(len(levels)-1):
+        _, g = levels[i]
+        _, p = levels[i+1]
+        p.extend(g)
+    levels.reverse()
+    banks = []
+    level, reminder = 0, 0
+    for l, group in levels:
+        group = list(group)
+        amount = reminder + sum([l-level for p in group])
+        group = [p for p in group if p.in_the_game]
+        level = l
+        if group:
+            banks.append((amount, group))
+            reminder = 0
+        else:
+            reminder = amount
+
+    return banks
+
+
+
+
+
 
