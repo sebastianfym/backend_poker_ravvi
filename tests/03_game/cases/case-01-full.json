@@ -31,7 +31,7 @@
         {"user_id": 444, "type": "CMD_PLAYER_BET", "bet": "CHECK"}, 
         {"type": "PLAYER_BET"}, 
 
-        {"type": "GAME_ROUND"}, 
+        {"type": "GAME_ROUND", "banks": [{"amount": 8, "delta":8 }]}, 
         {"type": "GAME_CARDS"}, 
 
         {"type": "GAME_PLAYER_MOVE"}, 
@@ -50,7 +50,7 @@
         {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "CHECK"},
         {"type": "PLAYER_BET"}, 
 
-        {"type": "GAME_ROUND"}, 
+        {"type": "GAME_ROUND", "banks": [{"amount": 8, "delta":0 }]}, 
         {"type": "GAME_CARDS"}, 
 
         {"type": "GAME_PLAYER_MOVE"}, 
@@ -69,7 +69,7 @@
         {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "CHECK"},
         {"type": "PLAYER_BET"}, 
         
-        {"type": "GAME_ROUND"}, 
+        {"type": "GAME_ROUND", "banks": [{"amount": 8, "delta":0 }]}, 
         {"type": "GAME_CARDS"}, 
 
         {"type": "GAME_PLAYER_MOVE"}, 
@@ -88,7 +88,7 @@
         {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "CHECK"},
         {"type": "PLAYER_BET"},
 
-        {"type": "GAME_ROUND"},
+        {"type": "GAME_ROUND", "banks": [{"amount": 8, "delta":0 }]}, 
 
         {"type": "PLAYER_CARDS"}, 
         {"type": "PLAYER_CARDS"}, 

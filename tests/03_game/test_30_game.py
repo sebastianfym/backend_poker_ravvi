@@ -83,7 +83,8 @@ async def test_30_game_acceptance():
 
     assert game.current_player.user_id == 333
     assert game.round == Round.FLOP
-    assert game.bank == 6
+    assert len(game.banks) == 1
+    assert game.banks[0][0] == 6
     assert game.count_in_the_game == 3
 
     prepare_player_bet(game, 333, Bet.CHECK, None, 0)
@@ -96,7 +97,8 @@ async def test_30_game_acceptance():
     await game.run_step()
 
     assert game.round == Round.TERN
-    assert game.bank == 6
+    assert len(game.banks) == 1
+    assert game.banks[0][0] == 6
     assert game.count_in_the_game == 3
 
     prepare_player_bet(game, 333, Bet.CHECK, None, 0)
@@ -118,7 +120,8 @@ async def test_30_game_acceptance():
 #    await game.run_step()
 
     assert game.round == Round.RIVER
-    assert game.bank == 6+12
+    assert len(game.banks) == 1
+    assert game.banks[0][0] == 6+12
     assert game.count_in_the_game == 3
 
     prepare_player_bet(game, 333, Bet.CHECK, None, 0)
@@ -131,7 +134,8 @@ async def test_30_game_acceptance():
     await game.run_step()
 
     #assert game.round == Round.SHOWDOWN
-    assert game.bank == 18
+    assert len(game.banks) == 1
+    assert game.banks[0][0] == 6+12
     assert game.count_in_the_game == 2
 
     await game.on_end()
@@ -159,4 +163,5 @@ if __name__=="__main__":
     import logging
     logging.basicConfig(level=logging.DEBUG)
     import asyncio
+    asyncio.run(test_30_game_acceptance())
     asyncio.run(test_31_game_timeout())

@@ -3,12 +3,13 @@ import logging
 import time
 import random
 import asyncio
+from itertools import zip_longest, groupby
 
 from ..logging import ObjectLogger
 from .bet import Bet
 from .event import Event, GAME_BEGIN, PLAYER_CARDS, GAME_CARDS, PLAYER_BET, GAME_PLAYER_MOVE, GAME_ROUND, GAME_END
 from .player import Player, User
-from .cards import get_player_best_hand
+from .cards import get_player_best_hand, HandRank
 
 from enum import IntEnum, unique
 
@@ -38,7 +39,7 @@ class Game(ObjectLogger):
         self.bet_id = None
         self.bet_level = 0
         self.bets_all_same = False
-        self.bank = 0
+        self.banks = []
         self.wait_timeout = 30
         if deck:
             self.deck = list(reversed(deck))
@@ -218,7 +219,7 @@ class Game(ObjectLogger):
         if self.bet_level<p.bet_amount:
             self.bet_id = p.user_id
 
-        self.log_debug("player %s: balance: %s -> %s -> %s,  bet_id: %s", p.user_id, p.balance, p.bet_delta, p.bet_amount, self.bet_id)
+        self.log_debug("player %s: balance: %s -> %s -> %s (%s),  bet_id: %s", p.user_id, p.balance, p.bet_delta, p.bet_amount, p.bet_total, self.bet_id)
         self.bet_event.set()
 
     async def round_begin(self, round):
@@ -246,6 +247,7 @@ class Game(ObjectLogger):
             p.bet_type = Bet.SMALL_BLIND
             p.bet_delta = 1
             p.bet_amount += p.bet_delta
+            p.bet_total += p.bet_delta
             p.user.balance -= p.bet_delta
             await self.broadcast_PLAYER_BET()
             p = self.rotate_players()
@@ -255,6 +257,7 @@ class Game(ObjectLogger):
             p.bet_type = Bet.BIG_BLIND
             p.bet_delta = 2
             p.bet_amount += p.bet_delta
+            p.bet_total += p.bet_delta
             p.user.balance -= p.bet_delta
             await self.broadcast_PLAYER_BET()
             p = self.rotate_players()
@@ -290,33 +293,29 @@ class Game(ObjectLogger):
         players = [p for p in self.players if p.bet_amount>0]
         players.sort(key=lambda x: x.bet_amount)
 
-        level = 0
-        bank_delta = 0
+        prev_banks = self.banks
+        self.banks = get_banks(self.players)
+        banks_info = []
+        for pb, nb in zip_longest(prev_banks, self.banks):
+            pb = pb or (0, [])
+            info = dict(amount = nb[0], delta = nb[0]-pb[0])
+            banks_info.append(info)
+
         for p in players:
-            if p.bet_type == Bet.FOLD:
-                bank_delta += p.bet_amount
-                p.bet_amount = 0
-                p.bet_delta = 0
-                continue
-            elif not level:
-                level = p.bet_amount
-            bank_delta += level
-            p.user.balance += p.bet_amount-level
             p.bet_amount = 0
             p.bet_delta = 0
-            if p.bet_type == Bet.FOLD:
+            if p.bet_type in (Bet.FOLD, Bet.ALLIN):
                 continue
             p.bet_type = None
 
-        self.bank += bank_delta
         self.bet_level = 0
         self.bets_all_same = True
-        self.log_info("<- %s delta: %s bank: %s", self.round, bank_delta, self.bank)
+        self.log_info("<- %s banks: %s", self.round, banks_info)
 
         # end round sleep
         await asyncio.sleep(self.SLEEP_ROUND_END)
 
-        event = GAME_ROUND(amount = self.bank, delta = bank_delta)
+        event = GAME_ROUND(banks = banks_info)
         await self.broadcast(event)
 
 
@@ -328,44 +327,72 @@ class Game(ObjectLogger):
         return self.players[0]
     
     async def on_end(self):
+        assert self.round==Round.RIVER or self.count_in_the_game==1
+
         while self.current_player.user_id != self.bet_id:
             self.rotate_players()
+        
+        players = [p for p in self.players if p.in_the_game]
+        self.log_info("players in the game: %s", len(players))
 
-        winners = []
-        best_hand = None
-        for p in self.players:
-            if not p.in_the_game:
-                continue
-            if len(self.cards)<5:
-                winners.append(p)
-                continue
-            p.hand = get_player_best_hand(p.cards, self.cards)
-            if best_hand:
-                if p.hand.rank<best_hand.rank:
+        winners = {}
+        if len(players)>1:
+            # get best hand for player
+            for p in players:
+                p.hand = get_player_best_hand(p.cards, self.cards)
+                self.log_info("player %s hand: %s %s", p.user_id, p.hand, p.hand.rank)
+
+            rankKey = lambda x: x.hand.rank if x.hand else HandRank.EMPTY
+            for amount, bank_players in self.banks:
+                bank_players.sort(key=rankKey)
+                bank_winners = []
+                for _, g in groupby(bank_players, key=rankKey):
+                    bank_winners = list(g)
+                w_amount = int(amount/len(bank_winners))
+                for p in bank_winners:
+                    amount = winners.get(p.user_id, 0)
+                    winners[p.user_id] = amount + w_amount
+            # oprn cards
+            best_hand = None
+            for p in players:
+                if not best_hand:
+                    best_hand = p.hand
+                if p.hand.rank>=best_hand.rank:
+                    best_hand = p.hand
+                elif p.user_id in winners:
+                    pass
+                else:
                     continue
-                if p.hand.rank>best_hand.rank:
-                    winners = []
-            winners.append(p)
-            best_hand = p.hand
-            if not p.cards_open and self.count_in_the_game>1:
+                if p.cards_open:
+                    continue
                 p.cards_open = True
                 await self.broadcast_PLAYER_CARDS(p)
                 self.log_info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.rank)
                 await asyncio.sleep(self.SLEEP_SHOWDOWN_CARDS)
+        else:
+            for p in self.players:
+                if p.in_the_game:
+                    break
+            w_amount = 0
+            for bank_amount, _ in self.banks:
+                w_amount += bank_amount
+            winners[p.user_id] = w_amount
 
-        balance_delta = self.bank
-        p = winners[0]
-        p.user.balance += balance_delta
-
-        winners = []
-        w = dict(
-            user_id = p.user_id,
-            balance = p.balance,
+        winners_info = []
+        for p in players:
+            amount = winners.get(p.user_id, None)
+            if not amount:
+                continue
+            p.user.balance += amount
             delta = p.balance - p.balance_0
-        )
-        self.log_info("winner: %s", w)
-        winners.append(w)
-        event = GAME_END(winners=winners)
+            info = dict(
+                user_id = p.user_id,
+                balance = p.balance,
+                delta = delta
+            )
+            self.log_info("winner: %s %s %s", p.user_id, p.balance, delta)
+            winners_info.append(info)
+        event = GAME_END(winners=winners_info)
         await self.broadcast(event)
         await asyncio.sleep(self.SLEEP_GAME_END)
 
@@ -418,7 +445,6 @@ class Game(ObjectLogger):
         await self.broadcast(event)
 
 def get_banks(players):
-    from itertools import groupby
     players = list(players)
     players.sort(key=lambda x: x.bet_total)
     levels = []

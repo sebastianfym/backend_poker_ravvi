@@ -63,6 +63,7 @@ class Card:
 
 @unique
 class HandRank(IntEnum):
+    EMPTY = 0
     HIGH_CARD = 1
     ONE_PAIR = 2
     TWO_PAIR = 3
@@ -105,7 +106,7 @@ class Hand:
             match = bin(suit_mask)[2:]
             cards_rank = [i for i, b in enumerate(reversed(match), 2) if b=='1']
             if len(cards_rank)==5:
-                return HandRank.FLUSH, max(cards_rank)
+                return HandRank.FLUSH, *reversed(cards_rank)
         return None
 
 

@@ -36,16 +36,19 @@
         {"type": "PLAYER_CARDS", "user_id": 777, "cards_open": true, "cards": [3,7]}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": [4,8]}, 
 
-        {"type": "GAME_ROUND"},
+        {"type": "GAME_ROUND", "banks": [{"delta": 4000, "amount": 4000}]},
 
-        {"type": "GAME_CARDS"}, 
-        {"type": "GAME_ROUND"},
 
-        {"type": "GAME_CARDS"}, 
-        {"type": "GAME_ROUND"},
+//{"type": "GAME_CARDS"}, 
+        {"type": "GAME_CARDS", "cards": ["J♠", "Q♠", "K♠"]}, 
 
-        {"type": "GAME_CARDS"}, 
-        {"type": "GAME_ROUND"},
+        {"type": "GAME_ROUND", "banks": [{"delta": 0, "amount": 4000}]},
+
+        {"type": "GAME_CARDS", "cards": ["J♠", "Q♠", "K♠", "A♠"]}, 
+        {"type": "GAME_ROUND", "banks": [{"delta": 0, "amount": 4000}]},
+
+        {"type": "GAME_CARDS", "cards": ["J♠", "Q♠", "K♠", "A♠", 14]}, 
+        {"type": "GAME_ROUND", "banks": [{"delta": 0, "amount": 4000}]},
 
         {"type": "GAME_END"}
     ]
