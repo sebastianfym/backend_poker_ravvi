@@ -31,14 +31,14 @@ async def test_30_game_acceptance():
     assert not game.count_in_the_game
     assert not game.bet_level
     assert not game.bets_all_same
-    assert not game.bank
-    assert game.cards is None
+    assert not game.banks
+    assert not game.cards
 
     # begin
     await game.on_begin()
 
     assert game.round == Round.PREFLOP
-    assert game.bank == 0
+    assert game.banks == []
     assert game.count_in_the_game == 3
 
     p = game.players[0]
