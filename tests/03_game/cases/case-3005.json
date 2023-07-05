@@ -33,25 +33,22 @@
         {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": true, "cards": ["6♠","7♠"]}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": ["Q♥","T♥"]},
 
-        {"type": "GAME_ROUND", "delta": 243, "amount": 243}, 
+        {"type": "GAME_ROUND", "banks": [{"delta": 243, "amount": 243}, {"delta": 10, "amount": 10}]},
 // FLOP
-
         {"type": "GAME_CARDS", "cards": ["4♦","T♦","J♣"]}, 
 
-        {"type": "GAME_ROUND", "delta": 0}, 
+        {"type": "GAME_ROUND", "banks": [{"delta": 0, "amount": 243}, {"delta": 0, "amount": 10}]},
 // TERN
-
         {"type": "GAME_CARDS", "cards": ["4♦","T♦","J♣", "3♦"]}, 
 
-        {"type": "GAME_ROUND", "delta": 0}, 
+        {"type": "GAME_ROUND", "banks": [{"delta": 0, "amount": 243}, {"delta": 0, "amount": 10}]},
 // RIVER
         {"type": "GAME_CARDS", "cards": ["4♦","T♦","J♣", "3♦", "5♠"]}, 
 
-        {"type": "GAME_ROUND", "delta": 0}, 
+        {"type": "GAME_ROUND", "banks": [{"delta": 0, "amount": 243}, {"delta": 0, "amount": 10}]},
 // SHOWDOWN
 
-//        {"type": "GAME_END", "winners": [{"user_id": 333, "balance": 401, "delta": 167}]}
-        {"type": "GAME_END", "winners": [{"user_id": 333, "balance": 396, "delta": 162}]}
+        {"type": "GAME_END", "winners": [{"user_id": 333, "balance": 401, "delta": 167}]}
 ]
 }
 

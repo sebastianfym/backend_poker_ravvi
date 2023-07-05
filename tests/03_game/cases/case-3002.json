@@ -29,7 +29,7 @@
         {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "CHECK"}, 
         {"type": "PLAYER_BET", "user_id": 333, "bet": "CHECK", "delta": 0, "amount": 2, "balance": 98}, 
 
-        {"type": "GAME_ROUND", "amount": 6, "delta": 6}, 
+        {"type": "GAME_ROUND", "banks": [{"delta": 6, "amount": 6}]},         
 // 17        
         {"type": "GAME_CARDS", "cards": ["Q♠","A♦","8♥"]}, 
 
@@ -60,7 +60,8 @@
         {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "CALL"}, 
         {"type": "PLAYER_BET", "user_id": 333, "bet": "CALL", "delta": 2, "amount": 2, "balance": 96}, 
 
-        {"type": "GAME_ROUND", "amount": 12, "delta": 6}, 
+        {"type": "GAME_ROUND", "banks": [{"delta": 6, "amount": 12}]},         
+
         {"type": "GAME_CARDS", "cards": ["Q♠","A♦","8♥","6♣"]}, 
 
         {"type": "GAME_PLAYER_MOVE", "user_id": 222, "options": ["FOLD", "CHECK", "RAISE", "ALLIN"], 
@@ -94,7 +95,8 @@
         {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "CALL"}, 
         {"type": "PLAYER_BET", "user_id": 111, "bet": "CALL", "delta": 4, "amount": 6, "balance": 92},
 
-        {"type": "GAME_ROUND", "amount": 24, "delta": 12}, 
+        {"type": "GAME_ROUND", "banks": [{"delta": 12, "amount": 24}]},
+
 // RIVER
         {"type": "GAME_CARDS", "cards": ["Q♠","A♦","8♥","6♣","2♠"]}, 
 
@@ -113,7 +115,8 @@
         {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "CALL"}, 
         {"type": "PLAYER_BET", "user_id": 333, "bet": "CALL", "delta": 10, "amount": 10, "balance": 80},
 
-        {"type": "GAME_ROUND", "amount": 44, "delta": 20}, 
+        {"type": "GAME_ROUND", "banks": [{"delta": 20, "amount": 44}]},
+
 // SHOWDOWN
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": ["2♥", "6♥"]}, 
 

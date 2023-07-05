@@ -121,7 +121,7 @@ def test_02_flush():
 
     h = Hand(cards)
     result  = h.get_rank()
-    assert result == (HandRank.FLUSH, 14)
+    assert result == (HandRank.FLUSH, 14, 12, 10, 8, 6)
 
     cards = [
         Card(rank=9, suit=4),
@@ -133,7 +133,7 @@ def test_02_flush():
 
     h = Hand(cards)
     result  = h.get_rank()
-    assert result == (HandRank.FLUSH, 9)
+    assert result == (HandRank.FLUSH, 9, 7, 5, 4, 2)
 
 def test_03_straight():
     cards = [

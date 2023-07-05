@@ -13,6 +13,7 @@ def test_21_player():
     assert p.bet_type is None
     assert p.bet_amount == 0
     assert p.bet_delta == 0
+    assert p.bet_total == 0
     assert p.bet_max == 1000
     assert p.in_the_game
     assert p.has_bet_opions
