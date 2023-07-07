@@ -94,7 +94,7 @@ class Table(ObjectLogger):
                     balance = user.balance
                 )
         if self.game:
-            players = []
+            players_info = []
             for p in self.game.players:
                 if p.cards_open or p.user_id==target_user_id:
                     cards = p.cards
@@ -106,12 +106,16 @@ class Table(ObjectLogger):
                     amount = p.bet_amount,
                     cards = cards
                 )
-                players.append(p.user_id)
+                players_info.append(p.user_id)
+            banks_info = []
+            for b in self.game.banks:
+                info = dict(amount = b[0])
+                banks_info.append(info)
             info.update(
                 game_id = self.game.game_id,
-                bank_amount = self.game.bank,
+                banks = banks_info,
                 cards = self.game.cards,
-                players = players,
+                players = players_info,
                 dealer_id = self.game.dealer_id,
                 current_user_id = self.game.current_player.user_id
             )
