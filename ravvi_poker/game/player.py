@@ -1,6 +1,14 @@
 from typing import List, Tuple
+from enum import IntFlag
+
 from .user import User
 from .bet import Bet
+
+class PlayerRole(IntFlag):
+    DEFAULT = 0
+    DEALER = 1
+    SMALL_BLIND = 2
+    BIG_BLIND = 4
 
 class Player:
 

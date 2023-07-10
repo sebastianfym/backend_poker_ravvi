@@ -120,7 +120,8 @@
 // SHOWDOWN
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": ["2♥", "6♥"]}, 
 
-        {"type": "GAME_END", "winners": [{"user_id": 111, "balance": 126, "delta": 24}]}
+        {"type": "GAME_RESULT", "winners": [{"user_id": 111, "balance": 126, "delta": 24}]},
+        {"type": "GAME_END"}
     ]
 }
 

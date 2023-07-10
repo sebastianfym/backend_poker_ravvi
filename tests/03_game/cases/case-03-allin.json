@@ -38,8 +38,6 @@
 
         {"type": "GAME_ROUND", "banks": [{"delta": 4000, "amount": 4000}]},
 
-
-//{"type": "GAME_CARDS"}, 
         {"type": "GAME_CARDS", "cards": ["J♠", "Q♠", "K♠"]}, 
 
         {"type": "GAME_ROUND", "banks": [{"delta": 0, "amount": 4000}]},
@@ -50,6 +48,7 @@
         {"type": "GAME_CARDS", "cards": ["J♠", "Q♠", "K♠", "A♠", 14]}, 
         {"type": "GAME_ROUND", "banks": [{"delta": 0, "amount": 4000}]},
 
+        {"type": "GAME_RESULT"},
         {"type": "GAME_END"}
     ]
 }

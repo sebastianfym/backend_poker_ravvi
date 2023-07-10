@@ -7,10 +7,10 @@ from ravvi_poker.game.cards import Card
 from ravvi_poker.game.event import Event
 from ravvi_poker.game.user import User
 from ravvi_poker.game.bet import Bet
-from ravvi_poker.game.game import Game
+from ravvi_poker.game.poker import PokerBase
 
 
-class GameCase(Game):
+class GameCase(PokerBase):
 
     SLEEP_ROUND_BEGIN = 0
     SLEEP_ROUND_END = 0
@@ -18,11 +18,13 @@ class GameCase(Game):
     SLEEP_GAME_END = 0
 
     def __init__(self, game_id, *, users, deck, moves, **kwargs) -> None:
-        super().__init__(None, game_id, 
-                         [User(**user) for user in users], 
-                         deck=[Card.decode(x) for x in deck]
-                         )
+        super().__init__(None, game_id, [User(**user) for user in users])
+        self._deck = [Card.decode(x) for x in deck]
         self._check_steps = list(enumerate(moves, 1))
+
+    def setup_cards(self):
+        super().setup_cards()
+        self.deck = self._deck
 
     async def broadcast(self, event: Event):
         self.log_debug("%s", event)

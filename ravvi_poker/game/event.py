@@ -19,6 +19,7 @@ class Event(dict):
     GAME_ROUND = 302
     GAME_CARDS = 303
     GAME_PLAYER_MOVE  = 304
+    GAME_RESULT = 390
     GAME_END = 399
 
     @classmethod
@@ -85,6 +86,9 @@ def GAME_CARDS(**kwargs):
 
 def GAME_PLAYER_MOVE(**kwargs):
     return Event(Event.GAME_PLAYER_MOVE, **kwargs)
+
+def GAME_RESULT(**kwargs):
+    return Event(Event.GAME_RESULT, **kwargs)
 
 def GAME_END(**kwargs):
     return Event(Event.GAME_END, **kwargs)

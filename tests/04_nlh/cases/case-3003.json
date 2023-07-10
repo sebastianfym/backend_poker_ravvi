@@ -62,7 +62,8 @@
         {"type": "GAME_ROUND", "banks": [{"delta": 0, "amount": 160}, {"delta": 0, "amount": 46}]},
 // SHOWDOWN
 
-        {"type": "GAME_END", "winners": [{"user_id": 333, "balance": 206, "delta": 80}]}
+        {"type": "GAME_RESULT", "winners": [{"user_id": 333, "balance": 206, "delta": 80}]},
+        {"type": "GAME_END"}
     ]
 }
 

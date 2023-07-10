@@ -116,7 +116,8 @@
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": true, "cards": ["Q♣", "8♦"]}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": ["A♦", "T♣"]}, 
 
-        {"type": "GAME_END", "winners": [{"user_id": 111, "balance": 234, "delta": 28}]}
+        {"type": "GAME_RESULT", "winners": [{"user_id": 111, "balance": 234, "delta": 28}]},
+        {"type": "GAME_END"}
     ]
 }
 
