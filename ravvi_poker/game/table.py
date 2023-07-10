@@ -7,7 +7,7 @@ from ..logging import ObjectLogger
 from ..db import DBI
 from .event import Event, TABLE_INFO, PLAYER_ENTER, PLAYER_EXIT
 from .client import Client
-from .game import Game
+from .poker_nlh import Poker_NLH
 from .user import User
 
 class Table(ObjectLogger):
@@ -53,7 +53,7 @@ class Table(ObjectLogger):
                     # ok to start
                     with DBI() as db:
                         row = db.game_begin(table_id=self.table_id, user_ids=[u.id for u in users])
-                    self.game = Game(self, row.id, users)
+                    self.game = Poker_NLH(self, row.id, users)
                     await self.game.run()
                     with DBI() as db:
                         row = db.game_end(game_id=self.game.game_id)

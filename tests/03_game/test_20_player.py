@@ -1,4 +1,4 @@
-from ravvi_poker.game.player import User, Player
+from ravvi_poker.game.player import User, Player, PlayerRole
 
 def test_21_player():
     u = User(77, 'u77', 1000)
@@ -17,3 +17,34 @@ def test_21_player():
     assert p.bet_max == 1000
     assert p.in_the_game
     assert p.has_bet_opions
+
+def test_21_player_role():
+    role = PlayerRole.DEFAULT
+    assert PlayerRole.DEALER not in role
+    assert PlayerRole.SMALL_BLIND not in role
+    assert PlayerRole.BIG_BLIND not in role
+
+    role = PlayerRole.DEALER
+    assert PlayerRole.DEALER in role
+    assert PlayerRole.SMALL_BLIND not in role
+    assert PlayerRole.BIG_BLIND not in role
+
+    role = PlayerRole.SMALL_BLIND
+    assert PlayerRole.DEALER not in role
+    assert PlayerRole.SMALL_BLIND in role
+    assert PlayerRole.BIG_BLIND not in role
+
+    role = PlayerRole.BIG_BLIND
+    assert PlayerRole.DEALER not in role
+    assert PlayerRole.SMALL_BLIND not in role
+    assert PlayerRole.BIG_BLIND in role
+
+    role = PlayerRole.DEALER | PlayerRole.SMALL_BLIND
+    assert PlayerRole.DEALER in role
+    assert PlayerRole.SMALL_BLIND in role
+    assert PlayerRole.BIG_BLIND not in role
+
+if __name__=="__main__":
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+    test_21_player_role()
