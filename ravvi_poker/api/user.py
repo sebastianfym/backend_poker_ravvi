@@ -18,9 +18,9 @@ router = APIRouter(prefix="/user", tags=["user"])
 class UserProfile(BaseModel):
     id: int
     username: str
-    email: EmailStr | None
+    email: EmailStr | None = None
     has_password: bool
-    photo: str | None
+    photo: str | None = None
 
 
 class UserEmail(BaseModel):
@@ -28,8 +28,8 @@ class UserEmail(BaseModel):
 
 
 class UserUpdateFields(BaseModel):
-    username: str | None
-    photo: str | None
+    username: str | None = None
+    photo: str | None = None
 
 
 async def get_user_profile(user) -> UserProfile:
@@ -111,7 +111,7 @@ async def v1_update_user_profile(params: UserUpdateFields,
 
         if params.photo:
             params.photo = await update_user_photo(user, params.photo)
-        for field in UserUpdateFields.__fields__.keys():
+        for field in UserUpdateFields.model_fields.keys():
             field_value = getattr(params, field, None)
             field_value = field_value if field_value else getattr(user, field)
             setattr(params, field, field_value)

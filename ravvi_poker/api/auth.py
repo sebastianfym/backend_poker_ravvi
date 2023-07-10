@@ -12,16 +12,16 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 class DeviceInfo(BaseModel):
-    device_token: str | None
-    device_props: dict | None
+    device_token: str | None = None
+    device_props: dict | None = None
 
 
 class UserAccessTokens(BaseModel):
-    device_token: str | None
-    access_token: str | None
+    device_token: str | None = None
+    access_token: str | None = None
     token_type: str = "bearer"
-    user_id: int | None
-    username: str | None
+    user_id: int | None = None
+    username: str | None = None
 
 
 @router.post("/register")
@@ -148,7 +148,7 @@ def get_session_and_user(dbi, session_uuid):
 
 class UserChangePassword(BaseModel):
     current_password: str | None = None
-    new_password: str | None
+    new_password: str | None = None
 
 
 @router.post("/password")
