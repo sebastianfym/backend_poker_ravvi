@@ -21,6 +21,8 @@ class Round(IntEnum):
 
 class PokerBase(ObjectLogger):
 
+    PLAYER_CARDS_FREFLOP = 2
+
     SLEEP_ROUND_BEGIN = 1.5
     SLEEP_ROUND_END = 1.5
     SLEEP_SHOWDOWN_CARDS = 1.5
@@ -37,8 +39,13 @@ class PokerBase(ObjectLogger):
         self.cards = None
         self.banks = None
 
+        self.blind_small = 1
+        self.blind_big = 2
+
         self.bet_id = None
         self.bet_level = 0
+        self.bet_raise = 0
+        self.bet_total = 0
         self.bet_event = asyncio.Event()
         self.bet_timeout = 30
         self.count_in_the_game = 0
@@ -125,29 +132,29 @@ class PokerBase(ObjectLogger):
     def update_status(self):
         self.count_in_the_game = 0
         self.count_has_options = 0
-        self.bet_level = None
+        self.bet_level = 0
+        self.bet_total = 0
 
         for p in self.players:
+            self.bet_total += p.bet_total
             if not p.in_the_game:
                 continue
             self.count_in_the_game += 1
             if p.has_bet_opions:
                 self.count_has_options += 1
-            if self.bet_level is None:
-                self.bet_level = p.bet_amount
             if self.bet_level<p.bet_amount:
                 self.bet_level = p.bet_amount
         self.log_info(f"status: in_the_game:{self.count_in_the_game} has_options:{self.count_has_options} bet_id: {self.bet_id} bet_level:{self.bet_level}")
 
     # BET
 
-    def get_bet_limits(self, player=None, BB=2):
+    def get_bet_limits(self, player=None):
         p = player or self.current_player
         call_delta = max(0, self.bet_level-p.bet_amount)
         if self.count_has_options>2:
-            raise_min = call_delta + BB
+            raise_min = call_delta + self.blind_big
         else:
-            raise_min = call_delta + max(BB, call_delta)
+            raise_min = call_delta + max(self.blind_big, call_delta)
         raise_max = p.balance
         return call_delta, raise_min, raise_max
 
@@ -218,6 +225,7 @@ class PokerBase(ObjectLogger):
 
         if self.bet_level<p.bet_amount:
             self.bet_id = p.user_id
+            self.bet_raise = p.bet_amount-self.bet_level
 
         self.log_debug("player %s: balance: %s -> %s -> %s (%s),  bet_id: %s", p.user_id, p.balance, p.bet_delta, p.bet_amount, p.bet_total, self.bet_id)
         self.bet_event.set()
@@ -239,6 +247,7 @@ class PokerBase(ObjectLogger):
                 continue
             p.bet_type = None
         self.bet_level = 0
+        self.bet_raise = 0
         return banks_info
 
     # RUN
@@ -344,19 +353,20 @@ class PokerBase(ObjectLogger):
 
         self.players_to_role(PlayerRole.DEALER)
         self.players_rotate()
-        for p in self.players:
-            p.cards.append(self.cards_get_next())
-        for p in self.players:
-            p.cards.append(self.cards_get_next())
+        for _ in range(self.PLAYER_CARDS_FREFLOP):
+            for p in self.players:
+                p.cards.append(self.cards_get_next())
         self.cards_get_next()
         for p in self.players:
             await self.broadcast_PLAYER_CARDS(p)
+
+        self.bet_level = 0
 
         # small blind
         p = self.players_to_role(PlayerRole.SMALL_BLIND)
         assert PlayerRole.SMALL_BLIND in p.role 
         p.bet_type = Bet.SMALL_BLIND
-        p.bet_delta = 1
+        p.bet_delta = self.blind_small
         p.bet_amount += p.bet_delta
         p.bet_total += p.bet_delta
         p.user.balance -= p.bet_delta
@@ -366,12 +376,13 @@ class PokerBase(ObjectLogger):
         p = self.players_to_role(PlayerRole.BIG_BLIND)
         assert PlayerRole.BIG_BLIND in p.role 
         p.bet_type = Bet.BIG_BLIND
-        p.bet_delta = 2
+        p.bet_delta = self.blind_big
         p.bet_amount += p.bet_delta
         p.bet_total += p.bet_delta
         p.user.balance -= p.bet_delta
         await self.broadcast_PLAYER_BET()
 
+        self.bet_raise = p.bet_amount-self.bet_level
         self.update_status()        
         
         await self.run_round(None)
