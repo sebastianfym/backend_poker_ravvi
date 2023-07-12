@@ -90,17 +90,51 @@ docker_build:
     # cleanup
     - docker image rmi ${IMAGE_PATH}:${CI_COMMIT_REF_SLUG}
 
-deploy_dev:
+deploy_develop:
   stage: deploy
   rules:
     - if: $CI_COMMIT_BRANCH == 'develop'
-    #- if: $CI_COMMIT_BRANCH == "release/demo"
-      when: manual
   environment: develop
+  tags:
+    - develop
+    - backend
+    - shell
   needs:
-    - docker_build
+    - build_py
+    - test_py
   before_script:
-    - eval $(ssh-agent -s)
-    - echo "${POKER_DEV_SSH_KEY}" | tr -d '\r' | ssh-add -
+    - source ~/.profile
   script:
-    - ssh -o StrictHostKeyChecking=no ${POKER_DEV_HOST} '~/bin/deploy.sh'
+    # stop service
+    - ravvi_poker_service stop
+    # dump current version databse
+    - ravvi_poker_db_dump
+    # uninstall all pip packages
+    - pip2 freeze --user | xargs pip uninstall -y
+    # install new version
+    - pip3 install --user -f ./dist ravvi-poker
+    # reset (drop/re-create) database
+    - ravvi_poker_db_reset
+    # start service
+    - ravvi_poker_service start
+  
+
+deploy_staging:
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'relese/v0.2'
+  environment: staging
+  tags:
+    - staging
+    - backend
+    - shell
+  needs:
+    - build_py
+    - test_py
+  before_script:
+    - source ~/.profile
+  script:
+    - echo $USER
+    - echo $PATH
+    - pwd
+    - ls -al
