@@ -1,10 +1,7 @@
-from typing import Annotated, Optional, List
-
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi.exceptions import HTTPException
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_404_NOT_FOUND
+from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 from pydantic import BaseModel
-from . import utils
 
 from ..db.dbi import DBI
 from .auth import RequireSessionUUID, get_session_and_user
@@ -14,73 +11,129 @@ from .clubs import router as clubs_router
 router = APIRouter(prefix="/tables", tags=["tables"])
 
 
-class TableProps(BaseModel):
-    description: str|None = None
+class TableCreate(BaseModel):
+    table_name: str
+    table_type: str
+    game_type: str
+
 
 class TableProfile(BaseModel):
     id: int
     club_id: int
+    table_name: str
+    table_type: str
+    game_type: str
 
 
-@clubs_router.post("/{club_id}/tables", response_model=TableProfile, summary="Create poker table in the club")
-async def v1_create_club_table(club_id: int, params: TableProps, session_uuid: RequireSessionUUID):
+class TableProfileList(BaseModel):
+    tables: list[TableProfile]
+
+
+@clubs_router.get("/{club_id}/tables", response_model=TableProfileList, status_code=200,
+                  summary="Get club tables")
+async def v1_get_club_tables(club_id: int, session_uuid: RequireSessionUUID):
     with DBI() as dbi:
-        session, user = get_session_and_user(dbi, session_uuid)
+        _, user = get_session_and_user(dbi, session_uuid)
         club = dbi.get_club(club_id)
-        if club.founder_id!=user.id:
-            # TODO: proper error code
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid role")
-        table = dbi.create_table(club_id=club_id)
-    
-    return TableProfile(
-        id=table.id, 
-        club_id=table.club_id
-        )
-
-
-@clubs_router.get("/{club_id}/tables", response_model=List[TableProfile], summary="List tables in the club")
-async def v1_list_club_tables(club_id: int, session_uuid: RequireSessionUUID):
-    with DBI() as dbi:
-        session, user = get_session_and_user(dbi, session_uuid)
-        club = dbi.get_club(club_id)
-        # TODO: club validation & access check
+        if not club:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND, detail="Club not found"
+            )
+        club_member = dbi.get_club_member(club.id, user.id)
+        if not club_member:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="Permission denied"
+            )
         tables = dbi.get_tables_for_club(club_id=club_id)
-    
-    tables = [
+
+    return TableProfileList(tables=[
         TableProfile(
-            id=x.id, 
-            club_id=x.club_id
-        )
-        for x in tables
-    ]
+            id=table.id,
+            club_id=table.club_id,
+            table_name=table.table_name,
+            table_type=table.table_type,
+            game_type=table.game_type,
+        ) for table in tables
+    ])
 
-    return tables
 
-@router.get("/{table_id}", response_model=TableProfile, summary="Get table by id")
-async def v1_get_table(table_id: int, session_uuid: RequireSessionUUID):
+@clubs_router.post("/{club_id}/tables", response_model=TableProfile, status_code=201,
+                   summary="Create club table")
+async def v1_create_club_table(club_id: int, params: TableCreate,
+                               session_uuid: RequireSessionUUID):
     with DBI() as dbi:
-        session, user = get_session_and_user(dbi, session_uuid)
-        # TODO: access check
-        table = dbi.get_table(table_id)
-        if not table:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Table not found")
-    
+        _, user = get_session_and_user(dbi, session_uuid)
+        club = dbi.get_club(club_id)
+        if not club:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND, detail="Club not found"
+            )
+        if club.founder_id != user.id:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="Permission denied"
+            )
+        table = dbi.create_table(club_id=club_id, **params.model_dump())
+
     return TableProfile(
         id=table.id,
-        club_id= table.club_id
-        )
+        club_id=table.club_id,
+        table_name=table.table_name,
+        table_type=table.table_type,
+        game_type=table.game_type,
+    )
 
-@router.put("/{table_id}", response_model=TableProfile, summary="Update table")
-async def v1_get_table(table_id: int, session_uuid: RequireSessionUUID):
+
+@clubs_router.delete("/{club_id}/tables/{table_id}", response_model={}, status_code=204,
+                     summary="Delete club table")
+async def v1_delete_club_table(club_id: int, table_id: int,
+                               session_uuid: RequireSessionUUID):
     with DBI() as dbi:
-        session, user = get_session_and_user(dbi, session_uuid)
-        # TODO: access check
+        _, user = get_session_and_user(dbi, session_uuid)
+        club = dbi.get_club(club_id)
+        if not club:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND, detail="Club not found"
+            )
+        if club.founder_id != user.id:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="Permission denied"
+            )
         table = dbi.get_table(table_id)
-        if not table:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Table not found")
-        # TODO: update profs
-    
-    return TableProfile(
-        id=table.id,
-        club_id= table.club_id
-        )
+        if not table or table.club_id != club.id:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND, detail="Table not found"
+            )
+        dbi.delete_table(table.id)
+
+    return {}
+
+
+# @router.get("/{table_id}", response_model=TableProfile, summary="Get table by id")
+# async def v1_get_table(table_id: int, session_uuid: RequireSessionUUID):
+#     with DBI() as dbi:
+#         session, user = get_session_and_user(dbi, session_uuid)
+#         # TODO: access check
+#         table = dbi.get_table(table_id)
+#         if not table:
+#             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Table not found")
+
+#     return TableProfile(
+#         id=table.id,
+#         club_id= table.club_id
+#         )
+
+
+# @router.put("/{table_id}", response_model=TableProfile, summary="Update table")
+# async def v1_get_table(table_id: int, session_uuid: RequireSessionUUID):
+#     with DBI() as dbi:
+#         session, user = get_session_and_user(dbi, session_uuid)
+#         # TODO: access check
+#         table = dbi.get_table(table_id)
+#         if not table:
+#             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Table not found")
+#         # TODO: update profs
+
+#     return TableProfile(
+#         id=table.id,
+#         club_id= table.club_id
+#         )

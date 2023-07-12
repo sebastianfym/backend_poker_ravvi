@@ -21,7 +21,7 @@ class ClubProfile(BaseModel):
     id: int
     name: str
     description: str|None = None
-    user_role: str|None
+    user_role: str|None = None
     user_approved: bool
 
 
