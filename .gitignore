@@ -1,4 +1,5 @@
 ravvi_poker/_build.py
+ravvi_poker/build.py
 
 *.code-workspace
 .vscode

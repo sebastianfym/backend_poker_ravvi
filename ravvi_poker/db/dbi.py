@@ -126,19 +126,9 @@ class DBI:
             cursor.execute(sql, args)
             return cursor.fetchone()
 
-    def update_user_profile(self, id, username, photo):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("UPDATE user_profile SET username=%s, photo=%s WHERE id=%s RETURNING *",(username, photo, id))
-            return cursor.fetchone()
-
     def update_user_password(self, id, password_hash):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("UPDATE user_profile SET password_hash=%s WHERE id=%s RETURNING id, uuid, username", (password_hash, id))
-            return cursor.fetchone()
-
-    def update_user_email(self, id, email):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("UPDATE user_profile SET email=%s WHERE id=%s RETURNING *", (email, id))
             return cursor.fetchone()
 
     def create_user_login(self, user_id, device_id):
@@ -215,6 +205,44 @@ class DBI:
             cursor.execute("UPDATE user_login SET closed_ts=NOW() WHERE user_id=%s", (user_id,))
             cursor.execute("UPDATE user_profile SET closed_ts=NOW() WHERE id=%s", (user_id,))
 
+    def update_user_profile(self, user_id, **kwargs):
+        params = ", ".join([f"{key}=%s" for key in kwargs])
+        sql = f"UPDATE user_profile SET {params} WHERE id=%s RETURNING *"
+        args = list(kwargs.values())
+        args.append(user_id)
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute(sql, args)
+            return cursor.fetchone()
+
+    # IMAGES
+
+    def get_user_images(self, owner_id, id=None, uuid=None, image_data=None):
+        args = [owner_id]
+        sql = "SELECT * FROM image WHERE (owner_id=%s or owner_id is NULL)"
+        if id:
+            args.append(id)
+            sql += " and id=%s"
+        if uuid:
+            args.append(uuid)
+            sql += " and uuid=%s"
+        if image_data:
+            args.append(image_data)
+            sql += " and image_data=decode(%s, 'base64')"
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute(sql, args)
+            if len(args) > 1:
+                return cursor.fetchone()
+            return cursor.fetchall()
+
+    def create_user_image(self, owner_id, image_data):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("INSERT INTO image (owner_id, image_data) VALUES (%s, decode(%s, 'base64')) RETURNING *", (owner_id, image_data,))
+            return cursor.fetchone()
+
+    def delete_image(self, image_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("DELETE FROM image WHERE id=%s", (image_id,))
+
     # CLUBS
 
     def create_club(self, *, founder_id, name):
@@ -228,7 +256,7 @@ class DBI:
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("SELECT * FROM club WHERE id=%s",(club_id,))
             return cursor.fetchone()
-        
+
     def get_club_members(self, club_id):
         sql = "SELECT u.*, x.user_role, x.approved_ts FROM club_member x JOIN user_profile u ON u.id=x.user_id WHERE x.club_id=%s"
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
@@ -239,7 +267,7 @@ class DBI:
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("SELECT * FROM club_member WHERE club_id=%s AND user_id=%s",(club_id,user_id))
             return cursor.fetchone()
-        
+
     def update_club(self, club_id, *, name, description):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("UPDATE club SET name=%s, description=%s WHERE id=%s RETURNING *",(name, description, club_id,))
@@ -258,20 +286,28 @@ class DBI:
         
     # TABLES
 
-    def create_table(self, *, club_id):
+    def create_table(self, club_id, **kwargs):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("INSERT INTO poker_table (club_id) VALUES (%s) RETURNING *",(club_id,))
+            fields = ", ".join(["club_id"] + list(kwargs.keys()))
+            values = [club_id] + list(kwargs.values())
+            values_pattern = ", ".join(["%s"] * len(values))
+            sql = f"INSERT INTO poker_table ({fields}) VALUES ({values_pattern}) RETURNING *"
+            cursor.execute(sql, values)
             return cursor.fetchone()
 
     def get_table(self, table_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("SELECT * FROM poker_table WHERE id=%s",(table_id,))
             return cursor.fetchone()
-        
+
     def get_tables_for_club(self, *, club_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("SELECT * FROM poker_table WHERE club_id=%s",(club_id,))
             return cursor.fetchall()
+
+    def delete_table(self, table_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("DELETE FROM poker_table WHERE id=%s",(table_id,))
 
     # temporary method to get list of tables
     def get_active_tables(self):
@@ -311,4 +347,3 @@ class DBI:
             cursor.execute("INSERT INTO poker_event (table_id, game_id, user_id, event_type, event_props) VALUES (%s, %s, %s, %s, %s) RETURNING id, event_ts",
                            (table_id, game_id, user_id, type, data))
             return cursor.fetchone()
-        
