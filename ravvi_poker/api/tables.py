@@ -14,6 +14,7 @@ router = APIRouter(prefix="/tables", tags=["tables"])
 class TableCreate(BaseModel):
     table_name: str
     table_type: str | None = None
+    table_seats: int
     game_type: str
     game_subtype: str | None = None
 
@@ -21,9 +22,10 @@ class TableCreate(BaseModel):
 class TableProfile(BaseModel):
     id: int
     club_id: int
-    table_name: str
+    table_name: str | None
     table_type: str | None
-    game_type: str
+    table_seats: int | None
+    game_type: str | None
     game_subtype: str | None
 
 
@@ -54,6 +56,7 @@ async def v1_get_club_tables(club_id: int, session_uuid: RequireSessionUUID):
             club_id=table.club_id,
             table_name=table.table_name,
             table_type=table.table_type,
+            table_seats=table.table_seats,
             game_type=table.game_type,
             game_subtype=table.game_subtype,
         ) for table in tables
@@ -82,6 +85,7 @@ async def v1_create_club_table(club_id: int, params: TableCreate,
         club_id=table.club_id,
         table_name=table.table_name,
         table_type=table.table_type,
+        table_seats=table.table_seats,
         game_type=table.game_type,
         game_subtype=table.game_subtype,
     )
