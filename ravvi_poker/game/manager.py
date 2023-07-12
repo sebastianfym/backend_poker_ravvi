@@ -54,7 +54,7 @@ class Manager(Logger_MixIn):
             if game_type=='PLO':
                 n_seats = min(n_seats, 6)
             table = Table(table_row.id, game_type=game_type, n_seats=n_seats)
-            self.tables[table.id] = table
+            self.tables[table.table_id] = table
         except Exception as ex:
             self.log_exception("add_table %s: %s", table_row, ex)
             return None
