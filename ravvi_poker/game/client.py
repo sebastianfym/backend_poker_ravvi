@@ -32,18 +32,15 @@ class Client(ObjectLogger):
 
     async def process_queue(self):
             while self.is_connected:
+                event : Event = await self.queue.get()
                 try:
-                    event : Event = await self.queue.get()
+                    self.log_debug("process_event: %s", event)
                     event = self.process_event(event)
-                except asyncio.CancelledError:
-                    break
-                try:
-                    self.log_debug("handle_event: %s", event)
                     await self.handle_event(event)
                 except asyncio.CancelledError:
                     break
                 except Exception as ex:
-                    self.log_exception("handle_event: %s", ex)
+                    self.log_exception("process_event: %s: %s", event, ex)
                 finally:
                     self.queue.task_done()
 
