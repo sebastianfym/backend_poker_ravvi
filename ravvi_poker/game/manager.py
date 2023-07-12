@@ -45,7 +45,10 @@ class Manager(Logger_MixIn):
         await table.handle_command(client, command)
 
     def add_table(self, table_id):
-        table = Table(table_id, 9)
+        if table_id==2:
+            table = Table(table_id, game_type='PLO6', n_seats=6)
+        else:
+            table = Table(table_id, game_type='NLH', n_seats=9)
         self.tables[table_id] = table
         return table
 
