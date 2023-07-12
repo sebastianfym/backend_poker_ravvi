@@ -112,7 +112,8 @@ class Table(ObjectLogger):
                 )
                 players_info.append(p.user_id)
             banks_info = []
-            for b in self.game.banks:
+            banks = self.game.banks or []
+            for b in banks:
                 b_info = dict(amount = b[0])
                 banks_info.append(b_info)
             event.update(
