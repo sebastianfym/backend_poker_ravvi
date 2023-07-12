@@ -5,7 +5,7 @@
         {"id": 333, "username": "u3", "balance": 40},
         {"id": 444, "username": "u4", "balance": 129}
     ],
-    "deck": ["A♠", "T♠", "T♥", "5♠", "3♣", "K♣", "J♣", "7♥"],
+    "deck": ["A♠", "T♠", "T♥", "5♠", "3♣", "K♣", "J♣", "7♥", 0],
     "moves": [
         {"type": "GAME_BEGIN"}, 
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["A♠", "3♣"]}, 
@@ -89,7 +89,8 @@
 
         {"type": "GAME_ROUND", "banks": [{"delta": 90, "amount": 90}]},
 
-        {"type": "GAME_END", "winners": [{"user_id": 333, "balance": 90, "delta": 50}]}
+        {"type": "GAME_RESULT", "winners": [{"user_id": 333, "balance": 90, "delta": 50}]},
+        {"type": "GAME_END"}
     ]
 }
 

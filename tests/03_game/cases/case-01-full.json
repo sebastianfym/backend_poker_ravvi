@@ -95,6 +95,7 @@
         {"type": "PLAYER_CARDS"}, 
         {"type": "PLAYER_CARDS"},
 
+        {"type": "GAME_RESULT"},
         {"type": "GAME_END"}
     ]
 }

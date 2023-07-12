@@ -7,7 +7,7 @@ from ..logging import ObjectLogger
 from ..db import DBI
 from .event import Event, TABLE_INFO, PLAYER_ENTER, PLAYER_EXIT
 from .client import Client
-from .game import Game
+from .poker_nlh import Poker_NLH
 from .user import User
 
 class Table(ObjectLogger):
@@ -21,6 +21,9 @@ class Table(ObjectLogger):
         self.task : asyncio.Task = None
         self.clients : List[Client] = []
         self.game = None
+
+    def get_user(self, user_id, *, connected=0):
+        return User(id=user_id, username='u'+str(user_id), balance=1000, connected=connected)
 
     async def start(self):
         self.task = asyncio.create_task(self.run())
@@ -53,7 +56,7 @@ class Table(ObjectLogger):
                     # ok to start
                     with DBI() as db:
                         row = db.game_begin(table_id=self.table_id, user_ids=[u.id for u in users])
-                    self.game = Game(self, row.id, users)
+                    self.game = Poker_NLH(self, row.id, users)
                     await self.game.run()
                     with DBI() as db:
                         row = db.game_end(game_id=self.game.game_id)
@@ -80,10 +83,8 @@ class Table(ObjectLogger):
         finally:
             self.log_info("end")
 
-    def get_info(self, target_user_id):
-        info = TABLE_INFO(
-            table_id = self.table_id,
-        )
+    async def send_TABLE_INFO(self, client):
+        event = TABLE_INFO(table_id = self.table_id)
         users = {}
         for user in self.seats:
             if not user:
@@ -96,11 +97,14 @@ class Table(ObjectLogger):
         if self.game:
             players_info = []
             for p in self.game.players:
-                if p.cards_open or p.user_id==target_user_id:
+                if p.cards_open or p.user_id==client.user_id:
                     cards = p.cards
                 else:
                     cards = [0 for _ in p.cards]
                 u = users.get(p.user_id,None)
+                if not u:
+                    self.log_warning("user info %s not found", p.user_id)
+                    continue
                 u.update(
                     bet = p.bet_type,
                     amount = p.bet_amount,
@@ -108,10 +112,11 @@ class Table(ObjectLogger):
                 )
                 players_info.append(p.user_id)
             banks_info = []
-            for b in self.game.banks:
-                info = dict(amount = b[0])
-                banks_info.append(info)
-            info.update(
+            banks = self.game.banks or []
+            for b in banks:
+                b_info = dict(amount = b[0])
+                banks_info.append(b_info)
+            event.update(
                 game_id = self.game.game_id,
                 banks = banks_info,
                 cards = self.game.cards,
@@ -119,14 +124,11 @@ class Table(ObjectLogger):
                 dealer_id = self.game.dealer_id,
                 current_user_id = self.game.current_player.user_id
             )
-        info.update(
+        event.update(
             seats = [None if u is None else u.id for u in self.seats],
             users = list(users.values())
         )
-        return info
-
-    def get_user(self, user_id, *, connected=0):
-        return User(id=user_id, username='u'+str(user_id), balance=1000, connected=connected)
+        await client.send_event(event)
 
     async def add_client(self, client: Client, take_seat: bool):
         user = None
@@ -164,9 +166,7 @@ class Table(ObjectLogger):
                     await self.broadcast(event)
 
         # send current table info to client (including above seat taken)
-        info = self.get_info(client.user_id)
-        self.log_debug("%s", info)
-        await client.send_event(info)
+        await self.send_TABLE_INFO(client)
         
         # register client
         if client not in self.clients:
