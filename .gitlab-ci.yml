@@ -94,6 +94,7 @@ deploy_develop:
   stage: deploy
   rules:
     - if: $CI_COMMIT_BRANCH == 'develop'
+    when: manual
   environment: develop
   tags:
     - develop
@@ -110,7 +111,7 @@ deploy_develop:
     # dump current version databse
     - ravvi_poker_db_dump
     # uninstall all pip packages
-    - pip2 freeze --user | xargs pip uninstall -y
+    - pip3 freeze --user | xargs pip uninstall -y
     # install new version
     - pip3 install --user -f ./dist ravvi-poker
     # reset (drop/re-create) database
