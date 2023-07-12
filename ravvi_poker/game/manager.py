@@ -36,7 +36,8 @@ class Manager(Logger_MixIn):
                 if table_row:
                     self.log_info("table %s loaded", table_row.id) 
                     table = self.add_table(table_row)
-                    await table.start()
+                    if table:
+                        await table.start()
             if not table:
                 event = TABLE_ERROR(command.table_id, error_id=404, message='Table not found')
                 client.send(event)
@@ -45,14 +46,18 @@ class Manager(Logger_MixIn):
         await table.handle_command(client, command)
 
     def add_table(self, row):
-        game_type = row.game_type
-        n_seats = 9
-        if not game_type:
-            game_type = 'PLO' if table.id==2 else 'NLH'
-        if game_type=='PLO':
-            n_seats = min(n_seats, 6)
-        table = Table(table.id, game_type=game_type, n_seats=n_seats)
-        self.tables[table.id] = table
+        try:
+            game_type = row.game_type
+            n_seats = 9
+            if not game_type:
+                game_type = 'PLO' if table.id==2 else 'NLH'
+            if game_type=='PLO':
+                n_seats = min(n_seats, 6)
+            table = Table(table.id, game_type=game_type, n_seats=n_seats)
+            self.tables[table.id] = table
+        except Exception as ex:
+            self.log_exception("add_table %s: %s", row, ex)
+            return None
         return table
 
     async def start(self):
@@ -68,6 +73,8 @@ class Manager(Logger_MixIn):
 
         for row in tables:
             table = self.add_table(row)
+            if not table:
+                continue
             await table.start()
             if row.club_id:
                 continue
