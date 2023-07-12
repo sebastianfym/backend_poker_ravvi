@@ -39,7 +39,7 @@ def test_create_club_table():
 
     # Пытаемся создать стол несуществующего клуба
     non_club_id = new_club["id"] + 100500
-    json = {"table_name": "table", "table_type": "type", "game_type": "game type"}
+    json = {"table_name": "table", "table_type": "type", "table_seats": 6, "game_type": "game type"}
     response = client.post(f"/v1/clubs/{non_club_id}/tables", json=json, headers=headers)
     assert response.status_code == 404
 
@@ -88,7 +88,7 @@ def test_delete_club_table():
     club = response.json()
 
     # Создаем стол
-    json = {"table_name": "table", "table_type": "type", "game_type": "game type"}
+    json = {"table_name": "table", "table_type": "type", "table_seats": 6, "game_type": "game type"}
     response = client.post(f"/v1/clubs/{club['id']}/tables", json=json, headers=headers)
     assert response.status_code == 201
 
