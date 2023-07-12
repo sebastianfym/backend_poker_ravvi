@@ -2,6 +2,7 @@
 from fastapi import FastAPI, APIRouter
 from . import auth
 from . import user
+from . import images
 from . import clubs
 from . import tables
 from . import ws
@@ -10,6 +11,7 @@ from . import ws_test2
 v1 = APIRouter(prefix="/v1")
 v1.include_router(auth.router)
 v1.include_router(user.router)
+v1.include_router(images.router)
 v1.include_router(clubs.router)
 v1.include_router(tables.router)
 v1.include_router(ws.router)

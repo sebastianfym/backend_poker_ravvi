@@ -234,6 +234,15 @@ class DBI:
                 return cursor.fetchone()
             return cursor.fetchall()
 
+    def create_user_image(self, owner_id, image_data):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("INSERT INTO image (owner_id, image_data) VALUES (%s, decode(%s, 'base64')) RETURNING *", (owner_id, image_data,))
+            return cursor.fetchone()
+
+    def delete_image(self, image_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("DELETE FROM image WHERE id=%s", (image_id,))
+
     # CLUBS
 
     def create_club(self, *, founder_id, name):
