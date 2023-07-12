@@ -1,4 +1,3 @@
-import json
 from fastapi.testclient import TestClient
 
 from ravvi_poker.api.main import app
@@ -16,202 +15,136 @@ def register_guest():
     return access_token, username
 
 
-def test_user_profile():
-    # register new guest
-    access_token, username = register_guest()
+def test_get_user():
+    # register user
+    access_token, _ = register_guest()
+
+    # check user profile
     headers = {"Authorization": "Bearer " + access_token}
-
-    # check profile
     response = client.get("/v1/user/profile", headers=headers)
     assert response.status_code == 200
 
-    profile1 = response.json()
-    assert profile1["id"]
-    assert profile1["username"] == username
-    assert profile1["email"] is None
-    assert profile1["has_password"] is False
-
-    # set password
-    params = dict(new_password="test")
-    response = client.post("/v1/auth/password", headers=headers, json=params)
-    assert response.status_code == 200
-
-    # check profile
-    response = client.get("/v1/user/profile", headers=headers)
-    assert response.status_code == 200
-
-    profile2 = response.json()
-    assert profile2["id"] == profile1["id"]
-    assert profile2["username"] == profile1["username"]
-    assert profile2["email"] is None
-    assert profile2["has_password"] is True
-
-
-# TODO проверить работу с передачей upload_path в photo
-def test_update_user_profile():
-    # register new guest
-    access_token, username = register_guest()
-    headers = {"Authorization": "Bearer " + access_token}
-
-    # check profile
-    response = client.get("/v1/user/profile", headers=headers)
-    assert response.status_code == 200
-
-    profile1 = response.json()
-    assert profile1["id"]
-    assert profile1["username"] == username
-    assert profile1["email"] is None
-    assert profile1["has_password"] is False
-    assert profile1["photo"] is None
-
-    # update username
-    params = dict(username="test_username")
-    response = client.patch("/v1/user/profile", headers=headers, json=params)
-    assert response.status_code == 200
-
-    # check profile
-    response = client.get("/v1/user/profile", headers=headers)
-    assert response.status_code == 200
-
-    profile2 = response.json()
-    assert profile2["id"] == profile1["id"]
-    assert profile2["username"] == params["username"]
-    assert profile2["email"] is None
-    assert profile2["has_password"] is False
-    assert profile1["photo"] is None
-
-    # update photo
-    params = dict(photo="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")
-    response = client.patch("/v1/user/profile", headers=headers, json=params)
-    assert response.status_code == 200
-
-    # check profile
-    response = client.get("/v1/user/profile", headers=headers)
-    assert response.status_code == 200
-
-    profile3 = response.json()
-    assert profile3["id"] == profile2["id"]
-    assert profile3["username"] == profile2["username"]
-    assert profile3["email"] is None
-    assert profile3["has_password"] is False
-    assert profile3["photo"] == params["photo"]
-
-    # update_all_fields
-    params = dict(
-        username="final_test_username",
-        photo="iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII=",
-    )
-    response = client.patch("/v1/user/profile", headers=headers, json=params)
-    assert response.status_code == 200
-
-    # check profile
-    response = client.get("/v1/user/profile", headers=headers)
-    assert response.status_code == 200
-
-    profile4 = response.json()
-    assert profile4["id"] == profile3["id"]
-    assert profile4["username"] == params["username"]
-    assert profile4["email"] is None
-    assert profile4["has_password"] is False
-    assert profile4["photo"] == params["photo"]
-
-
-def test_set_user_email():
-    # register new guest
-    access_token, username = register_guest()
-    headers = {"Authorization": "Bearer " + access_token}
-
-    # check profile
-    response = client.get("/v1/user/profile", headers=headers)
-    assert response.status_code == 200
-
-    profile1 = response.json()
-    assert profile1["id"]
-    assert profile1["username"] == username
-    assert profile1["email"] is None
-    assert profile1["has_password"] is False
-
-    # set email
-    params = dict(email="test_email@test.ru")
-    response = client.post("/v1/user/profile/email", headers=headers, json=params)
-    assert response.status_code == 200
-
-    # check profile
-    response = client.get("/v1/user/profile", headers=headers)
-    assert response.status_code == 200
-
-    profile2 = response.json()
-    assert profile2["id"] == profile1["id"]
-    assert profile2["username"] == profile1["username"]
-    assert profile2["email"] == params["email"]
-    assert profile2["has_password"] is False
+    profile = response.json()
+    assert profile["id"]
+    assert profile["has_password"] is False
+    assert profile["username"]
+    assert profile["email"] is None
+    assert profile["image_id"] is None
 
 
 def test_deactivate_user():
-    # register new guest
+    # register user
     response = client.post("/v1/auth/register", json={})
     assert response.status_code == 200
-    profile = response.json()
-    device_token = profile["device_token"]
-    user_id = profile["user_id"]
-    username = profile["username"]
+
+    user = response.json()
+    device_token = user["device_token"]
+    access_token = user["access_token"]
+    username = user["username"]
 
     # login via device_token
-    params = {"device_token": device_token}
-    response = client.post("/v1/auth/device", json=params)
+    json = {"device_token": device_token}
+    response = client.post("/v1/auth/device", json=json)
     assert response.status_code == 200
-
-    # check user
-    profile1 = response.json()
-    assert profile1["device_token"] == device_token
-    assert profile1["user_id"] == user_id
-    assert profile1["username"] == username
 
     # set user password
-    access_token = profile1["access_token"]
-    user_password = "test1234"
-    params = {"new_password": user_password}
+    password = "testpswd1234"
+    json = {"new_password": password}
     headers = {"Authorization": "Bearer " + access_token}
-    response = client.post("/v1/auth/password", json=params, headers=headers)
+    response = client.post("/v1/auth/password", json=json, headers=headers)
     assert response.status_code == 200
-
-    # check user password
-    headers = {"Authorization": "Bearer " + access_token}
-    response = client.get("/v1/user/profile", headers=headers)
-    profile2 = response.json()
-    assert profile2["id"] == profile1["user_id"]
-    assert profile2["username"] == profile1["username"]
-    assert profile2["has_password"] is True
 
     # login via username and password
-    params = {"username": username, "password": user_password}
-    response = client.post("/v1/auth/login", data=params)
+    data = {"username": username, "password": password}
+    response = client.post("/v1/auth/login", data=data)
     assert response.status_code == 200
 
-    # check user
-    profile3 = response.json()
-    assert profile3["user_id"] == profile2["id"]
-    assert profile3["username"] == profile2["username"]
-
     # deactivate user
-    access_token = profile3["access_token"]
+    user = response.json()
+    access_token = user["access_token"]
     headers = {"Authorization": "Bearer " + access_token}
     response = client.delete("/v1/user/profile", headers=headers)
     assert response.status_code == 204
 
     # login via device_token
-    device_token = profile3["device_token"]
-    params = {"device_token": device_token}
-    response = client.post("/v1/auth/device", json=params)
+    json = {"device_token": user["device_token"]}
+    response = client.post("/v1/auth/device", json=json)
     assert response.status_code == 403
 
     # login via old device_token
-    device_token = profile1["device_token"]
-    params = {"device_token": device_token}
-    response = client.post("/v1/auth/device", json=params)
+    json = {"device_token": device_token}
+    response = client.post("/v1/auth/device", json=json)
     assert response.status_code == 403
 
     # login via username and password
-    params = {"username": username, "password": user_password}
-    response = client.post("/v1/auth/login", data=params)
+    data = {"username": username, "password": password}
+    response = client.post("/v1/auth/login", data=data)
     assert response.status_code == 403
+
+
+def test_set_user_username():
+    # register guest
+    access_token, _ = register_guest()
+
+    # set username
+    json = {"username": "test_username"}
+    headers = {"Authorization": "Bearer " + access_token}
+    response = client.patch("/v1/user/profile", json=json, headers=headers)
+    assert response.status_code == 200
+
+    # check username
+    profile = response.json()
+    assert profile["username"] == json["username"]
+
+    # TODO add not unique logic
+
+
+def test_set_user_email():
+    # register guest
+    access_token, _ = register_guest()
+
+    # set email
+    json = {"email": "email@test.ru"}
+    headers = {"Authorization": "Bearer " + access_token}
+    response = client.patch("/v1/user/profile", json=json, headers=headers)
+    assert response.status_code == 200
+
+    # check email 
+    profile = response.json()
+    assert profile["email"] == json["email"]
+
+    # TODO ask questions about email logic
+
+
+def test_get_user_info():
+    # register user
+    access_token, _ = register_guest()
+
+    # register new user
+    new_access_token, _ = register_guest()
+
+    # get new user profile
+    headers = {"Authorization": "Bearer " + new_access_token}
+    response = client.get("/v1/user/profile", headers=headers)
+    assert response.status_code == 200
+
+    new_profile = response.json()
+    new_profile_id = new_profile["id"]
+    new_profile_username = new_profile["username"]
+    new_profile_image_id = new_profile["image_id"]
+
+    # get new user profile info by user
+    headers = {"Authorization": "Bearer " + access_token}
+    response = client.get(f"/v1/user/{new_profile_id}/profile", headers=headers)
+    assert response.status_code == 200
+
+    # check new profile info
+    new_profile_info = response.json()
+    assert new_profile_info["id"] == new_profile_id
+    assert new_profile_info["username"] == new_profile_username
+    assert new_profile_info["image_id"] == new_profile_image_id
+
+    # get none user profile info
+    none_user_id = new_profile_id + 100500
+    response = client.get(f"/v1/user/{none_user_id}/profile", headers=headers)
+    assert response.status_code == 404

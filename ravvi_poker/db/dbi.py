@@ -126,19 +126,9 @@ class DBI:
             cursor.execute(sql, args)
             return cursor.fetchone()
 
-    def update_user_profile(self, id, username, photo):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("UPDATE user_profile SET username=%s, photo=%s WHERE id=%s RETURNING *",(username, photo, id))
-            return cursor.fetchone()
-
     def update_user_password(self, id, password_hash):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("UPDATE user_profile SET password_hash=%s WHERE id=%s RETURNING id, uuid, username", (password_hash, id))
-            return cursor.fetchone()
-
-    def update_user_email(self, id, email):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("UPDATE user_profile SET email=%s WHERE id=%s RETURNING *", (email, id))
             return cursor.fetchone()
 
     def create_user_login(self, user_id, device_id):
@@ -214,6 +204,35 @@ class DBI:
             cursor.execute(sql, (user_id,))
             cursor.execute("UPDATE user_login SET closed_ts=NOW() WHERE user_id=%s", (user_id,))
             cursor.execute("UPDATE user_profile SET closed_ts=NOW() WHERE id=%s", (user_id,))
+
+    def update_user_profile(self, user_id, **kwargs):
+        params = ", ".join([f"{key}=%s" for key in kwargs])
+        sql = f"UPDATE user_profile SET {params} WHERE id=%s RETURNING *"
+        args = list(kwargs.values())
+        args.append(user_id)
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute(sql, args)
+            return cursor.fetchone()
+
+    # IMAGES
+
+    def get_user_images(self, owner_id, id=None, uuid=None, image_data=None):
+        args = [owner_id]
+        sql = "SELECT * FROM image WHERE (owner_id=%s or owner_id is NULL)"
+        if id:
+            args.append(id)
+            sql += " and id=%s"
+        if uuid:
+            args.append(uuid)
+            sql += " and uuid=%s"
+        if image_data:
+            args.append(image_data)
+            sql += " and image_data=decode(%s, 'base64')"
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute(sql, args)
+            if len(args) > 1:
+                return cursor.fetchone()
+            return cursor.fetchall()
 
     # CLUBS
 
@@ -311,4 +330,3 @@ class DBI:
             cursor.execute("INSERT INTO poker_event (table_id, game_id, user_id, event_type, event_props) VALUES (%s, %s, %s, %s, %s) RETURNING id, event_ts",
                            (table_id, game_id, user_id, type, data))
             return cursor.fetchone()
-        
