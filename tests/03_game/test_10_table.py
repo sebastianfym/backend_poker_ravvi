@@ -8,7 +8,7 @@ from ravvi_poker.game.client import Client
 class TableMock(Table):
 
     def __init__(self, table_id, n_seats=9):
-        super().__init__(table_id, n_seats)
+        super().__init__(table_id, game_type='NLH', n_seats=n_seats)
         self._test_events = []
 
     async def broadcast(self, event: Event):
