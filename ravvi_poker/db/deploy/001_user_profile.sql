@@ -10,3 +10,9 @@ CREATE TABLE image (
 ALTER TABLE user_profile
 ADD COLUMN email varchar(100) default null,
 ADD COLUMN image_id bigint references public.image(id) default null;
+
+
+ALTER TABLE poker_table
+ADD COLUMN table_type varchar(100) default null,
+ADD COLUMN game_type varchar(100) default null,
+ADD COLUMN table_name varchar(100) default null;

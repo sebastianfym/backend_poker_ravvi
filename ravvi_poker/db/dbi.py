@@ -256,7 +256,7 @@ class DBI:
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("SELECT * FROM club WHERE id=%s",(club_id,))
             return cursor.fetchone()
-        
+
     def get_club_members(self, club_id):
         sql = "SELECT u.*, x.user_role, x.approved_ts FROM club_member x JOIN user_profile u ON u.id=x.user_id WHERE x.club_id=%s"
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
@@ -267,7 +267,7 @@ class DBI:
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("SELECT * FROM club_member WHERE club_id=%s AND user_id=%s",(club_id,user_id))
             return cursor.fetchone()
-        
+
     def update_club(self, club_id, *, name, description):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("UPDATE club SET name=%s, description=%s WHERE id=%s RETURNING *",(name, description, club_id,))
@@ -286,20 +286,28 @@ class DBI:
         
     # TABLES
 
-    def create_table(self, *, club_id):
+    def create_table(self, club_id, **kwargs):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("INSERT INTO poker_table (club_id) VALUES (%s) RETURNING *",(club_id,))
+            fields = ", ".join(["club_id"] + list(kwargs.keys()))
+            values = [club_id] + list(kwargs.values())
+            values_pattern = ", ".join(["%s"] * len(values))
+            sql = f"INSERT INTO poker_table ({fields}) VALUES ({values_pattern}) RETURNING *"
+            cursor.execute(sql, values)
             return cursor.fetchone()
 
     def get_table(self, table_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("SELECT * FROM poker_table WHERE id=%s",(table_id,))
             return cursor.fetchone()
-        
+
     def get_tables_for_club(self, *, club_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("SELECT * FROM poker_table WHERE club_id=%s",(club_id,))
             return cursor.fetchall()
+
+    def delete_table(self, table_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("DELETE FROM poker_table WHERE id=%s",(table_id,))
 
     # temporary method to get list of tables
     def get_active_tables(self):
