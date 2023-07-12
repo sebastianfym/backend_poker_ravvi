@@ -58,7 +58,7 @@ class Table(ObjectLogger):
                     # ok to start
                     with DBI() as db:
                         row = db.game_begin(table_id=self.table_id, user_ids=[u.id for u in users])
-                    if self.game_type=='PLO6':
+                    if self.game_type=='PLO':
                         self.game = Poker_PLO_6(self, row.id, users)
                     else:
                         self.game = Poker_NLH(self, row.id, users)
