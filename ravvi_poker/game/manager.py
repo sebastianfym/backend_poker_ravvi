@@ -45,18 +45,18 @@ class Manager(Logger_MixIn):
             return
         await table.handle_command(client, command)
 
-    def add_table(self, row):
+    def add_table(self, table_row):
         try:
-            game_type = row.game_type
+            game_type = table_row.game_type
             n_seats = 9
             if not game_type:
-                game_type = 'PLO' if table.id==2 else 'NLH'
+                game_type = 'PLO' if table_row.id==2 else 'NLH'
             if game_type=='PLO':
                 n_seats = min(n_seats, 6)
             table = Table(table.id, game_type=game_type, n_seats=n_seats)
             self.tables[table.id] = table
         except Exception as ex:
-            self.log_exception("add_table %s: %s", row, ex)
+            self.log_exception("add_table %s: %s", table_row, ex)
             return None
         return table
 
