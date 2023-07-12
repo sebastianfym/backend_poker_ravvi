@@ -8,14 +8,16 @@ from ..db import DBI
 from .event import Event, TABLE_INFO, PLAYER_ENTER, PLAYER_EXIT
 from .client import Client
 from .poker_nlh import Poker_NLH
+from .poker_plo import Poker_PLO_6
 from .user import User
 
 class Table(ObjectLogger):
     NEW_GAME_DELAY = 7
 
-    def __init__(self, table_id, n_seats=9):
+    def __init__(self, table_id, *, game_type, n_seats):
         super().__init__(logger_name=__name__+f".{table_id}")
         self.table_id = table_id
+        self.game_type = game_type
         self.seats : List[User] = [None]*n_seats
         self.dealer_idx = -1
         self.task : asyncio.Task = None
@@ -56,7 +58,10 @@ class Table(ObjectLogger):
                     # ok to start
                     with DBI() as db:
                         row = db.game_begin(table_id=self.table_id, user_ids=[u.id for u in users])
-                    self.game = Poker_NLH(self, row.id, users)
+                    if self.game_type=='PLO6':
+                        self.game = Poker_PLO_6(self, row.id, users)
+                    else:
+                        self.game = Poker_NLH(self, row.id, users)
                     await self.game.run()
                     with DBI() as db:
                         row = db.game_end(game_id=self.game.game_id)
