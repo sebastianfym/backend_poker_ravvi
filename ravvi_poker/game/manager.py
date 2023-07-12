@@ -32,10 +32,10 @@ class Manager(Logger_MixIn):
         if command.type == Event.CMD_TABLE_JOIN:
             if not table:
                 with DBI() as db:
-                    row = db.get_table(command.table_id)
-                if row:
-                    self.log_info("table %s loaded", row.id) 
-                    table = self.add_table(row.id)
+                    table_row = db.get_table(command.table_id)
+                if table_row:
+                    self.log_info("table %s loaded", table_row.id) 
+                    table = self.add_table(table_row)
                     await table.start()
             if not table:
                 event = TABLE_ERROR(command.table_id, error_id=404, message='Table not found')
@@ -44,12 +44,15 @@ class Manager(Logger_MixIn):
             return
         await table.handle_command(client, command)
 
-    def add_table(self, table_id):
-        if table_id==2:
-            table = Table(table_id, game_type='PLO6', n_seats=6)
-        else:
-            table = Table(table_id, game_type='NLH', n_seats=9)
-        self.tables[table_id] = table
+    def add_table(self, row):
+        game_type = row.game_type
+        n_seats = 9
+        if not game_type:
+            game_type = 'PLO' if table.id==2 else 'NLH'
+        if game_type=='PLO':
+            n_seats = min(n_seats, 6)
+        table = Table(table.id, game_type=game_type, n_seats=n_seats)
+        self.tables[table.id] = table
         return table
 
     async def start(self):
@@ -64,7 +67,7 @@ class Manager(Logger_MixIn):
             self.log_info("loaded %s tables", len(tables))
 
         for row in tables:
-            table = self.add_table(row.id)
+            table = self.add_table(row)
             await table.start()
             if row.club_id:
                 continue
