@@ -24,6 +24,7 @@ build_py:
   before_script:
     - source ~/.profile
   script:
+    - python3 ./build_version.py
     - python3 -m build --wheel .
   artifacts:
     paths:
