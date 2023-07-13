@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -47,7 +47,5 @@ namespaces = false
 "ravvi_poker.db.schema" = ["*.sql"]
 "ravvi_poker.db.deploy" = ["*.sql"]
 
-[tool.setuptools_scm]
-write_to = "ravvi_poker/_build.py"
-version_scheme = "release-branch-semver"
-local_scheme = "no-local-version"
+[tool.setuptools.dynamic]
+version = {attr = "ravvi_poker.build.version"}

@@ -23,7 +23,9 @@ build_py:
       - ${PIP_CACHE_DIR}
   before_script:
     - source ~/.profile
+    - git config --global --add safe.directory $CI_PROJECT_DIR
   script:
+    - python3 ./build_version.py
     - python3 -m build --wheel .
   artifacts:
     paths:
