@@ -8,8 +8,8 @@ class Poker_PLO_X(PokerBase):
     def get_bet_limits(self, player=None):
         p = player or self.current_player
         call_delta = max(0, self.bet_level - p.bet_amount)
-        raise_min = call_delta + self.bet_raise
-        raise_max = min(call_delta + self.bet_total, p.balance)
+        raise_min = p.bet_amount + call_delta + self.bet_raise
+        raise_max = p.bet_amount + min(call_delta + self.bet_total, p.balance)
         return call_delta, raise_min, raise_max
 
     def get_best_hand(self, player_cards, game_cards):
