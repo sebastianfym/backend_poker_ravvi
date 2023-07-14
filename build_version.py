@@ -62,11 +62,11 @@ def get_version(branch, tag=None, build_id=1):
         v = packaging.version.parse("0.0.0")
     if branch=='master':
         post = v.post if v.is_postrelease else 0
-        v = packaging.version.parse(f"{v.major}.{v.minor+1}.{v.micro}post{post+1}.dev{build_id}")
+        v = packaging.version.parse(f"{v.major}.{v.minor}.{v.micro}post{post+1}.dev{build_id}")
     elif branch=='develop':
-        v = packaging.version.parse(f"{v.major}.{v.minor+1}.{v.micro}b{0}.dev{build_id}")
+        v = packaging.version.parse(f"{v.major}.{v.minor+1}.{0}b{0}.dev{build_id}")
     else:
-        v = packaging.version.parse(f"{v.major}.{v.minor+1}.{v.micro}a{0}.dev{build_id}")
+        v = packaging.version.parse(f"{v.major}.{v.minor+1}.{0}a{0}.dev{build_id}")
     return v
 
 def get_variables():
@@ -79,17 +79,17 @@ def get_variables():
         tag = None
         build_id = 0
     version = get_version(branch, tag, build_id)
-    VERSION_STRING = f'"{str(version)}"'
+    VERSION_BUILD = str(version)
     s = ""
     if version.pre is not None:
         s = f"{version.pre[0]}{version.pre[1]}"
         if version.dev is not None:
             s+=f".dev{version.dev}"
-    VERSION_TUPLE = tuple(list(version.release)+[s])
+    VERSION_BUILD_TUPLE = tuple(list(version.release)+[s])
 
     return dict(
-        VERSION_STRING=VERSION_STRING,
-        VERSION_TUPLE=str(VERSION_TUPLE)
+        VERSION_BUILD=str(version),
+        VERSION_BUILD_TUPLE=str(VERSION_BUILD_TUPLE)
     )
 
 def replace_valiables(data, variables):

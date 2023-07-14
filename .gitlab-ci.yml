@@ -125,7 +125,7 @@ deploy_develop:
 deploy_staging:
   stage: deploy
   rules:
-    - if: $CI_COMMIT_BRANCH == 'relese/v0.2'
+    - if: $CI_COMMIT_BRANCH == 'release/v0.2'
   environment: staging
   tags:
     - staging
@@ -137,7 +137,15 @@ deploy_staging:
   before_script:
     - source ~/.profile
   script:
-    - echo $USER
-    - echo $PATH
-    - pwd
-    - ls -al
+    # stop service
+    - ravvi_poker_service stop
+    # dump current version databse
+    - ravvi_poker_db_dump
+    # uninstall all pip packages
+    - pip3 freeze --user | xargs pip uninstall -y
+    # install new version
+    - pip3 install --user -f ./dist ravvi-poker
+    # reset (drop/re-create) database
+    - ravvi_poker_db_reset
+    # start service
+    - ravvi_poker_service start

@@ -1,2 +1,2 @@
-__version__ = version = ${VERSION_STRING}
-__version_tuple__ = version_tuple = ${VERSION_TUPLE}
+__version__ = version = "${VERSION_BUILD}"
+__version_tuple__ = version_tuple = ${VERSION_BUILD_TUPLE}
