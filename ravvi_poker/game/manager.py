@@ -49,13 +49,17 @@ class Manager(Logger_MixIn):
         try:
             game_type = table_row.game_type or 'NLH'
             game_subtype = table_row.game_subtype
-            n_seats = table_row.table_seats or 9
 
             if table_row.id==2:
                 game_type = "PLO"
+                game_subtype = "PLO6"
 
-            table = Table(table_row.id, game_type=game_type, game_subtype=game_subtype, n_seats=n_seats)
+            table = Table(table_row.id, 
+                          game_type=game_type, 
+                          game_subtype=game_subtype, 
+                          n_seats=table_row.table_seats)
             self.tables[table.table_id] = table
+
         except Exception as ex:
             self.log_exception("add_table %s: %s", table_row, ex)
             return None

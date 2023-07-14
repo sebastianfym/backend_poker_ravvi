@@ -14,12 +14,12 @@ from .user import User
 class Table(ObjectLogger):
     NEW_GAME_DELAY = 7
 
-    def __init__(self, table_id, *, game_type, game_subtype=None, n_seats=9):
+    def __init__(self, table_id, *, game_type, game_subtype=None, n_seats=None):
         super().__init__(logger_name=__name__+f".{table_id}")
         self.table_id = table_id
         self.game_type = game_type
         self.game_subtype = game_subtype
-        if n_seats:
+        if not n_seats:
             n_seats = 9
         if self.game_type=='PLO':
             if self.game_subtype is None or self.game_subtype=='PLO6':
@@ -29,6 +29,7 @@ class Table(ObjectLogger):
         self.task : asyncio.Task = None
         self.clients : List[Client] = []
         self.game = None
+        self.log_info("init: %s %s %s", self.game_type, self.game_subtype, len(self.seats))
 
     def get_user(self, user_id, *, connected=0):
         return User(id=user_id, username='u'+str(user_id), balance=1000, connected=connected)
