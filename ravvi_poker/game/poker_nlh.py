@@ -9,12 +9,12 @@ class Poker_NLH(PokerBase):
 
     def get_bet_limits(self, player=None):
         p = player or self.current_player
-        call_delta = max(0, self.bet_level - p.bet_amount)
-        if self.count_has_options > 2:
-            raise_min = call_delta + self.blind_big
+        call_delta = max(0, self.bet_level-p.bet_amount)
+        if self.count_has_options>2:
+            raise_min = self.bet_level + self.blind_big
         else:
-            raise_min = call_delta + max(self.blind_big, call_delta)
-        raise_max = p.balance
+            raise_min = self.bet_level + max(self.blind_big, call_delta)
+        raise_max = p.bet_amount + p.balance
         return call_delta, raise_min, raise_max
 
     def get_best_hand(self, player_cards, game_cards):
