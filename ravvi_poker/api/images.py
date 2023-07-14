@@ -62,8 +62,10 @@ async def v1_get_image(image_id: int, session_uuid: RequireSessionUUID):
         if not image:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Image not found")
 
+    headers = {"Cache-Control": "no-cache"}
     return Response(
         content=image.image_data,
+        headers=headers,
         media_type="image/png",
     )
 
