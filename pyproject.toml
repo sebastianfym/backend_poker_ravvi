@@ -22,7 +22,9 @@ dependencies = [
     "uvicorn",
     "gunicorn",
     "websockets",
-    "pydantic[email]"
+    "pydantic[email]",
+    "Pillow",
+    "python-magic"
 ]
 
 [project.optional-dependencies]
