@@ -1,7 +1,13 @@
+import base64
+from math import ceil
+from io import BytesIO
+
 from fastapi import APIRouter
 from fastapi.exceptions import HTTPException
 from fastapi.responses import Response
-from pydantic import BaseModel
+import magic
+from PIL import Image
+from pydantic import BaseModel, field_validator
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 
 from ..db.dbi import DBI
@@ -9,18 +15,37 @@ from .auth import RequireSessionUUID, get_session_and_user
 
 router = APIRouter(prefix="/images", tags=["images"])
 
+ALLOWED_IMAGE_MIME_TYPES = [
+    "image/jpeg",
+    "image/png",
+    "image/svg+xml",
+]
 
-class Image(BaseModel):
+MAX_IMAGE_DIMENSION = 500
+
+
+class ImageProfile(BaseModel):
     id: int
     is_owner: bool
 
 
-class ImageList(BaseModel):
-    images: list[Image]
+class ImageProfileList(BaseModel):
+    images: list[ImageProfile]
 
 
 class ImageUpload(BaseModel):
     image_data: str
+
+    @field_validator("image_data")
+    def validate_image_data(cls, value):
+        try:
+            image = base64.b64decode(value, validate=True)
+        except Exception:
+            raise ValueError("wrong value")
+        image_mime_type = magic.from_buffer(image, mime=True)
+        if image_mime_type not in ALLOWED_IMAGE_MIME_TYPES:
+            raise ValueError("wrong type")
+        return value
 
 
 @router.get("", summary="Get available images")
@@ -30,8 +55,8 @@ async def v1_get_available_images(session_uuid: RequireSessionUUID):
         _, user = get_session_and_user(dbi, session_uuid)
         images = dbi.get_user_images(user.id)
 
-    return ImageList(images=[
-        Image(
+    return ImageProfileList(images=[
+        ImageProfile(
             id=image.id,
             is_owner=(image.owner_id==user.id)
         ) for image in images
@@ -41,13 +66,30 @@ async def v1_get_available_images(session_uuid: RequireSessionUUID):
 @router.post("", summary="Upload image")
 async def v1_upload_image(params: ImageUpload, session_uuid: RequireSessionUUID):
     """Upload image"""
+    def resize_image(image: bytes) -> bytes:
+        with Image.open(BytesIO(image)) as im:
+            width, height = im.size
+            im_max_dimension = max(width, height)
+            proportion = im_max_dimension / MAX_IMAGE_DIMENSION
+            if proportion <= 1:
+                return image
+            resized_im = im.resize((ceil(width/proportion), ceil(height/proportion)))
+            buf = BytesIO()
+            resized_im.save(buf, format=im.format)
+            return buf.getvalue()
+
+    image = base64.b64decode(params.image_data, validate=True)
+    image_mime_type = magic.from_buffer(image, mime=True)
+    image = resize_image(image) if image_mime_type != "image/svg+xml" else image
+    image_data = base64.b64encode(image).decode()
+
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
-        image = dbi.get_user_images(user.id, image_data=params.image_data)
+        image = dbi.get_user_images(user.id, image_data=image_data)
         if not image:
-            image = dbi.create_user_image(user.id, params.image_data)
+            image = dbi.create_user_image(user.id, image_data, image_mime_type)
 
-    return Image(
+    return ImageProfile(
         id=image.id,
         is_owner=(image.owner_id==user.id)
     )
@@ -64,9 +106,9 @@ async def v1_get_image(image_id: int, session_uuid: RequireSessionUUID):
 
     headers = {"Cache-Control": "no-cache"}
     return Response(
-        content=image.image_data,
+        content=base64.b64decode(image.image_data),
         headers=headers,
-        media_type="image/png",
+        media_type=image.mime_type,
     )
 
 
