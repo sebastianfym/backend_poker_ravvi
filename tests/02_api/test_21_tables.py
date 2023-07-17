@@ -138,8 +138,49 @@ def test_delete_club_table():
 
 
 def test_get_club_tables():
-    # TODO закончить
-    pass
+    # Регистрируем пользователя
+    access_token, _ = register_guest()
+
+    # Создаем клуб
+    json = {"name": "club 1"}
+    headers = {"Authorization": "Bearer " + access_token}
+    response = client.post("/v1/clubs", json=json, headers=headers)
+    assert response.status_code == 200
+
+    club = response.json()
+    # 
+    # Создаем стол
+    json = {"table_name": "table", "table_type": "type", "table_seats": 6, "game_type": "game type"}
+    response = client.post(f"/v1/clubs/{club['id']}/tables", json=json, headers=headers)
+    assert response.status_code == 201
+
+    table = response.json()
+
+    # Получаем столы существующего клуба
+    response = client.get(f"/v1/clubs/{club['id']}/tables", headers=headers)
+    assert response.status_code == 200
+
+    tables = response.json()
+
+    assert len(tables["tables"]) == 1
+    assert tables["tables"][0]["id"]
+    assert tables["tables"][0]["club_id"] == club["id"]
+    assert tables["tables"][0]["table_name"] == table["table_name"]
+    assert tables["tables"][0]["table_type"] == table["table_type"]
+    assert tables["tables"][0]["game_type"]== table["game_type"]
+
+    # Пытаемся получить столы несуществующего клуба
+    non_club_id = club["id"] + 100500
+    response = client.get(f"/v1/clubs/{non_club_id}/tables", headers=headers)
+    assert response.status_code == 404
+
+    # Регистрируем нового пользователя (не участника)
+    new_access_token, _ = register_guest()
+
+    # Пытаемся получить столы существующего клуба не участником
+    new_headers = {"Authorization": "Bearer " + new_access_token}
+    response = client.get(f"/v1/clubs/{club['id']}/tables", headers=new_headers)
+    assert response.status_code == 403
 
 
 # def test_21_tables():

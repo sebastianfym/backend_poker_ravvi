@@ -116,6 +116,32 @@ def test_set_user_email():
     # TODO ask questions about email logic
 
 
+def test_patch_empty_user():
+    # register user
+    access_token, _ = register_guest()
+
+    # set username and email
+    json = {"username": "test_username", "email": "email@test.ru"}
+    headers = {"Authorization": "Bearer " + access_token}
+    response = client.patch("/v1/user/profile", json=json, headers=headers)
+    assert response.status_code == 200
+
+    # check user profile
+    profile = response.json()
+    assert profile["username"] == json["username"]
+    assert profile["email"] == json["email"]
+
+    # update user with no data
+    json = {}
+    response = client.patch("/v1/user/profile", json=json, headers=headers)
+    assert response.status_code == 200
+
+    # check user profile
+    new_profile = response.json()
+    assert new_profile["username"] == profile["username"]
+    assert new_profile["email"] == profile["email"]
+
+
 def test_get_user_info():
     # register user
     access_token, _ = register_guest()

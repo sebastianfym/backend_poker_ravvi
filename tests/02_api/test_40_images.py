@@ -314,6 +314,21 @@ def test_set_user_avatar():
     profile = response.json()
     assert profile["image_id"] == image["id"]
 
+    # register new user
+    new_access_token, _ = register_guest()
+
+    # set user image as new user avatar
+    new_headers = {"Authorization": "Bearer " + new_access_token}
+    new_response = client.patch("/v1/user/profile", json=json, headers=new_headers)
+    assert new_response.status_code == 404
+
+    # check new user profile
+    new_response = client.get("/v1/user/profile", headers=new_headers)
+    assert new_response.status_code == 200
+
+    new_profile = new_response.json()
+    assert new_profile["image_id"] is None
+
     # delete image
     response = client.delete(f"/v1/images/{image['id']}", headers=headers)
     assert response.status_code == 204
