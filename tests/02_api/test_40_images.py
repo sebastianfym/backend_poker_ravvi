@@ -10,16 +10,16 @@ from ravvi_poker.db.dbi import DBI
 client = TestClient(app)
 
 IMAGES = [
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAECAIAAADAusJtAAAAFklEQVR4nGKa4XaPiYGBAYYBAQAA//8YYgHFJSm6pAAAAABJRU5ErkJggg==",
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAECAIAAADAusJtAAAAFklEQVR4nGI6GiXFxMDAAMOAAAAA//8SKQFCCNiyPAAAAABJRU5ErkJggg==",
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAECAIAAADAusJtAAAAFklEQVR4nGJ65BDBxMDAAMOAAAAA//8VlgGDnSVGagAAAABJRU5ErkJggg==",
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAECAIAAADAusJtAAAAFklEQVR4nGIK3CbAxMDAAMOAAAAA//8P4wEgk7DPdAAAAABJRU5ErkJggg==",
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAECAIAAADAusJtAAAAFklEQVR4nGKK8rrAxMDAAMOAAAAA//8UQgF9P3dN2QAAAABJRU5ErkJggg==",
-    "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAF0lEQVR4nGLJsZnFwMDAxAAGgAAAAP//Dz4BSUqmw94AAAAASUVORK5CYII=",
-    "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAF0lEQVR4nGKxySxiYGBgYgADQAAAAP//DTIBHsuLPQIAAAAASUVORK5CYII=",
-    "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAF0lEQVR4nGJZsvcuAwMDEwMYAAIAAP//GwMCRdYOLrcAAAAASUVORK5CYII=",
-    "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAF0lEQVR4nGJZd+o8AwMDEwMYAAIAAP//G4cCTlAWZ+gAAAAASUVORK5CYII=",
-    "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAF0lEQVR4nGJ5OfkDAwMDEwMYAAIAAP//HV0Cc1XXd14AAAAASUVORK5CYII=",
+    ("iVBORw0KGgoAAAANSUhEUgAAAAEAAAAECAIAAADAusJtAAAAFklEQVR4nGKa4XaPiYGBAYYBAQAA//8YYgHFJSm6pAAAAABJRU5ErkJggg==", "image/png"),
+    ("iVBORw0KGgoAAAANSUhEUgAAAAEAAAAECAIAAADAusJtAAAAFklEQVR4nGI6GiXFxMDAAMOAAAAA//8SKQFCCNiyPAAAAABJRU5ErkJggg==", "image/png"),
+    ("iVBORw0KGgoAAAANSUhEUgAAAAEAAAAECAIAAADAusJtAAAAFklEQVR4nGJ65BDBxMDAAMOAAAAA//8VlgGDnSVGagAAAABJRU5ErkJggg==", "image/png"),
+    ("iVBORw0KGgoAAAANSUhEUgAAAAEAAAAECAIAAADAusJtAAAAFklEQVR4nGIK3CbAxMDAAMOAAAAA//8P4wEgk7DPdAAAAABJRU5ErkJggg==", "image/png"),
+    ("iVBORw0KGgoAAAANSUhEUgAAAAEAAAAECAIAAADAusJtAAAAFklEQVR4nGKK8rrAxMDAAMOAAAAA//8UQgF9P3dN2QAAAABJRU5ErkJggg==", "image/png"),
+    ("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAF0lEQVR4nGLJsZnFwMDAxAAGgAAAAP//Dz4BSUqmw94AAAAASUVORK5CYII=", "image/png"),
+    ("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAF0lEQVR4nGKxySxiYGBgYgADQAAAAP//DTIBHsuLPQIAAAAASUVORK5CYII=", "image/png"),
+    ("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAF0lEQVR4nGJZsvcuAwMDEwMYAAIAAP//GwMCRdYOLrcAAAAASUVORK5CYII=", "image/png"),
+    ("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAF0lEQVR4nGJZd+o8AwMDEwMYAAIAAP//G4cCTlAWZ+gAAAAASUVORK5CYII=", "image/png"),
+    ("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAF0lEQVR4nGJ5OfkDAwMDEwMYAAIAAP//HV0Cc1XXd14AAAAASUVORK5CYII=", "image/png"),
 ]
 
 
@@ -46,13 +46,13 @@ class TestImageManager:
         random_images = random.choices(self.images, k=k)
         with DBI() as dbi:
             with dbi.cursor(row_factory=namedtuple_row) as cursor:
-                values = ", ".join(["(%s, decode(%s, 'base64'))"] * len(random_images))
+                values = ", ".join(["(%s, %s, %s)"] * len(random_images))
                 sql = (
-                    f"INSERT INTO image (owner_id, image_data) VALUES {values}"
-                    f" RETURNING *"
+                    f"INSERT INTO image (owner_id, image_data, mime_type)"
+                    f" VALUES {values} RETURNING *"
                 )
                 cursor.execute(
-                    sql, sum([[user_id, image] for image in random_images], [])
+                    sql, sum([[user_id, *image] for image in random_images], [])
                 )
                 return cursor.fetchall()
 
@@ -80,7 +80,7 @@ def test_delete_image():
 
     # upload image
     headers = {"Authorization": "Bearer " + access_token}
-    json = {"image_data": IMAGES[0]}
+    json = {"image_data": IMAGES[0][0]}
     response = client.post("/v1/images", json=json, headers=headers)
     assert response.status_code == 200
 
@@ -172,7 +172,7 @@ def test_upload_image():
 
     # upload image
     headers = {"Authorization": "Bearer " + access_token}
-    json = {"image_data": IMAGES[0]}
+    json = {"image_data": IMAGES[0][0]}
     response = client.post("/v1/images", json=json, headers=headers)
     assert response.status_code == 200
 
@@ -196,21 +196,21 @@ def test_upload_image():
     # create image manager
     image_manager = TestImageManager()
 
+    # TODO сейчас это работает только из-за proportion <= 1
+    # переделать в соответствии с новой логикой
     # create common image
     with image_manager(images_num=1) as im:
         uploaded_images = im.uploaded_images
         common_image = uploaded_images[0]
-        common_image_id = common_image.id
-        common_image_data = base64.b64encode(common_image.image_data).decode()
 
         # upload same common image
-        json = {"image_data": common_image_data}
+        json = {"image_data": common_image.image_data}
         response = client.post("/v1/images", json=json, headers=headers)
         assert response.status_code == 200
 
         # check same common image
         same_common_image = response.json()
-        assert same_common_image["id"] == common_image_id
+        assert same_common_image["id"] == common_image.id
         assert same_common_image["is_owner"] is False
 
 
@@ -228,7 +228,7 @@ def test_get_available_images():
     assert not available_images["images"]
 
     # upload image
-    json = {"image_data": IMAGES[0]}
+    json = {"image_data": IMAGES[0][0]}
     headers = {"Authorization": "Bearer " + access_token}
     response = client.post("/v1/images", json=json, headers=headers)
     assert response.status_code == 200
@@ -254,7 +254,6 @@ def test_get_available_images():
     with image_manager(images_num=1) as im:
         uploaded_images = im.uploaded_images
         common_image = uploaded_images[0]
-        common_image_id = common_image.id
 
         # get available images
         headers = {"Authorization": "Bearer " + access_token}
@@ -262,7 +261,7 @@ def test_get_available_images():
         assert response.status_code == 200
 
         available_images = response.json()
-        assert common_image_id in [image["id"] for image in available_images["images"]]
+        assert common_image.id in [image["id"] for image in available_images["images"]]
 
     # register new user
     new_access_token, _ = register_guest()
@@ -273,23 +272,23 @@ def test_get_available_images():
     assert new_response.status_code == 200
     new_profile = new_response.json()
 
+    # TODO переписать на эндпойнт создания изображения
     # create new user image
     with image_manager(user_id=new_profile["id"], images_num=1) as im:
         uploaded_images = im.uploaded_images
         new_user_image = uploaded_images[0]
-        new_user_image_id = new_user_image.id
 
         # get new user image
-        response = client.get(f"/v1/images/{new_user_image_id}", headers=new_headers)
+        response = client.get(f"/v1/images/{new_user_image.id}", headers=new_headers)
         assert response.status_code == 200
 
-        # get available images
+        # get available images by user
         headers = {"Authorization": "Bearer " + access_token}
         response = client.get("/v1/images", headers=headers)
         assert response.status_code == 200
 
         available_images = response.json()
-        assert new_user_image_id not in [
+        assert new_user_image.id not in [
             image["id"] for image in available_images["images"]
         ]
 
@@ -299,7 +298,7 @@ def test_set_user_avatar():
     access_token, _ = register_guest()
 
     # upload image
-    json = {"image_data": IMAGES[0]}
+    json = {"image_data": IMAGES[0][0]}
     headers = {"Authorization": "Bearer " + access_token}
     response = client.post("/v1/images", json=json, headers=headers)
     assert response.status_code == 200
@@ -332,16 +331,15 @@ def test_set_user_avatar():
     with image_manager(images_num=1) as im:
         uploaded_images = im.uploaded_images
         common_image = uploaded_images[0]
-        common_image_id = common_image.id
 
         # set common image as profile avatar
-        json = {"image_id": common_image_id}
+        json = {"image_id": common_image.id}
         response = client.patch("/v1/user/profile", json=json, headers=headers)
         assert response.status_code == 200
 
         # check profile avatar
         profile = response.json()
-        assert profile["image_id"] == common_image_id
+        assert profile["image_id"] == common_image.id
 
         # set profile avatar as none
         json = {"image_id": None}
