@@ -227,16 +227,16 @@ class DBI:
             sql += " and uuid=%s"
         if image_data:
             args.append(image_data)
-            sql += " and image_data=decode(%s, 'base64')"
+            sql += " and image_data=%s"
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute(sql, args)
             if len(args) > 1:
                 return cursor.fetchone()
             return cursor.fetchall()
 
-    def create_user_image(self, owner_id, image_data):
+    def create_user_image(self, owner_id, image_data, mime_type):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("INSERT INTO image (owner_id, image_data) VALUES (%s, decode(%s, 'base64')) RETURNING *", (owner_id, image_data,))
+            cursor.execute("INSERT INTO image (owner_id, image_data, mime_type) VALUES (%s, %s, %s) RETURNING *", (owner_id, image_data, mime_type))
             return cursor.fetchone()
 
     def delete_image(self, image_id):
