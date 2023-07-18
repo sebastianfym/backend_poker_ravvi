@@ -1,67 +1,22 @@
 import base64
+from io import BytesIO
+from math import ceil
 import random
 
 from fastapi.testclient import TestClient
-from psycopg.rows import namedtuple_row
+import magic
+from PIL import Image
 
+from ravvi_poker.api.images import MAX_IMAGE_DIMENSION
 from ravvi_poker.api.main import app
 from ravvi_poker.db.dbi import DBI
 
 client = TestClient(app)
 
-IMAGES = [
-    ("iVBORw0KGgoAAAANSUhEUgAAAAEAAAAECAIAAADAusJtAAAAFklEQVR4nGKa4XaPiYGBAYYBAQAA//8YYgHFJSm6pAAAAABJRU5ErkJggg==", "image/png"),
-    ("iVBORw0KGgoAAAANSUhEUgAAAAEAAAAECAIAAADAusJtAAAAFklEQVR4nGI6GiXFxMDAAMOAAAAA//8SKQFCCNiyPAAAAABJRU5ErkJggg==", "image/png"),
-    ("iVBORw0KGgoAAAANSUhEUgAAAAEAAAAECAIAAADAusJtAAAAFklEQVR4nGJ65BDBxMDAAMOAAAAA//8VlgGDnSVGagAAAABJRU5ErkJggg==", "image/png"),
-    ("iVBORw0KGgoAAAANSUhEUgAAAAEAAAAECAIAAADAusJtAAAAFklEQVR4nGIK3CbAxMDAAMOAAAAA//8P4wEgk7DPdAAAAABJRU5ErkJggg==", "image/png"),
-    ("iVBORw0KGgoAAAANSUhEUgAAAAEAAAAECAIAAADAusJtAAAAFklEQVR4nGKK8rrAxMDAAMOAAAAA//8UQgF9P3dN2QAAAABJRU5ErkJggg==", "image/png"),
-    ("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAF0lEQVR4nGLJsZnFwMDAxAAGgAAAAP//Dz4BSUqmw94AAAAASUVORK5CYII=", "image/png"),
-    ("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAF0lEQVR4nGKxySxiYGBgYgADQAAAAP//DTIBHsuLPQIAAAAASUVORK5CYII=", "image/png"),
-    ("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAF0lEQVR4nGJZsvcuAwMDEwMYAAIAAP//GwMCRdYOLrcAAAAASUVORK5CYII=", "image/png"),
-    ("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAF0lEQVR4nGJZd+o8AwMDEwMYAAIAAP//G4cCTlAWZ+gAAAAASUVORK5CYII=", "image/png"),
-    ("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAF0lEQVR4nGJ5OfkDAwMDEwMYAAIAAP//HV0Cc1XXd14AAAAASUVORK5CYII=", "image/png"),
-]
-
-
-class TestImageManager:
-    __test__ = False
-
-    def __init__(self, images=IMAGES) -> None:
-        self.images = images
-        self.uploaded_images = []
-
-    def __call__(self, *args, **kwargs):
-        self.uploaded_images = self.upload_images(*args, **kwargs)
-        return self
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.delete_images()
-        self.uploaded_images = []
-
-    def upload_images(self, user_id=None, images_num=None):
-        k = images_num if images_num else len(self.images)
-        random_images = random.choices(self.images, k=k)
-        with DBI() as dbi:
-            with dbi.cursor(row_factory=namedtuple_row) as cursor:
-                values = ", ".join(["(%s, %s, %s)"] * len(random_images))
-                sql = (
-                    f"INSERT INTO image (owner_id, image_data, mime_type)"
-                    f" VALUES {values} RETURNING *"
-                )
-                cursor.execute(
-                    sql, sum([[user_id, *image] for image in random_images], [])
-                )
-                return cursor.fetchall()
-
-    def delete_images(self):
-        with DBI() as dbi:
-            with dbi.cursor(row_factory=namedtuple_row) as cursor:
-                values = ", ".join(["%s"] * len(self.uploaded_images))
-                ids = [image.id for image in self.uploaded_images]
-                cursor.execute(f"DELETE FROM image WHERE id in ({values})", ids)
+WEBP_BASE64_IMAGE = (
+    "UklGRlgAAABXRUJQVlA4IEwAAABwBgCdASqAAIAAPpFIoUylpCMiIIgAsBIJaW7hdJAAT22Iv"
+    "EFRz2xF4gqOe2IvEFRz2xF4gqOe2IvEE2AA/v6USL/xd2I4ySAAAAAA"
+)
 
 
 def register_guest():
@@ -74,274 +29,304 @@ def register_guest():
     return access_token, username
 
 
-def test_delete_image():
-    # register user
-    access_token, _ = register_guest()
+class TestImage():
+    __test__ = False
 
-    # upload image
-    headers = {"Authorization": "Bearer " + access_token}
-    json = {"image_data": IMAGES[0][0]}
-    response = client.post("/v1/images", json=json, headers=headers)
-    assert response.status_code == 200
+    def __init__(self, mode="RGB", size=(128, 128), color=None, format="png", user_id=None):
+        self.mode = mode
+        self.size = size
+        self.color = color if color else tuple([random.randint(0, 255) for _ in range(3)])
+        self.format = format
+        self.user_id = user_id
+        self._db_image = None
 
-    image = response.json()
-    assert image["id"]
-    assert image["is_owner"] is True
+    def __enter__(self):
+        self._db_image = self.upload_image()
+        return self
 
-    # set image as avatar
-    json = {"image_id": image["id"]}
-    response = client.patch("/v1/user/profile", json=json, headers=headers)
-    assert response.status_code == 200
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.delete_image()
+        self._db_image = None
 
-    # check profile
-    profile = response.json()
-    assert profile["image_id"] == image["id"]
+    def upload_image(self):
+        with DBI() as dbi:
+            return dbi.create_user_image(self.user_id, self.base64, self.mime_type)
 
-    # delete image
-    response = client.delete(f"/v1/images/{image['id']}", headers=headers)
-    assert response.status_code == 204
+    def delete_image(self):
+        with DBI() as dbi:
+            dbi.delete_image(self._db_image.id)
 
-    # check profile
-    response = client.get("/v1/user/profile", headers=headers)
-    assert response.status_code == 200
+    @property
+    def bytes(self):
+        im = Image.new(self.mode, self.size, self.color)
+        buf = BytesIO()
+        im.save(buf, format=self.format)
+        return buf.getvalue()
 
-    profile = response.json()
-    assert profile["image_id"] is None
+    @property
+    def base64(self):
+        return base64.b64encode(self.bytes).decode()
 
-    # check image
-    response = client.get(f"/v1/images/{image['id']}", headers=headers)
-    assert response.status_code == 404
+    @property
+    def db(self):
+        return self._db_image
 
-    # delete non image
-    response = client.delete(f"/v1/images/{image['id']}", headers=headers)
-    assert response.status_code == 404
-
-    # create image manager
-    image_manager = TestImageManager()
-
-    # create common image
-    with image_manager(images_num=1) as im:
-        uploaded_images = im.uploaded_images
-        common_image = uploaded_images[0]
-        common_image_id = common_image.id
-
-        # get common image
-        response = client.get(f"/v1/images/{common_image_id}", headers=headers)
-        assert response.status_code == 200
-
-        # delete common image
-        response = client.delete(f"/v1/images/{common_image_id}", headers=headers)
-        assert response.status_code == 403
-
-        # get common image
-        response = client.get(f"/v1/images/{common_image_id}", headers=headers)
-        assert response.status_code == 200
-
-    # register new user
-    new_access_token, _ = register_guest()
-
-    # get new user profile
-    new_headers = {"Authorization": "Bearer " + new_access_token}
-    new_response = client.get("/v1/user/profile", headers=new_headers)
-    assert new_response.status_code == 200
-    new_profile = new_response.json()
-
-    # TODO переписать на эндпойнт создания изображения
-    # create new user image
-    with image_manager(user_id=new_profile["id"], images_num=1) as im:
-        uploaded_images = im.uploaded_images
-        new_user_image = uploaded_images[0]
-        new_user_image_id = new_user_image.id
-
-        # get new user image
-        response = client.get(f"/v1/images/{new_user_image_id}", headers=new_headers)
-        assert response.status_code == 200
-
-        # delete new user image by user
-        response = client.delete(f"/v1/images/{new_user_image_id}", headers=headers)
-        assert response.status_code == 404
-
-        # get new user image
-        response = client.get(f"/v1/images/{new_user_image_id}", headers=new_headers)
-        assert response.status_code == 200
-
-
-def test_upload_image():
-    # register user
-    access_token, _ = register_guest()
-
-    # upload image
-    headers = {"Authorization": "Bearer " + access_token}
-    json = {"image_data": IMAGES[0][0]}
-    response = client.post("/v1/images", json=json, headers=headers)
-    assert response.status_code == 200
-
-    # check image
-    image = response.json()
-    assert image["id"]
-    assert image["is_owner"] is True
-
-    # upload same image
-    response = client.post("/v1/images", json=json, headers=headers)
-    assert response.status_code == 200
-
-    # check same image
-    same_image = response.json()
-    assert same_image["id"] == image["id"]
-
-    # delete image
-    response = client.delete(f"/v1/images/{image['id']}", headers=headers)
-    assert response.status_code == 204
-
-    # create image manager
-    image_manager = TestImageManager()
-
-    # TODO сейчас это работает только из-за proportion <= 1
-    # переделать в соответствии с новой логикой
-    # create common image
-    with image_manager(images_num=1) as im:
-        uploaded_images = im.uploaded_images
-        common_image = uploaded_images[0]
-
-        # upload same common image
-        json = {"image_data": common_image.image_data}
-        response = client.post("/v1/images", json=json, headers=headers)
-        assert response.status_code == 200
-
-        # check same common image
-        same_common_image = response.json()
-        assert same_common_image["id"] == common_image.id
-        assert same_common_image["is_owner"] is False
-
-
-def test_get_available_images():
-    # register user
-    access_token, _ = register_guest()
-
-    # get available images
-    headers = {"Authorization": "Bearer " + access_token}
-    response = client.get("/v1/images", headers=headers)
-    assert response.status_code == 200
-
-    # check available images
-    available_images = response.json()
-    assert not available_images["images"]
-
-    # upload image
-    json = {"image_data": IMAGES[0][0]}
-    headers = {"Authorization": "Bearer " + access_token}
-    response = client.post("/v1/images", json=json, headers=headers)
-    assert response.status_code == 200
-    image = response.json()
-
-    # get available images
-    headers = {"Authorization": "Bearer " + access_token}
-    response = client.get("/v1/images", headers=headers)
-    assert response.status_code == 200
-
-    # check available images
-    available_images = response.json()
-    assert image["id"] in [image["id"] for image in available_images["images"]] 
-
-    # delete image
-    response = client.delete(f"/v1/images/{image['id']}", headers=headers)
-    assert response.status_code == 204
-
-    # create image manager
-    image_manager = TestImageManager()
-
-    # create common image
-    with image_manager(images_num=1) as im:
-        uploaded_images = im.uploaded_images
-        common_image = uploaded_images[0]
-
-        # get available images
-        headers = {"Authorization": "Bearer " + access_token}
-        response = client.get("/v1/images", headers=headers)
-        assert response.status_code == 200
-
-        available_images = response.json()
-        assert common_image.id in [image["id"] for image in available_images["images"]]
-
-    # register new user
-    new_access_token, _ = register_guest()
-
-    # get new user profile
-    new_headers = {"Authorization": "Bearer " + new_access_token}
-    new_response = client.get("/v1/user/profile", headers=new_headers)
-    assert new_response.status_code == 200
-    new_profile = new_response.json()
-
-    # TODO переписать на эндпойнт создания изображения
-    # create new user image
-    with image_manager(user_id=new_profile["id"], images_num=1) as im:
-        uploaded_images = im.uploaded_images
-        new_user_image = uploaded_images[0]
-
-        # get new user image
-        response = client.get(f"/v1/images/{new_user_image.id}", headers=new_headers)
-        assert response.status_code == 200
-
-        # get available images by user
-        headers = {"Authorization": "Bearer " + access_token}
-        response = client.get("/v1/images", headers=headers)
-        assert response.status_code == 200
-
-        available_images = response.json()
-        assert new_user_image.id not in [
-            image["id"] for image in available_images["images"]
-        ]
+    @property
+    def mime_type(self):
+        return magic.from_buffer(self.bytes, mime=True)
 
 
 def test_set_user_avatar():
     # register user
     access_token, _ = register_guest()
 
-    # upload image
-    json = {"image_data": IMAGES[0][0]}
+    # get user profile
     headers = {"Authorization": "Bearer " + access_token}
-    response = client.post("/v1/images", json=json, headers=headers)
-    assert response.status_code == 200
-    image = response.json()
-
-    # set image as avatar
-    json = {"image_id": image["id"]}
-    response = client.patch("/v1/user/profile", json=json, headers=headers)
-    assert response.status_code == 200
-
-    # check profile
-    profile = response.json()
-    assert profile["image_id"] == image["id"]
-
-    # delete image
-    response = client.delete(f"/v1/images/{image['id']}", headers=headers)
-    assert response.status_code == 204
-
-    # check profile
     response = client.get("/v1/user/profile", headers=headers)
     assert response.status_code == 200
 
     profile = response.json()
-    assert profile["image_id"] is None
 
-    # create image manager
-    image_manager = TestImageManager()
+    # with user image
+    with TestImage(user_id=profile["id"]) as im:
+        # set image as profile avatar
+        json = {"image_id": im.db.id}
+        response = client.patch("/v1/user/profile", json=json, headers=headers)
+        assert response.status_code == 200
 
-    # create common image
-    with image_manager(images_num=1) as im:
-        uploaded_images = im.uploaded_images
-        common_image = uploaded_images[0]
+        # check profile
+        profile = response.json()
+        assert profile["image_id"] == im.db.id
 
+        # unset profile avatar
+        json = {"image_id": None}
+        response = client.patch("/v1/user/profile", json=json, headers=headers)
+        assert response.status_code == 200
+
+    # with common image
+    with TestImage() as im:
         # set common image as profile avatar
-        json = {"image_id": common_image.id}
+        json = {"image_id": im.db.id}
         response = client.patch("/v1/user/profile", json=json, headers=headers)
         assert response.status_code == 200
 
         # check profile avatar
         profile = response.json()
-        assert profile["image_id"] == common_image.id
+        assert profile["image_id"] == im.db.id
 
-        # set profile avatar as none
+        # unset profile avatar
         json = {"image_id": None}
         response = client.patch("/v1/user/profile", json=json, headers=headers)
         assert response.status_code == 200
+
+
+def test_delete_image():
+    # register user
+    access_token, _ = register_guest()
+
+    # upload image
+    headers = {"Authorization": "Bearer " + access_token}
+    im = TestImage()
+    json = {"image_data": im.base64}
+    response = client.post("/v1/images", json=json, headers=headers)
+    assert response.status_code == 200
+
+    # check image
+    image = response.json()
+    assert image["id"]
+    assert image["is_owner"] is True
+
+    # delete image
+    response = client.delete(f"/v1/images/{image['id']}", headers=headers)
+    assert response.status_code == 204
+
+    # check non-existent image
+    response = client.get(f"/v1/images/{image['id']}", headers=headers)
+    assert response.status_code == 404
+
+    # try to delete non-existent image
+    response = client.delete(f"/v1/images/{image['id']}", headers=headers)
+    assert response.status_code == 404
+
+    # with common image
+    with TestImage() as im:
+        # get common image
+        response = client.get(f"/v1/images/{im.db.id}", headers=headers)
+        assert response.status_code == 200
+
+        # try to delete common image
+        response = client.delete(f"/v1/images/{im.db.id}", headers=headers)
+        assert response.status_code == 403
+
+    # register new user
+    new_access_token, _ = register_guest()
+
+    # get new user profile
+    new_headers = {"Authorization": "Bearer " + new_access_token}
+    new_response = client.get("/v1/user/profile", headers=new_headers)
+    assert new_response.status_code == 200
+
+    new_profile = new_response.json()
+
+    # with new user image
+    with TestImage(user_id=new_profile["id"]) as im:
+        # get new image by new user
+        response = client.get(f"/v1/images/{im.db.id}", headers=new_headers)
+        assert response.status_code == 200
+
+        # try to delete new image by user
+        response = client.delete(f"/v1/images/{im.db.id}", headers=headers)
+        assert response.status_code == 404
+
+
+def test_upload_image():
+    # register user
+    access_token, _ = register_guest()
+
+    # upload invalid image
+    headers = {"Authorization": "Bearer " + access_token}
+    im = "invalid image data"
+    json = {"image_data": im}
+    response = client.post("/v1/images", json=json, headers=headers)
+    assert response.status_code == 422
+
+    # upload image with prohibited mime type
+    json = {"image_data": WEBP_BASE64_IMAGE}
+    response = client.post("/v1/images", json=json, headers=headers)
+    assert response.status_code == 422
+
+    # upload image without resizing
+    im_dim = ceil(MAX_IMAGE_DIMENSION / 4)
+    im = TestImage(size=(im_dim, im_dim))
+    json = {"image_data": im.base64}
+    response = client.post("/v1/images", json=json, headers=headers)
+    assert response.status_code == 200
+
+    # check response
+    image = response.json()
+    assert image["id"]
+    assert image["is_owner"] is True
+
+    # get image
+    response = client.get(f"/v1/images/{image['id']}", headers=headers)
+    assert response.status_code == 200
+
+    # check image
+    assert response.headers["Content-Type"] == im.mime_type
+    assert base64.b64encode(response.read()).decode() == im.base64
+
+    # delete image
+    response = client.delete(f"/v1/images/{image['id']}", headers=headers)
+    assert response.status_code == 204
+
+    # upload image with resizing
+    im_dim = ceil(MAX_IMAGE_DIMENSION * 1.5)
+    im = TestImage(size=(im_dim, im_dim))
+    json = {"image_data": im.base64}
+    response = client.post("/v1/images", json=json, headers=headers)
+    assert response.status_code == 200
+
+    # check response
+    image = response.json()
+    assert image["id"]
+    assert image["is_owner"] is True
+
+    # get image
+    response = client.get(f"/v1/images/{image['id']}", headers=headers)
+    assert response.status_code == 200
+
+    bytes_image = response.read()
+    img = Image.open(BytesIO(bytes_image))
+
+    # check image
+    assert response.headers["Content-Type"] == im.mime_type
+    assert img.size == (MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION)
+
+    # try to upload same image
+    response = client.post("/v1/images", json=json, headers=headers)
+    assert response.status_code == 200
+
+    same_image = response.json()
+    assert same_image["id"] == image["id"]
+
+    # try to upload same resized image
+    json = json = {"image_data": base64.b64encode(bytes_image).decode()}
+    response = client.post("/v1/images", json=json, headers=headers)
+    assert response.status_code == 200
+
+    same_image = response.json()
+    assert same_image["id"] == image["id"]
+
+    # delete resized image
+    response = client.delete(f"/v1/images/{image['id']}", headers=headers)
+    assert response.status_code == 204
+
+    # with common image
+    with TestImage() as im:
+        # try to upload same common image
+        json = {"image_data": im.base64}
+        response = client.post("/v1/images", json=json, headers=headers)
+        assert response.status_code == 200
+
+        same_image = response.json()
+        assert same_image["id"] == im.db.id
+
+
+def test_get_available_images():
+    # register user
+    access_token, _ = register_guest()
+
+    # get user profile
+    headers = {"Authorization": "Bearer " + access_token}
+    response = client.get("/v1/user/profile", headers=headers)
+    assert response.status_code == 200
+
+    profile = response.json()
+
+    # get available images
+    response = client.get("/v1/images", headers=headers)
+    assert response.status_code == 200
+
+    # check images
+    images = response.json()
+    assert not images["images"]
+
+    # with user image
+    with TestImage(user_id=profile["id"]) as im:
+        # get available images
+        response = client.get("/v1/images", headers=headers)
+        assert response.status_code == 200
+
+        # check images
+        images = response.json()
+        assert im.db.id in [image["id"] for image in images["images"]]
+
+    # with common image
+    with TestImage() as im:
+        # get available images
+        response = client.get("/v1/images", headers=headers)
+        assert response.status_code == 200
+
+        # check images
+        images = response.json()
+        assert im.db.id in [image["id"] for image in images["images"]]
+
+    # register new user
+    new_access_token, _ = register_guest()
+
+    # get new user profile
+    new_headers = {"Authorization": "Bearer " + new_access_token}
+    new_response = client.get("/v1/user/profile", headers=new_headers)
+    assert new_response.status_code == 200
+
+    new_profile = new_response.json()
+
+    # with new user image
+    with TestImage(user_id=new_profile["id"]) as im:
+        # get available images by user
+        response = client.get("/v1/images", headers=headers)
+        assert response.status_code == 200
+
+        # check images
+        images = response.json()
+        assert im.db.id not in [image["id"] for image in images["images"]]
