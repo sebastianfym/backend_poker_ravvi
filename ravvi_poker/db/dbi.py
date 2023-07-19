@@ -245,13 +245,13 @@ class DBI:
 
     # CLUBS
 
-    def create_club(self, *, founder_id, name):
+    def create_club(self, *, founder_id, name, description):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("INSERT INTO club (founder_id, name) VALUES (%s,%s) RETURNING *",(founder_id, name))
+            cursor.execute("INSERT INTO club (founder_id, name, description) VALUES (%s,%s,%s) RETURNING *",(founder_id, name, description))
             club = cursor.fetchone()
             cursor.execute("INSERT INTO club_member (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,'OWNER',NOW(),0)",(club.id, founder_id))
             return club
-        
+
     def get_club(self, club_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("SELECT * FROM club WHERE id=%s",(club_id,))

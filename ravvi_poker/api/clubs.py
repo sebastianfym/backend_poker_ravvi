@@ -1,10 +1,9 @@
-from typing import Annotated, Optional, List
+from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi.exceptions import HTTPException
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_404_NOT_FOUND
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 from pydantic import BaseModel
-from . import utils
 
 from ..db.dbi import DBI
 from .auth import RequireSessionUUID, get_session_and_user
@@ -14,22 +13,24 @@ router = APIRouter(prefix="/clubs", tags=["clubs"])
 
 class ClubProps(BaseModel):
     name: str
-    description: str|None = None
+    description: str | None = None
 
 
 class ClubProfile(BaseModel):
     id: int
     name: str
-    description: str|None = None
-    user_role: str|None = None
+    description: str | None = None
+    user_role: str | None = None
     user_approved: bool
 
 
 @router.post("", response_model=ClubProfile, summary="Create new club")
 async def v1_create_club(params: ClubProps, session_uuid: RequireSessionUUID):
     with DBI() as dbi:
-        session, user = get_session_and_user(dbi, session_uuid)
-        club = dbi.create_club(founder_id=user.id, name=params.name)
+        _, user = get_session_and_user(dbi, session_uuid)
+        club = dbi.create_club(
+            founder_id=user.id, name=params.name, description=params.description
+        )
 
     return ClubProfile(
         id=club.id, 
@@ -37,7 +38,7 @@ async def v1_create_club(params: ClubProps, session_uuid: RequireSessionUUID):
         description=club.description,
         user_role="OWNER",
         user_approved=True
-        )
+    )
 
 @router.get("", response_model=List[ClubProfile], summary="List clubs for current user")
 async def v1_list_clubs(session_uuid: RequireSessionUUID):
@@ -132,4 +133,3 @@ async def v1_club_join_request(club_id: int, session_uuid: RequireSessionUUID):
         user_role = club_member.user_role if club_member else None,
         user_approved = club_member.approved_ts is not None if club_member else None
         )
-
