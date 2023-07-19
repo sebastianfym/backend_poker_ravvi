@@ -22,7 +22,7 @@ def test_20_clubs():
     # create club
     params = dict(name="test_20_A")
     response = client.post("/v1/clubs", headers=headers, json=params)
-    assert response.status_code == 200
+    assert response.status_code == 201
     club1 = response.json()
     assert club1["id"]
     assert club1["name"] == "test_20_A"
@@ -32,7 +32,7 @@ def test_20_clubs():
     # create club
     params = dict(name="test_20_B")
     response = client.post("/v1/clubs", headers=headers, json=params)
-    assert response.status_code == 200
+    assert response.status_code == 201
     club2 = response.json()
     assert club2["id"]
     assert club2["name"] == "test_20_B"
@@ -66,7 +66,7 @@ def test_20_clubs():
 
     # update club
     params = dict(name="test_20_C")
-    response = client.put(f"/v1/clubs/{club2['id']}", headers=headers, json=params)
+    response = client.patch(f"/v1/clubs/{club2['id']}", headers=headers, json=params)
     assert response.status_code == 200
     club_B_v2 = response.json()
     assert club_B_v2["name"] == "test_20_C"
@@ -82,7 +82,7 @@ def test_21_club_join():
     # create clubas owner
     params = dict(name="test_21")
     response = client.post("/v1/clubs", headers=headers_owner, json=params)
-    assert response.status_code == 200
+    assert response.status_code == 201
     club = response.json()
     assert club["id"]
     assert club["name"] == "test_21"
