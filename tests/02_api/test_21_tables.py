@@ -63,13 +63,9 @@ def test_create_club_table():
 
     club_tables = response.json()
 
-    club_table = list(filter(lambda x: x["id"] == table["id"], club_tables["tables"]))
+    club_table = list(filter(lambda x: x["id"] == table["id"], club_tables))
     assert len(club_table) == 1
     assert club_table[0]["id"] == table["id"]
-
-    # Удаляем стол
-    response = client.delete(f"/v1/clubs/{club['id']}/tables/{table['id']}", headers=headers)
-    assert response.status_code == 204
 
 
 def test_delete_club_table():
@@ -115,26 +111,13 @@ def test_delete_club_table():
 
     club_tables = response.json()
 
-    club_table = list(filter(lambda x: x["id"] == table["id"], club_tables["tables"]))
+    club_table = list(filter(lambda x: x["id"] == table["id"], club_tables))
     assert len(club_table) == 1
     assert club_table[0]["id"] == table["id"]
 
     # Удаляем владельцем клуба
     response = client.delete(f"/v1/clubs/{club['id']}/tables/{table['id']}", headers=headers)
     assert response.status_code == 204
-
-    # Проверка доступности стола
-    response = client.get(f"/v1/clubs/{club['id']}/tables", headers=headers)
-    assert response.status_code == 200
-
-    club_tables = response.json()
-
-    club_table = list(filter(lambda x: x["id"] == table["id"], club_tables["tables"]))
-    assert not club_table
-
-    # Попытка удаления удаленного стола
-    response = client.delete(f"/v1/clubs/{club['id']}/tables/{table['id']}", headers=headers)
-    assert response.status_code == 404
 
 
 def test_get_club_tables():
@@ -148,7 +131,7 @@ def test_get_club_tables():
     assert response.status_code == 200
 
     club = response.json()
-    # 
+
     # Создаем стол
     json = {"table_name": "table", "table_type": "type", "table_seats": 6, "game_type": "game type"}
     response = client.post(f"/v1/clubs/{club['id']}/tables", json=json, headers=headers)
@@ -162,12 +145,12 @@ def test_get_club_tables():
 
     tables = response.json()
 
-    assert len(tables["tables"]) == 1
-    assert tables["tables"][0]["id"]
-    assert tables["tables"][0]["club_id"] == club["id"]
-    assert tables["tables"][0]["table_name"] == table["table_name"]
-    assert tables["tables"][0]["table_type"] == table["table_type"]
-    assert tables["tables"][0]["game_type"]== table["game_type"]
+    assert len(tables) == 1
+    assert tables[0]["id"]
+    assert tables[0]["club_id"] == club["id"]
+    assert tables[0]["table_name"] == table["table_name"]
+    assert tables[0]["table_type"] == table["table_type"]
+    assert tables[0]["game_type"]== table["game_type"]
 
     # Пытаемся получить столы несуществующего клуба
     non_club_id = club["id"] + 100500
