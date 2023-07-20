@@ -278,7 +278,7 @@ class DBI:
             return cursor.fetchone()
 
     def delete_club(self, club_id):
-        # TODO вернуться после утверждения жизненного цикла стола
+        # TODO дождаться утверждения жизненного цикла стола
         pass
 
     def get_clubs_for_user(self, *, user_id):

@@ -3,6 +3,7 @@ from fastapi.exceptions import HTTPException
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 from pydantic import BaseModel
 
+from . import utils
 from ..db.dbi import DBI
 from .auth import RequireSessionUUID, get_session_and_user
 
@@ -10,12 +11,6 @@ router = APIRouter(prefix="/clubs", tags=["clubs"])
 
 
 class ClubProps(BaseModel):
-    name: str
-    description: str | None = None
-    image_id: int | None = None
-
-
-class ClubUpdateProps(BaseModel):
     name: str | None = None
     description: str | None = None
     image_id: int | None = None
@@ -27,7 +22,7 @@ class ClubProfile(BaseModel):
     description: str | None = None
     image_id: int | None = None
     user_role: str | None = None
-    user_approved: bool
+    user_approved: bool | None = None
 
 
 @router.post("", status_code=201, summary="Create new club")
@@ -37,6 +32,7 @@ async def v1_create_club(params: ClubProps, session_uuid: RequireSessionUUID):
         image = dbi.get_user_images(user.id, id=params.image_id) if params.image_id else None
         if params.image_id is not None and not image:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Image not found")
+        params.name = utils.generate_club_name() if params.name is None else params.name
         club = dbi.create_club(founder_id=user.id, **params.model_dump())
 
     return ClubProfile(
@@ -55,7 +51,7 @@ async def v1_list_clubs(session_uuid: RequireSessionUUID):
         _, user = get_session_and_user(dbi, session_uuid)
         clubs = dbi.get_clubs_for_user(user_id=user.id)
 
-    return [
+    return list([
         ClubProfile(
             id=club.id, 
             name=club.name, 
@@ -64,7 +60,7 @@ async def v1_list_clubs(session_uuid: RequireSessionUUID):
             user_role=club.user_role,
             user_approved=club.approved_ts is not None
         ) for club in clubs
-    ]
+    ])
 
 
 @router.get("/{club_id}", summary="Get club by id")
@@ -87,7 +83,7 @@ async def v1_get_club(club_id: int, session_uuid: RequireSessionUUID):
 
 
 @router.patch("/{club_id}", summary="Update club")
-async def v1_update_club(club_id: int, params: ClubUpdateProps, session_uuid: RequireSessionUUID):
+async def v1_update_club(club_id: int, params: ClubProps, session_uuid: RequireSessionUUID):
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
         club = dbi.get_club(club_id)
