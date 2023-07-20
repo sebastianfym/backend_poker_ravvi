@@ -306,8 +306,8 @@ class DBI:
             return cursor.fetchall()
 
     def delete_table(self, table_id):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("DELETE FROM poker_table WHERE id=%s",(table_id,))
+        # TODO дождаться определения жизненного цикла стола
+        pass
 
     # temporary method to get list of tables
     def get_active_tables(self):
