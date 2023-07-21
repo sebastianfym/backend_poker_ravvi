@@ -251,10 +251,31 @@ class DBI:
             club = cursor.fetchone()
             cursor.execute("INSERT INTO club_member (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,'OWNER',NOW(),0)",(club.id, founder_id))
             return club
-        
+
     def get_club(self, club_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("SELECT * FROM club WHERE id=%s",(club_id,))
+            return cursor.fetchone()
+
+    def update_club(self, club_id, *, name, description):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("UPDATE club SET name=%s, description=%s WHERE id=%s RETURNING *",(name, description, club_id,))
+            return cursor.fetchone()
+
+    def get_clubs_for_user(self, *, user_id):
+        sql = "SELECT c.*, u.user_role, u.approved_ts FROM club_member u JOIN club c ON c.id=u.club_id WHERE u.user_id=%s"
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute(sql,(user_id,))
+            return cursor.fetchall()
+
+    def create_join_club_request(self, *, club_id, user_id, user_role):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("INSERT INTO club_member (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,%s,NULL,NULL) RETURNING *",(club_id, user_id, user_role))
+            return cursor.fetchone()
+
+    def approve_club_member(self, club_id, user_id, member_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("UPDATE club_member SET approved_ts=NOW(), approved_by=%s WHERE club_id=%s AND user_id=%s RETURNING *",(user_id, club_id, member_id))
             return cursor.fetchone()
 
     def get_club_members(self, club_id):
@@ -268,22 +289,10 @@ class DBI:
             cursor.execute("SELECT * FROM club_member WHERE club_id=%s AND user_id=%s",(club_id,user_id))
             return cursor.fetchone()
 
-    def update_club(self, club_id, *, name, description):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("UPDATE club SET name=%s, description=%s WHERE id=%s RETURNING *",(name, description, club_id,))
-            return cursor.fetchone()
-        
-    def get_clubs_for_user(self, *, user_id):
-        sql = "SELECT c.*, u.user_role, u.approved_ts FROM club_member u JOIN club c ON c.id=u.club_id WHERE u.user_id=%s"
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute(sql,(user_id,))
-            return cursor.fetchall()
-        
-    def create_join_club_request(self, *, club_id, user_id, user_role):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("INSERT INTO club_member (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,%s,NOW(),0) RETURNING *",(club_id, user_id, user_role))
-            return cursor.fetchone()
-        
+    def delete_club_member(self, club_id, member_id):
+        # TODO вернуться после утверждения жизненных циклов стола и участника клуба
+        pass
+
     # TABLES
 
     def create_table(self, club_id, **kwargs):
