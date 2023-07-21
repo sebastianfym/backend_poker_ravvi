@@ -2,7 +2,7 @@ from typing import Annotated, Optional, List
 
 from fastapi import APIRouter, Depends
 from fastapi.exceptions import HTTPException
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_404_NOT_FOUND
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 from pydantic import BaseModel
 from . import utils
 
@@ -23,6 +23,14 @@ class ClubProfile(BaseModel):
     description: str|None = None
     user_role: str|None = None
     user_approved: bool
+
+
+class ClubMemberProfile(BaseModel):
+    id: int | None = None
+    username: str | None = None
+    image_id: int | None = None
+    user_role: str | None = None
+    user_approved: bool | None = None
 
 
 @router.post("", response_model=ClubProfile, summary="Create new club")
@@ -97,39 +105,89 @@ async def v1_update_club(club_id: int, params: ClubProps, session_uuid: RequireS
         user_approved = club_member.approved_ts is not None if club_member else None
         )
 
+
 @router.get("/{club_id}/members", summary="Get club memebrs")
-async def v1_club_join_request(club_id: int, session_uuid: RequireSessionUUID):
+async def v1_get_club_members(club_id: int, session_uuid: RequireSessionUUID):
     with DBI() as dbi:
-        session, user = get_session_and_user(dbi, session_uuid)
+        _, user = get_session_and_user(dbi, session_uuid)
         club = dbi.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        response = []
-        for row in dbi.get_club_members(club_id=club.id):
-            response.append(dict(
-                id = row.id,
-                username = row.username,
-                user_role = row.user_role,
-                user_approved = row.approved_ts is not None
-            ))
-    return response
+        club_members = dbi.get_club_members(club_id=club.id)
+
+    return list([
+        ClubMemberProfile(
+            id=member.id,
+            username=member.username,
+            image_id=member.image_id,
+            user_role=member.user_role,
+            user_approved=member.approved_ts is not None
+        ) for member in club_members
+    ])
 
 
 @router.post("/{club_id}/members", summary="Submit join request")
-async def v1_club_join_request(club_id: int, session_uuid: RequireSessionUUID):
-    
-    user_role='PLAYER'
+async def v1_join_club(club_id: int, session_uuid: RequireSessionUUID):
+    DEFAULT_USER_ROLE = "PLAYER"
     with DBI() as dbi:
-        session, user = get_session_and_user(dbi, session_uuid)
+        _, user = get_session_and_user(dbi, session_uuid)
         club = dbi.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        club_member = dbi.create_join_club_request(club_id=club.id, user_id=user.id, user_role=user_role)
-    
+        new_member = dbi.get_club_member(club_id, user.id)
+        if not new_member:
+            new_member = dbi.create_join_club_request(
+                club_id=club.id, user_id=user.id, user_role=DEFAULT_USER_ROLE
+            )
+
     return ClubProfile(
         id=club.id, 
-        name = club.name, description=club.description,
-        user_role = club_member.user_role if club_member else None,
-        user_approved = club_member.approved_ts is not None if club_member else None
-        )
+        name=club.name,
+        description=club.description,
+        user_role=new_member.user_role,
+        user_approved=new_member.approved_ts is not None
+    )
 
+
+@router.post("/{club_id}/members/{member_id}", summary="Approve join request")
+async def v1_approve_join_request(club_id: int, member_id: int, session_uuid: RequireSessionUUID):
+    with DBI() as dbi:
+        _, user = get_session_and_user(dbi, session_uuid)
+        club = dbi.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+        new_member = dbi.get_club_member(club_id, member_id)
+        if not new_member:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member not found")
+        user_member = dbi.get_club_member(club_id, user.id)        
+        if not user_member or user_member.user_role != "OWNER":
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
+        new_member = dbi.approve_club_member(club.id, user.id, member_id)
+        new_member_profile = dbi.get_user(id=new_member.user_id)
+
+    return ClubMemberProfile(
+        id=new_member_profile.id,
+        username=new_member_profile.username,
+        image_id=new_member_profile.image_id,
+        user_role=new_member.user_role,
+        user_approved=new_member.approved_ts is not None
+    )
+
+
+@router.delete("/{club_id}/members/{member_id}", status_code=204, summary="Delete club member")
+async def v1_delete_club_member(club_id: int, member_id: int, session_uuid: RequireSessionUUID):
+    with DBI() as dbi:
+        _, user = get_session_and_user(dbi, session_uuid)
+        club = dbi.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+        member = dbi.get_club_member(club_id, member_id)
+        if not member:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member not found")
+        user_member = dbi.get_club_member(club_id, user.id) 
+        if not user_member or user_member.user_role != "OWNER":
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
+        # TODO realize method
+        dbi.delete_club_member(club.id, member_id)
+
+    return {}
