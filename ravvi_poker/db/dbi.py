@@ -347,3 +347,20 @@ class DBI:
             cursor.execute("INSERT INTO poker_event (table_id, game_id, user_id, event_type, event_props) VALUES (%s, %s, %s, %s, %s) RETURNING id, event_ts",
                            (table_id, game_id, user_id, type, data))
             return cursor.fetchone()
+
+    def get_game(self, game_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("SELECT * FROM poker_game WHERE id=%s",(game_id,))
+            return cursor.fetchone()
+
+    # DEBUG
+    def create_debug_message(self, user_id, game_id, table_id, debug_message):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("INSERT INTO debug (user_id, game_id, table_id, debug_message) VALUES (%s,%s,%s,%s) RETURNING *",
+                           (user_id,game_id,table_id,debug_message,))
+            return cursor.fetchone()
+
+    def get_debug_messages(self, user_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("SELECT * FROM debug WHERE user_id=%s",(user_id,))
+            return cursor.fetchall()
