@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from fastapi.exceptions import HTTPException
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
-from pydantic import BaseModel
+from pydantic import BaseModel, FieldValidationInfo, model_validator, field_validator
 
 from ..db.dbi import DBI
 from .auth import RequireSessionUUID, get_session_and_user
@@ -11,12 +11,117 @@ from .clubs import router as clubs_router
 router = APIRouter(prefix="/tables", tags=["tables"])
 
 
+class GameSettings(BaseModel):
+    ante: float | None = None
+    big_blind: float | None = None
+    buy_in: float | list[float]
+    min_stack: float | None = None
+
+    @field_validator("buy_in")
+    def validate_buy_in(cls, v):
+        if isinstance(v, list):
+            if len(v) != 2:
+                raise ValueError("Must contain only 2 values")
+            if v[0] >= v[1]:
+                raise ValueError("First value must be less than second")
+        return v
+
+
+class NLHGameSettings(GameSettings):
+    @field_validator("big_blind")
+    def validate_big_blind(cls, v, info: FieldValidationInfo):
+        game_subtype = info.context.get("game_subtype")
+        if not game_subtype == "6+":
+            if v is None:
+                raise ValueError("Must contain value")
+            return v
+
+    @field_validator("ante")
+    def validate_ante(cls, v, info: FieldValidationInfo):
+        game_subtype = info.context.get("game_subtype")
+        if game_subtype == "6+":
+            if v is None:
+                raise ValueError("Must contain value")
+        return v
+
+    @field_validator("buy_in")
+    def validate_buy_in(cls, v, info: FieldValidationInfo):
+        game_subtype = info.context.get("game_subtype")
+        if game_subtype == "AOF":
+            if isinstance(v, list):
+                raise ValueError("Must be float")
+        else:
+            if not isinstance(v, list):
+                raise ValueError("Must be list")
+        return v
+
+
+class PLOGameSettings(GameSettings):
+    @field_validator("big_blind")
+    def validate_big_blind(cls, v):
+        if v is None:
+            raise ValueError("Must contain value")
+        return v
+
+    @field_validator("buy_in")
+    def validate_buy_in(cls, v):
+        if not isinstance(v, list):
+            raise ValueError("Must be list")
+        return v
+
+
+class OFCGameSettings(GameSettings):
+    @field_validator("big_blind")
+    def validate_big_blind(cls, v):
+        if v is None:
+            raise ValueError("Must contain value")
+        return v
+
+    @field_validator("buy_in")
+    def validate_buy_in(cls, v):
+        if not isinstance(v, list):
+            raise ValueError("Must be list")
+        return v
+
+    @field_validator("min_stack")
+    def validate_min_stack(cls, v):
+        if v is None:
+            raise ValueError("Must contain value")
+        return v
+
+
 class TableCreate(BaseModel):
     table_name: str | None = None
     table_type: str | None = None
     table_seats: int
     game_type: str
     game_subtype: str | None = None
+    game_settings: GameSettings
+
+    @field_validator("game_type")
+    def validate_game_type(cls, v):
+        if v not in GAME_TYPES_SETTINGS.keys():
+            raise ValueError("No such game type")
+        return v
+
+    @model_validator(mode="after")
+    def validate_game_settings(cls, data):
+        settings_model = GAME_TYPES_SETTINGS.get(data.game_type)
+        context = {
+            "game_type": data.game_type,
+            "game_subtype": data.game_subtype,
+        }
+        settings_model.model_validate(
+            data.game_settings.model_dump(), context=context
+        )
+        return data
+
+
+GAME_TYPES_SETTINGS = {
+    "NLH": NLHGameSettings,
+    "PLO": PLOGameSettings,
+    "OFC": OFCGameSettings,
+}
 
 
 class TableProfile(BaseModel):
@@ -65,7 +170,10 @@ async def v1_create_club_table(club_id: int, params: TableCreate, session_uuid: 
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         if club.founder_id != user.id:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
-        table = dbi.create_table(club_id=club_id, **params.model_dump())
+        table_params = params.model_dump(exclude_unset=True)
+        game_settings = params.game_settings.model_dump_json(exclude_unset=True)
+        table_params["game_settings"] = game_settings
+        table = dbi.create_table(club_id=club_id, **table_params)
 
     return TableProfile(
         id=table.id,
