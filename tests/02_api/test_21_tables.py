@@ -39,7 +39,14 @@ def test_create_club_table():
 
     # Пытаемся создать стол несуществующего клуба
     non_club_id = new_club["id"] + 100500
-    json = {"table_name": "table", "table_type": "type", "table_seats": 6, "game_type": "game type"}
+    json = {
+        "table_seats": 6,
+        "game_type": "PLO",
+        "game_settings": {
+            "big_blind": 10,
+            "buy_in": [1, 20],
+        }
+    }
     response = client.post(f"/v1/clubs/{non_club_id}/tables", json=json, headers=headers)
     assert response.status_code == 404
 
@@ -53,9 +60,9 @@ def test_create_club_table():
 
     table = response.json()
     assert table["id"]
-    assert table["table_name"] == json["table_name"]
-    assert table["table_type"] == json["table_type"]
+    assert table["table_seats"] == json["table_seats"]
     assert table["game_type"] == json["game_type"]
+    assert table["game_settings"] == json["game_settings"]
 
     # Проверяем, что стол отобразился в списке доступных столов клуба
     response = client.get(f"/v1/clubs/{club['id']}/tables", headers=headers)
@@ -84,7 +91,14 @@ def test_delete_club_table():
     club = response.json()
 
     # Создаем стол
-    json = {"table_name": "table", "table_type": "type", "table_seats": 6, "game_type": "game type"}
+    json = {
+        "table_seats": 6,
+        "game_type": "PLO",
+        "game_settings": {
+            "big_blind": 10,
+            "buy_in": [1, 20],
+        }
+    }
     response = client.post(f"/v1/clubs/{club['id']}/tables", json=json, headers=headers)
     assert response.status_code == 201
 
@@ -133,7 +147,14 @@ def test_get_club_tables():
     club = response.json()
 
     # Создаем стол
-    json = {"table_name": "table", "table_type": "type", "table_seats": 6, "game_type": "game type"}
+    json = {
+        "table_seats": 6,
+        "game_type": "PLO",
+        "game_settings": {
+            "big_blind": 10,
+            "buy_in": [1, 20],
+        }
+    }
     response = client.post(f"/v1/clubs/{club['id']}/tables", json=json, headers=headers)
     assert response.status_code == 201
 
