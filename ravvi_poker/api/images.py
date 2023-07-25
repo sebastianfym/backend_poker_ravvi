@@ -124,6 +124,8 @@ async def v1_delete_image(image_id: int, session_uuid: RequireSessionUUID):
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
         if image.id == user.image_id:
             dbi.update_user_profile(user.id, image_id=None)
+        user_clubs = dbi.get_clubs_for_user(user_id=user.id)
+        [dbi.update_club(club.id, image_id=None) for club in user_clubs if club.image_id == image_id]
         dbi.delete_image(image_id)
 
     return {}
