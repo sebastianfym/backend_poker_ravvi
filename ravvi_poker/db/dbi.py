@@ -245,13 +245,13 @@ class DBI:
 
     # CLUBS
 
-    def create_club(self, *, founder_id, name):
+    def create_club(self, *, founder_id, name, description, image_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("INSERT INTO club (founder_id, name) VALUES (%s,%s) RETURNING *",(founder_id, name))
+            cursor.execute("INSERT INTO club (founder_id, name, description, image_id) VALUES (%s,%s,%s,%s) RETURNING *",(founder_id, name, description, image_id))
             club = cursor.fetchone()
             cursor.execute("INSERT INTO club_member (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,'OWNER',NOW(),0)",(club.id, founder_id))
             return club
-        
+
     def get_club(self, club_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("SELECT * FROM club WHERE id=%s",(club_id,))
@@ -268,11 +268,19 @@ class DBI:
             cursor.execute("SELECT * FROM club_member WHERE club_id=%s AND user_id=%s",(club_id,user_id))
             return cursor.fetchone()
 
-    def update_club(self, club_id, *, name, description):
+    def update_club(self, club_id, **kwargs):
+        params = ", ".join([f"{key}=%s" for key in kwargs])
+        sql = f"UPDATE club SET {params} WHERE id=%s RETURNING *"
+        args = list(kwargs.values())
+        args.append(club_id)
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("UPDATE club SET name=%s, description=%s WHERE id=%s RETURNING *",(name, description, club_id,))
+            cursor.execute(sql, args)
             return cursor.fetchone()
-        
+
+    def delete_club(self, club_id):
+        # TODO дождаться утверждения жизненного цикла стола
+        pass
+
     def get_clubs_for_user(self, *, user_id):
         sql = "SELECT c.*, u.user_role, u.approved_ts FROM club_member u JOIN club c ON c.id=u.club_id WHERE u.user_id=%s"
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
