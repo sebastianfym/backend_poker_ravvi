@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import APIRouter
 from fastapi.exceptions import HTTPException
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
@@ -12,82 +14,68 @@ router = APIRouter(prefix="/tables", tags=["tables"])
 
 
 class GameSettings(BaseModel):
-    ante: float | None = None
-    big_blind: float | None = None
-    buy_in: float | list[float]
-    min_stack: float | None = None
-
-    @field_validator("buy_in")
-    def validate_buy_in(cls, v):
-        if isinstance(v, list):
-            if len(v) != 2:
-                raise ValueError("Must contain only 2 values")
-            if v[0] >= v[1]:
-                raise ValueError("First value must be less than second")
-        return v
+    ante: Any | None = None
+    big_blind: Any | None = None
+    buy_in: Any | None = None
+    min_stack: Any | None = None
 
 
 class NLHGameSettings(GameSettings):
-    @field_validator("big_blind")
-    def validate_big_blind(cls, v, info: FieldValidationInfo):
-        game_subtype = info.context.get("game_subtype")
-        if not game_subtype == "6+":
-            if v is None:
-                raise ValueError("Must contain value")
-            return v
+    ante: float | None = None
+    big_blind: float | None = None
+    buy_in: list[float] | float
 
     @field_validator("ante")
     def validate_ante(cls, v, info: FieldValidationInfo):
         game_subtype = info.context.get("game_subtype")
-        if game_subtype == "6+":
-            if v is None:
-                raise ValueError("Must contain value")
+        if game_subtype == "6+" and v is None:
+            raise ValueError("Must contain value")
+        return v
+
+    @field_validator("big_blind")
+    def validate_big_blind(cls, v, info: FieldValidationInfo):
+        game_subtype = info.context.get("game_subtype")
+        if not game_subtype == "6+" and v is None:
+            raise ValueError("Must contain value")
         return v
 
     @field_validator("buy_in")
     def validate_buy_in(cls, v, info: FieldValidationInfo):
         game_subtype = info.context.get("game_subtype")
-        if game_subtype == "AOF":
-            if isinstance(v, list):
-                raise ValueError("Must be float")
-        else:
+        if game_subtype == "AOF" and isinstance(v, list):
+            raise ValueError("Must be float")
+        if game_subtype != "AOF":
             if not isinstance(v, list):
                 raise ValueError("Must be list")
+            if len(v) != 2:
+                raise ValueError("Must contain min and max buy-in")
+            if v[0] > v[1]:
+                raise ValueError("Min buy-in must be less than max")
         return v
 
 
 class PLOGameSettings(GameSettings):
-    @field_validator("big_blind")
-    def validate_big_blind(cls, v):
-        if v is None:
-            raise ValueError("Must contain value")
-        return v
+    big_blind: float
+    buy_in: list[float]
 
     @field_validator("buy_in")
     def validate_buy_in(cls, v):
-        if not isinstance(v, list):
-            raise ValueError("Must be list")
+        if len(v) != 2:
+            raise ValueError("Must contain min and max buy-in")
+        if v[0] > v[1]:
+            raise ValueError("Min buy-in must be less than max")
         return v
 
 
-class OFCGameSettings(GameSettings):
-    @field_validator("big_blind")
-    def validate_big_blind(cls, v):
-        if v is None:
-            raise ValueError("Must contain value")
-        return v
+class OFCGameSettings(PLOGameSettings):
+    min_stack: float
 
-    @field_validator("buy_in")
-    def validate_buy_in(cls, v):
-        if not isinstance(v, list):
-            raise ValueError("Must be list")
-        return v
 
-    @field_validator("min_stack")
-    def validate_min_stack(cls, v):
-        if v is None:
-            raise ValueError("Must contain value")
-        return v
+GAME_TYPES_SETTINGS = {
+    "NLH": NLHGameSettings,
+    "PLO": PLOGameSettings,
+    "OFC": OFCGameSettings,
+}
 
 
 class TableCreate(BaseModel):
@@ -100,28 +88,16 @@ class TableCreate(BaseModel):
 
     @field_validator("game_type")
     def validate_game_type(cls, v):
-        if v not in GAME_TYPES_SETTINGS.keys():
-            raise ValueError("No such game type")
+        if v not in GAME_TYPES_SETTINGS:
+            raise ValueError("Unknown game type")
         return v
 
     @model_validator(mode="after")
     def validate_game_settings(cls, data):
         settings_model = GAME_TYPES_SETTINGS.get(data.game_type)
-        context = {
-            "game_type": data.game_type,
-            "game_subtype": data.game_subtype,
-        }
-        settings_model.model_validate(
-            data.game_settings.model_dump(), context=context
-        )
+        context = {"game_subtype": data.game_subtype}
+        settings_model.model_validate(data.game_settings.model_dump(), context=context)
         return data
-
-
-GAME_TYPES_SETTINGS = {
-    "NLH": NLHGameSettings,
-    "PLO": PLOGameSettings,
-    "OFC": OFCGameSettings,
-}
 
 
 class TableProfile(BaseModel):
