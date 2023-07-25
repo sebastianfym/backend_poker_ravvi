@@ -245,9 +245,9 @@ class DBI:
 
     # CLUBS
 
-    def create_club(self, *, founder_id, name):
+    def create_club(self, *, founder_id, name, description, image_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("INSERT INTO club (founder_id, name) VALUES (%s,%s) RETURNING *",(founder_id, name))
+            cursor.execute("INSERT INTO club (founder_id, name, description, image_id) VALUES (%s,%s,%s,%s) RETURNING *",(founder_id, name, description, image_id))
             club = cursor.fetchone()
             cursor.execute("INSERT INTO club_member (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,'OWNER',NOW(),0)",(club.id, founder_id))
             return club
@@ -259,7 +259,7 @@ class DBI:
 
     def update_club(self, club_id, *, name, description):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("UPDATE club SET name=%s, description=%s WHERE id=%s RETURNING *",(name, description, club_id,))
+            cursor.execute(sql, args)
             return cursor.fetchone()
 
     def get_clubs_for_user(self, *, user_id):
@@ -356,3 +356,20 @@ class DBI:
             cursor.execute("INSERT INTO poker_event (table_id, game_id, user_id, event_type, event_props) VALUES (%s, %s, %s, %s, %s) RETURNING id, event_ts",
                            (table_id, game_id, user_id, type, data))
             return cursor.fetchone()
+
+    def get_game(self, game_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("SELECT * FROM poker_game WHERE id=%s",(game_id,))
+            return cursor.fetchone()
+
+    # DEBUG
+    def create_debug_message(self, user_id, game_id, table_id, debug_message):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("INSERT INTO debug (user_id, game_id, table_id, debug_message) VALUES (%s,%s,%s,%s) RETURNING *",
+                           (user_id,game_id,table_id,debug_message,))
+            return cursor.fetchone()
+
+    def get_debug_messages(self, user_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("SELECT * FROM debug WHERE user_id=%s",(user_id,))
+            return cursor.fetchall()
