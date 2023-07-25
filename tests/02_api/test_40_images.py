@@ -120,6 +120,56 @@ def test_set_user_avatar():
         assert response.status_code == 200
 
 
+def test_set_club_avatar():
+    # register user
+    access_token, _ = register_guest()
+
+    # get user profile
+    headers = {"Authorization": "Bearer " + access_token}
+    response = client.get("/v1/user/profile", headers=headers)
+    assert response.status_code == 200
+
+    profile = response.json()
+
+    # create club
+    response = client.post("/v1/clubs", json={}, headers=headers)
+    assert response.status_code == 201
+
+    club = response.json()
+
+    # with user image
+    with TestImage(user_id=profile["id"]) as im:
+        # set image as club avatar
+        json = {"image_id": im.db.id}
+        response = client.patch(f"/v1/clubs/{club['id']}", json=json, headers=headers)
+        assert response.status_code == 200
+
+        # check club
+        club = response.json()
+        assert club["image_id"] == im.db.id
+
+        # unset club avatar
+        json = {"image_id": None}
+        response = client.patch(f"/v1/clubs/{club['id']}", json=json, headers=headers)
+        assert response.status_code == 200
+
+    # with common image
+    with TestImage() as im:
+        # set common image as club avatar
+        json = {"image_id": im.db.id}
+        response = client.patch(f"/v1/clubs/{club['id']}", json=json, headers=headers)
+        assert response.status_code == 200
+
+        # check club
+        club = response.json()
+        assert club["image_id"] == im.db.id
+
+        # unset club avatar
+        json = {"image_id": None}
+        response = client.patch(f"/v1/clubs/{club['id']}", json=json, headers=headers)
+        assert response.status_code == 200
+
+
 def test_delete_image():
     # register user
     access_token, _ = register_guest()
@@ -177,6 +227,79 @@ def test_delete_image():
         # try to delete new image by user
         response = client.delete(f"/v1/images/{im.db.id}", headers=headers)
         assert response.status_code == 404
+
+
+def test_delete_in_use_image():
+    # register user
+    access_token, _ = register_guest()
+
+    # get user profile
+    headers = {"Authorization": "Bearer " + access_token}
+    response = client.get("/v1/user/profile", headers=headers)
+    assert response.status_code == 200
+
+    profile = response.json()
+
+    # with user images
+    with TestImage(user_id=profile["id"]) as im1, TestImage(user_id=profile["id"]) as im2:
+        # set im1 as avatar
+        json = {"image_id": im1.db.id}
+        response = client.patch("/v1/user/profile", json=json, headers=headers)
+        assert response.status_code == 200
+
+        # check profile
+        profile = response.json()
+        assert profile["image_id"] == im1.db.id
+
+        # create club1 with im1 avatar
+        response = client.post("/v1/clubs", json=json, headers=headers)
+        assert response.status_code == 201
+
+        # check club1
+        club1 = response.json()
+        assert club1["image_id"] == im1.db.id
+
+        # create club2 with im1 avatar
+        response = client.post("/v1/clubs", json=json, headers=headers)
+        assert response.status_code == 201
+
+        club2 = response.json()
+        assert club2["image_id"] == im1.db.id
+
+        # create club3 with im2 avatar
+        json = {"image_id": im2.db.id}
+        response = client.post("/v1/clubs", json=json, headers=headers)
+        assert response.status_code == 201
+
+        club3 = response.json()
+        assert club3["image_id"] == im2.db.id
+
+        # delete im1
+        response = client.delete(f"/v1/images/{im1.db.id}", headers=headers)
+        assert response.status_code == 204
+
+        # check profile
+        response = client.get("/v1/user/profile", headers=headers)
+        assert response.status_code == 200
+
+        profile = response.json()
+        assert profile["image_id"] is None
+
+        # get clubs
+        response = client.get("/v1/clubs", headers=headers)
+        assert response.status_code == 200
+
+        clubs = response.json()
+        clubs.sort(key=lambda x: x["id"])
+
+        assert clubs[0]["image_id"] is None
+        assert clubs[1]["image_id"] is None
+        assert clubs[2]["image_id"] == club3["image_id"]
+
+        # unset club3 avatar
+        json = {"image_id": None}
+        response = client.patch(f"/v1/clubs/{club3['id']}", json=json, headers=headers)
+        assert response.status_code == 200
 
 
 def test_upload_image():
