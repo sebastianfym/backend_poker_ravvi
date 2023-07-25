@@ -151,8 +151,8 @@ class PokerBase(ObjectLogger):
     def get_bet_limits(self, player=None):
         p = player or self.current_player
         call_delta = max(0, self.bet_level-p.bet_amount)
-        raise_min = self.bet_level + self.blind_big
-        raise_max = p.bet_amount + p.balance
+        raise_min = max(call_delta, self.blind_big)
+        raise_max = p.balance
         return call_delta, raise_min, raise_max
 
     def get_bet_options(self, player) -> Tuple[List[Bet], dict]:
@@ -167,7 +167,7 @@ class PokerBase(ObjectLogger):
         if raise_min<raise_max:
             options.append(Bet.RAISE)
             params.update(raise_min = raise_min, raise_max = raise_max)
-        player_max = player.bet_amount+player.balance
+        player_max = player.balance
         if player_max<=raise_max:
             options.append(Bet.ALLIN)
             params.update(raise_max=raise_max)
@@ -191,8 +191,8 @@ class PokerBase(ObjectLogger):
     async def wait_for_player_bet(self):
         await self.bet_event.wait()
 
-    def handle_bet(self, user_id, bet, amount):
-        self.log_info("handle_bet: %s %s %s", user_id, bet, amount)
+    def handle_bet(self, user_id, bet, raise_delta):
+        self.log_info("handle_bet: %s %s %s", user_id, bet, raise_delta)
         p = self.current_player
         assert p.user_id == user_id
         assert Bet.verify(bet)
@@ -211,8 +211,8 @@ class PokerBase(ObjectLogger):
             assert call_delta>0
             p.bet_delta = call_delta
         elif bet == Bet.RAISE:
-            assert raise_min<=amount and amount<=raise_max
-            p.bet_delta = amount-p.bet_amount
+            assert raise_min<=raise_delta and raise_delta<=raise_max
+            p.bet_delta = raise_delta
         elif bet == Bet.ALLIN:
             p.bet_delta = p.balance
         else:
