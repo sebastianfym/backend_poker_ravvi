@@ -108,6 +108,7 @@ class TableProfile(BaseModel):
     table_seats: int | None
     game_type: str | None
     game_subtype: str | None
+    game_settings: Any | None
 
 
 @clubs_router.get("/{club_id}/tables", status_code=200, summary="Get club tables")
@@ -124,6 +125,7 @@ async def v1_get_club_tables(club_id: int, session_uuid: RequireSessionUUID):
             )
         tables = dbi.get_tables_for_club(club_id=club_id)
 
+
     return list([
         TableProfile(
             id=table.id,
@@ -133,6 +135,7 @@ async def v1_get_club_tables(club_id: int, session_uuid: RequireSessionUUID):
             table_seats=table.table_seats,
             game_type=table.game_type,
             game_subtype=table.game_subtype,
+            game_settings=table.game_settings,
         ) for table in tables
     ])
 
@@ -159,6 +162,7 @@ async def v1_create_club_table(club_id: int, params: TableCreate, session_uuid: 
         table_seats=table.table_seats,
         game_type=table.game_type,
         game_subtype=table.game_subtype,
+        game_settings=table.game_settings,
     )
 
 
