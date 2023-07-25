@@ -20,12 +20,12 @@
         {"type": "PLAYER_BET", "user_id": 111, "bet": "CALL", "delta": 2, "amount": 2, "balance": 100}, 
 
         {"type": "GAME_PLAYER_MOVE", "user_id": 222, "options": ["FOLD", "CALL", "RAISE", "ALLIN"], 
-            "call": 1, "raise_min": 4, "raise_max": 98}, 
+            "call": 1, "raise_min": 3, "raise_max": 97}, 
         {"user_id": 222, "type": "CMD_PLAYER_BET", "bet": "CALL"}, 
         {"type": "PLAYER_BET", "user_id": 222, "bet": "CALL", "delta": 1, "amount": 2, "balance": 96}, 
 
         {"type": "GAME_PLAYER_MOVE", "user_id": 333, "options": ["FOLD", "CHECK", "RAISE", "ALLIN"], 
-            "call": null, "raise_min": 4, "raise_max": 100}, 
+            "call": null, "raise_min": 2, "raise_max": 98}, 
         {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "CHECK"}, 
         {"type": "PLAYER_BET", "user_id": 333, "bet": "CHECK", "delta": 0, "amount": 2, "balance": 98}, 
 
@@ -61,7 +61,7 @@
         {"type": "PLAYER_BET", "user_id": 333, "bet": "CALL", "delta": 2, "amount": 2, "balance": 96}, 
 
         {"type": "GAME_ROUND", "banks": [{"delta": 6, "amount": 12}]},         
-
+// TERN
         {"type": "GAME_CARDS", "cards": ["Q♠","A♦","8♥","6♣"]}, 
 
         {"type": "GAME_PLAYER_MOVE", "user_id": 222, "options": ["FOLD", "CHECK", "RAISE", "ALLIN"], 
@@ -91,7 +91,7 @@
         {"type": "PLAYER_BET", "user_id": 333, "bet": "RAISE", "delta": 6, "amount": 6, "balance": 90},
 
         {"type": "GAME_PLAYER_MOVE", "user_id": 111, "options": ["FOLD", "CALL", "RAISE", "ALLIN"], 
-                "call": 4, "raise_min": 10, "raise_max": 98}, 
+                "call": 4, "raise_min": 8, "raise_max": 96}, 
         {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "CALL"}, 
         {"type": "PLAYER_BET", "user_id": 111, "bet": "CALL", "delta": 4, "amount": 6, "balance": 92},
 
