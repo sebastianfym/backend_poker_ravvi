@@ -1,3 +1,6 @@
+import random
+import string
+
 import jwt
 from passlib.hash import pbkdf2_sha256
 
@@ -31,3 +34,7 @@ def password_hash(password: str) -> str:
 
 def password_verify(password: str, hash: str) -> bool:
     return pbkdf2_sha256.verify(password, hash)
+
+
+def generate_club_name(prefix="Club_", k=10):
+    return prefix + "".join(random.choices(string.ascii_lowercase, k=k))

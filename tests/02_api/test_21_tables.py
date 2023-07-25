@@ -25,7 +25,7 @@ def test_create_club_table():
     json = {"name": "club 1"}
     headers = {"Authorization": "Bearer " + access_token}
     response = client.post("/v1/clubs", json=json, headers=headers)
-    assert response.status_code == 200
+    assert response.status_code == 201
 
     club = response.json()
 
@@ -33,7 +33,7 @@ def test_create_club_table():
     new_json = {"name": "club 2"}
     new_headers = {"Authorization": "Bearer " + new_access_token}
     new_response = client.post("/v1/clubs", json=new_json, headers=new_headers)
-    assert new_response.status_code == 200
+    assert new_response.status_code == 201
 
     new_club = new_response.json()
 
@@ -79,7 +79,7 @@ def test_delete_club_table():
     json = {"name": "club 1"}
     headers = {"Authorization": "Bearer " + access_token}
     response = client.post("/v1/clubs", json=json, headers=headers)
-    assert response.status_code == 200
+    assert response.status_code == 201
 
     club = response.json()
 
@@ -128,7 +128,7 @@ def test_get_club_tables():
     json = {"name": "club 1"}
     headers = {"Authorization": "Bearer " + access_token}
     response = client.post("/v1/clubs", json=json, headers=headers)
-    assert response.status_code == 200
+    assert response.status_code == 201
 
     club = response.json()
 
