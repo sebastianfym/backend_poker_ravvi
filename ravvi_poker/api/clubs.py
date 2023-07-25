@@ -33,7 +33,7 @@ class ClubMemberProfile(BaseModel):
     user_approved: bool | None = None
 
 
-@router.post("", response_model=ClubProfile, summary="Create new club")
+@router.post("", status_code=201, summary="Create new club")
 async def v1_create_club(params: ClubProps, session_uuid: RequireSessionUUID):
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
