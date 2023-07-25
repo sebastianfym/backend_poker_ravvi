@@ -100,7 +100,12 @@ async def v1_update_club(club_id: int, params: ClubProps, session_uuid: RequireS
         club_member = dbi.get_club_member(club_id, user.id)        
         if not club_member or club_member.user_role != "OWNER":
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
-        club = dbi.update_club(club_id, **params.model_dump(exclude_unset=True))
+        club_params = params.model_dump(exclude_unset=True)
+        if club_params:
+            image = dbi.get_user_images(user.id, id=params.image_id) if params.image_id else None
+            if params.image_id is not None and not image:
+                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Image not found")
+            club = dbi.update_club(club_id, **club_params)
 
     return ClubProfile(
         id=club.id, 
@@ -125,7 +130,6 @@ async def v1_delete_club(club_id: int, session_uuid: RequireSessionUUID):
         dbi.delete_club(club.id)
 
     return {}
-
 
 
 @router.get("/{club_id}/members", summary="Get club memebrs")
@@ -184,7 +188,8 @@ async def v1_approve_join_request(club_id: int, member_id: int, session_uuid: Re
         user_member = dbi.get_club_member(club_id, user.id)        
         if not user_member or user_member.user_role != "OWNER":
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
-        new_member = dbi.approve_club_member(club.id, user.id, member_id)
+        if new_member.approved_ts is None:
+            new_member = dbi.approve_club_member(club.id, user.id, member_id)
         new_member_profile = dbi.get_user(id=new_member.user_id)
 
     return ClubMemberProfile(
@@ -209,7 +214,6 @@ async def v1_delete_club_member(club_id: int, member_id: int, session_uuid: Requ
         user_member = dbi.get_club_member(club_id, user.id) 
         if not user_member or user_member.user_role != "OWNER":
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
-        # TODO realize method
         dbi.delete_club_member(club.id, member_id)
 
     return {}

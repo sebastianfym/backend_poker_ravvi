@@ -207,11 +207,10 @@ class DBI:
 
     def update_user_profile(self, user_id, **kwargs):
         params = ", ".join([f"{key}=%s" for key in kwargs])
+        values = list(kwargs.values()) + [user_id]
         sql = f"UPDATE user_profile SET {params} WHERE id=%s RETURNING *"
-        args = list(kwargs.values())
-        args.append(user_id)
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute(sql, args)
+            cursor.execute(sql, values)
             return cursor.fetchone()
 
     # IMAGES
@@ -257,9 +256,12 @@ class DBI:
             cursor.execute("SELECT * FROM club WHERE id=%s",(club_id,))
             return cursor.fetchone()
 
-    def update_club(self, club_id, *, name, description):
+    def update_club(self, club_id, **kwargs):
+        params = ", ".join([f"{key}=%s" for key in kwargs])
+        values = list(kwargs.values()) + [club_id]
+        sql = f"UPDATE club SET {params} WHERE id=%s RETURNING *"
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute(sql, args)
+            cursor.execute(sql, values)
             return cursor.fetchone()
 
     def get_clubs_for_user(self, *, user_id):
@@ -267,6 +269,10 @@ class DBI:
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute(sql,(user_id,))
             return cursor.fetchall()
+
+    def delete_club(self, club_id):
+        # TODO вернуться после утверждения жизненных циклов стола и участника клуба 
+        pass
 
     def create_join_club_request(self, *, club_id, user_id, user_role):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
