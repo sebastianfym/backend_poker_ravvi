@@ -86,20 +86,12 @@ def test_user_profile():
     response = client.patch("/v1/user/profile", json=json_uname, headers=headers)
     assert response.status_code == 200
 
-    # set user email
-    json_email = {"email": "test@email.ru"}
-    response = client.post("/v1/user/profile/email", json=json_email, headers=headers)
-    assert response.status_code == 200
-
     # check user profile
-    response = client.get("/v1/user/profile", headers=headers)
-    assert response.status_code == 200
-
     profile = response.json()
     assert profile["id"]
     assert profile["has_password"] is False
     assert profile["username"] == json_uname["username"]
-    assert profile["email"] == json_email["email"]
+    assert profile["email"] is None
     assert profile["image_id"] is None
 
     # register new user
@@ -110,7 +102,90 @@ def test_user_profile():
     response = client.get(f"/v1/user/{profile['id']}/profile", headers=new_headers)
     assert response.status_code == 200
 
+    # check user profile by new user
     user_profile = response.json()
     assert user_profile["id"] == profile["id"]
     assert user_profile["username"] == profile["username"]
     assert user_profile["image_id"] == profile["image_id"]
+
+
+def test_set_email():
+    # register user
+    access_token, _ = register_guest()
+
+    # check user profile
+    headers = {"Authorization": "Bearer " + access_token}
+    response = client.get("/v1/user/profile", headers=headers)
+    assert response.status_code == 200
+
+    profile = response.json()
+    assert profile["id"]
+    assert profile["has_password"] is False
+    assert profile["username"]
+    assert profile["email"] is None
+    assert profile["image_id"] is None
+
+    # set user email
+    json = {"email": "test1@mail.ru"}
+    response = client.post("/v1/user/profile/email", json=json, headers=headers)
+    assert response.status_code == 200
+
+    temp_email1 = response.json()
+
+    # check user profile
+    response = client.get("/v1/user/profile", headers=headers)
+    assert response.status_code == 200
+
+    profile = response.json()
+    assert profile["id"]
+    assert profile["has_password"] is False
+    assert profile["username"]
+    assert profile["email"] is None
+    assert profile["image_id"] is None
+
+    # set new user email
+    json = {"email": "test2@mail.ru"}
+    response = client.post("/v1/user/profile/email", json=json, headers=headers)
+    assert response.status_code == 200
+
+    temp_email2 = response.json()
+
+    # try to approve temp_email1
+    response = client.post(f"/v1/user/profile/email/{temp_email1['uuid']}", headers=headers)
+    assert response.status_code == 400
+
+    # check user profile
+    headers = {"Authorization": "Bearer " + access_token}
+    response = client.get("/v1/user/profile", headers=headers)
+    assert response.status_code == 200
+
+    profile = response.json()
+    assert profile["id"]
+    assert profile["has_password"] is False
+    assert profile["username"]
+    assert profile["email"] is None
+    assert profile["image_id"] is None
+
+    # try to approve temp_email2
+    response = client.post(f"/v1/user/profile/email/{temp_email2['uuid']}", headers=headers)
+    assert response.status_code == 200
+
+    # check user profile
+    headers = {"Authorization": "Bearer " + access_token}
+    response = client.get("/v1/user/profile", headers=headers)
+    assert response.status_code == 200
+
+    profile = response.json()
+    assert profile["id"]
+    assert profile["has_password"] is False
+    assert profile["username"]
+    assert profile["email"] == temp_email2["temp_email"]
+    assert profile["image_id"] is None
+
+    # try to approve temp_email2 again
+    response = client.post(f"/v1/user/profile/email/{temp_email2['uuid']}", headers=headers)
+    assert response.status_code == 400
+
+    # try to set same email
+    response = client.post("/v1/user/profile/email", json=json, headers=headers)
+    assert response.status_code == 400
