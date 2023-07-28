@@ -1,7 +1,9 @@
+from uuid import UUID
+
 from fastapi import APIRouter
 from fastapi.exceptions import HTTPException
 from pydantic import BaseModel, EmailStr
-from starlette.status import HTTP_404_NOT_FOUND
+from starlette.status import HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 
 from ..db.dbi import DBI
 from .auth import RequireSessionUUID, get_session_and_user
@@ -30,6 +32,13 @@ class UserProps(BaseModel):
 
 class UserEmail(BaseModel):
     email: EmailStr
+
+
+class UserTempEmail(BaseModel):
+    user_id: int
+    uuid: UUID
+    temp_email: str
+    is_active: bool
 
 
 @router.get("/profile", summary="Get user")
@@ -84,7 +93,29 @@ async def v1_set_user_email(params: UserEmail, session_uuid: RequireSessionUUID)
     """Set user email"""
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
-        user = dbi.update_user_profile(user.id, **params.model_dump())
+        if params.email == user.email:
+            raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Email already installed")
+        temp_email = dbi.create_temp_email(user.id, params.email)
+
+    return UserTempEmail(
+        user_id=temp_email.user_id,
+        uuid=temp_email.uuid,
+        temp_email=temp_email.temp_email,
+        is_active=not temp_email.closed_ts
+    )
+
+
+@router.post("/profile/email/{uuid}", summary="Approve user email")
+async def v1_approve_user_email(uuid: str, session_uuid: RequireSessionUUID):
+    """Approve user email"""
+    with DBI() as dbi:
+        _, user = get_session_and_user(dbi, session_uuid)
+        temp_email = dbi.get_temp_email(user.id, uuid)
+        if not temp_email:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Not found")
+        if temp_email.closed_ts:
+            raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Confirmation expired")
+        user = dbi.set_temp_email(user.id, uuid)
 
     return UserProfile(
         id=user.id,
