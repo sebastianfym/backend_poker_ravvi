@@ -213,6 +213,24 @@ class DBI:
             cursor.execute(sql, values)
             return cursor.fetchone()
 
+    def create_temp_email(self, user_id, temp_email):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("UPDATE temp_email SET closed_ts=NOW() WHERE user_id=%s AND closed_ts is NULL", (user_id,))
+            cursor.execute("INSERT INTO temp_email (user_id, temp_email) VALUES (%s, %s) RETURNING *", (user_id,temp_email))
+            return cursor.fetchone()
+
+    def get_temp_email(self, user_id, uuid):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("SELECT * FROM temp_email WHERE user_id=%s AND uuid=%s", (user_id,uuid))
+            return cursor.fetchone()
+
+    def set_temp_email(self, user_id, uuid):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("UPDATE temp_email SET closed_ts=NOW() WHERE user_id=%s AND uuid=%s RETURNING *", (user_id,uuid))
+            temp_email = cursor.fetchone()
+            cursor.execute("UPDATE user_profile SET email=%s WHERE id=%s RETURNING *", (temp_email.temp_email,user_id))
+            return cursor.fetchone()
+
     # IMAGES
 
     def get_user_images(self, owner_id, id=None, uuid=None, image_data=None):
