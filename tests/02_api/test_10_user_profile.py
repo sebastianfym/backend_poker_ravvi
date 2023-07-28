@@ -152,7 +152,7 @@ def test_set_email():
 
     # try to approve temp_email1
     response = client.post(f"/v1/user/profile/email/{temp_email1['uuid']}", headers=headers)
-    assert response.status_code == 400
+    assert response.status_code == 422
 
     # check user profile
     headers = {"Authorization": "Bearer " + access_token}
@@ -184,8 +184,8 @@ def test_set_email():
 
     # try to approve temp_email2 again
     response = client.post(f"/v1/user/profile/email/{temp_email2['uuid']}", headers=headers)
-    assert response.status_code == 400
+    assert response.status_code == 422
 
     # try to set same email
     response = client.post("/v1/user/profile/email", json=json, headers=headers)
-    assert response.status_code == 400
+    assert response.status_code == 422
