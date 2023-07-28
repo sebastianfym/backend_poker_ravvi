@@ -75,8 +75,11 @@ async def v1_update_user(params: UserProps, session_uuid: RequireSessionUUID):
         if user_params:
             image_id = user_params.get("image_id")
             image = dbi.get_user_images(user.id, id=image_id) if image_id else None
-            if image_id and not image:
+            if image_id is not None and not image:
                 raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Image not found")
+            new_username = user_params.get("username")
+            if dbi.is_username_in_use(user.id, new_username):
+                raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Username already in use")
             user = dbi.update_user_profile(user.id, **user_params)
 
     return UserProfile(

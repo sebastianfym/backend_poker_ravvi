@@ -231,6 +231,11 @@ class DBI:
             cursor.execute("UPDATE user_profile SET email=%s WHERE id=%s RETURNING *", (temp_email.temp_email,user_id))
             return cursor.fetchone()
 
+    def is_username_in_use(self, user_id, username):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("SELECT id FROM user_profile WHERE id!=%s AND username=%s", (user_id,username))
+            return bool(cursor.fetchone())
+
     # IMAGES
 
     def get_user_images(self, owner_id, id=None, uuid=None, image_data=None):
