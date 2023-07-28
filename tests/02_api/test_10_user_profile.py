@@ -67,7 +67,7 @@ def test_deactivate_user():
 
 def test_user_profile():
     # register user
-    access_token, _ = register_guest()
+    access_token, username = register_guest()
 
     # check user profile
     headers = {"Authorization": "Bearer " + access_token}
@@ -77,12 +77,12 @@ def test_user_profile():
     profile = response.json()
     assert profile["id"]
     assert profile["has_password"] is False
-    assert profile["username"]
+    assert profile["username"] == username
     assert profile["email"] is None
     assert profile["image_id"] is None
 
     # update username
-    json_uname = {"username": "test_username"}
+    json_uname = {"username": f"test_username_{profile['id']}"}
     response = client.patch("/v1/user/profile", json=json_uname, headers=headers)
     assert response.status_code == 200
 
@@ -95,7 +95,7 @@ def test_user_profile():
     assert profile["image_id"] is None
 
     # register new user
-    new_access_token, _ = register_guest()
+    new_access_token, new_username = register_guest()
 
     # get user info by new user
     new_headers = {"Authorization": "Bearer " + new_access_token}
@@ -107,6 +107,18 @@ def test_user_profile():
     assert user_profile["id"] == profile["id"]
     assert user_profile["username"] == profile["username"]
     assert user_profile["image_id"] == profile["image_id"]
+
+    # try to set username by new user
+    json = {"username": user_profile["username"]}
+    response = client.patch("/v1/user/profile", json=json, headers=new_headers)
+    assert response.status_code == 422
+
+    # check new user profile
+    response = client.get("/v1/user/profile", headers=new_headers)
+    assert response.status_code == 200
+
+    new_profile = response.json()
+    assert new_profile["username"] == new_username
 
 
 def test_set_email():
