@@ -50,10 +50,6 @@ class Manager(Logger_MixIn):
             game_type = table_row.game_type or 'NLH'
             game_subtype = table_row.game_subtype
 
-            if table_row.id==2:
-                game_type = "PLO"
-                game_subtype = "PLO6"
-
             table = Table(table_row.id, 
                           game_type=game_type, 
                           game_subtype=game_subtype, 

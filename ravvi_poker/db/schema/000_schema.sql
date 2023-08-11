@@ -106,7 +106,7 @@ CREATE TABLE public.poker_table (
 );
 
 CREATE SEQUENCE public.poker_table_id_seq
-    START WITH 1
+    START WITH 100
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
