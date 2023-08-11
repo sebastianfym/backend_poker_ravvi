@@ -128,7 +128,7 @@ deploy_staging:
     when: manual
   environment: staging
   tags:
-    - staging
+    - poker-st1
     - backend
     - shell
   needs:
