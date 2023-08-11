@@ -9,7 +9,8 @@ from ..logging import logging_add_parser_args, logging_configure
 logger = logging.getLogger(__name__)
 
 def cmd_run(args):
-    uvicorn.run("ravvi_poker.api.main:app", host="0.0.0.0", port=5000, log_level="info")
+    port = int(os.getenv("RAVVI_POKER_API_PORT", "5000"))
+    uvicorn.run("ravvi_poker.api.main:app", host="0.0.0.0", port=port, log_level="info")
 
 
 def main():
