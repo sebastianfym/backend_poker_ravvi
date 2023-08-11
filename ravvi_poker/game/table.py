@@ -21,9 +21,8 @@ class Table(ObjectLogger):
         self.game_subtype = game_subtype
         if not n_seats:
             n_seats = 9
-        if self.game_type=='PLO':
-            if self.game_subtype is None or self.game_subtype=='PLO6':
-                n_seats = min(n_seats, 6)
+        if self.game_type=='PLO' and self.game_subtype=='PLO6':
+            n_seats = min(n_seats, 6)
         self.seats : List[User] = [None]*n_seats
         self.dealer_idx = -1
         self.task : asyncio.Task = None
