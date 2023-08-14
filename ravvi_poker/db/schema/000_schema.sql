@@ -6,7 +6,8 @@ CREATE TABLE public.club (
     founder_id bigint NOT NULL,
     name character varying(200) NOT NULL,
     description character varying(1000) DEFAULT NULL::character varying,
-    created_ts timestamp without time zone DEFAULT now() NOT NULL
+    created_ts timestamp without time zone DEFAULT now() NOT NULL,
+    image_id bigint
 );
 
 CREATE SEQUENCE public.club_id_seq
@@ -37,12 +38,32 @@ CREATE SEQUENCE public.club_member_id_seq
 
 ALTER SEQUENCE public.club_member_id_seq OWNED BY public.club_member.id;
 
+CREATE TABLE public.debug (
+    id bigint NOT NULL,
+    uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    user_id bigint,
+    game_id bigint,
+    table_id bigint,
+    debug_message text,
+    created_ts timestamp without time zone DEFAULT now() NOT NULL
+);
+
+CREATE SEQUENCE public.debug_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.debug_id_seq OWNED BY public.debug.id;
+
 CREATE TABLE public.image (
     id bigint NOT NULL,
     uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     owner_id bigint,
-    image_data bytea,
-    created_ts timestamp without time zone DEFAULT now() NOT NULL
+    image_data text,
+    created_ts timestamp without time zone DEFAULT now() NOT NULL,
+    mime_type character varying(100) DEFAULT NULL::character varying
 );
 
 CREATE SEQUENCE public.image_id_seq
@@ -102,7 +123,8 @@ CREATE TABLE public.poker_table (
     game_type character varying(100) DEFAULT NULL::character varying,
     table_name character varying(100) DEFAULT NULL::character varying,
     game_subtype character varying(100) DEFAULT NULL::character varying,
-    table_seats smallint
+    table_seats smallint,
+    game_settings jsonb
 );
 
 CREATE SEQUENCE public.poker_table_id_seq
@@ -113,6 +135,24 @@ CREATE SEQUENCE public.poker_table_id_seq
     CACHE 1;
 
 ALTER SEQUENCE public.poker_table_id_seq OWNED BY public.poker_table.id;
+
+CREATE TABLE public.temp_email (
+    id bigint NOT NULL,
+    uuid uuid DEFAULT public.uuid_generate_v4(),
+    user_id bigint NOT NULL,
+    temp_email character varying(100) NOT NULL,
+    created_ts timestamp without time zone DEFAULT now(),
+    closed_ts timestamp without time zone
+);
+
+CREATE SEQUENCE public.temp_email_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.temp_email_id_seq OWNED BY public.temp_email.id;
 
 CREATE TABLE public.user_device (
     id bigint NOT NULL,
@@ -191,6 +231,8 @@ ALTER TABLE ONLY public.club ALTER COLUMN id SET DEFAULT nextval('public.club_id
 
 ALTER TABLE ONLY public.club_member ALTER COLUMN id SET DEFAULT nextval('public.club_member_id_seq'::regclass);
 
+ALTER TABLE ONLY public.debug ALTER COLUMN id SET DEFAULT nextval('public.debug_id_seq'::regclass);
+
 ALTER TABLE ONLY public.image ALTER COLUMN id SET DEFAULT nextval('public.image_id_seq'::regclass);
 
 ALTER TABLE ONLY public.poker_event ALTER COLUMN id SET DEFAULT nextval('public.poker_event_id_seq'::regclass);
@@ -198,6 +240,8 @@ ALTER TABLE ONLY public.poker_event ALTER COLUMN id SET DEFAULT nextval('public.
 ALTER TABLE ONLY public.poker_game ALTER COLUMN id SET DEFAULT nextval('public.poker_game_id_seq'::regclass);
 
 ALTER TABLE ONLY public.poker_table ALTER COLUMN id SET DEFAULT nextval('public.poker_table_id_seq'::regclass);
+
+ALTER TABLE ONLY public.temp_email ALTER COLUMN id SET DEFAULT nextval('public.temp_email_id_seq'::regclass);
 
 ALTER TABLE ONLY public.user_device ALTER COLUMN id SET DEFAULT nextval('public.user_device_id_seq'::regclass);
 
@@ -212,6 +256,12 @@ ALTER TABLE ONLY public.club_member
 
 ALTER TABLE ONLY public.club
     ADD CONSTRAINT club_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.debug
+    ADD CONSTRAINT debug_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.debug
+    ADD CONSTRAINT debug_uuid_key UNIQUE (uuid);
 
 ALTER TABLE ONLY public.image
     ADD CONSTRAINT image_pkey PRIMARY KEY (id);
@@ -230,6 +280,12 @@ ALTER TABLE ONLY public.poker_game_user
 
 ALTER TABLE ONLY public.poker_table
     ADD CONSTRAINT poker_table_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.temp_email
+    ADD CONSTRAINT temp_email_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.temp_email
+    ADD CONSTRAINT temp_email_uuid_key UNIQUE (uuid);
 
 ALTER TABLE ONLY public.user_device
     ADD CONSTRAINT user_device_pkey PRIMARY KEY (id);
@@ -261,6 +317,9 @@ CREATE UNIQUE INDEX club_member_unq ON public.club_member USING btree (club_id, 
 
 CREATE INDEX poker_game_user_idx1 ON public.poker_game_user USING btree (user_id);
 
+ALTER TABLE ONLY public.club
+    ADD CONSTRAINT club_image_id_fkey FOREIGN KEY (image_id) REFERENCES public.image(id);
+
 ALTER TABLE ONLY public.club_member
     ADD CONSTRAINT club_member_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES public.user_profile(id);
 
@@ -269,6 +328,15 @@ ALTER TABLE ONLY public.club_member
 
 ALTER TABLE ONLY public.club_member
     ADD CONSTRAINT club_member_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.user_profile(id);
+
+ALTER TABLE ONLY public.debug
+    ADD CONSTRAINT debug_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.poker_game(id);
+
+ALTER TABLE ONLY public.debug
+    ADD CONSTRAINT debug_table_id_fkey FOREIGN KEY (table_id) REFERENCES public.poker_table(id);
+
+ALTER TABLE ONLY public.debug
+    ADD CONSTRAINT debug_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.user_profile(id);
 
 ALTER TABLE ONLY public.image
     ADD CONSTRAINT image_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.user_profile(id);
@@ -290,6 +358,9 @@ ALTER TABLE ONLY public.poker_game_user
 
 ALTER TABLE ONLY public.poker_game_user
     ADD CONSTRAINT poker_game_user_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.user_profile(id);
+
+ALTER TABLE ONLY public.temp_email
+    ADD CONSTRAINT temp_email_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.user_profile(id);
 
 ALTER TABLE ONLY public.user_login
     ADD CONSTRAINT user_login_device_id_fkey FOREIGN KEY (device_id) REFERENCES public.user_device(id);
