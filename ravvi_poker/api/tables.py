@@ -80,10 +80,10 @@ GAME_TYPES_SETTINGS = {
 
 class TableCreate(BaseModel):
     table_name: str | None = None
-    table_type: str | None = None
+    table_type: str
     table_seats: int
     game_type: str
-    game_subtype: str | None = None
+    game_subtype: str
     game_settings: GameSettings
 
     @field_validator("game_type")
@@ -104,10 +104,10 @@ class TableProfile(BaseModel):
     id: int
     club_id: int
     table_name: str | None
-    table_type: str | None
+    table_type: str
     table_seats: int | None
-    game_type: str | None
-    game_subtype: str | None
+    game_type: str
+    game_subtype: str
     game_settings: Any | None
 
 

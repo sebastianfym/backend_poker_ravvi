@@ -7,7 +7,7 @@ from ..logging import ObjectLogger
 from .bet import Bet
 from .event import Event, GAME_BEGIN, PLAYER_CARDS, GAME_CARDS, PLAYER_BET, GAME_PLAYER_MOVE, GAME_ROUND, GAME_RESULT, GAME_END
 from .player import User, Player, PlayerRole
-from .cards import Hand, HandRank
+from .cards import Hand, HandRank, CARDS_52
 from .multibank import get_banks
 
 from enum import IntEnum, unique
@@ -20,6 +20,8 @@ class Round(IntEnum):
     RIVER = 4
 
 class PokerBase(ObjectLogger):
+    GAME_TYPE = None
+    GAME_SUBTYPE = None
 
     PLAYER_CARDS_FREFLOP = 2
 
@@ -83,6 +85,8 @@ class PokerBase(ObjectLogger):
     async def broadcast_GAME_BEGIN(self):
         event = GAME_BEGIN(
             game_id = self.game_id, 
+            game_type = self.GAME_TYPE,
+            game_subtype = self.GAME_SUBTYPE,
             players = [x.user_id for x in self.players],
             dealer_id = self.dealer_id
         )
@@ -153,10 +157,10 @@ class PokerBase(ObjectLogger):
         call_delta = max(0, self.bet_level-p.bet_amount)
         raise_min = max(call_delta, self.blind_big)
         raise_max = p.balance
-        return call_delta, raise_min, raise_max
+        return call_delta, raise_min, raise_max, p.balance
 
     def get_bet_options(self, player) -> Tuple[List[Bet], dict]:
-        call_delta, raise_min, raise_max = self.get_bet_limits(player)
+        call_delta, raise_min, raise_max, player_max = self.get_bet_limits(player)
         options = [Bet.FOLD]
         params = dict()
         if call_delta==0:
@@ -167,7 +171,6 @@ class PokerBase(ObjectLogger):
         if raise_min<raise_max:
             options.append(Bet.RAISE)
             params.update(raise_min = raise_min, raise_max = raise_max)
-        player_max = player.balance
         if player_max<=raise_max:
             options.append(Bet.ALLIN)
             params.update(raise_max=raise_max)
@@ -199,7 +202,7 @@ class PokerBase(ObjectLogger):
 
         b_0, b_a_0, b_t_0 = p.user.balance, p.bet_amount, p.bet_total
 
-        call_delta, raise_min, raise_max = self.get_bet_limits(p)
+        call_delta, raise_min, raise_max, player_max = self.get_bet_limits(p)
 
         if bet == Bet.FOLD:
             p.bet_delta = 0
@@ -214,7 +217,7 @@ class PokerBase(ObjectLogger):
             assert raise_min<=raise_delta and raise_delta<=raise_max
             p.bet_delta = raise_delta
         elif bet == Bet.ALLIN:
-            p.bet_delta = p.balance
+            p.bet_delta = player_max
         else:
             raise ValueError('inalid bet type')
 
@@ -267,7 +270,8 @@ class PokerBase(ObjectLogger):
 
     def setup_cards(self):
         # deck
-        self.deck = list(range(1,53))
+        if not self.deck:
+            self.deck = CARDS_52()
         random.shuffle(self.deck)
         self.cards = []
         # players

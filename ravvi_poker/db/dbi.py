@@ -354,10 +354,10 @@ class DBI:
             return cursor.fetchall()
         
     # GAMES
-    def game_begin(self, *, table_id, user_ids):
+    def game_begin(self, *, table_id, user_ids, game_type, game_subtype):
         game = None
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("INSERT INTO poker_game (table_id) VALUES (%s) RETURNING *",(table_id,))
+            cursor.execute("INSERT INTO poker_game (table_id,game_type,game_subtype) VALUES (%s,%s,%s) RETURNING *",(table_id,game_type, game_subtype))
             game = cursor.fetchone()
             params_seq = [(game.id, user_id) for user_id in user_ids]
             cursor.executemany("INSERT INTO poker_game_user (game_id, user_id) VALUES (%s, %s)", params_seq)

@@ -7,23 +7,24 @@ from ..logging import ObjectLogger
 from ..db import DBI
 from .event import Event, TABLE_INFO, PLAYER_ENTER, PLAYER_EXIT
 from .client import Client
-from .poker_nlh import Poker_NLH
-from .poker_plo import Poker_PLO_4, Poker_PLO_5, Poker_PLO_6
+from .poker_nlh import NLH_subtype_factory
+from .poker_plo import PLO_subtype_factory
 from .user import User
 
 class Table(ObjectLogger):
     NEW_GAME_DELAY = 7
 
-    def __init__(self, table_id, *, game_type, game_subtype=None, n_seats=None):
-        super().__init__(logger_name=__name__+f".{table_id}")
-        self.table_id = table_id
+    def __init__(self, id, *, table_type, game_type, game_subtype, table_seats, **kwargs):
+        super().__init__(logger_name=__name__+f".{id}")
+        self.table_id = id
+        self.table_type = table_type
         self.game_type = game_type
         self.game_subtype = game_subtype
-        if not n_seats:
-            n_seats = 9
+        if not table_seats:
+            table_seats = 9
         if self.game_type=='PLO' and self.game_subtype=='PLO6':
-            n_seats = min(n_seats, 6)
-        self.seats : List[User] = [None]*n_seats
+            table_seats = min(table_seats, 6)
+        self.seats : List[User] = [None]*table_seats
         self.dealer_idx = -1
         self.task : asyncio.Task = None
         self.clients : List[Client] = []
@@ -59,24 +60,22 @@ class Table(ObjectLogger):
 
                 # try to start new game
                 users = self.get_players(2)
-
                 if users:
                     # ok to start
                     with DBI() as db:
-                        row = db.game_begin(table_id=self.table_id, user_ids=[u.id for u in users])
-                    if self.game_type=='PLO':
-                        if self.game_subtype=='PLO4':
-                            self.game = Poker_PLO_4(self, row.id, users)
-                        elif self.game_subtype=='PLO5':
-                            self.game = Poker_PLO_5(self, row.id, users)
-                        else:
-                            self.game = Poker_PLO_6(self, row.id, users)
-                    else:
-                        self.game = Poker_NLH(self, row.id, users)
-                    await self.game.run()
-                    with DBI() as db:
-                        row = db.game_end(game_id=self.game.game_id)
-                    self.game = None
+                        row = db.game_begin(table_id=self.table_id, 
+                                            game_type=self.game_type, game_subtype=self.game_subtype,
+                                            user_ids=[u.id for u in users])
+                    try:
+                        game_factory = self.get_game_factory()
+                        if game_factory:
+                            self.game = game_factory(self, row.id, users)
+                        if self.game:
+                            await self.game.run()
+                    finally:
+                        with DBI() as db:
+                            db.game_end(game_id=self.game.game_id)
+                        self.game = None
               
                 await asyncio.sleep(2)
                 # remove diconnected users
@@ -98,6 +97,14 @@ class Table(ObjectLogger):
             self.log_exception("%s", ex)
         finally:
             self.log_info("end")
+
+    def get_game_factory(self):
+        if self.game_type=='NLH':
+            return NLH_subtype_factory.get(self.game_subtype)
+        if self.game_type=='PLO':
+            return PLO_subtype_factory.get(self.game_subtype)
+        return None
+    
 
     async def send_TABLE_INFO(self, client):
         event = TABLE_INFO(table_id = self.table_id)
@@ -134,6 +141,8 @@ class Table(ObjectLogger):
                 banks_info.append(b_info)
             event.update(
                 game_id = self.game.game_id,
+                game_type = self.game.GAME_TYPE,
+                game_subtype = self.game.GAME_SUBTYPE,
                 banks = banks_info,
                 cards = self.game.cards,
                 players = players_info,
@@ -141,6 +150,7 @@ class Table(ObjectLogger):
                 current_user_id = self.game.current_player.user_id
             )
         event.update(
+            table_type = self.table_type,
             seats = [None if u is None else u.id for u in self.seats],
             users = list(users.values())
         )

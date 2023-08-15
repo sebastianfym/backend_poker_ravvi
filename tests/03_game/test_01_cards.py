@@ -145,7 +145,7 @@ def test_03_straight():
     ]
 
     h = Hand(cards)
-    result  = h.check_straight()
+    result  = h.check_straight(cards36=False)
     assert result is None
 
     cards = [
