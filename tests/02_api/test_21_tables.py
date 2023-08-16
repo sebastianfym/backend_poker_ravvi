@@ -26,10 +26,12 @@ def test_tables_creation():
 
     club = response.json()
 
-    # Создаем стол NLH без subtype
+    # Создаем стол NLH
     json = {
+        "table_type": "RING_GAME",
         "table_seats": 6,
         "game_type": "NLH",
+        "game_subtype": "REGULAR",
         "game_settings": {
             "big_blind": 10,
             "buy_in": [1, 20],
@@ -45,6 +47,7 @@ def test_tables_creation():
 
     # Создаем стол NLH AOF
     json = {
+        "table_type": "RING_GAME",
         "table_seats": 6,
         "game_type": "NLH",
         "game_subtype": "AOF",
@@ -64,6 +67,7 @@ def test_tables_creation():
 
     # Создаем стол NLH 6+
     json = {
+        "table_type": "RING_GAME",
         "table_seats": 6,
         "game_type": "NLH",
         "game_subtype": "6+",
@@ -81,10 +85,12 @@ def test_tables_creation():
     assert nlh_6_table["game_subtype"] == json["game_subtype"]
     assert nlh_6_table["game_settings"] == json["game_settings"]
 
-    # Создаем стол PLO без subtype
+    # Создаем стол PLO
     json = {
+        "table_type": "RING_GAME",
         "table_seats": 6,
         "game_type": "PLO",
+        "game_subtype": "PLO6",
         "game_settings": {
             "big_blind": 10,
             "buy_in": [1, 20],
@@ -98,10 +104,12 @@ def test_tables_creation():
     assert plo_table["game_type"] == json["game_type"]
     assert plo_table["game_settings"] == json["game_settings"]
 
-    # Создаем стол OFC без subtype
+    # Создаем стол OFC
     json = {
+        "table_type": "RING_GAME",
         "table_seats": 6,
         "game_type": "OFC",
+        "game_subtype": "test",
         "game_settings": {
             "big_blind": 10,
             "buy_in": [1, 20],
@@ -143,8 +151,10 @@ def test_create_club_table():
     # Пытаемся создать стол несуществующего клуба
     non_club_id = new_club["id"] + 100500
     json = {
+        "table_type": "RING_GAME",
         "table_seats": 6,
         "game_type": "PLO",
+        "game_subtype": "PLO6",        
         "game_settings": {
             "big_blind": 10,
             "buy_in": [1, 20],
@@ -195,8 +205,10 @@ def test_delete_club_table():
 
     # Создаем стол
     json = {
+        "table_type": "RING_GAME",
         "table_seats": 6,
         "game_type": "PLO",
+        "game_subtype": "PLO6",
         "game_settings": {
             "big_blind": 10,
             "buy_in": [1, 20],
@@ -251,8 +263,10 @@ def test_get_club_tables():
 
     # Создаем стол
     json = {
+        "table_type": "RING_GAME",
         "table_seats": 6,
         "game_type": "PLO",
+        "game_subtype": "PLO6",
         "game_settings": {
             "big_blind": 10,
             "buy_in": [1, 20],

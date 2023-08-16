@@ -47,13 +47,8 @@ class Manager(Logger_MixIn):
 
     def add_table(self, table_row):
         try:
-            game_type = table_row.game_type or 'NLH'
-            game_subtype = table_row.game_subtype
-
-            table = Table(table_row.id, 
-                          game_type=game_type, 
-                          game_subtype=game_subtype, 
-                          n_seats=table_row.table_seats)
+            kwargs = table_row._asdict()
+            table = Table(**kwargs)
             self.tables[table.table_id] = table
 
         except Exception as ex:
@@ -77,7 +72,7 @@ class Manager(Logger_MixIn):
             if not table:
                 continue
             await table.start()
-            if row.club_id:
+            if row.club_id or row.table_type!='RING_GAME':
                 continue
             for bot in self.bots:
                 await bot.join_table(table.table_id)

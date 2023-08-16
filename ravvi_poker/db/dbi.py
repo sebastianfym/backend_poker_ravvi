@@ -265,6 +265,19 @@ class DBI:
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("DELETE FROM image WHERE id=%s", (image_id,))
 
+    # LOBBY
+    def get_lobby_entry_tables(self):
+        result = {}
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("SELECT * FROM poker_table WHERE table_type='RING_GAME' and club_id IS NULL AND parent_id IS NULL")
+            for row in cursor:
+                key = row.game_type, row.game_subtype
+                if key in result:
+                    continue
+                result[key] = row
+        return list(result.values())
+
+
     # CLUBS
 
     def create_club(self, *, founder_id, name, description, image_id):
@@ -340,7 +353,7 @@ class DBI:
 
     def get_tables_for_club(self, *, club_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("SELECT * FROM poker_table WHERE club_id=%s",(club_id,))
+            cursor.execute("SELECT * FROM poker_table WHERE club_id=%s AND parent_id IS NULL",(club_id,))
             return cursor.fetchall()
 
     def delete_table(self, table_id):
@@ -354,10 +367,10 @@ class DBI:
             return cursor.fetchall()
         
     # GAMES
-    def game_begin(self, *, table_id, user_ids):
+    def game_begin(self, *, table_id, user_ids, game_type, game_subtype):
         game = None
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("INSERT INTO poker_game (table_id) VALUES (%s) RETURNING *",(table_id,))
+            cursor.execute("INSERT INTO poker_game (table_id,game_type,game_subtype) VALUES (%s,%s,%s) RETURNING *",(table_id,game_type, game_subtype))
             game = cursor.fetchone()
             params_seq = [(game.id, user_id) for user_id in user_ids]
             cursor.executemany("INSERT INTO poker_game_user (game_id, user_id) VALUES (%s, %s)", params_seq)

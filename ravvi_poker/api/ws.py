@@ -1,5 +1,6 @@
 import logging
 import asyncio
+from contextlib import suppress
 from fastapi import APIRouter
 from fastapi import WebSocket, WebSocketDisconnect, WebSocketException, status
 from starlette.websockets import WebSocketState
@@ -58,7 +59,8 @@ class WS_Client(Client):
             t2 = asyncio.create_task(self.process_queue())
             await t1
             t2.cancel()
-            await t2
+            with suppress(asyncio.exceptions.CancelledError):
+                await t2
         finally:
             await self.manager.remove_client(self)
             self.log_info("end")

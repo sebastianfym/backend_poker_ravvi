@@ -6,10 +6,10 @@ from ravvi_poker.game.cards import Card
 from ravvi_poker.game.event import Event
 from ravvi_poker.game.user import User
 from ravvi_poker.game.bet import Bet
-from ravvi_poker.game.poker_nlh import Poker_NLH
+from ravvi_poker.game.poker_nlh import Poker_NLH_REGULAR
 
 
-class GameCase(Poker_NLH):
+class GameCase(Poker_NLH_REGULAR):
 
     SLEEP_ROUND_BEGIN = 0
     SLEEP_ROUND_END = 0

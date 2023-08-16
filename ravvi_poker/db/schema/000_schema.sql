@@ -11,7 +11,7 @@ CREATE TABLE public.club (
 );
 
 CREATE SEQUENCE public.club_id_seq
-    START WITH 1
+    START WITH 1000
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
@@ -102,7 +102,7 @@ CREATE TABLE public.poker_game (
 );
 
 CREATE SEQUENCE public.poker_game_id_seq
-    START WITH 1
+    START WITH 1000
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
@@ -128,7 +128,7 @@ CREATE TABLE public.poker_table (
 );
 
 CREATE SEQUENCE public.poker_table_id_seq
-    START WITH 100
+    START WITH 1000
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
@@ -201,7 +201,7 @@ CREATE TABLE public.user_profile (
 );
 
 CREATE SEQUENCE public.user_profile_id_seq
-    START WITH 1
+    START WITH 1000
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
