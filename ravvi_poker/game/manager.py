@@ -72,7 +72,7 @@ class Manager(Logger_MixIn):
             if not table:
                 continue
             await table.start()
-            if row.club_id:
+            if row.club_id or row.table_type!='RING_GAME':
                 continue
             for bot in self.bots:
                 await bot.join_table(table.table_id)

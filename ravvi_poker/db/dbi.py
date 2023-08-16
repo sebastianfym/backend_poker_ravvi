@@ -265,6 +265,19 @@ class DBI:
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("DELETE FROM image WHERE id=%s", (image_id,))
 
+    # LOBBY
+    def get_lobby_entry_tables(self):
+        result = {}
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute("SELECT * FROM poker_table WHERE table_type='RING_GAME' and club_id IS NULL AND parent_id IS NULL")
+            for row in cursor:
+                key = row.game_type, row.game_subtype
+                if key in result:
+                    continue
+                result[key] = row
+        return list(result.values())
+
+
     # CLUBS
 
     def create_club(self, *, founder_id, name, description, image_id):
@@ -340,7 +353,7 @@ class DBI:
 
     def get_tables_for_club(self, *, club_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("SELECT * FROM poker_table WHERE club_id=%s",(club_id,))
+            cursor.execute("SELECT * FROM poker_table WHERE club_id=%s AND parent_id IS NULL",(club_id,))
             return cursor.fetchall()
 
     def delete_table(self, table_id):

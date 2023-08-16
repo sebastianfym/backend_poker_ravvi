@@ -102,7 +102,7 @@ class TableCreate(BaseModel):
 
 class TableProfile(BaseModel):
     id: int
-    club_id: int
+    club_id: int  | None
     table_name: str | None
     table_type: str
     table_seats: int | None
