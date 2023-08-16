@@ -22,7 +22,7 @@ async def hello():
 
     async with websockets.connect(uri) as ws:
 
-        cmd = CMD_TABLE_JOIN(table_id=1, take_seat=True)
+        cmd = CMD_TABLE_JOIN(table_id=11, take_seat=True)
         await ws.send(json.dumps(cmd))
 
         while True:

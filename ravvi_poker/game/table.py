@@ -107,7 +107,7 @@ class Table(ObjectLogger):
     
 
     async def send_TABLE_INFO(self, client):
-        event = TABLE_INFO(table_id = self.table_id)
+        event = TABLE_INFO(table_id = self.table_id, table_redirect_id = self.table_id)
         users = {}
         for user in self.seats:
             if not user:
