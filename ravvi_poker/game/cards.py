@@ -4,12 +4,14 @@ from enum import IntEnum, unique
 
 class Card:
     rank_map = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"]
-    suit_map = ["S", "C", "D", "H"]  # Spades(♠) Clubs (♣) Diamonds (♦) Hearts (♥)
-    suit_s_map = ["♠", "♣", "♦", "♥"]
+    suit_map = ["S", "C", "D", "H"]  # Spades(♠) Clubs(♣) Diamonds(♦) Hearts(♥)
+    suit_map_s = ["♠", "♣", "♦", "♥"]
 
     def __init__(self, code=None, *, rank=None, suit=None) -> None:
         if code is None:
             code = self.encode(rank, suit)
+        elif isinstance(code, str):
+            code = self.decode(code)
         assert 0 <= code and code <= 52
         self.code = code
         if self.code:
@@ -34,7 +36,7 @@ class Card:
             try:
                 suit = cls.suit_map.index(s) + 1
             except ValueError:
-                suit = cls.suit_s_map.index(s) + 1
+                suit = cls.suit_map_s.index(s) + 1
             x = cls.encode(rank, suit)
         if not isinstance(x, int):
             raise ValueError("invalid card value", x)
@@ -59,7 +61,7 @@ class Card:
         return 1 << self.code - 1 if self.code else 0
 
     def __str__(self) -> str:
-        return f"{self.rank_map[self.rank_idx]}{self.suit_s_map[self.suit_idx]}"
+        return f"{self.rank_map[self.rank_idx]}{self.suit_map_s[self.suit_idx]}"
 
 
 def CARDS_52():
@@ -90,6 +92,8 @@ class Hand:
         self.mask = 0
         for c in self.cards:
             self.mask |= c.mask
+        self.rank = None
+        self.value = 0
 
     def __str__(self) -> str:
         cards = sorted(self.cards, key=lambda x: (x.rank, x.suit), reverse=True)
@@ -108,6 +112,8 @@ class Hand:
         return self.check_same_rank()
 
     def check_flush(self):
+        if len(self.cards)<5:
+            return None
         for suit_index in range(4):
             suit_index *= 13
             suit_mask = (self.mask >> suit_index) & 0b1111111111111
@@ -118,8 +124,11 @@ class Hand:
         return None
 
     def check_straight(self, cards36):
+        if len(self.cards)<5:
+            return None
         if cards36:
-            flush_masks = [
+            straight_idx0 = 9
+            straight_masks = [
                 0b1000011110000,  # 09
                 0b0000111110000,  # 10
                 0b0001111100000,  # 11
@@ -127,8 +136,10 @@ class Hand:
                 0b0111110000000,  # 13
                 0b1111100000000,  # 14
             ]
+            
         else:
-            flush_masks = [
+            straight_idx0 = 5
+            straight_masks = [
                 0b1000000001111,  # 05
                 0b0000000011111,  # 06
                 0b0000000111110,  # 07
@@ -145,7 +156,7 @@ class Hand:
             suit_index *= 13
             suit_mask = (self.mask >> suit_index) & 0b1111111111111
             rank_mask |= suit_mask
-        for i, mask in enumerate(flush_masks, 9 if cards36 else 5):
+        for i, mask in enumerate(straight_masks, straight_idx0):
             if rank_mask & mask == mask:
                 return HandRank.STRAIGHT, i
         return None
@@ -192,7 +203,7 @@ class Hand:
 def get_player_best_hand(player_cards, game_cards):
     cards = player_cards + game_cards
     results = []
-    for h in combinations(cards, 5):
+    for h in combinations(cards, min(5, len(cards))):
         hand = Hand(h)
         hand.rank = hand.get_rank()
         results.append(hand)

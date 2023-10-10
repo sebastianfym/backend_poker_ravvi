@@ -46,12 +46,13 @@ def random_hand():
 
     print((t1-t0)/1000000000)
 
+#"♠", "♣", "♦", "♥"
 def test_hand():
-    h = Hand([1, 2, 3, 4, 5])
+    h = Hand(["2♠", "2♣", "3♥", "4♥"])
     print(h)
     result = h.get_rank()
     print(result)
 
 
 if __name__=="__main__":
-    random_hand()
+    test_hand()

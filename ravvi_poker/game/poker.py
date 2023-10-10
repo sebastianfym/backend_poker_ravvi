@@ -7,7 +7,7 @@ from ..logging import ObjectLogger
 from .bet import Bet
 from .event import Event, GAME_BEGIN, PLAYER_CARDS, GAME_CARDS, PLAYER_BET, GAME_PLAYER_MOVE, GAME_ROUND, GAME_RESULT, GAME_END
 from .player import User, Player, PlayerRole
-from .cards import Hand, HandRank, CARDS_52
+from .cards import Hand, HandRank, CARDS_52, CARDS_36
 from .multibank import get_banks
 
 from enum import IntEnum, unique
@@ -22,7 +22,6 @@ class Round(IntEnum):
 class PokerBase(ObjectLogger):
     GAME_TYPE = None
     GAME_SUBTYPE = None
-
     PLAYER_CARDS_FREFLOP = 2
 
     SLEEP_ROUND_BEGIN = 1.5
@@ -72,6 +71,9 @@ class PokerBase(ObjectLogger):
         return self.players_rotate(i)
 
     # CARDS
+
+    def cards_get_deck(self):
+        return CARDS_52()
 
     def cards_get_next(self):
         return self.deck.pop(0)
@@ -271,7 +273,7 @@ class PokerBase(ObjectLogger):
     def setup_cards(self):
         # deck
         if not self.deck:
-            self.deck = CARDS_52()
+            self.deck = self.cards_get_deck()
         random.shuffle(self.deck)
         self.cards = []
         # players
@@ -291,14 +293,21 @@ class PokerBase(ObjectLogger):
                 self.log_info("player %s: open cards %s", p.user_id, p.cards)
 
     def get_best_hand(self, player_cards, game_cards):
-        cards = player_cards+game_cards
         results = []
-        for h in combinations(cards, 5):
+        for h in self.iter_player_hands_combinations(player_cards, game_cards):
             hand = Hand(h)
-            hand.rank = hand.get_rank()
+            hand.rank = hand.get_rank(cards36=False)
+            hand.value = self.get_hand_value(hand)
             results.append(hand)
-        results.sort(reverse=True, key=lambda x: x.rank)
+        results.sort(reverse=True, key=lambda x: x.value)
         return results[0]
+
+    def iter_player_hands_combinations(self, player_cards, game_cards):
+        cards = player_cards+game_cards
+        return combinations(cards, min(5, len(cards)))
+
+    def get_hand_value(self, hand):
+        return hand.rank
 
     async def run(self):
         self.log_info("begin players: %s", [p.user_id for p in self.players])

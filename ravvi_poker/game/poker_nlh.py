@@ -23,15 +23,6 @@ class Poker_NLH_X(PokerBase):
         raise_max = p.balance
         return call_delta, raise_min, raise_max, p.balance
 
-    def get_best_hand(self, player_cards, game_cards):
-        results = []
-        for h in combinations(player_cards + game_cards, 5):
-            hand = Hand(h)
-            hand.rank = hand.get_rank()
-            results.append(hand)
-        results.sort(reverse=True, key=lambda x: x.rank)
-        return results[0]
-
 
 class Poker_NLH_REGULAR(Poker_NLH_X):
     GAME_TYPE = "NLH"
@@ -65,9 +56,8 @@ class Poker_NLH_6P(Poker_NLH_X):
     GAME_TYPE = "NLH"
     GAME_SUBTYPE = "6+"
 
-    def setup_cards(self):
-        self.deck = CARDS_36()
-        return super().setup_cards()
+    def cards_get_deck(self):
+        return CARDS_36()
 
     def get_best_hand(self, player_cards, game_cards):
         results = []
