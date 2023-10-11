@@ -2,7 +2,7 @@ import logging
 import os
 import json
 import psycopg
-from psycopg.rows import namedtuple_row
+from psycopg.rows import namedtuple_row, dict_row
 
 logger = logging.getLogger(__name__)
 
@@ -338,13 +338,24 @@ class DBI:
     # TABLES
 
     def create_table(self, club_id, **kwargs):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            fields = ", ".join(["club_id"] + list(kwargs.keys()))
-            values = [club_id] + list(kwargs.values())
+        # split base and extra props
+        row = {}
+        columns = ["table_type", "table_name", "table_seats", "game_type", "game_subtype"]
+        for k in columns:
+            v = kwargs.pop(k, None)
+            row[k] = v
+        row.update(game_settings=json.dumps(kwargs))
+        with self.dbi.cursor(row_factory=dict_row) as cursor:
+            fields = ", ".join(["club_id"] + list(row.keys()))
+            values = [club_id] + list(row.values())
             values_pattern = ", ".join(["%s"] * len(values))
             sql = f"INSERT INTO poker_table ({fields}) VALUES ({values_pattern}) RETURNING *"
             cursor.execute(sql, values)
-            return cursor.fetchone()
+            row = cursor.fetchone()
+            if row is not None:
+                props = row.pop("game_settings", {})
+                row.update(props)
+        return row
 
     def get_table(self, table_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
@@ -352,9 +363,14 @@ class DBI:
             return cursor.fetchone()
 
     def get_tables_for_club(self, *, club_id):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+        with self.dbi.cursor(row_factory=dict_row) as cursor:
             cursor.execute("SELECT * FROM poker_table WHERE club_id=%s AND parent_id IS NULL",(club_id,))
-            return cursor.fetchall()
+            tables = cursor.fetchall()
+        for row in tables:
+            props = row.pop("game_settings", {})
+            row.update(props)
+        return tables
+    
 
     def delete_table(self, table_id):
         # TODO дождаться определения жизненного цикла стола
