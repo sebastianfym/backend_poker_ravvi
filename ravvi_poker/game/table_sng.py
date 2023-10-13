@@ -38,7 +38,7 @@ class Table_SNG(Table):
             now = datetime.utcnow().replace(microsecond=0)
             current_level = int((now - self.started).total_seconds()/60/self.level_time)
             current_level = min(current_level, len(self.levels)-1)
-            blind_small, blind_big, ante = self.levels[0]
+            blind_small, blind_big, ante = self.levels[current_level]
             
             # refresh users
             users = self.get_players(2)

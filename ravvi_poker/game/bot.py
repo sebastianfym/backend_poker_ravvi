@@ -30,7 +30,7 @@ class Bot(Client):
         except asyncio.CancelledError:
             pass
         except Exception as ex:
-            self.log_error("%s", ex)
+            self.log_exception("%s", ex)
         self.log_info("end")
 
     async def join_table(self, table_id):
