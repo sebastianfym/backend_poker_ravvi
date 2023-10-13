@@ -80,7 +80,7 @@ class Table(ObjectLogger):
                 with DBI() as db:
                     db.game_end(game_id=self.game.game_id)
         except Exception as ex:
-            self.log_error("%s", ex)
+            self.log_exception("%s", ex)
         finally:
             self.game = None
 
