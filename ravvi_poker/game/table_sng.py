@@ -5,7 +5,7 @@ from .table_base import Table
 
 class Table_SNG(Table):
 
-    def __init__(self, id, *, table_type, blind_level_time, **kwargs):
+    def __init__(self, id, *, table_type, blind_level_time=3, **kwargs):
         assert table_type == "SNG"
         super().__init__(id, table_type=table_type, **kwargs)
         self.started = None
