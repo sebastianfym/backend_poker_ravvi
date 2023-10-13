@@ -43,7 +43,7 @@ class PokerBase(ObjectLogger):
         self.banks = None
 
         self.blind_small = blind_small or blind_value
-        self.blind_big = blind_big or blind_small*2
+        self.blind_big = blind_big or self.blind_small*2
 
         self.bet_id = None
         self.bet_level = 0
