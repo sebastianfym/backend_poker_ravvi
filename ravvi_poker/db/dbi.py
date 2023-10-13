@@ -383,7 +383,7 @@ class DBI:
             return cursor.fetchall()
         
     # GAMES
-    def game_begin(self, *, table_id, user_ids, game_type, game_subtype):
+    def game_begin(self, *, table_id, user_ids, game_type, game_subtype, **game_props):
         game = None
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("INSERT INTO poker_game (table_id,game_type,game_subtype) VALUES (%s,%s,%s) RETURNING *",(table_id,game_type, game_subtype))
