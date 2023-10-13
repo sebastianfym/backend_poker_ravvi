@@ -39,6 +39,9 @@ class Table_SNG(Table):
             current_level = int((now - self.started).total_seconds()/60/self.level_time)
             current_level = min(current_level, len(self.levels)-1)
             blind_small, blind_big, ante = self.levels[0]
+            
+            # refresh users
+            users = self.get_players(2)
 
 
         await self.broadcast(TABLE_CLOSED())
