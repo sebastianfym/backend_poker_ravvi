@@ -14,7 +14,7 @@ from .user import User
 class Table(ObjectLogger):
     NEW_GAME_DELAY = 7
 
-    def __init__(self, id, *, table_type, game_type, game_subtype, table_seats, **kwargs):
+    def __init__(self, id, *, table_type, table_seats, game_type, game_subtype, **kwargs):
         super().__init__(logger_name=__name__+f".{id}")
         self.table_id = id
         self.table_type = table_type
@@ -61,34 +61,10 @@ class Table(ObjectLogger):
                 # try to start new game
                 users = self.get_players(2)
                 if users:
-                    # ok to start
-                    with DBI() as db:
-                        row = db.game_begin(table_id=self.table_id, 
-                                            game_type=self.game_type, game_subtype=self.game_subtype,
-                                            user_ids=[u.id for u in users])
-                    try:
-                        game_factory = self.get_game_factory()
-                        if game_factory:
-                            self.game = game_factory(self, row.id, users)
-                        if self.game:
-                            await self.game.run()
-                    finally:
-                        with DBI() as db:
-                            db.game_end(game_id=self.game.game_id)
-                        self.game = None
-              
+                    await self.run_game(users)
+
                 await asyncio.sleep(2)
-                # remove diconnected users
-                for seat_idx, user in enumerate(self.seats):
-                    #self.log_debug("user_id=%s connected=%s", user.user_id, user.connected)
-                    if not user:
-                        continue
-                    if user.connected:
-                        continue
-                    self.seats[seat_idx] = None
-                    event = PLAYER_EXIT(table_id = self.table_id, user_id=user.id)
-                    await self.broadcast(event)
-                    self.log_info("user %s removed, seat %s available", user.id, seat_idx)
+                await self.remove_disconnected_users()
                    
 
         except asyncio.CancelledError:
@@ -97,6 +73,37 @@ class Table(ObjectLogger):
             self.log_exception("%s", ex)
         finally:
             self.log_info("end")
+
+    
+    async def run_game(self, users):
+        with DBI() as db:
+            row = db.game_begin(table_id=self.table_id, 
+                                game_type=self.game_type, game_subtype=self.game_subtype,
+                                user_ids=[u.id for u in users])
+        try:
+            game_factory = self.get_game_factory()
+            if game_factory:
+                self.game = game_factory(self, row.id, users)
+            if self.game:
+                await self.game.run()
+        finally:
+            with DBI() as db:
+                db.game_end(game_id=self.game.game_id)
+            self.game = None
+
+
+    async def remove_disconnected_users(self):
+        # remove diconnected users
+        for seat_idx, user in enumerate(self.seats):
+            #self.log_debug("user_id=%s connected=%s", user.user_id, user.connected)
+            if not user:
+                continue
+            if user.connected:
+                continue
+            self.seats[seat_idx] = None
+            event = PLAYER_EXIT(table_id = self.table_id, user_id=user.id)
+            await self.broadcast(event)
+            self.log_info("user %s removed, seat %s available", user.id, seat_idx)
 
     def get_game_factory(self):
         if self.game_type=='NLH':
