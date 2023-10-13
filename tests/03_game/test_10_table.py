@@ -1,7 +1,7 @@
 import pytest
 import json
 from ravvi_poker.game.event import Event
-from ravvi_poker.game.table import Table
+from ravvi_poker.game.table_base import Table
 from ravvi_poker.game.client import Client
 
 

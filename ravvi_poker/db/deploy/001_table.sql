@@ -1,0 +1,7 @@
+ALTER TABLE
+  "public"."poker_table"
+ADD COLUMN
+  "start_ts" TIME WITHOUT TIME ZONE NULL,
+ADD COLUMN
+  "closed_ts" TIMESTAMP WITHOUT TIME ZONE NULL
+;

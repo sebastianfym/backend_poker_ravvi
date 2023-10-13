@@ -3,7 +3,9 @@ from typing import Mapping
 from ..db import DBI
 from ..logging import Logger_MixIn
 from .event import Event, TABLE_ERROR
-from .table import Table
+from .table_base import Table
+from .table_ring import Table_RING
+from .table_sng import Table_SNG
 from .bot import Bot
 
 
@@ -48,9 +50,11 @@ class Manager(Logger_MixIn):
     def add_table(self, table_row):
         try:
             kwargs = table_row._asdict()
-            table = Table(**kwargs)
+            if table_row.table_type == "RING_GAME":
+                table = Table_RING(**kwargs)
+            elif table_row.table_type == "SNG":
+                table = Table_SNG(**kwargs)
             self.tables[table.table_id] = table
-
         except Exception as ex:
             self.log_exception("add_table %s: %s", table_row, ex)
             return None

@@ -8,6 +8,7 @@ class Event(dict):
 
     TABLE_INFO = 101
     TABLE_ERROR = 102
+    TABLE_CLOSED = 199
 
     PLAYER_ENTER = 201
     PLAYER_SEAT = 202
@@ -62,6 +63,9 @@ def TABLE_INFO(**kwargs):
 
 def TABLE_ERROR(**kwargs):
     return Event(Event.TABLE_ERROR, **kwargs)
+
+def TABLE_CLOSED(**kwargs):
+    return Event(Event.TABLE_CLOSED, **kwargs)
 
 def PLAYER_ENTER(**kwargs):
     return Event(Event.PLAYER_ENTER, **kwargs)
