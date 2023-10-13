@@ -35,7 +35,7 @@ class Table(ObjectLogger):
         return User(id=user_id, username='u'+str(user_id), balance=1000, connected=connected)
 
     async def start(self):
-        self.task = asyncio.create_task(self.table_run())
+        self.task = asyncio.create_task(self.run_wrappwer())
 
     async def stop(self):
         if not self.task:
@@ -181,7 +181,7 @@ class Table(ObjectLogger):
             client.tables.add(self.table_id)
             # in case of the first cleint connection
             if user.connected == 1:
-                self.on_user_seat_taken(user_seat_idx, user)
+                self.on_user_seat_taken(user, user_seat_idx)
                 # broadcast PLAYER_ENTER event
                 event = PLAYER_ENTER(
                     table_id = self.table_id,
