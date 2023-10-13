@@ -67,19 +67,21 @@ class Table(ObjectLogger):
         raise NotImplementedError
     
     async def run_game(self, users, **game_props):
-        with DBI() as db:
-            row = db.game_begin(table_id=self.table_id, 
-                                game_type=self.game_type, game_subtype=self.game_subtype,
-                                user_ids=[u.id for u in users])
         try:
+            with DBI() as db:
+                row = db.game_begin(table_id=self.table_id, 
+                                    game_type=self.game_type, game_subtype=self.game_subtype,
+                                    user_ids=[u.id for u in users])
             game_factory = self.get_game_factory()
             if game_factory:
                 self.game = game_factory(self, row.id, users, **game_props)
             if self.game:
                 await self.game.run()
+                with DBI() as db:
+                    db.game_end(game_id=self.game.game_id)
+        except Exception as ex:
+            self.log_error("%s", ex)
         finally:
-            with DBI() as db:
-                db.game_end(game_id=self.game.game_id)
             self.game = None
 
 
