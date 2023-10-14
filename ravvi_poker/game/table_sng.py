@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime
+from ..db import DBI
 from .event import Event, TABLE_CLOSED
 from .table_base import Table
 
@@ -24,9 +25,11 @@ class Table_SNG(Table):
         while not all(self.seats):
             await asyncio.sleep(1)
 
-        self.started = datetime.utcnow().replace(microsecond=0)
+        with DBI() as db:
+            self.started = db.set_table_started()
+        # initial blind level
         blind_small, blind_big, ante = self.levels[0] 
-
+        # players
         users = self.get_players(2)
         while users:
             await asyncio.sleep(self.NEW_GAME_DELAY)
@@ -35,6 +38,7 @@ class Table_SNG(Table):
             await self.remove_users(lambda u: u.balance<=0)
             await asyncio.sleep(1)
 
+            # refresh blinds level
             now = datetime.utcnow().replace(microsecond=0)
             current_level = int((now - self.started).total_seconds()/60/self.level_time)
             current_level = min(current_level, len(self.levels)-1)
@@ -43,7 +47,8 @@ class Table_SNG(Table):
             # refresh users
             users = self.get_players(2)
 
-
+        with DBI() as db:
+            self.closed = db.set_table_closed()
         await self.broadcast(TABLE_CLOSED())
 
 
