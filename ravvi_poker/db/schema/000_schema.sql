@@ -145,7 +145,7 @@ CREATE TABLE public.poker_table_user (
     table_id bigint NOT NULL,
     user_id bigint NOT NULL,
     exit_ts timestamp without time zone,
-    exit_game_id bigint NOT NULL
+    exit_game_id bigint
 );
 
 CREATE TABLE public.temp_email (
