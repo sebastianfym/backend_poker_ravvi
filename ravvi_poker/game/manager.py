@@ -72,13 +72,20 @@ class Manager(Logger_MixIn):
             self.log_info("loaded %s tables", len(tables))
 
         for row in tables:
+            kwargs = row._asdict()
             table = self.add_table(row)
             if not table:
                 continue
             await table.start()
-            if row.club_id or row.table_type!='RING_GAME':
+            n_bots = kwargs.get("n_bots",None)
+            if n_bots:
+                pass
+            elif row.club_id or row.table_type!='RING_GAME':
                 continue
-            for bot in self.bots:
+            else:
+                n_bots = len(self.bots)
+
+            for bot, _ in zip(self.bots, range(n_bots)):
                 await bot.join_table(table.table_id)
 
         self.logger.info('Manager: started: %s tables, %s bots', len(self.tables), len(self.bots))
