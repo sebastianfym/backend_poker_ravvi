@@ -127,7 +127,9 @@ CREATE TABLE public.poker_table (
     game_subtype character varying(100) NOT NULL,
     table_seats smallint,
     game_settings jsonb,
-    parent_id bigint
+    parent_id bigint,
+    opened_ts timestamp without time zone,
+    closed_ts timestamp without time zone
 );
 
 CREATE SEQUENCE public.poker_table_id_seq
@@ -138,6 +140,13 @@ CREATE SEQUENCE public.poker_table_id_seq
     CACHE 1;
 
 ALTER SEQUENCE public.poker_table_id_seq OWNED BY public.poker_table.id;
+
+CREATE TABLE public.poker_table_user (
+    table_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    exit_ts timestamp without time zone,
+    exit_game_id bigint NOT NULL
+);
 
 CREATE TABLE public.temp_email (
     id bigint NOT NULL,
@@ -284,6 +293,9 @@ ALTER TABLE ONLY public.poker_game_user
 ALTER TABLE ONLY public.poker_table
     ADD CONSTRAINT poker_table_pkey PRIMARY KEY (id);
 
+ALTER TABLE ONLY public.poker_table_user
+    ADD CONSTRAINT poker_table_user_pkey PRIMARY KEY (table_id, user_id);
+
 ALTER TABLE ONLY public.temp_email
     ADD CONSTRAINT temp_email_pkey PRIMARY KEY (id);
 
@@ -321,6 +333,8 @@ CREATE UNIQUE INDEX club_member_unq ON public.club_member USING btree (club_id, 
 CREATE INDEX poker_game_type ON public.poker_game USING btree (game_type, game_subtype);
 
 CREATE INDEX poker_game_user_idx1 ON public.poker_game_user USING btree (user_id);
+
+CREATE INDEX poker_table_user_idx ON public.poker_table_user USING btree (user_id);
 
 ALTER TABLE ONLY public.club
     ADD CONSTRAINT club_image_id_fkey FOREIGN KEY (image_id) REFERENCES public.image(id);

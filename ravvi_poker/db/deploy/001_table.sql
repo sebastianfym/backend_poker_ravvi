@@ -1,7 +1,0 @@
-ALTER TABLE
-  "public"."poker_table"
-ADD COLUMN
-  "opened_ts" TIMESTAMP WITHOUT TIME ZONE NULL,
-ADD COLUMN
-  "closed_ts" TIMESTAMP WITHOUT TIME ZONE NULL
-;
