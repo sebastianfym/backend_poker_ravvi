@@ -28,10 +28,10 @@ class PokerBase(ObjectLogger):
     SLEEP_ROUND_BEGIN = 1.5
     SLEEP_ROUND_END = 1.5
     SLEEP_SHOWDOWN_CARDS = 1.5
-    SLEEP_GAME_END = 3
+    SLEEP_GAME_END = 4
 
     def __init__(self, table, game_id, users: List[User], 
-                 *, blind_value=1, blind_small=None, blind_big=None ) -> None:
+                 *, blind_value=1, blind_small=None, blind_big=None, ante=None, **kwargs) -> None:
         super().__init__(__name__+f".{game_id}")
         self.table = table
         self.game_id = game_id
@@ -44,6 +44,7 @@ class PokerBase(ObjectLogger):
 
         self.blind_small = blind_small or blind_value
         self.blind_big = blind_big or self.blind_small*2
+        self.ante = ante
 
         self.bet_id = None
         self.bet_level = 0
