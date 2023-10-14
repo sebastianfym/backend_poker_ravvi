@@ -51,7 +51,10 @@ async def v1_get_club_tables(club_id: int, session_uuid: RequireSessionUUID):
             )
         tables = dbi.get_tables_for_club(club_id=club_id)
 
-    return list([TableProps(**t) for t in tables])
+    def filter_props(table):
+        return {k:v for k,v in table.items() if k in TableProps.model_fields}
+
+    return list([TableProps(**filter_props(t)) for t in tables])
 
 @clubs_router.post("/{club_id}/tables", status_code=201, summary="Create club table")
 async def v1_create_club_table(club_id: int, params: TableCreate, session_uuid: RequireSessionUUID):
@@ -64,5 +67,4 @@ async def v1_create_club_table(club_id: int, params: TableCreate, session_uuid: 
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
         props = params.model_dump(exclude_unset=False)
         table = dbi.create_table(club_id=club_id, **props)
-
     return TableProps(**table)
