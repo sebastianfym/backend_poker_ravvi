@@ -357,7 +357,7 @@ class DBI:
                 row.update(props)
         return row
     
-    def set_table_started(self, table_id):
+    def set_table_opened(self, table_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("UPDATE poker_table SET opened_ts=NOW() WHERE id=%s RETURNING opened_ts",(table_id,))
             row = cursor.fetchone()
@@ -368,6 +368,16 @@ class DBI:
             cursor.execute("UPDATE poker_table SET closed_ts=NOW() WHERE id=%s RETURNING closed_ts",(table_id,))
             row = cursor.fetchone()
             return row.closed_ts if row else None
+    
+    def table_user_register(self, table_id, user_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            sql = f"INSERT INTO poker_table_user (table_id, user_id) VALUES (%s,%s)"
+            cursor.execute(sql, (table_id, user_id))
+
+    def table_user_exit(self, table_id, user_id, exit_game_id):
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            sql = f"UPDATE poker_table_user SET exit_ts=NOW(), exit_game_id=%s WHERE table_id=%s AND user_id%s"
+            cursor.execute(sql, (exit_game_id, table_id, user_id))
 
     def get_table(self, table_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:

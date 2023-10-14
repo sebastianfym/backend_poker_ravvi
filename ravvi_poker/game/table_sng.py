@@ -25,18 +25,24 @@ class Table_SNG(Table):
         while not all(self.seats):
             await asyncio.sleep(1)
 
-        with DBI() as db:
-            self.started = db.set_table_started()
         # initial blind level
         blind_small, blind_big, ante = self.levels[0] 
         # players
         users = self.get_players(2)
+        with DBI() as db:
+            self.started = db.set_table_opened()
+            for u in users:
+                db.table_user_register(self.table_id, u.id)
+
         while users:
             await asyncio.sleep(self.NEW_GAME_DELAY)
-            await self.run_game(users, blind_value=blind_small)
-            await asyncio.sleep(1)
-            await self.remove_users(lambda u: u.balance<=0)
-            await asyncio.sleep(1)
+            game_id = await self.run_game(users, blind_value=blind_small)
+
+            removed_users = await self.remove_users(lambda u: u.balance<=0)
+            if removed_users:
+                with DBI() as db:
+                    for u in removed_users:
+                        db.table_user_exit(self.table_id, u.id, game_id) 
 
             # refresh blinds level
             now = datetime.utcnow().replace(microsecond=0)

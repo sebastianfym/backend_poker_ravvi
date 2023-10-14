@@ -12,7 +12,7 @@ from .poker_plo import PLO_subtype_factory
 from .user import User
 
 class Table(ObjectLogger):
-    NEW_GAME_DELAY = 7
+    NEW_GAME_DELAY = 3
 
     def __init__(self, id, *, table_type, table_seats, game_type, game_subtype, **kwargs):
         super().__init__(logger_name=__name__+f".{id}")
@@ -67,6 +67,7 @@ class Table(ObjectLogger):
         raise NotImplementedError
     
     async def run_game(self, users, **game_props):
+        game_id = None
         try:
             with DBI() as db:
                 row = db.game_begin(table_id=self.table_id, 
@@ -76,6 +77,7 @@ class Table(ObjectLogger):
             if game_factory:
                 self.game = game_factory(self, row.id, users, **game_props)
             if self.game:
+                game_id = self.game.game_id
                 await self.game.run()
                 with DBI() as db:
                     db.game_end(game_id=self.game.game_id)
@@ -83,20 +85,24 @@ class Table(ObjectLogger):
             self.log_exception("%s", ex)
         finally:
             self.game = None
+        return game_id
 
 
     async def remove_users(self, user_func):
         # remove users based on user_func(user) return
+        removed_users = []
         for seat_idx, user in enumerate(self.seats):
             #self.log_debug("user_id=%s connected=%s", user.user_id, user.connected)
             if not user:
                 continue
             if not user_func(user):
                 continue
+            removed_users.append(user)
             self.seats[seat_idx] = None
             event = PLAYER_EXIT(table_id = self.table_id, user_id=user.id)
             await self.broadcast(event)
             self.log_info("user %s removed, seat %s available", user.id, seat_idx)
+        return removed_users
 
 
     def get_game_factory(self):
