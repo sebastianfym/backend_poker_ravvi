@@ -38,12 +38,11 @@ class Table_SNG(Table):
         while users:
             await asyncio.sleep(self.NEW_GAME_DELAY)
             game_id = await self.run_game(users, blind_value=blind_small)
+            with DBI() as db:
+                for u in users:
+                    db.table_user_game(self.table_id, u.id, game_id)
 
-            removed_users = await self.remove_users(lambda u: u.balance<=0)
-            if removed_users:
-                with DBI() as db:
-                    for u in removed_users:
-                        db.table_user_exit(self.table_id, u.id, game_id) 
+            await self.remove_users(lambda u: u.balance<=0)
 
             # refresh blinds level
             now = datetime.utcnow().replace(microsecond=0)
@@ -60,24 +59,24 @@ class Table_SNG(Table):
 
 
 LEVEL_SCHEDULE_STANDARD = [
-(10, 20, 0),
-(15,30,	0),
-(20,40,	0),
-(30,60,	5),
-(40,80,	8),
-(50,100,	10),
-(75/150,	15),
-(100,200,	20),
-(125/250,	25),
-(150,300,	30),
-(200,400,	40),
-(250,500,	50),
-(300,600,	60),
-(400,800,	80),
-(500,1000,	100),
-(600,1200,	120),
-(700,1400,	140),
-(800,1600,	160),
+( 10,   20, 0),
+( 15,   30,	0),
+( 20,   40,	0),
+( 30,   60,	5),
+( 40,   80,	8),
+( 50,  100,	10),
+( 75,  150,	15),
+(100,  200,	20),
+(125,  250,	25),
+(150,  300,	30),
+(200,  400,	40),
+(250,  500,	50),
+(300,  600,	60),
+(400,  800,	80),
+(500, 1000,	100),
+(600, 1200,	120),
+(700, 1400,	140),
+(800, 1600,	160),
 (1000,2000,	200),
 (1200,2400,	250),
 (1500,3000,	300),

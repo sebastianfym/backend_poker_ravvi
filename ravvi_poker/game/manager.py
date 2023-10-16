@@ -50,6 +50,8 @@ class Manager(Logger_MixIn):
     def add_table(self, table_row):
         try:
             kwargs = table_row._asdict()
+            props = kwargs.pop("game_settings", {})
+            kwargs.update(props)
             if table_row.table_type == "RING_GAME":
                 table = Table_RING(**kwargs)
             elif table_row.table_type == "SNG":
@@ -73,11 +75,14 @@ class Manager(Logger_MixIn):
 
         for row in tables:
             kwargs = row._asdict()
+            props = kwargs.pop("game_settings", {} ) or {}
+            kwargs.update(props)
             table = self.add_table(row)
             if not table:
                 continue
             await table.start()
             n_bots = kwargs.get("n_bots",None)
+            self.logger.info('Manager: table#%s:%s n_bots:%s', table.table_id, table.table_type, n_bots)
             if n_bots:
                 pass
             elif row.club_id or row.table_type!='RING_GAME':
@@ -86,6 +91,7 @@ class Manager(Logger_MixIn):
                 n_bots = len(self.bots)
 
             for bot, _ in zip(self.bots, range(n_bots)):
+                self.logger.info('Manager: table#%s: add bot#%s', table.table_id, bot.user_id)
                 await bot.join_table(table.table_id)
 
         self.logger.info('Manager: started: %s tables, %s bots', len(self.tables), len(self.bots))
