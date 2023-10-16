@@ -376,7 +376,7 @@ class DBI:
 
     def table_user_exit(self, table_id, user_id, exit_game_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            sql = f"UPDATE poker_table_user SET exit_ts=NOW(), exit_game_id=%s WHERE table_id=%s AND user_id%s"
+            sql = f"UPDATE poker_table_user SET exit_ts=NOW(), exit_game_id=%s WHERE table_id=%s AND user_id=%s"
             cursor.execute(sql, (exit_game_id, table_id, user_id))
 
     def get_table(self, table_id):

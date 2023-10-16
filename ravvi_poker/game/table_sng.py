@@ -30,9 +30,10 @@ class Table_SNG(Table):
         # players
         users = self.get_players(2)
         with DBI() as db:
-            self.started = db.set_table_opened()
+            db.set_table_opened(self.table_id)
             for u in users:
                 db.table_user_register(self.table_id, u.id)
+        self.started = datetime.utcnow().replace(microsecond=0)
 
         while users:
             await asyncio.sleep(self.NEW_GAME_DELAY)
@@ -54,7 +55,7 @@ class Table_SNG(Table):
             users = self.get_players(2)
 
         with DBI() as db:
-            self.closed = db.set_table_closed()
+            self.closed = db.set_table_closed(self.table_id)
         await self.broadcast(TABLE_CLOSED())
 
 
