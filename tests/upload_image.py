@@ -8,7 +8,7 @@ import magic
 from PIL import Image
 
 
-with open("1639321707_9646027_botogram.png","rb") as f:
+with open("/home/kedikx/Downloads/222-2225760_circle-hd-png-download.png","rb") as f:
     image_data = f.read()
 with Image.open(BytesIO(image_data)) as im:
     print(im)
