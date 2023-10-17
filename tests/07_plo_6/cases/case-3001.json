@@ -10,7 +10,7 @@
         ],
 
     "moves": [
-        {"type": "GAME_BEGIN"}, 
+        {"type": "GAME_BEGIN", "game_type": "PLO", "game_subtype": "PLO6"}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["Q♦","3♥","K♦","7♠","4♦","K♥"]}, 
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["8♥","5♦","Q♣","T♦","6♣","6♦"]}, 
         {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": ["7♣","J♠","9♠","3♣","4♣","T♠"]},
