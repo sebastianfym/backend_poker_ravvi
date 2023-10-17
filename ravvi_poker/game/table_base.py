@@ -131,7 +131,7 @@ class Table(ObjectLogger):
             users[user.id] = dict(
                     user_id = user.id,
                     username = user.username,
-                    image_id = user.image_id
+                    image_id = user.image_id,
                     balance = user.balance
                 )
         if self.game:
