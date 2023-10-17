@@ -238,6 +238,12 @@ class DBI:
 
     # IMAGES
 
+    def get_image(self, image_id):
+        sql = "SELECT * FROM image WHERE id=%s"
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute(sql, (image_id,))
+            return cursor.fetchone()
+
     def get_user_images(self, owner_id, id=None, uuid=None, image_data=None):
         args = [owner_id]
         sql = "SELECT * FROM image WHERE (owner_id=%s or owner_id is NULL)"
@@ -374,23 +380,33 @@ class DBI:
             sql = f"INSERT INTO poker_table_user (table_id, user_id) VALUES (%s,%s)"
             cursor.execute(sql, (table_id, user_id))
 
-    def table_user_exit(self, table_id, user_id, exit_game_id):
+    def table_user_game(self, table_id, user_id, last_game_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            sql = f"UPDATE poker_table_user SET exit_ts=NOW(), exit_game_id=%s WHERE table_id=%s AND user_id=%s"
-            cursor.execute(sql, (exit_game_id, table_id, user_id))
+            sql = f"UPDATE poker_table_user SET last_game_id=%s WHERE table_id=%s AND user_id=%s"
+            cursor.execute(sql, (last_game_id, table_id, user_id))
 
     def get_table(self, table_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("SELECT * FROM poker_table WHERE id=%s",(table_id,))
             return cursor.fetchone()
 
+    def get_table_result(self, table_id):
+        sql = """
+        SELECT tu.user_id, u.username, u.image_id, tu.last_game_id, gu.balance_begin, gu.balance_end, g.end_ts
+        FROM poker_table_user tu
+        JOIN user_profile u ON u.id=tu.user_id
+        JOIN poker_game_user gu ON gu.user_id=tu.user_id and gu.game_id=tu.last_game_id
+        JOIN poker_game g ON g.id=gu.game_id
+        WHERE tu.table_id=%s
+        """
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute(sql,(table_id,))
+            return cursor.fetchall()
+
     def get_tables_for_club(self, *, club_id):
-        with self.dbi.cursor(row_factory=dict_row) as cursor:
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("SELECT * FROM poker_table WHERE club_id=%s AND parent_id IS NULL and closed_ts IS NULL",(club_id,))
             tables = cursor.fetchall()
-        for row in tables:
-            props = row.pop("game_settings", {})
-            row.update(props)
         return tables
     
 
@@ -401,21 +417,25 @@ class DBI:
     # temporary method to get list of tables
     def get_active_tables(self):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("SELECT * FROM poker_table")
-            return cursor.fetchall()
+            cursor.execute("SELECT * FROM poker_table WHERE closed_ts IS NULL")
+            tables = cursor.fetchall()
+        return tables
         
     # GAMES
-    def game_begin(self, *, table_id, user_ids, game_type, game_subtype, **game_props):
+    def game_begin(self, *, table_id, users, game_type, game_subtype, **game_props):
         game = None
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("INSERT INTO poker_game (table_id,game_type,game_subtype) VALUES (%s,%s,%s) RETURNING *",(table_id,game_type, game_subtype))
             game = cursor.fetchone()
-            params_seq = [(game.id, user_id) for user_id in user_ids]
-            cursor.executemany("INSERT INTO poker_game_user (game_id, user_id) VALUES (%s, %s)", params_seq)
+            params_seq = [(game.id, u.id, u.balance) for u in users]
+            cursor.executemany("INSERT INTO poker_game_user (game_id, user_id, balance_begin) VALUES (%s, %s, %s)", params_seq)
         return game
 
-    def game_end(self, game_id):
+    def game_end(self, game_id, users):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            for u in users:
+                cursor.execute("UPDATE poker_game_user SET balance_end=%s WHERE game_id=%s AND user_id=%s",
+                               (u.balance, game_id, u.id))
             cursor.execute("UPDATE poker_game SET end_ts=NOW() WHERE id=%s RETURNING *",(game_id,))
             return cursor.fetchone()
         

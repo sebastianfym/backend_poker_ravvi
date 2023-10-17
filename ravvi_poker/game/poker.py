@@ -26,7 +26,7 @@ class PokerBase(ObjectLogger):
     PLAYER_CARDS_FREFLOP = 2
 
     SLEEP_ROUND_BEGIN = 1.5
-    SLEEP_ROUND_END = 1.5
+    SLEEP_ROUND_END = 2
     SLEEP_SHOWDOWN_CARDS = 1.5
     SLEEP_GAME_END = 4
 
@@ -371,9 +371,13 @@ class PokerBase(ObjectLogger):
 
         # small blind
         p = self.players_to_role(PlayerRole.SMALL_BLIND)
-        assert PlayerRole.SMALL_BLIND in p.role 
-        p.bet_type = Bet.SMALL_BLIND
-        p.bet_delta = self.blind_small
+        assert PlayerRole.SMALL_BLIND in p.role
+        if p.user.balance<self.blind_small:
+            p.bet_type = Bet.ALLIN
+            p.bet_delta = p.user.balance
+        else:
+            p.bet_type = Bet.SMALL_BLIND
+            p.bet_delta = self.blind_small
         p.bet_amount += p.bet_delta
         p.bet_total += p.bet_delta
         p.user.balance -= p.bet_delta
@@ -382,8 +386,12 @@ class PokerBase(ObjectLogger):
         # big blind
         p = self.players_to_role(PlayerRole.BIG_BLIND)
         assert PlayerRole.BIG_BLIND in p.role 
-        p.bet_type = Bet.BIG_BLIND
-        p.bet_delta = self.blind_big
+        if p.user.balance<self.blind_big:
+            p.bet_type = Bet.ALLIN
+            p.bet_delta = p.user.balance
+        else:
+            p.bet_type = Bet.BIG_BLIND
+            p.bet_delta = self.blind_big
         p.bet_amount += p.bet_delta
         p.bet_total += p.bet_delta
         p.user.balance -= p.bet_delta

@@ -100,7 +100,7 @@ async def v1_get_image(image_id: int, session_uuid: RequireSessionUUID):
     """Get image by id"""
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
-        image = dbi.get_user_images(user.id, id=image_id)
+        image = dbi.get_image(image_id=image_id)
         if not image:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Image not found")
 
