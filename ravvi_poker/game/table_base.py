@@ -14,7 +14,7 @@ from .user import User
 class Table(ObjectLogger):
     NEW_GAME_DELAY = 3
 
-    def __init__(self, id, *, club_id, table_type, table_seats, game_type, game_subtype, **kwargs):
+    def __init__(self, id, *, table_type, table_seats, game_type, game_subtype, club_id=None, **kwargs):
         super().__init__(logger_name=__name__+f".{id}")
         self.club_id = club_id
         self.table_id = id
