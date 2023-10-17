@@ -8,7 +8,7 @@ from ravvi_poker.game.poker import PokerBase
 @pytest.mark.asyncio
 async def test_31_bet_timeout():
 
-    users = [User(x, f"u{x}", 1000) for x in [111, 333, 444]]
+    users = [User(x, f"u{x}", None, 1000) for x in [111, 333, 444]]
     
     # game with random deck
     game = PokerBase(None, 1, users)

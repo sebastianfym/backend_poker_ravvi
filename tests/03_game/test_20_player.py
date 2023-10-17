@@ -1,7 +1,7 @@
 from ravvi_poker.game.player import User, Player, PlayerRole
 
 def test_21_player():
-    u = User(77, 'u77', 1000)
+    u = User(77, 'u77', None, 1000)
     
     p = Player(u)
     assert p.user == u
