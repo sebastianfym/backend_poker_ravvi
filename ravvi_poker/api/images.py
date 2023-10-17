@@ -17,12 +17,10 @@ router = APIRouter(prefix="/images", tags=["images"])
 
 ALLOWED_IMAGE_MIME_TYPES = [
     "image/jpeg",
-    "image/png",
-    "image/svg+xml",
+    "image/png"
 ]
 
 MAX_IMAGE_DIMENSION = 500
-
 
 class ImageProfile(BaseModel):
     id: int
@@ -63,24 +61,25 @@ async def v1_get_available_images(session_uuid: RequireSessionUUID):
     ])
 
 
+def resize_image(image: bytes) -> bytes:
+    with Image.open(BytesIO(image)) as im:
+        width, height = im.size
+        im_max_dimension = max(width, height)
+        proportion = im_max_dimension / MAX_IMAGE_DIMENSION
+        if proportion <= 1:
+            return image
+        resized_im = im.resize((ceil(width/proportion), ceil(height/proportion)))
+        buf = BytesIO()
+        resized_im.save(buf, format=im.format)
+        return buf.getvalue()
+
 @router.post("", summary="Upload image")
 async def v1_upload_image(params: ImageUpload, session_uuid: RequireSessionUUID):
     """Upload image"""
-    def resize_image(image: bytes) -> bytes:
-        with Image.open(BytesIO(image)) as im:
-            width, height = im.size
-            im_max_dimension = max(width, height)
-            proportion = im_max_dimension / MAX_IMAGE_DIMENSION
-            if proportion <= 1:
-                return image
-            resized_im = im.resize((ceil(width/proportion), ceil(height/proportion)))
-            buf = BytesIO()
-            resized_im.save(buf, format=im.format)
-            return buf.getvalue()
 
     image = base64.b64decode(params.image_data, validate=True)
     image_mime_type = magic.from_buffer(image, mime=True)
-    image = resize_image(image) if image_mime_type != "image/svg+xml" else image
+    image = resize_image(image)
     image_data = base64.b64encode(image).decode()
 
     with DBI() as dbi:

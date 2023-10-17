@@ -131,6 +131,7 @@ class Table(ObjectLogger):
             users[user.id] = dict(
                     user_id = user.id,
                     username = user.username,
+                    image_id = user.image_id,
                     balance = user.balance
                 )
         if self.game:
@@ -204,7 +205,10 @@ class Table(ObjectLogger):
                     table_id = self.table_id,
                     seat_id = user_seat_idx,
                     user = dict(
-                        user_id = user.id, username = user.username, balance=user.balance
+                        user_id = user.id, 
+                        username = user.username, 
+                        image_id = user.image_id,
+                        balance=user.balance
                     )
                 )
                 await self.broadcast(event)
