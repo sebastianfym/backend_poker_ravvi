@@ -26,7 +26,7 @@ class PokerBase(ObjectLogger):
     PLAYER_CARDS_FREFLOP = 2
 
     SLEEP_ROUND_BEGIN = 1.5
-    SLEEP_ROUND_END = 1.5
+    SLEEP_ROUND_END = 2
     SLEEP_SHOWDOWN_CARDS = 1.5
     SLEEP_GAME_END = 4
 

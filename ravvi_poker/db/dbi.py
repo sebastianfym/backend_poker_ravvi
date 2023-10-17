@@ -238,6 +238,12 @@ class DBI:
 
     # IMAGES
 
+    def get_image(self, image_id):
+        sql = "SELECT * FROM image WHERE id=%s"
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            cursor.execute(sql, (image_id,))
+            return cursor.fetchone()
+
     def get_user_images(self, owner_id, id=None, uuid=None, image_data=None):
         args = [owner_id]
         sql = "SELECT * FROM image WHERE (owner_id=%s or owner_id is NULL)"
@@ -398,12 +404,9 @@ class DBI:
             return cursor.fetchall()
 
     def get_tables_for_club(self, *, club_id):
-        with self.dbi.cursor(row_factory=dict_row) as cursor:
+        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             cursor.execute("SELECT * FROM poker_table WHERE club_id=%s AND parent_id IS NULL and closed_ts IS NULL",(club_id,))
             tables = cursor.fetchall()
-        for row in tables:
-            props = row.pop("game_settings", {})
-            row.update(props)
         return tables
     
 

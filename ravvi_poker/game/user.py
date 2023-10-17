@@ -4,5 +4,6 @@ from dataclasses import dataclass, asdict
 class User:
     id: int
     username: str
+    image_id: int
     balance: int
     connected: int = 0

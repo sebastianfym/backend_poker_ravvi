@@ -37,31 +37,40 @@ class Manager(Logger_MixIn):
                     table_row = db.get_table(command.table_id)
                 if table_row:
                     self.log_info("table %s loaded", table_row.id) 
-                    table = self.add_table(table_row)
-                    if table:
-                        await table.start()
+                    table = await self.add_table(table_row)
             if not table:
                 event = TABLE_ERROR(command.table_id, error_id=404, message='Table not found')
-                client.send(event)
+                await client.send_event(event)
         if not table:
             return
         await table.handle_command(client, command)
 
-    def add_table(self, table_row):
+
+    async def add_table(self, table_row):
         try:
             kwargs = table_row._asdict()
-            props = kwargs.pop("game_settings", {})
+            props = kwargs.pop("game_settings", {}) or {}
             kwargs.update(props)
             if table_row.table_type == "RING_GAME":
                 table = Table_RING(**kwargs)
             elif table_row.table_type == "SNG":
                 table = Table_SNG(**kwargs)
             self.tables[table.table_id] = table
+        
+            await table.start()
+
+            n_bots = table_row.n_bots or 0
+            self.logger.info('Manager: table#%s:%s n_bots:%s', table.table_id, table.table_type, n_bots)
+            for bot, _ in zip(self.bots, range(n_bots)):
+                self.logger.info('Manager: table#%s: add bot#%s', table.table_id, bot.user_id)
+                await bot.join_table(table.table_id)
+
         except Exception as ex:
             self.log_exception("add_table %s: %s", table_row, ex)
             return None
-        return table
 
+        return table
+    
     async def start(self):
         for i in range(1, 4):
             bot = Bot(self, i)
@@ -74,25 +83,7 @@ class Manager(Logger_MixIn):
             self.log_info("loaded %s tables", len(tables))
 
         for row in tables:
-            kwargs = row._asdict()
-            props = kwargs.pop("game_settings", {} ) or {}
-            kwargs.update(props)
-            table = self.add_table(row)
-            if not table:
-                continue
-            await table.start()
-            n_bots = kwargs.get("n_bots",None)
-            self.logger.info('Manager: table#%s:%s n_bots:%s', table.table_id, table.table_type, n_bots)
-            if n_bots:
-                pass
-            elif row.club_id or row.table_type!='RING_GAME':
-                continue
-            else:
-                n_bots = len(self.bots)
-
-            for bot, _ in zip(self.bots, range(n_bots)):
-                self.logger.info('Manager: table#%s: add bot#%s', table.table_id, bot.user_id)
-                await bot.join_table(table.table_id)
+            await self.add_table(row)
 
         self.logger.info('Manager: started: %s tables, %s bots', len(self.tables), len(self.bots))
 

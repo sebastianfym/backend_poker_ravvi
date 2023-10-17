@@ -14,8 +14,9 @@ from .user import User
 class Table(ObjectLogger):
     NEW_GAME_DELAY = 3
 
-    def __init__(self, id, *, table_type, table_seats, game_type, game_subtype, **kwargs):
+    def __init__(self, id, *, club_id, table_type, table_seats, game_type, game_subtype, **kwargs):
         super().__init__(logger_name=__name__+f".{id}")
+        self.club_id = club_id
         self.table_id = id
         self.table_type = table_type
         self.game_type = game_type
@@ -32,7 +33,15 @@ class Table(ObjectLogger):
         self.log_info("init: %s %s %s", self.game_type, self.game_subtype, len(self.seats))
 
     def get_user(self, user_id, *, connected=0):
-        return User(id=user_id, username='u'+str(user_id), balance=1000, connected=connected)
+        with DBI() as db:
+            row = db.get_user(id=user_id)
+        if row:
+            username = row.username
+            image_id = row.image_id
+        else:
+            username='u'+str(user_id)
+            image_id = None
+        return User(id=user_id, username=username, image_id=image_id, balance=0, connected=connected)
 
     async def start(self):
         self.task = asyncio.create_task(self.run_wrappwer())

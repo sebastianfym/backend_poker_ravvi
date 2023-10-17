@@ -55,7 +55,7 @@ class Table_SNG(Table):
 
         with DBI() as db:
             self.closed = db.set_table_closed(self.table_id)
-        await self.broadcast(TABLE_CLOSED())
+        await self.broadcast(TABLE_CLOSED(table_redirect_id=self.table_id))
 
 
 LEVEL_SCHEDULE_STANDARD = [
