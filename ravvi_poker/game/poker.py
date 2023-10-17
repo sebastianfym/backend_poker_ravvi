@@ -55,6 +55,14 @@ class PokerBase(ObjectLogger):
         self.count_in_the_game = 0
         self.count_has_options = 0
 
+    @property
+    def game_type(self):
+        return self.GAME_TYPE
+
+    @property
+    def game_subtype(self):
+        return self.GAME_SUBTYPE
+
     # PLAYERS
 
     @property
@@ -87,8 +95,8 @@ class PokerBase(ObjectLogger):
     async def broadcast_GAME_BEGIN(self):
         event = GAME_BEGIN(
             game_id = self.game_id, 
-            game_type = self.GAME_TYPE,
-            game_subtype = self.GAME_SUBTYPE,
+            game_type = self.game_type,
+            game_subtype = self.game_subtype,
             players = [x.user_id for x in self.players],
             dealer_id = self.dealer_id
         )

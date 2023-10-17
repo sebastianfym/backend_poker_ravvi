@@ -7,7 +7,7 @@
     ],
     "deck": ["A♠", "T♠", "T♥", "5♠", "3♣", "K♣", "J♣", "7♥", 0],
     "moves": [
-        {"type": "GAME_BEGIN"}, 
+        {"type": "GAME_BEGIN", "game_type": "NLH", "game_subtype": "REGULAR"}, 
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["A♠", "3♣"]}, 
         {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": ["T♠", "K♣"]}, 
         {"type": "PLAYER_CARDS", "user_id": 444, "cards_open": false, "cards": ["T♥", "J♣"]},

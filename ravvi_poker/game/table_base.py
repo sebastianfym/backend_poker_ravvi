@@ -157,8 +157,8 @@ class Table(ObjectLogger):
                 banks_info.append(b_info)
             event.update(
                 game_id = self.game.game_id,
-                game_type = self.game.GAME_TYPE,
-                game_subtype = self.game.GAME_SUBTYPE,
+                game_type = self.game.game_type,
+                game_subtype = self.game.game_subtype,
                 banks = banks_info,
                 cards = self.game.cards,
                 players = players_info,
