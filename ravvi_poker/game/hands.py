@@ -1,41 +1,40 @@
 from itertools import combinations
-from enum import IntEnum, unique
+from enum import Enum, IntEnum, unique
 
 from .cards import Card
 
 @unique
-class HandRank(IntEnum):
-    EMPTY = 0
-    HIGH_CARD = 1
-    ONE_PAIR = 2
-    TWO_PAIR = 3
-    THREE_OF_KIND = 4
-    STRAIGHT = 5
-    FLUSH = 6
-    FULL_HOUSE = 7
-    FOUR_OF_KIND = 8
-    STRAIGHT_FLUSH = 9
-
+class HandType(Enum):
+    HIGH_CARD = "HIGH_CARD"
+    ONE_PAIR = "ONE_PAIR"
+    TWO_PAIR = "TWO_PAIRS"
+    THREE_OF_KIND = "THREE_OF_KIND"
+    FOUR_OF_KIND = "FOUR_OF_KIND"
+    FULL_HOUSE = "FULL_HOUSE"
+    STRAIGHT = "STRAIGHT"
+    FLUSH = "FLUSH"
+    STRAIGHT_FLUSH = "STRAIGHT_FLUSH"
 
 class Hand:
-    def __init__(self, hand) -> None:
-        self.cards = [x if isinstance(x, Card) else Card(x) for x in hand]
+    def __init__(self, cards, deck36=False) -> None:
+        self.cards = [x if isinstance(x, Card) else Card(x) for x in cards]
         self.mask = 0
         for c in self.cards:
             self.mask |= c.mask
+        self.type = self.get_type(deck36) if self.cards else None
         self.rank = None
         self.value = 0
 
     def __str__(self) -> str:
-        cards = sorted(self.cards, key=lambda x: (x.rank, x.suit), reverse=True)
+        cards = sorted(self.cards, key=lambda x: (-x.rank, x.suit))
         s = " ".join([str(c) for c in cards])
         return s
 
-    def get_rank(self, cards36=False):
+    def get_type(self, deck36=False):
         flush = self.check_flush()
-        straight = self.check_straight(cards36)
+        straight = self.check_straight(deck36)
         if flush and straight:
-            return HandRank.STRAIGHT_FLUSH, straight[1]
+            return HandType.STRAIGHT_FLUSH, straight[1]
         elif flush:
             return flush
         elif straight:
@@ -51,13 +50,13 @@ class Hand:
             match = bin(suit_mask)[2:]
             cards_rank = [i for i, b in enumerate(reversed(match), 2) if b == "1"]
             if len(cards_rank) == 5:
-                return HandRank.FLUSH, *reversed(cards_rank)
+                return HandType.FLUSH, *reversed(cards_rank)
         return None
 
-    def check_straight(self, cards36):
+    def check_straight(self, deck36):
         if len(self.cards)<5:
             return None
-        if cards36:
+        if deck36:
             straight_idx0 = 9
             straight_masks = [
                 0b1000011110000,  # 09
@@ -89,7 +88,7 @@ class Hand:
             rank_mask |= suit_mask
         for i, mask in enumerate(straight_masks, straight_idx0):
             if rank_mask & mask == mask:
-                return HandRank.STRAIGHT, i
+                return HandType.STRAIGHT, i
         return None
 
     def check_same_rank(self):
@@ -111,11 +110,11 @@ class Hand:
         if len(result) == 1:
             counter, rank = result[0]
             if counter == 4:
-                return HandRank.FOUR_OF_KIND, rank, *other_ranks
+                return HandType.FOUR_OF_KIND, rank, *other_ranks
             elif counter == 3:
-                return HandRank.THREE_OF_KIND, rank, *other_ranks
+                return HandType.THREE_OF_KIND, rank, *other_ranks
             elif counter == 2:
-                return HandRank.ONE_PAIR, rank, *other_ranks
+                return HandType.ONE_PAIR, rank, *other_ranks
             else:
                 raise ValueError("error")
         elif len(result) == 2:
@@ -123,20 +122,9 @@ class Hand:
             c1, r1 = result[0]
             c2, r2 = result[1]
             if c1 == 3 and c2 == 2:
-                return HandRank.FULL_HOUSE, r1, r2, *other_ranks
+                return HandType.FULL_HOUSE, r1, r2, *other_ranks
             elif c1 == 2 and c2 == 2:
-                return HandRank.TWO_PAIR, r1, r2, *other_ranks
+                return HandType.TWO_PAIR, r1, r2, *other_ranks
             else:
                 raise ValueError("error")
-        return HandRank.HIGH_CARD, *other_ranks
-
-
-def get_player_best_hand(player_cards, game_cards):
-    cards = player_cards + game_cards
-    results = []
-    for h in combinations(cards, min(5, len(cards))):
-        hand = Hand(h)
-        hand.rank = hand.get_rank()
-        results.append(hand)
-    results.sort(reverse=True, key=lambda x: x.rank)
-    return results[0]
+        return HandType.HIGH_CARD, *other_ranks

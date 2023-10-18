@@ -1,6 +1,7 @@
 import pytest
 from ravvi_poker.game.cards import Card, get_deck_52, get_deck_36
 
+
 def test_01_1_cards():
     c = Card(0)
     assert c.code == 0
@@ -14,7 +15,7 @@ def test_01_1_cards():
         for si, sn in enumerate(Card.SUITS):
             ss = Card.SUITS2[si]
             for ri, rn in enumerate(Card.RANKS):
-                yield code, f"{rn}{sn}", f"{rn}{ss}", sn, ss, si+1, rn, ri+2
+                yield code, f"{rn}{sn}", f"{rn}{ss}", sn, ss, si + 1, rn, ri + 2
                 code += 1
 
     for code, cs1, cs2, sn, ss, si, rn, ri in iter_deck():
@@ -33,6 +34,7 @@ def test_01_1_cards():
                 assert c.mask != 0
                 assert c.suit == si
                 assert c.rank == ri
+
 
 def test_01_2_cards_negative():
     with pytest.raises(ValueError):
@@ -56,8 +58,8 @@ def test_01_2_cards_negative():
     with pytest.raises(ValueError):
         c = Card(suit=1, rank="X")
 
-def test_01_3_cards_samples():
 
+def test_01_3_cards_samples():
     # 2S
     c = Card("2S")
     assert c.code == 1
@@ -116,22 +118,25 @@ def test_01_3_cards_samples():
     assert c.rank == 14
     assert c.suit == 4
 
+
 def test_01_4_deck_52():
     deck = get_deck_52()
     assert len(deck) == 52
     u = set(deck)
-    assert len(u)==52
+    assert len(u) == 52
     for i, code in enumerate(deck, start=1):
         assert code == i
+
 
 def test_01_5_deck_36():
     deck = get_deck_36()
     assert len(deck) == 36
     u = set(deck)
-    assert len(u)==36
+    assert len(u) == 36
     for i, code in enumerate(deck):
         c = Card(code)
-        assert c.rank>=6
+        assert c.rank >= 6
 
-#if __name__=="__main__":
+
+# if __name__=="__main__":
 #    test_01_1_cards()
