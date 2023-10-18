@@ -69,7 +69,7 @@ def CARDS_52():
 
 
 def CARDS_36():
-    return list(filter(lambda x: Card(x).rank >= 6), CARDS_52())
+    return list(filter(lambda x: Card(x).rank >= 6, CARDS_52()))
 
 
 @unique

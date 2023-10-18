@@ -29,6 +29,8 @@ class Bot(Client):
             await self.process_queue()
         except asyncio.CancelledError:
             pass
+        except Exception as ex:
+            self.log_exception("%s", ex)
         self.log_info("end")
 
     async def join_table(self, table_id):
@@ -55,7 +57,7 @@ class Bot(Client):
                           event.table_id, event.options, event.raise_min, event.raise_max
                           )
         # select option
-        sleep_seconds = random.randint(3,7)
+        sleep_seconds = random.randint(2,4)
         self.log_debug("thinking %s sec ...", sleep_seconds)
         await asyncio.sleep(sleep_seconds)
         options = [x for x in event.options]

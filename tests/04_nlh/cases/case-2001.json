@@ -5,7 +5,7 @@
     ],
     "deck": ["7♣", "8♣", "7♠", "5♣", 0, "2♦", "J♠", "3♣", "J♦", "5♥"],
     "moves": [
-        {"type": "GAME_BEGIN"}, 
+        {"type": "GAME_BEGIN", "game_type": "NLH", "game_subtype": "REGULAR"}, 
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["7♣", "7♠"]}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["8♣", "5♣"]},
         {"type": "PLAYER_BET", "user_id": 111, "bet": "SMALL_BLIND", "delta": 1, "amount": 1, "balance": 39}, 

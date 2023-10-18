@@ -25,11 +25,12 @@ class PokerBase(ObjectLogger):
     PLAYER_CARDS_FREFLOP = 2
 
     SLEEP_ROUND_BEGIN = 1.5
-    SLEEP_ROUND_END = 1.5
+    SLEEP_ROUND_END = 2
     SLEEP_SHOWDOWN_CARDS = 1.5
-    SLEEP_GAME_END = 3
+    SLEEP_GAME_END = 4
 
-    def __init__(self, table, game_id, users: List[User]) -> None:
+    def __init__(self, table, game_id, users: List[User], 
+                 *, blind_value=1, blind_small=None, blind_big=None, ante=None, **kwargs) -> None:
         super().__init__(__name__+f".{game_id}")
         self.table = table
         self.game_id = game_id
@@ -40,8 +41,9 @@ class PokerBase(ObjectLogger):
         self.cards = None
         self.banks = None
 
-        self.blind_small = 1
-        self.blind_big = 2
+        self.blind_small = blind_small or blind_value
+        self.blind_big = blind_big or self.blind_small*2
+        self.ante = ante
 
         self.bet_id = None
         self.bet_level = 0
@@ -51,6 +53,14 @@ class PokerBase(ObjectLogger):
         self.bet_timeout = 30
         self.count_in_the_game = 0
         self.count_has_options = 0
+
+    @property
+    def game_type(self):
+        return self.GAME_TYPE
+
+    @property
+    def game_subtype(self):
+        return self.GAME_SUBTYPE
 
     # PLAYERS
 
@@ -87,8 +97,8 @@ class PokerBase(ObjectLogger):
     async def broadcast_GAME_BEGIN(self):
         event = GAME_BEGIN(
             game_id = self.game_id, 
-            game_type = self.GAME_TYPE,
-            game_subtype = self.GAME_SUBTYPE,
+            game_type = self.game_type,
+            game_subtype = self.game_subtype,
             players = [x.user_id for x in self.players],
             dealer_id = self.dealer_id
         )
@@ -378,9 +388,13 @@ class PokerBase(ObjectLogger):
 
         # small blind
         p = self.players_to_role(PlayerRole.SMALL_BLIND)
-        assert PlayerRole.SMALL_BLIND in p.role 
-        p.bet_type = Bet.SMALL_BLIND
-        p.bet_delta = self.blind_small
+        assert PlayerRole.SMALL_BLIND in p.role
+        if p.user.balance<self.blind_small:
+            p.bet_type = Bet.ALLIN
+            p.bet_delta = p.user.balance
+        else:
+            p.bet_type = Bet.SMALL_BLIND
+            p.bet_delta = self.blind_small
         p.bet_amount += p.bet_delta
         p.bet_total += p.bet_delta
         p.user.balance -= p.bet_delta
@@ -389,8 +403,12 @@ class PokerBase(ObjectLogger):
         # big blind
         p = self.players_to_role(PlayerRole.BIG_BLIND)
         assert PlayerRole.BIG_BLIND in p.role 
-        p.bet_type = Bet.BIG_BLIND
-        p.bet_delta = self.blind_big
+        if p.user.balance<self.blind_big:
+            p.bet_type = Bet.ALLIN
+            p.bet_delta = p.user.balance
+        else:
+            p.bet_type = Bet.BIG_BLIND
+            p.bet_delta = self.blind_big
         p.bet_amount += p.bet_delta
         p.bet_total += p.bet_delta
         p.user.balance -= p.bet_delta

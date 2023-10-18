@@ -67,7 +67,7 @@ CREATE TABLE public.image (
 );
 
 CREATE SEQUENCE public.image_id_seq
-    START WITH 1
+    START WITH 1000
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
@@ -98,7 +98,9 @@ CREATE TABLE public.poker_game (
     id bigint NOT NULL,
     table_id bigint NOT NULL,
     begin_ts timestamp without time zone DEFAULT now() NOT NULL,
-    end_ts timestamp without time zone
+    end_ts timestamp without time zone,
+    game_type character varying(64) NOT NULL,
+    game_subtype character varying(64) NOT NULL
 );
 
 CREATE SEQUENCE public.poker_game_id_seq
@@ -119,12 +121,15 @@ CREATE TABLE public.poker_table (
     id bigint NOT NULL,
     club_id bigint,
     created_ts timestamp without time zone DEFAULT now() NOT NULL,
-    table_type character varying(100) DEFAULT NULL::character varying,
-    game_type character varying(100) DEFAULT NULL::character varying,
+    table_type character varying(100) NOT NULL,
+    game_type character varying(100) NOT NULL,
     table_name character varying(100) DEFAULT NULL::character varying,
-    game_subtype character varying(100) DEFAULT NULL::character varying,
+    game_subtype character varying(100) NOT NULL,
     table_seats smallint,
-    game_settings jsonb
+    game_settings jsonb,
+    parent_id bigint,
+    opened_ts timestamp without time zone,
+    closed_ts timestamp without time zone
 );
 
 CREATE SEQUENCE public.poker_table_id_seq
@@ -135,6 +140,13 @@ CREATE SEQUENCE public.poker_table_id_seq
     CACHE 1;
 
 ALTER SEQUENCE public.poker_table_id_seq OWNED BY public.poker_table.id;
+
+CREATE TABLE public.poker_table_user (
+    table_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    exit_ts timestamp without time zone,
+    exit_game_id bigint
+);
 
 CREATE TABLE public.temp_email (
     id bigint NOT NULL,
@@ -281,6 +293,9 @@ ALTER TABLE ONLY public.poker_game_user
 ALTER TABLE ONLY public.poker_table
     ADD CONSTRAINT poker_table_pkey PRIMARY KEY (id);
 
+ALTER TABLE ONLY public.poker_table_user
+    ADD CONSTRAINT poker_table_user_pkey PRIMARY KEY (table_id, user_id);
+
 ALTER TABLE ONLY public.temp_email
     ADD CONSTRAINT temp_email_pkey PRIMARY KEY (id);
 
@@ -315,7 +330,11 @@ CREATE INDEX club_member_idx1 ON public.club_member USING btree (user_id);
 
 CREATE UNIQUE INDEX club_member_unq ON public.club_member USING btree (club_id, user_id);
 
+CREATE INDEX poker_game_type ON public.poker_game USING btree (game_type, game_subtype);
+
 CREATE INDEX poker_game_user_idx1 ON public.poker_game_user USING btree (user_id);
+
+CREATE INDEX poker_table_user_idx ON public.poker_table_user USING btree (user_id);
 
 ALTER TABLE ONLY public.club
     ADD CONSTRAINT club_image_id_fkey FOREIGN KEY (image_id) REFERENCES public.image(id);
@@ -358,6 +377,9 @@ ALTER TABLE ONLY public.poker_game_user
 
 ALTER TABLE ONLY public.poker_game_user
     ADD CONSTRAINT poker_game_user_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.user_profile(id);
+
+ALTER TABLE ONLY public.poker_table
+    ADD CONSTRAINT poker_table_parent FOREIGN KEY (parent_id) REFERENCES public.poker_table(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.temp_email
     ADD CONSTRAINT temp_email_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.user_profile(id);

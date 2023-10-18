@@ -31,98 +31,80 @@ def test_tables_creation():
         "table_type": "RING_GAME",
         "table_seats": 6,
         "game_type": "NLH",
-        "game_subtype": "REGULAR",
-        "game_settings": {
-            "big_blind": 10,
-            "buy_in": [1, 20],
-        }
+        "game_subtype": "REGULAR"
     }
     response = client.post(f"/v1/clubs/{club['id']}/tables", json=json, headers=headers)
     assert response.status_code == 201
 
     nlh_table = response.json()
+    assert nlh_table["table_type"] == json["table_type"]
     assert nlh_table["table_seats"] == json["table_seats"]
     assert nlh_table["game_type"] == json["game_type"]
-    assert nlh_table["game_settings"] == json["game_settings"]
+    assert nlh_table["game_subtype"] == json["game_subtype"]
 
     # Создаем стол NLH AOF
     json = {
         "table_type": "RING_GAME",
         "table_seats": 6,
         "game_type": "NLH",
-        "game_subtype": "AOF",
-        "game_settings": {
-            "big_blind": 10,
-            "buy_in": 10,
-        }
+        "game_subtype": "AOF"
     }
     response = client.post(f"/v1/clubs/{club['id']}/tables", json=json, headers=headers)
     assert response.status_code == 201
 
     nlh_aof_table = response.json()
+    assert nlh_aof_table["table_type"] == json["table_type"]
     assert nlh_aof_table["table_seats"] == json["table_seats"]
     assert nlh_aof_table["game_type"] == json["game_type"]
     assert nlh_aof_table["game_subtype"] == json["game_subtype"]
-    assert nlh_aof_table["game_settings"] == json["game_settings"]
 
     # Создаем стол NLH 6+
     json = {
         "table_type": "RING_GAME",
         "table_seats": 6,
         "game_type": "NLH",
-        "game_subtype": "6+",
-        "game_settings": {
-            "ante": 10,
-            "buy_in": [1, 20]
-        }
+        "game_subtype": "6+"
     }
     response = client.post(f"/v1/clubs/{club['id']}/tables", json=json, headers=headers)
     assert response.status_code == 201
 
     nlh_6_table = response.json()
+    assert nlh_6_table["table_type"] == json["table_type"]
     assert nlh_6_table["table_seats"] == json["table_seats"]
     assert nlh_6_table["game_type"] == json["game_type"]
     assert nlh_6_table["game_subtype"] == json["game_subtype"]
-    assert nlh_6_table["game_settings"] == json["game_settings"]
 
     # Создаем стол PLO
     json = {
         "table_type": "RING_GAME",
         "table_seats": 6,
         "game_type": "PLO",
-        "game_subtype": "PLO6",
-        "game_settings": {
-            "big_blind": 10,
-            "buy_in": [1, 20],
-        }
+        "game_subtype": "PLO6"
     }
     response = client.post(f"/v1/clubs/{club['id']}/tables", json=json, headers=headers)
     assert response.status_code == 201
 
     plo_table = response.json()
+    assert plo_table["table_type"] == json["table_type"]
     assert plo_table["table_seats"] == json["table_seats"]
     assert plo_table["game_type"] == json["game_type"]
-    assert plo_table["game_settings"] == json["game_settings"]
+    assert plo_table["game_subtype"] == json["game_subtype"]
 
     # Создаем стол OFC
     json = {
         "table_type": "RING_GAME",
-        "table_seats": 6,
+        "table_seats": 2,
         "game_type": "OFC",
-        "game_subtype": "test",
-        "game_settings": {
-            "big_blind": 10,
-            "buy_in": [1, 20],
-            "min_stack": 10
-        }
+        "game_subtype": "test"
     }
     response = client.post(f"/v1/clubs/{club['id']}/tables", json=json, headers=headers)
     assert response.status_code == 201
 
     ofc_table = response.json()
+    assert ofc_table["table_type"] == json["table_type"]
     assert ofc_table["table_seats"] == json["table_seats"]
     assert ofc_table["game_type"] == json["game_type"]
-    assert ofc_table["game_settings"] == json["game_settings"]
+    assert ofc_table["game_subtype"] == json["game_subtype"]
 
 
 def test_create_club_table():
@@ -154,11 +136,7 @@ def test_create_club_table():
         "table_type": "RING_GAME",
         "table_seats": 6,
         "game_type": "PLO",
-        "game_subtype": "PLO6",        
-        "game_settings": {
-            "big_blind": 10,
-            "buy_in": [1, 20],
-        }
+        "game_subtype": "PLO6"
     }
     response = client.post(f"/v1/clubs/{non_club_id}/tables", json=json, headers=headers)
     assert response.status_code == 404
@@ -175,7 +153,6 @@ def test_create_club_table():
     assert table["id"]
     assert table["table_seats"] == json["table_seats"]
     assert table["game_type"] == json["game_type"]
-    assert table["game_settings"] == json["game_settings"]
 
     # Проверяем, что стол отобразился в списке доступных столов клуба
     response = client.get(f"/v1/clubs/{club['id']}/tables", headers=headers)
@@ -186,67 +163,6 @@ def test_create_club_table():
     club_table = list(filter(lambda x: x["id"] == table["id"], club_tables))
     assert len(club_table) == 1
     assert club_table[0]["id"] == table["id"]
-
-
-def test_delete_club_table():
-    # Создаем пользователя
-    access_token, _ = register_guest()
-
-    # Создаем другого пользователя
-    new_access_token, _ = register_guest()
-
-    # Создаем клуб 1ого пользователя
-    json = {"name": "club 1"}
-    headers = {"Authorization": "Bearer " + access_token}
-    response = client.post("/v1/clubs", json=json, headers=headers)
-    assert response.status_code == 201
-
-    club = response.json()
-
-    # Создаем стол
-    json = {
-        "table_type": "RING_GAME",
-        "table_seats": 6,
-        "game_type": "PLO",
-        "game_subtype": "PLO6",
-        "game_settings": {
-            "big_blind": 10,
-            "buy_in": [1, 20],
-        }
-    }
-    response = client.post(f"/v1/clubs/{club['id']}/tables", json=json, headers=headers)
-    assert response.status_code == 201
-
-    table = response.json()
-
-    # Пытаемся удалить стол несуществующего клуба
-    non_club_id = club["id"] + 100500
-    response = client.delete(f"/v1/clubs/{non_club_id}/tables/{table['id']}", headers=headers)
-    assert response.status_code == 404
-
-    # Пытаемся удалить несуществующий стол существующего клуба
-    non_table_id = table["id"] + 100500
-    response = client.delete(f"/v1/clubs/{club['id']}/tables/{non_table_id}", headers=headers)
-    assert response.status_code == 404
-
-    # Пытаемся удалить сущ стол в сущ клубе не владельцем
-    new_headers = {"Authorization": "Bearer " + new_access_token}
-    response = client.delete(f"/v1/clubs/{club['id']}/tables/{table['id']}", headers=new_headers)
-    assert response.status_code == 403
-
-    # Проверка доступности стола
-    response = client.get(f"/v1/clubs/{club['id']}/tables", headers=headers)
-    assert response.status_code == 200
-
-    club_tables = response.json()
-
-    club_table = list(filter(lambda x: x["id"] == table["id"], club_tables))
-    assert len(club_table) == 1
-    assert club_table[0]["id"] == table["id"]
-
-    # Удаляем владельцем клуба
-    response = client.delete(f"/v1/clubs/{club['id']}/tables/{table['id']}", headers=headers)
-    assert response.status_code == 204
 
 
 def test_get_club_tables():
@@ -266,11 +182,7 @@ def test_get_club_tables():
         "table_type": "RING_GAME",
         "table_seats": 6,
         "game_type": "PLO",
-        "game_subtype": "PLO6",
-        "game_settings": {
-            "big_blind": 10,
-            "buy_in": [1, 20],
-        }
+        "game_subtype": "PLO6"
     }
     response = client.post(f"/v1/clubs/{club['id']}/tables", json=json, headers=headers)
     assert response.status_code == 201
@@ -289,6 +201,7 @@ def test_get_club_tables():
     assert tables[0]["table_name"] == table["table_name"]
     assert tables[0]["table_type"] == table["table_type"]
     assert tables[0]["game_type"]== table["game_type"]
+    assert tables[0]["game_subtype"]== table["game_subtype"]
 
     # Пытаемся получить столы несуществующего клуба
     non_club_id = club["id"] + 100500

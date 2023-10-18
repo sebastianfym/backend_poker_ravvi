@@ -5,17 +5,18 @@ import asyncio
 
 from ..logging import ObjectLogger
 from ..db import DBI
-from .event import Event, TABLE_INFO, PLAYER_ENTER, PLAYER_EXIT
+from .event import Event, TABLE_INFO, TABLE_CLOSED, PLAYER_ENTER, PLAYER_EXIT
 from .client import Client
 from .poker_nlh import NLH_subtype_factory
 from .poker_plo import PLO_subtype_factory
 from .user import User
 
 class Table(ObjectLogger):
-    NEW_GAME_DELAY = 7
+    NEW_GAME_DELAY = 3
 
-    def __init__(self, id, *, table_type, game_type, game_subtype, table_seats, **kwargs):
+    def __init__(self, id, *, table_type, table_seats, game_type, game_subtype, club_id=None, **kwargs):
         super().__init__(logger_name=__name__+f".{id}")
+        self.club_id = club_id
         self.table_id = id
         self.table_type = table_type
         self.game_type = game_type
@@ -32,10 +33,18 @@ class Table(ObjectLogger):
         self.log_info("init: %s %s %s", self.game_type, self.game_subtype, len(self.seats))
 
     def get_user(self, user_id, *, connected=0):
-        return User(id=user_id, username='u'+str(user_id), balance=1000, connected=connected)
+        with DBI() as db:
+            row = db.get_user(id=user_id)
+        if row:
+            username = row.username
+            image_id = row.image_id
+        else:
+            username='u'+str(user_id)
+            image_id = None
+        return User(id=user_id, username=username, image_id=image_id, balance=0, connected=connected)
 
     async def start(self):
-        self.task = asyncio.create_task(self.run())
+        self.task = asyncio.create_task(self.run_wrappwer())
 
     async def stop(self):
         if not self.task:
@@ -45,58 +54,65 @@ class Table(ObjectLogger):
         await self.task
         self.task = None
 
-    async def run(self):
+    async def run_wrappwer(self):
         self.log_info("begin")
         try:
-            while True:
-                await asyncio.sleep(self.NEW_GAME_DELAY)
-
-                # set user balances
-                for u in self.seats:
-                    if not u:
-                        continue
-                    if u.balance<=0:
-                        u.balance = 1000
-
-                # try to start new game
-                users = self.get_players(2)
-                if users:
-                    # ok to start
-                    with DBI() as db:
-                        row = db.game_begin(table_id=self.table_id, 
-                                            game_type=self.game_type, game_subtype=self.game_subtype,
-                                            user_ids=[u.id for u in users])
-                    try:
-                        game_factory = self.get_game_factory()
-                        if game_factory:
-                            self.game = game_factory(self, row.id, users)
-                        if self.game:
-                            await self.game.run()
-                    finally:
-                        with DBI() as db:
-                            db.game_end(game_id=self.game.game_id)
-                        self.game = None
-              
-                await asyncio.sleep(2)
-                # remove diconnected users
-                for seat_idx, user in enumerate(self.seats):
-                    #self.log_debug("user_id=%s connected=%s", user.user_id, user.connected)
-                    if not user:
-                        continue
-                    if user.connected:
-                        continue
-                    self.seats[seat_idx] = None
-                    event = PLAYER_EXIT(table_id = self.table_id, user_id=user.id)
-                    await self.broadcast(event)
-                    self.log_info("user %s removed, seat %s available", user.id, seat_idx)
-                   
-
+            await self.run_table()
         except asyncio.CancelledError:
             pass
         except Exception as ex:
             self.log_exception("%s", ex)
         finally:
             self.log_info("end")
+
+    @property
+    def take_seat_enabled(self):
+        return True
+    
+    def on_user_seat_taken(self, user, user_seat_idx):
+        pass
+
+    async def run_table(self):
+        raise NotImplementedError
+    
+    async def run_game(self, users, **game_props):
+        game_id = None
+        try:
+            with DBI() as db:
+                row = db.game_begin(table_id=self.table_id, 
+                                    game_type=self.game_type, game_subtype=self.game_subtype,
+                                    users=users)
+            game_factory = self.get_game_factory()
+            if game_factory:
+                self.game = game_factory(self, row.id, users, **game_props)
+            if self.game:
+                game_id = self.game.game_id
+                await self.game.run()
+                with DBI() as db:
+                    db.game_end(game_id=self.game.game_id, users=users)
+        except Exception as ex:
+            self.log_exception("%s", ex)
+        finally:
+            self.game = None
+        return game_id
+
+
+    async def remove_users(self, user_func):
+        # remove users based on user_func(user) return
+        removed_users = []
+        for seat_idx, user in enumerate(self.seats):
+            #self.log_debug("user_id=%s connected=%s", user.user_id, user.connected)
+            if not user:
+                continue
+            if not user_func(user):
+                continue
+            removed_users.append(user)
+            self.seats[seat_idx] = None
+            event = PLAYER_EXIT(table_id = self.table_id, user_id=user.id)
+            await self.broadcast(event)
+            self.log_info("user %s removed, seat %s available", user.id, seat_idx)
+        return removed_users
+
 
     def get_game_factory(self):
         if self.game_type=='NLH':
@@ -115,6 +131,7 @@ class Table(ObjectLogger):
             users[user.id] = dict(
                     user_id = user.id,
                     username = user.username,
+                    image_id = user.image_id,
                     balance = user.balance
                 )
         if self.game:
@@ -141,8 +158,8 @@ class Table(ObjectLogger):
                 banks_info.append(b_info)
             event.update(
                 game_id = self.game.game_id,
-                game_type = self.game.GAME_TYPE,
-                game_subtype = self.game.GAME_SUBTYPE,
+                game_type = self.game.game_type,
+                game_subtype = self.game.game_subtype,
                 banks = banks_info,
                 cards = self.game.cards,
                 players = players_info,
@@ -159,37 +176,42 @@ class Table(ObjectLogger):
     async def add_client(self, client: Client, take_seat: bool):
         user = None
         user_seat_idx = None
-        if take_seat:
-            # check seats allocation
-            seats_available = []
-            for i, u in enumerate(self.seats):
-                if u is None:
-                    seats_available.append(i)
-                elif u.id == client.user_id:
-                    user = u
-                    user_seat_idx = i
+        seats_available = []
+        
+        # check seats allocation
+        for i, u in enumerate(self.seats):
+            if u is None:
+                seats_available.append(i)
+            elif u.id == client.user_id:
+                user = u
+                user_seat_idx = i
 
+        if user_seat_idx is None:
             # take a seat
-            if user_seat_idx is None and seats_available:
+            if take_seat and seats_available and self.take_seat_enabled:
                 user = self.get_user(client.user_id)
                 user_seat_idx = seats_available[0]
                 self.seats[user_seat_idx] = user
 
-            # user_seat_idx occupied by user
-            if user:
-                user.connected += 1
-                client.tables.add(self.table_id)
-                # in case of the first cleint connection
-                if user.connected == 1:
-                    # broadcast PLAYER_ENTER event
-                    event = PLAYER_ENTER(
-                        table_id = self.table_id,
-                        seat_id = user_seat_idx,
-                        user = dict(
-                            user_id = user.id, username = user.username, balance=user.balance
-                        )
+        # user_seat_idx occupied by user
+        if user:
+            user.connected += 1
+            client.tables.add(self.table_id)
+            # in case of the first cleint connection
+            if user.connected == 1:
+                self.on_user_seat_taken(user, user_seat_idx)
+                # broadcast PLAYER_ENTER event
+                event = PLAYER_ENTER(
+                    table_id = self.table_id,
+                    seat_id = user_seat_idx,
+                    user = dict(
+                        user_id = user.id, 
+                        username = user.username, 
+                        image_id = user.image_id,
+                        balance=user.balance
                     )
-                    await self.broadcast(event)
+                )
+                await self.broadcast(event)
 
         # send current table info to client (including above seat taken)
         await self.send_TABLE_INFO(client)
