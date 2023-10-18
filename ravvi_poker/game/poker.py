@@ -7,7 +7,8 @@ from ..logging import ObjectLogger
 from .bet import Bet
 from .event import Event, GAME_BEGIN, PLAYER_CARDS, GAME_CARDS, PLAYER_BET, GAME_PLAYER_MOVE, GAME_ROUND, GAME_RESULT, GAME_END
 from .player import User, Player, PlayerRole
-from .cards import Hand, HandRank, CARDS_52, CARDS_36
+from .cards import get_deck_52, get_deck_36
+from .hands import Hand, HandRank
 from .multibank import get_banks
 
 from enum import IntEnum, unique
@@ -83,7 +84,7 @@ class PokerBase(ObjectLogger):
     # CARDS
 
     def cards_get_deck(self):
-        return CARDS_52()
+        return get_deck_52()
 
     def cards_get_next(self):
         return self.deck.pop(0)

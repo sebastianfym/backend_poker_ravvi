@@ -1,7 +1,8 @@
 from typing import List, Tuple
 from itertools import combinations
 
-from .cards import Hand, CARDS_36
+from .cards import get_deck_36
+from .hands import Hand
 from .poker import PokerBase, Bet
 
 
@@ -57,7 +58,7 @@ class Poker_NLH_6P(Poker_NLH_X):
     GAME_SUBTYPE = "6+"
 
     def cards_get_deck(self):
-        return CARDS_36()
+        return get_deck_36()
 
     def get_best_hand(self, player_cards, game_cards):
         results = []
