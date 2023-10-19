@@ -5,16 +5,16 @@ from .cards import Card
 
 @unique
 class HandType(Enum):
-    HIGH_CARD = "CH"
+    HIGH_CARD = "H"
     ONE_PAIR = "P1"
     TWO_PAIRS = "P2"
-    THREE_OF_KIND = "C3"
-    FOUR_OF_KIND = "C4"
-    FULL_HOUSE = "HS"
-    STRAIGHT = "ST"
-    FLUSH = "FL"
-    STRAIGHT_FLUSH = "FS"
-    ROYAL_FLUSH = "FR"
+    THREE_OF_KIND = "K3"
+    FOUR_OF_KIND = "K4"
+    FULL_HOUSE = "FH"
+    STRAIGHT = "S"
+    FLUSH = "F"
+    STRAIGHT_FLUSH = "SF"
+    ROYAL_FLUSH = "RF"
 
     @classmethod
     def decode(cls, x):
