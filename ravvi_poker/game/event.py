@@ -8,6 +8,7 @@ class Event(dict):
 
     TABLE_INFO = 101
     TABLE_ERROR = 102
+    TABLE_NEXT_LEVEL_INFO = 110
     TABLE_CLOSED = 199
 
     PLAYER_ENTER = 201
@@ -63,6 +64,9 @@ def TABLE_INFO(**kwargs):
 
 def TABLE_ERROR(table_id, **kwargs):
     return Event(Event.TABLE_ERROR, table_id=table_id, **kwargs)
+
+def TABLE_NEXT_LEVEL_INFO(table_id, **kwargs):
+    return Event(Event.TABLE_NEXT_LEVEL_INFO, table_id=table_id, **kwargs)
 
 def TABLE_CLOSED(**kwargs):
     return Event(Event.TABLE_CLOSED, **kwargs)
