@@ -6,7 +6,7 @@
     ],
     "deck": ["A♣", "6♠", "Q♥", "4♥", "7♠", "T♥", 0, "4♦","T♦","J♣", "3♦", "5♠"],
     "moves": [
-        {"type": "GAME_BEGIN", "game_type": "NLH", "game_subtype": "REGULAR"}, 
+        {"type": "GAME_BEGIN", "game_type": "NLH", "game_subtype": "REGULAR", "blind_small": 1, "blind_big": 2}, 
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["A♣","4♥"], "hand_type": "HIGH_CARD", "hand_cards": ["A♣","4♥"]}, 
         {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": ["6♠","7♠"], "hand_type": "HIGH_CARD", "hand_cards": ["7♠","6♠"]}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["Q♥","T♥"], "hand_type": "HIGH_CARD", "hand_cards": ["Q♥","T♥"]},

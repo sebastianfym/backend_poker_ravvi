@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime
 from ..db import DBI
-from .event import Event, TABLE_CLOSED
+from .event import Event, TABLE_CLOSED, TABLE_NEXT_LEVEL_INFO
 from .table_base import Table
 
 class Table_SNG(Table):
@@ -12,6 +12,9 @@ class Table_SNG(Table):
         self.started = None
         self.levels = LEVEL_SCHEDULE_STANDARD
         self.level_time = blind_level_time
+        self.level_current = 0
+        self.level_reminder = None
+        self.level_next = None
 
     @property
     def take_seat_enabled(self):
@@ -20,13 +23,29 @@ class Table_SNG(Table):
     def on_user_seat_taken(self, user, user_seat_idx):
         user.balance = 10000
 
+    async def run_levels(self):
+        while True:
+            await asyncio.sleep(1)
+            now = datetime.utcnow().replace(microsecond=0)
+            run_seconds = (now - self.started).total_seconds()
+            level_seconds = self.level_time*60
+            self.level_current = min(int(run_seconds/level_seconds), len(self.levels)-1)
+            self.level_reminder = level_seconds - run_seconds%level_seconds
+            level_next = min(self.level_current+1, len(self.levels)-1)
+            if level_next==self.level_next:
+                continue
+            blind_small, blind_big, ante = self.levels[level_next]
+            self.level_next = level_next
+            event = TABLE_NEXT_LEVEL_INFO(self.table_id, 
+                seconds = self.level_reminder, blind_small = blind_small, blind_big=blind_big)
+            await self.broadcast(event)
+
+
     async def run_table(self):
         # wait for players
         while not all(self.seats):
             await asyncio.sleep(1)
 
-        # initial blind level
-        blind_small, blind_big, ante = self.levels[0] 
         # players
         users = self.get_players(2)
         with DBI() as db:
@@ -34,9 +53,12 @@ class Table_SNG(Table):
             for u in users:
                 db.table_user_register(self.table_id, u.id)
         self.started = datetime.utcnow().replace(microsecond=0)
+        self.task2 = asyncio.create_task(self.run_levels())
 
         while users:
             await asyncio.sleep(self.NEW_GAME_DELAY)
+
+            blind_small, blind_big, ante = self.levels[self.level_current]
             game_id = await self.run_game(users, blind_value=blind_small)
             with DBI() as db:
                 for u in users:
@@ -47,8 +69,8 @@ class Table_SNG(Table):
             # refresh blinds level
             now = datetime.utcnow().replace(microsecond=0)
             current_level = int((now - self.started).total_seconds()/60/self.level_time)
-            current_level = min(current_level, len(self.levels)-1)
-            blind_small, blind_big, ante = self.levels[current_level]
+            self.level_current = min(current_level, len(self.levels)-1)
+            blind_small, blind_big, ante = self.levels[self.level_current]
             
             # refresh users
             users = self.get_players(2)

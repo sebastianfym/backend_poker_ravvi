@@ -64,6 +64,48 @@ class PokerBase(ObjectLogger):
     @property
     def game_subtype(self):
         return self.GAME_SUBTYPE
+    
+    def get_info(self, *, users=None, client_user_id=None):
+        info = dict(
+            game_id = self.game_id, 
+            game_type = self.game_type,
+            game_subtype = self.game_subtype,
+            cards = self.cards if self.cards else [],
+            players = [x.user_id for x in self.players],
+            dealer_id = self.dealer_id
+        )
+        # blinds
+        if self.game_type in ('NLH','PLO'):
+            info.update(
+                blind_small = self.blind_small,
+                blind_big = self.blind_big
+            )
+        # banks
+        banks_info = []
+        for b in (self.banks or []):
+            b_info = dict(amount = b[0])
+            banks_info.append(b_info)
+        info.update(banks = banks_info)
+        # current player
+        player = self.current_player
+        if player.bet_type is None:
+            info.update(current_user_id = self.current_player.user_id)
+        if users:
+            for p in self.players:
+                if p.cards_open or p.user_id==client_user_id:
+                    cards = p.cards
+                else:
+                    cards = [0 for _ in p.cards]
+                u = users.get(p.user_id,None)
+                if not u:
+                    continue
+                u.update(
+                    bet = p.bet_type,
+                    amount = p.bet_amount,
+                    cards = cards
+                )
+        return info
+
 
     # PLAYERS
 
@@ -102,13 +144,8 @@ class PokerBase(ObjectLogger):
             await self.table.broadcast(event)
 
     async def broadcast_GAME_BEGIN(self):
-        event = GAME_BEGIN(
-            game_id = self.game_id, 
-            game_type = self.game_type,
-            game_subtype = self.game_subtype,
-            players = [x.user_id for x in self.players],
-            dealer_id = self.dealer_id
-        )
+        game_info = self.get_info()
+        event = GAME_BEGIN(**game_info)
         await self.broadcast(event)
 
     async def broadcast_PLAYER_CARDS(self, player):
@@ -121,7 +158,7 @@ class PokerBase(ObjectLogger):
             user_id = player.user_id,
             cards = player.cards,
             cards_open = player.cards_open,
-            hand_type = hand_type,
+            hand_type = hand_type.value,
             hand_cards = hand_cards
         )
         await self.broadcast(event)
@@ -137,7 +174,7 @@ class PokerBase(ObjectLogger):
         options, params = self.get_bet_options(player)
         event = GAME_PLAYER_MOVE(
             user_id = player.user_id,
-            options = options, 
+            options = [x.value for x in options], 
             **params
         )
         await self.broadcast(event)
@@ -146,7 +183,7 @@ class PokerBase(ObjectLogger):
         player = self.current_player
         event = PLAYER_BET(
             user_id = player.user_id,
-            bet = player.bet_type,
+            bet = player.bet_type.value if isinstance(player.bet_type, Bet) else player.bet_type,
             delta = player.bet_delta,
             amount = player.bet_amount,
             balance = player.balance

@@ -28,6 +28,7 @@ class Table(ObjectLogger):
         self.seats : List[User] = [None]*table_seats
         self.dealer_idx = -1
         self.task : asyncio.Task = None
+        self.task2 : asyncio.Task = None
         self.clients : List[Client] = []
         self.game = None
         self.log_info("init: %s %s %s", self.game_type, self.game_subtype, len(self.seats))
@@ -51,8 +52,20 @@ class Table(ObjectLogger):
             return
         if not self.task.done():
             self.task.cancel()
-        await self.task
+        try:
+            await self.task
+        except asyncio.CancelledError:
+            pass
         self.task = None
+        if not self.task2:
+            return
+        if not self.task2.done():
+            self.task2.cancel()
+        try:
+            await self.task2
+        except asyncio.CancelledError:
+            pass
+        self.task2 = None
 
     async def run_wrappwer(self):
         self.log_info("begin")
@@ -135,42 +148,14 @@ class Table(ObjectLogger):
                     balance = user.balance
                 )
         if self.game:
-            players_info = []
-            for p in self.game.players:
-                if p.cards_open or p.user_id==client.user_id:
-                    cards = p.cards
-                else:
-                    cards = [0 for _ in p.cards]
-                u = users.get(p.user_id,None)
-                if not u:
-                    self.log_warning("user info %s not found", p.user_id)
-                    continue
-                u.update(
-                    bet = p.bet_type,
-                    amount = p.bet_amount,
-                    cards = cards
-                )
-                players_info.append(p.user_id)
-            banks_info = []
-            banks = self.game.banks or []
-            for b in banks:
-                b_info = dict(amount = b[0])
-                banks_info.append(b_info)
-            event.update(
-                game_id = self.game.game_id,
-                game_type = self.game.game_type,
-                game_subtype = self.game.game_subtype,
-                banks = banks_info,
-                cards = self.game.cards,
-                players = players_info,
-                dealer_id = self.game.dealer_id,
-                current_user_id = self.game.current_player.user_id
-            )
+            game_info = self.game.get_info(users=users, client_user_id=client.user_id)
+            event.update(game_info)
         event.update(
             table_type = self.table_type,
             seats = [None if u is None else u.id for u in self.seats],
             users = list(users.values())
         )
+        self.log_info("%s", event)
         await client.send_event(event)
 
     async def add_client(self, client: Client, take_seat: bool):
