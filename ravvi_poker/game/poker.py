@@ -592,7 +592,7 @@ class PokerBase(ObjectLogger):
                 w_amount += bank_amount
             winners[p.user_id] = w_amount
         else:
-            rankKey = lambda x: x.hand.rank if x.hand else HandRank.EMPTY
+            rankKey = lambda x: x.hand.rank
             for amount, bank_players in self.banks:
                 bank_players.sort(key=rankKey)
                 bank_winners = []
