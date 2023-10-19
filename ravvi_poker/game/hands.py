@@ -5,19 +5,31 @@ from .cards import Card
 
 @unique
 class HandType(Enum):
-    HIGH_CARD = "HIGH_CARD"
-    ONE_PAIR = "ONE_PAIR"
-    TWO_PAIR = "TWO_PAIRS"
-    THREE_OF_KIND = "THREE_OF_KIND"
-    FOUR_OF_KIND = "FOUR_OF_KIND"
-    FULL_HOUSE = "FULL_HOUSE"
-    STRAIGHT = "STRAIGHT"
-    FLUSH = "FLUSH"
-    STRAIGHT_FLUSH = "STRAIGHT_FLUSH"
+    HIGH_CARD = "CH"
+    ONE_PAIR = "P1"
+    TWO_PAIRS = "P2"
+    THREE_OF_KIND = "C3"
+    FOUR_OF_KIND = "C4"
+    FULL_HOUSE = "HS"
+    STRAIGHT = "ST"
+    FLUSH = "FL"
+    STRAIGHT_FLUSH = "FS"
+    ROYAL_FLUSH = "FR"
+
+    @classmethod
+    def decode(cls, x):
+        if isinstance(x, HandType):
+            return x
+        elif isinstance(x, str):
+            r = cls.__members__.get(x, None)
+            if r is not None:
+                return r
+        return cls._value2member_map_[x]
 
 class Hand:
     def __init__(self, cards, deck36=False) -> None:
         self.cards = [x if isinstance(x, Card) else Card(x) for x in cards]
+        self.cards.sort(key=lambda x: (-x.rank, x.suit))
         self.mask = 0
         for c in self.cards:
             self.mask |= c.mask
@@ -26,8 +38,7 @@ class Hand:
         self.value = 0
 
     def __str__(self) -> str:
-        cards = sorted(self.cards, key=lambda x: (-x.rank, x.suit))
-        s = " ".join([str(c) for c in cards])
+        s = " ".join([str(c) for c in self.cards])
         return s
 
     def get_type(self, deck36=False):
@@ -124,7 +135,7 @@ class Hand:
             if c1 == 3 and c2 == 2:
                 return HandType.FULL_HOUSE, r1, r2, *other_ranks
             elif c1 == 2 and c2 == 2:
-                return HandType.TWO_PAIR, r1, r2, *other_ranks
+                return HandType.TWO_PAIRS, r1, r2, *other_ranks
             else:
                 raise ValueError("error")
         return HandType.HIGH_CARD, *other_ranks

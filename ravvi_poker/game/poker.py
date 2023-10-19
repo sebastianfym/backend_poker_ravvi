@@ -8,7 +8,7 @@ from .bet import Bet
 from .event import Event, GAME_BEGIN, PLAYER_CARDS, GAME_CARDS, PLAYER_BET, GAME_PLAYER_MOVE, GAME_ROUND, GAME_RESULT, GAME_END
 from .player import User, Player, PlayerRole
 from .cards import get_deck_52, get_deck_36
-from .hands import Hand, HandRank
+from .hands import Hand, HandType
 from .multibank import get_banks
 
 from enum import IntEnum, unique
@@ -23,6 +23,8 @@ class Round(IntEnum):
 class PokerBase(ObjectLogger):
     GAME_TYPE = None
     GAME_SUBTYPE = None
+    GAME_DECK = 52
+
     PLAYER_CARDS_FREFLOP = 2
 
     SLEEP_ROUND_BEGIN = 1.5
@@ -84,8 +86,12 @@ class PokerBase(ObjectLogger):
     # CARDS
 
     def cards_get_deck(self):
-        return get_deck_52()
-
+        if self.GAME_DECK==52:
+            return get_deck_52() 
+        elif self.GAME_DECK==36:
+            return get_deck_36()
+        raise ValueError(f"Invalid GAME_DECK {self.GAME_DECK}")
+            
     def cards_get_next(self):
         return self.deck.pop(0)
 
@@ -106,10 +112,17 @@ class PokerBase(ObjectLogger):
         await self.broadcast(event)
 
     async def broadcast_PLAYER_CARDS(self, player):
+        hand_type, hand_cards = None, None
+        if player.hand:
+            hand_type = player.hand.type[0]
+            hand_cards = [c.code for c in player.hand.cards]
+
         event = PLAYER_CARDS(
             user_id = player.user_id,
             cards = player.cards,
-            cards_open = player.cards_open
+            cards_open = player.cards_open,
+            hand_type = hand_type,
+            hand_cards = hand_cards
         )
         await self.broadcast(event)
 
@@ -303,22 +316,38 @@ class PokerBase(ObjectLogger):
                 await self.broadcast_PLAYER_CARDS(p)
                 self.log_info("player %s: open cards %s", p.user_id, p.cards)
 
-    def get_best_hand(self, player_cards, game_cards):
-        results = []
-        for h in self.iter_player_hands_combinations(player_cards, game_cards):
-            hand = Hand(h)
-            hand.rank = hand.get_rank(cards36=False)
-            hand.value = self.get_hand_value(hand)
-            results.append(hand)
-        results.sort(reverse=True, key=lambda x: x.value)
-        return results[0]
-
     def iter_player_hands_combinations(self, player_cards, game_cards):
         cards = player_cards+game_cards
         return combinations(cards, min(5, len(cards)))
 
-    def get_hand_value(self, hand):
-        return hand.rank
+    def get_best_hand(self, player_cards, game_cards):
+        deck36 = (self.GAME_DECK==36)
+        results = []
+        for h in self.iter_player_hands_combinations(player_cards, game_cards):
+            hand = Hand(h, deck36=deck36)
+            hand.rank = self.get_hand_rank(hand)
+            results.append(hand)
+        if not results:
+            return None
+        results.sort(reverse=True, key=lambda x: x.rank)
+        return results[0]
+
+    GAME_HAND_RANK = [
+        HandType.HIGH_CARD, 
+        HandType.ONE_PAIR,
+        HandType.TWO_PAIRS,
+        HandType.THREE_OF_KIND,
+        HandType.STRAIGHT,
+        HandType.FLUSH,
+        HandType.FULL_HOUSE,
+        HandType.FOUR_OF_KIND,
+        HandType.STRAIGHT_FLUSH
+    ]
+
+    def get_hand_rank(self, hand):
+        if not hand.type:
+            return None
+        return self.GAME_HAND_RANK.index(hand.type[0]), *hand.type[1:]
 
     async def run(self):
         self.log_info("begin players: %s", [p.user_id for p in self.players])
@@ -383,6 +412,7 @@ class PokerBase(ObjectLogger):
                 p.cards.append(self.cards_get_next())
         self.cards_get_next()
         for p in self.players:
+            p.hand = self.get_best_hand(p.cards, self.cards)
             await self.broadcast_PLAYER_CARDS(p)
 
         self.bet_level = 0
@@ -430,6 +460,11 @@ class PokerBase(ObjectLogger):
         for _ in range(3):
             self.cards.append(self.cards_get_next())
         await self.broadcast_GAME_CARDS()
+        self.players_to_role(PlayerRole.DEALER)
+        self.players_rotate()
+        for p in self.players:
+            p.hand = self.get_best_hand(p.cards, self.cards)
+            await self.broadcast_PLAYER_CARDS(p)
 
         await self.run_round(PlayerRole.DEALER)
         self.log_info("FLOP end")
@@ -442,6 +477,11 @@ class PokerBase(ObjectLogger):
         for _ in range(1):
             self.cards.append(self.cards_get_next())
         await self.broadcast_GAME_CARDS()
+        self.players_to_role(PlayerRole.DEALER)
+        self.players_rotate()
+        for p in self.players:
+            p.hand = self.get_best_hand(p.cards, self.cards)
+            await self.broadcast_PLAYER_CARDS(p)
 
         await self.run_round(PlayerRole.DEALER)
         self.log_info("TERN end")
@@ -454,6 +494,11 @@ class PokerBase(ObjectLogger):
         for _ in range(1):
             self.cards.append(self.cards_get_next())
         await self.broadcast_GAME_CARDS()
+        self.players_to_role(PlayerRole.DEALER)
+        self.players_rotate()
+        for p in self.players:
+            p.hand = self.get_best_hand(p.cards, self.cards)
+            await self.broadcast_PLAYER_CARDS(p)
 
         await self.run_round(PlayerRole.DEALER)
         self.log_info("RIVER end")
@@ -473,7 +518,7 @@ class PokerBase(ObjectLogger):
         open_all = False
         for p in players:
             p.hand = self.get_best_hand(p.cards, self.cards)
-            self.log_info("player %s hand: %s %s", p.user_id, p.hand, p.hand.rank)
+            self.log_info("player %s hand: %s %s", p.user_id, p.hand, p.hand.type)
             if p.bet_type==Bet.ALLIN:
                 open_all = True
         self.log_info("open all: %s", open_all)
@@ -491,7 +536,7 @@ class PokerBase(ObjectLogger):
                 continue
             p.cards_open = True
             await self.broadcast_PLAYER_CARDS(p)
-            self.log_info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.rank)
+            self.log_info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.type)
             if not open_all:
                 await asyncio.sleep(self.SLEEP_SHOWDOWN_CARDS)
         

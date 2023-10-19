@@ -5,6 +5,7 @@ from .poker import PokerBase
 
 
 class Poker_PLO_X(PokerBase):
+
     def get_bet_limits(self, player=None):
         p = player or self.current_player
         call_delta = max(0, self.bet_level - p.bet_amount)
@@ -18,20 +19,19 @@ class Poker_PLO_X(PokerBase):
         raise_max = min(self.bet_total + call_delta * 2, p.balance)
         return call_delta, raise_min, raise_max, p.balance
 
-    def get_best_hand(self, player_cards, game_cards):
-        results = []
+    def iter_player_hands_combinations(self, player_cards, game_cards):
         for pc in combinations(player_cards, 2):
-            for gc in combinations(game_cards, 3):
-                hand = Hand(pc + gc)
-                hand.rank = hand.get_rank()
-                results.append(hand)
-        results.sort(reverse=True, key=lambda x: x.rank)
-        return results[0]
+            if not game_cards:
+                yield pc
+            else:
+                for gc in combinations(game_cards, 3):
+                    yield pc + gc
 
 
 class Poker_PLO_4(Poker_PLO_X):
     GAME_TYPE = "PLO"
     GAME_SUBTYPE = "PLO4"
+    GAME_DECK = 52
 
     PLAYER_CARDS_FREFLOP = 4
 
@@ -39,6 +39,7 @@ class Poker_PLO_4(Poker_PLO_X):
 class Poker_PLO_5(Poker_PLO_X):
     GAME_TYPE = "PLO"
     GAME_SUBTYPE = "PLO5"
+    GAME_DECK = 52
 
     PLAYER_CARDS_FREFLOP = 5
 
@@ -46,8 +47,10 @@ class Poker_PLO_5(Poker_PLO_X):
 class Poker_PLO_6(Poker_PLO_X):
     GAME_TYPE = "PLO"
     GAME_SUBTYPE = "PLO6"
+    GAME_DECK = 52
 
     PLAYER_CARDS_FREFLOP = 6
+
 
 PLO_subtype_factory = {}
 for factory in [Poker_PLO_4, Poker_PLO_5, Poker_PLO_6]:

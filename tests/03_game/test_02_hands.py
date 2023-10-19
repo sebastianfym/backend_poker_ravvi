@@ -83,12 +83,12 @@ def test_02_04_samples_TWO_PAIR():
 
     cards = ["2♠", "2♣", "3♦", "3♣"]
     hand = Hand(cards)
-    assert hand.type == (HandType.TWO_PAIR, 3, 2)
+    assert hand.type == (HandType.TWO_PAIRS, 3, 2)
     assert str(hand) == "3♣ 3♦ 2♠ 2♣"
 
     cards = ["2♠", "2♣", "3♦", "3♣", "A♥"]
     hand = Hand(cards)
-    assert hand.type == (HandType.TWO_PAIR, 3, 2, 14)
+    assert hand.type == (HandType.TWO_PAIRS, 3, 2, 14)
     assert str(hand) == "A♥ 3♣ 3♦ 2♠ 2♣"
 
 
