@@ -18,6 +18,8 @@ class GameCase(Poker_PLO_5):
 
     def __init__(self, game_id, *, users, deck, moves, **kwargs) -> None:
         super().__init__(None, game_id, [User(**user) for user in users])
+        for p in self.players:
+            p.user.connected = 1
         self._deck = [Card(x).code for x in deck]
         self._check_steps = list(enumerate(moves, 1))
 

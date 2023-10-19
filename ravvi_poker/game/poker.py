@@ -169,9 +169,7 @@ class PokerBase(ObjectLogger):
         )
         await self.broadcast(event)
        
-    async def broadcast_PLAYER_MOVE(self):
-        player = self.current_player
-        options, params = self.get_bet_options(player)
+    async def broadcast_PLAYER_MOVE(self, player, options, params):
         event = GAME_PLAYER_MOVE(
             user_id = player.user_id,
             options = [x.value for x in options], 
@@ -242,16 +240,20 @@ class PokerBase(ObjectLogger):
     async def player_move(self):
         player = self.current_player
         player.bet_type = None
-        await self.broadcast_PLAYER_MOVE()
-        try:
-            self.bet_event.clear()
-            self.log_info("wait (%ss) for player %s ...", self.bet_timeout, player.user_id)
-            await asyncio.wait_for(self.wait_for_player_bet(), self.bet_timeout)
-        except asyncio.exceptions.TimeoutError:
-            self.log_info("player timeout: %s", player.user_id)
+        options, params = self.get_bet_options(player)
+        if player.user.connected:
+            await self.broadcast_PLAYER_MOVE(player, options, params)
+            try:
+                self.bet_event.clear()
+                self.log_info("wait (%ss) for player %s ...", self.bet_timeout, player.user_id)
+                await asyncio.wait_for(self.wait_for_player_bet(), self.bet_timeout)
+            except asyncio.exceptions.TimeoutError:
+                self.log_info("player timeout: %s", player.user_id)
         if player.bet_type is None:
-            player.bet_type = Bet.FOLD
-            player.bet_delta = 0
+            if Bet.CHECK in options:
+                self.handle_bet(player.user_id, Bet.CHECK, None)
+            else:
+                self.handle_bet(player.user_id, Bet.FOLD, None)
         await self.broadcast_PLAYER_BET()
 
     async def wait_for_player_bet(self):

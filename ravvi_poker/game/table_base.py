@@ -255,12 +255,12 @@ class Table(ObjectLogger):
                 props=props
             )
 
-    def get_players(self, min_size) -> List[User]:
+    def get_players(self, min_size, *, exclude_offile=True) -> List[User]:
         players = []
         for i, user in enumerate(self.seats):
             if user is None:
                 continue
-            if not user.connected:
+            if not user.connected and exclude_offile:
                 continue
             players.append((i, user))
         if len(players)<min_size:

@@ -42,16 +42,17 @@ class Table_SNG(Table):
 
 
     async def run_table(self):
-        # wait for players
+        # wait for players take all seats available
         while not all(self.seats):
             await asyncio.sleep(1)
 
         # players
-        users = self.get_players(2)
+        users = self.get_players(2, exclude_offile=False)
         with DBI() as db:
             db.set_table_opened(self.table_id)
             for u in users:
                 db.table_user_register(self.table_id, u.id)
+
         self.started = datetime.utcnow().replace(microsecond=0)
         self.task2 = asyncio.create_task(self.run_levels())
 
@@ -66,14 +67,8 @@ class Table_SNG(Table):
 
             await self.remove_users(lambda u: u.balance<=0)
 
-            # refresh blinds level
-            now = datetime.utcnow().replace(microsecond=0)
-            current_level = int((now - self.started).total_seconds()/60/self.level_time)
-            self.level_current = min(current_level, len(self.levels)-1)
-            blind_small, blind_big, ante = self.levels[self.level_current]
-            
             # refresh users
-            users = self.get_players(2)
+            users = self.get_players(2, exclude_offile=False)
 
         with DBI() as db:
             self.closed = db.set_table_closed(self.table_id)
