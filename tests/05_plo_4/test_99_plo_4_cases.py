@@ -18,7 +18,7 @@ class GameCase(Poker_PLO_4):
 
     def __init__(self, game_id, *, users, deck, moves, **kwargs) -> None:
         super().__init__(None, game_id, [User(**user) for user in users])
-        self._deck = [Card.decode(x) for x in deck]
+        self._deck = [Card(x).code for x in deck]
         self._check_steps = list(enumerate(moves, 1))
 
     def setup_cards(self):
@@ -41,7 +41,7 @@ class GameCase(Poker_PLO_4):
         for k, ev in check_event.items():
             rv = event.get(k, None)
             if k=='cards' and ev:
-                ev = [Card.decode(x) for x in ev]
+                ev = [Card(x).code for x in ev]
             elif k=='options' and ev:
                 ev = [Bet.decode(x) for x in ev]
                 rv = [Bet.decode(x) for x in rv]

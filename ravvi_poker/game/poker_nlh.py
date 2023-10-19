@@ -1,7 +1,8 @@
 from typing import List, Tuple
 from itertools import combinations
 
-from .cards import Hand, CARDS_36
+from .cards import get_deck_36
+from .hands import HandType
 from .poker import PokerBase, Bet
 
 
@@ -23,24 +24,17 @@ class Poker_NLH_X(PokerBase):
         raise_max = p.balance
         return call_delta, raise_min, raise_max, p.balance
 
-    def get_best_hand(self, player_cards, game_cards):
-        results = []
-        for h in combinations(player_cards + game_cards, 5):
-            hand = Hand(h)
-            hand.rank = hand.get_rank()
-            results.append(hand)
-        results.sort(reverse=True, key=lambda x: x.rank)
-        return results[0]
-
 
 class Poker_NLH_REGULAR(Poker_NLH_X):
     GAME_TYPE = "NLH"
     GAME_SUBTYPE = "REGULAR"
+    GAME_DECK = 52
 
 
 class Poker_NLH_AOF(Poker_NLH_X):
     GAME_TYPE = "NLH"
     GAME_SUBTYPE = "AOF"
+    GAME_DECK = 52
 
     def get_bet_options(self, player) -> Tuple[List[Bet], dict]:
         _, _, raise_max, _ = self.get_bet_limits(player)
@@ -57,6 +51,7 @@ class Poker_NLH_AOF(Poker_NLH_X):
 class Poker_NLH_3M1(Poker_NLH_X):
     GAME_TYPE = "NLH"
     GAME_SUBTYPE = "3-1"
+    GAME_DECK = 52
 
     PLAYER_CARDS_FREFLOP = 3
 
@@ -64,19 +59,20 @@ class Poker_NLH_3M1(Poker_NLH_X):
 class Poker_NLH_6P(Poker_NLH_X):
     GAME_TYPE = "NLH"
     GAME_SUBTYPE = "6+"
+    GAME_DECK = 36
 
-    def setup_cards(self):
-        self.deck = CARDS_36()
-        return super().setup_cards()
+    GAME_HAND_RANK = [
+        HandType.HIGH_CARD, 
+        HandType.ONE_PAIR,
+        HandType.TWO_PAIRS,
+        HandType.THREE_OF_KIND,
+        HandType.STRAIGHT,
+        HandType.FULL_HOUSE,
+        HandType.FLUSH,
+        HandType.FOUR_OF_KIND,
+        HandType.STRAIGHT_FLUSH
+    ]
 
-    def get_best_hand(self, player_cards, game_cards):
-        results = []
-        for h in combinations(player_cards + game_cards, 5):
-            hand = Hand(h)
-            hand.rank = hand.get_rank(cards36=True)
-            results.append(hand)
-        results.sort(reverse=True, key=lambda x: x.rank)
-        return results[0]
 
 NLH_subtype_factory = {}
 for factory in [Poker_NLH_REGULAR, Poker_NLH_AOF, Poker_NLH_3M1, Poker_NLH_6P]:

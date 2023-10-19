@@ -3,6 +3,7 @@ import os
 import json
 import pytest
 from ravvi_poker.game.cards import Card
+from ravvi_poker.game.hands import HandType
 from ravvi_poker.game.event import Event
 from ravvi_poker.game.user import User
 from ravvi_poker.game.bet import Bet
@@ -18,7 +19,7 @@ class GameCase(Poker_NLH_REGULAR):
 
     def __init__(self, game_id, *, users, deck, moves, **kwargs) -> None:
         super().__init__(None, game_id, [User(**user) for user in users])
-        self._deck = [Card.decode(x) for x in deck]
+        self._deck = [Card(x).code for x in deck]
         self._check_steps = list(enumerate(moves, 1))
 
     def setup_cards(self):
@@ -40,14 +41,17 @@ class GameCase(Poker_NLH_REGULAR):
         check_event = Event(**check_event)
         for k, ev in check_event.items():
             rv = event.get(k, None)
-            if k=='cards' and ev:
-                ev = [Card.decode(x) for x in ev]
+            if k in ('cards','hand_cards') and ev and rv:
+                ev = [Card(x).code for x in ev]
             elif k=='options' and ev:
                 ev = [Bet.decode(x) for x in ev]
                 rv = [Bet.decode(x) for x in rv]
             elif k=='bet':
                 ev = Bet.decode(ev)
                 rv = Bet.decode(rv)
+            elif k=='hand_type' and ev:
+                ev = HandType.decode(ev)
+                rv = HandType.decode(rv)
             assert ev == rv, f"{step_msg} - {k}"
 
 

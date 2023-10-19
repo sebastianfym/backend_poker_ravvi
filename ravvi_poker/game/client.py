@@ -50,6 +50,8 @@ class Client(ObjectLogger):
             if event.user_id != self.user_id and not event.cards_open:
                 cards = [0 for _ in event.cards]
                 event.update(cards=cards)
+                event.pop('hand_type', None)
+                event.pop('hand_cards', None)
             del event['cards_open']
         elif event.type == Event.GAME_PLAYER_MOVE:
             if event.user_id != self.user_id:

@@ -6,8 +6,8 @@
     "deck": ["4♣", "4♥", "3♣", "J♥", 0, "T♠", "5♥", "A♣", "T♦", "7♦"],
     "moves": [
         {"type": "GAME_BEGIN", "game_type": "NLH", "game_subtype": "REGULAR"}, 
-        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["4♣", "3♣"]}, 
-        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["4♥", "J♥"]},
+        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["4♣", "3♣"], "hand_type": "HIGH_CARD", "hand_cards": ["4♣", "3♣"]}, 
+        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["4♥", "J♥"], "hand_type": "HIGH_CARD", "hand_cards": ["J♥", "4♥"]},
         {"type": "PLAYER_BET", "user_id": 111, "bet": "SMALL_BLIND", "delta": 1, "amount": 1, "balance": 59}, 
         {"type": "PLAYER_BET", "user_id": 222, "bet": "BIG_BLIND", "delta": 2, "amount": 2, "balance": 18},
 
@@ -34,6 +34,8 @@
         {"type": "GAME_ROUND", "banks": [{"delta": 12, "amount": 12}]}, 
 // FLOP
         {"type": "GAME_CARDS", "cards": ["T♠", "5♥", "A♣"]}, 
+        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["4♣", "3♣"], "hand_type": "HIGH_CARD", "hand_cards": ["A♣", "T♠", "5♥", "4♣", "3♣"]}, 
+        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["4♥", "J♥"], "hand_type": "HIGH_CARD", "hand_cards": ["A♣", "J♥", "T♠", "5♥", "4♥"]},
 // 1
         {"type": "GAME_PLAYER_MOVE", "user_id": 222, "options": ["FOLD", "CHECK", "RAISE", "ALLIN"], 
             "call": null, "raise_min": 2, "raise_max": 14}, 
@@ -67,8 +69,9 @@
 
         {"type": "GAME_ROUND", "banks": [{"delta": 20, "amount": 32}]}, 
 // TERN
-
         {"type": "GAME_CARDS", "cards": ["T♠", "5♥", "A♣", "T♦"]}, 
+        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["4♣", "3♣"], "hand_type": "ONE_PAIR", "hand_cards": ["A♣", "T♠", "T♦", "5♥", "4♣"]}, 
+        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["4♥", "J♥"], "hand_type": "ONE_PAIR", "hand_cards": ["A♣", "J♥", "T♠", "T♦", "5♥"]},
 
         {"type": "GAME_PLAYER_MOVE", "user_id": 222, "options": ["FOLD", "CHECK", "RAISE", "ALLIN"], 
             "call": null, "raise_min": 2, "raise_max": 4}, 
@@ -91,6 +94,8 @@
         {"type": "GAME_ROUND", "banks": [{"delta": 8, "amount": 40}, {"delta": 1, "amount": 1}]}, 
 // RIVER
         {"type": "GAME_CARDS", "cards": ["T♠", "5♥", "A♣", "T♦", "7♦"]}, 
+        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": true, "cards": ["4♣", "3♣"], "hand_type": "ONE_PAIR", "hand_cards": ["A♣", "T♠", "T♦", "7♦", "5♥"]}, 
+        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": ["4♥", "J♥"], "hand_type": "ONE_PAIR", "hand_cards": ["A♣", "J♥", "T♠", "T♦", "7♦"]},
         
         {"type": "GAME_ROUND", "banks": [{"delta": 0, "amount": 40}, {"delta": 0, "amount": 1}]}, 
 // SHOWDOWN
