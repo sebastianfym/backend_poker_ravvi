@@ -30,7 +30,7 @@ CREATE TABLE public.club_member (
 );
 
 CREATE SEQUENCE public.club_member_id_seq
-    START WITH 1
+    START WITH 1000
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
@@ -49,7 +49,7 @@ CREATE TABLE public.debug (
 );
 
 CREATE SEQUENCE public.debug_id_seq
-    START WITH 1
+    START WITH 1000
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
@@ -86,7 +86,7 @@ CREATE TABLE public.poker_event (
 );
 
 CREATE SEQUENCE public.poker_event_id_seq
-    START WITH 1
+    START WITH 1000
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
@@ -114,7 +114,9 @@ ALTER SEQUENCE public.poker_game_id_seq OWNED BY public.poker_game.id;
 
 CREATE TABLE public.poker_game_user (
     game_id bigint NOT NULL,
-    user_id bigint NOT NULL
+    user_id bigint NOT NULL,
+    balance_begin numeric(16,2),
+    balance_end numeric(16,2)
 );
 
 CREATE TABLE public.poker_table (
@@ -129,7 +131,8 @@ CREATE TABLE public.poker_table (
     game_settings jsonb,
     parent_id bigint,
     opened_ts timestamp without time zone,
-    closed_ts timestamp without time zone
+    closed_ts timestamp without time zone,
+    n_bots smallint DEFAULT 0 NOT NULL
 );
 
 CREATE SEQUENCE public.poker_table_id_seq
@@ -144,8 +147,7 @@ ALTER SEQUENCE public.poker_table_id_seq OWNED BY public.poker_table.id;
 CREATE TABLE public.poker_table_user (
     table_id bigint NOT NULL,
     user_id bigint NOT NULL,
-    exit_ts timestamp without time zone,
-    exit_game_id bigint
+    last_game_id bigint
 );
 
 CREATE TABLE public.temp_email (
@@ -158,7 +160,7 @@ CREATE TABLE public.temp_email (
 );
 
 CREATE SEQUENCE public.temp_email_id_seq
-    START WITH 1
+    START WITH 1000
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
@@ -175,7 +177,7 @@ CREATE TABLE public.user_device (
 );
 
 CREATE SEQUENCE public.user_device_id_seq
-    START WITH 1
+    START WITH 1000
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
@@ -193,7 +195,7 @@ CREATE TABLE public.user_login (
 );
 
 CREATE SEQUENCE public.user_login_id_seq
-    START WITH 1
+    START WITH 1000
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
@@ -231,7 +233,7 @@ CREATE TABLE public.user_session (
 );
 
 CREATE SEQUENCE public.user_session_id_seq
-    START WITH 1
+    START WITH 1000
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
