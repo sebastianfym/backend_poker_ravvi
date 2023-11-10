@@ -171,19 +171,12 @@ class Table(ObjectLogger):
                 user = u
                 user_seat_idx = i
 
-        if user_seat_idx is None:
-            # take a seat
-            if take_seat and seats_available and self.take_seat_enabled:
+        if user_seat_idx is None and take_seat:
+            # try to take a seat
+            if self.take_seat_enabled and seats_available:
                 user = self.get_user(client.user_id)
                 user_seat_idx = seats_available[0]
                 self.seats[user_seat_idx] = user
-
-        # user_seat_idx occupied by user
-        if user:
-            user.connected += 1
-            client.tables.add(self.table_id)
-            # in case of the first cleint connection
-            if user.connected == 1:
                 self.on_user_seat_taken(user, user_seat_idx)
                 # broadcast PLAYER_ENTER event
                 event = PLAYER_ENTER(
@@ -198,6 +191,11 @@ class Table(ObjectLogger):
                 )
                 await self.broadcast(event)
 
+        # user_seat_idx occupied by user
+        if user:
+            user.connected += 1
+            client.tables.add(self.table_id)
+            
         # send current table info to client (including above seat taken)
         await self.send_TABLE_INFO(client)
         
