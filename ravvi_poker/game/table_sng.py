@@ -6,7 +6,7 @@ from .table_base import Table
 
 class Table_SNG(Table):
 
-    def __init__(self, id, *, table_type, blind_level_time=3, **kwargs):
+    def __init__(self, id, *, table_type, blind_level_time=3, buyin_value=10000, **kwargs):
         assert table_type == "SNG"
         super().__init__(id, table_type=table_type, **kwargs)
         self.started = None
@@ -15,13 +15,14 @@ class Table_SNG(Table):
         self.level_current = 0
         self.level_reminder = None
         self.level_next = None
+        self.buyin_value = buyin_value
 
     @property
     def take_seat_enabled(self):
         return self.started is None
 
     def on_user_seat_taken(self, user, user_seat_idx):
-        user.balance = 10000
+        user.balance = self.buyin_value
 
     async def run_levels(self):
         while True:
