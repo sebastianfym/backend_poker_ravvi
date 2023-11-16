@@ -85,28 +85,3 @@ class WS_Client(ObjectLogger):
         finally:
             self.log_info("end")
 
-async def handle_new_connection(ws: WebSocket, access_token: str):
-    # get session uuid from access_token
-    session_uuid = jwt_get(access_token, "session_uuid")
-    if not session_uuid:
-        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
-    # get session info
-    async with DBI() as db:
-        async with db.txn():
-            session = await db.get_session_info(uuid=session_uuid)
-            if not session:
-                raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
-            row = await db.ws_client_create(session_id=session.session_id)
-    await ws.accept()
-    try:
-        client = WS_Client(ws, user_id=session.user_id, client_id=row.id)
-        await client.run()
-    except Exception as ex:
-        logger.exception("ws: %s", ex)
-
-    try:
-        async with DBI() as db:
-            async with db.txn():
-                await db.ws_client_close(row.id)
-    except:
-        pass

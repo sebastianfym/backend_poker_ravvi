@@ -1,3 +1,4 @@
+from typing import Set
 from dataclasses import dataclass, asdict
 
 @dataclass
@@ -7,3 +8,4 @@ class User:
     image_id: int|None = None
     balance: int = 0
     connected: int = 0
+    clients: Set[int]
