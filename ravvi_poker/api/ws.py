@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from contextlib import suppress
+from contextlib import suppress, asynccontextmanager
 from fastapi import APIRouter
 from fastapi import WebSocket, WebSocketDisconnect, WebSocketException, status
 from starlette.websockets import WebSocketState
@@ -84,3 +84,4 @@ async def websocket_endpoint(websocket: WebSocket, access_token: str = None):
         await client.run()
     except Exception as ex:
         logger.exception("ws: %s", ex)
+ 

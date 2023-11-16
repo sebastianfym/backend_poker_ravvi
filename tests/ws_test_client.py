@@ -6,6 +6,7 @@ import json
 from ravvi_poker.game.event import Event, CMD_PLAYER_BET, CMD_TABLE_JOIN
 
 API_URL = "localhost:5000"
+WS_URL = "localhost:5001"
 
 def register_guest():
     response = requests.post(f"http://{API_URL}/v1/auth/register", json={})
@@ -18,7 +19,7 @@ def register_guest():
 async def hello():
     access_token, username = register_guest()
     params = urlencode(dict(access_token=access_token))
-    uri = f"ws://{API_URL}/v1/ws?access_token={access_token}"
+    uri = f"ws://{WS_URL}/v1/ws?access_token={access_token}"
 
     async with websockets.connect(uri) as ws:
 
@@ -38,5 +39,4 @@ async def hello():
 
 
 if __name__ == "__main__":
-
     asyncio.run(hello())

@@ -38,7 +38,16 @@ class Event(dict):
                 return k
         return None
     
-    
+    @classmethod
+    def from_row(cls, row):
+        props = row.event_props
+        props['table_id'] = row.table_id
+        for k in ['game_id','user_id']:
+            v = getattr(row, k, None) 
+            if v:
+                props[k] = v
+        return Event(row.event_type, **props)
+        
     def __init__(self, type, **kwargs) -> None:
         super().__init__(type=type, **kwargs)
 
