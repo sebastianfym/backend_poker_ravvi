@@ -3,21 +3,18 @@ image: cr.yandex/crpa15giodgbluup12vl/ci_python:latest
 stages:
   - build
   - test
-  - docker
   - deploy
 
-variables:
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-  DOCKER_DRIVER: overlay2
-  DOCKER_TLS_CERTDIR: "/certs"
-  CONTAINER_REGISTRY_PATH: cr.yandex/crpa15giodgbluup12vl
-  IMAGE_NAME: poker_backend
-  IMAGE_PATH: ${CONTAINER_REGISTRY_PATH}/${IMAGE_NAME}
+#variables:
+#  DOCKER_DRIVER: overlay2
+#  DOCKER_TLS_CERTDIR: "/certs"
 
 build_py:
   stage: build
   rules:
   - if: $CI_COMMIT_BRANCH || $CI_COMMIT_TAG
+  variables:
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   cache:
     paths:
       - ${PIP_CACHE_DIR}
@@ -37,6 +34,8 @@ test_py:
   - if: $CI_COMMIT_BRANCH || $CI_COMMIT_TAG
   needs:
     - build_py
+  variables:
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   cache:
     paths:
       - ${PIP_CACHE_DIR}
@@ -72,24 +71,6 @@ test_py:
       coverage_report:
         coverage_format: cobertura
         path: tests/coverage.xml
-
-docker_build:
-  stage: docker
-  rules:
-    - if: $CI_COMMIT_BRANCH == "develop"
-  needs:
-    - build_py
-    - test_py
-  image: docker:23.0.3
-  services:
-    - name: docker:23.0.3-dind
-  script:
-    # build
-    - docker build -t ${IMAGE_PATH}:${CI_COMMIT_REF_SLUG} .
-    # push
-    - docker push ${IMAGE_PATH}:${CI_COMMIT_REF_SLUG}
-    # cleanup
-    - docker image rmi ${IMAGE_PATH}:${CI_COMMIT_REF_SLUG}
 
 deploy_develop:
   stage: deploy
