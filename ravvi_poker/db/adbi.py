@@ -98,9 +98,7 @@ class DBI:
             row = await cursor.fetchone()
             return row
 
-    async def save_event(
-        self, *, type, table_id, game_id=None, user_id=None, client_id=None, **kwargs
-    ):
+    async def save_event(self, *, type, table_id, game_id=None, user_id=None, client_id=None, **kwargs):
         props = json.dumps(kwargs) if kwargs else None
         async with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             await cursor.execute(
@@ -114,10 +112,30 @@ class DBI:
         async with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
             await cursor.execute("SELECT * FROM poker_table WHERE parent_id IS NULL and closed_ts IS NULL")
             rows = await cursor.fetchall()
-        return rows    
+        return rows
+    
+    # GAMES
+    async def game_begin(self, *, table_id, users, game_type, game_subtype, game_props):
+        game = None
+        async with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            await cursor.execute("INSERT INTO poker_game (table_id,game_type,game_subtype,begin_ts) VALUES (%s,%s,%s,now_utc()) RETURNING *",
+                           (table_id, game_type, game_subtype))
+            game = await cursor.fetchone()
+            params_seq = [(game.id, u.id, u.balance) for u in users]
+            await cursor.executemany("INSERT INTO poker_game_user (game_id, user_id, balance_begin) VALUES (%s, %s, %s)", params_seq)
+        return game
+
+    async def game_end(self, game_id, users):
+        async with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+            for u in users:
+                await cursor.execute("UPDATE poker_game_user SET balance_end=%s WHERE game_id=%s AND user_id=%s",
+                               (u.balance, game_id, u.id))
+            await cursor.execute("UPDATE poker_game SET end_ts=now_utc() WHERE id=%s RETURNING *",(game_id,))
+            return await cursor.fetchone()
+
 
 class DBI_Txn:
-    def __init__(self, dbi) -> None:
+    def __init__(self, dbi=None) -> None:
         self.dbi = dbi
 
     async def __aenter__(self):

@@ -43,7 +43,7 @@ class Engine_Manager(DBI_Listener):
             await self.handle_command_row(row)
 
     async def handle_command_row(self, row):
-        self.log_info("handle_event_row %s", row)
+        self.log_info("handle_command_row %s", row)
         event = Event.from_row(row)
         table = self.tables.get(row.table_id, None)
         if not table:

@@ -83,6 +83,9 @@ def TABLE_CLOSED(**kwargs):
 def PLAYER_ENTER(**kwargs):
     return Event(Event.PLAYER_ENTER, **kwargs)
 
+def PLAYER_SEAT(**kwargs):
+    return Event(Event.PLAYER_SEAT, **kwargs)
+
 def PLAYER_EXIT(**kwargs):
     return Event(Event.PLAYER_EXIT, **kwargs)
 
