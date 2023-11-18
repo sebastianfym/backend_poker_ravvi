@@ -1,11 +1,12 @@
 import logging
 import json
 import asyncio
+from typing import Mapping
 
 from .event import Event
-from ..db.adbi import DBI
+from .table import Table
+from ..db.adbi import DBI, Notify
 from ..db.listener import DBI_Listener
-from ..game.table_base import Table
 from ..game.table_ring import Table_RING
 from ..game.table_sng import Table_SNG
 
@@ -15,8 +16,11 @@ class Engine_Manager(DBI_Listener):
     logger = logging.getLogger(__name__)
 
     def __init__(self):
-        super().__init__(['poker_event_cmd'])
-        self.tables = None
+        super().__init__()
+        self.tables : Mapping[int, Table]= None
+        self.channels = dict(
+            poker_event_cmd = self.on_poker_event_cmd
+        )
 
     async def run(self):
         try:
@@ -32,22 +36,16 @@ class Engine_Manager(DBI_Listener):
         for r in rows:
             await self.handle_table_row(r)
 
-    async def on_notification(self, db, msg):
-        payload = json.loads(msg.payload)
-        event_id = payload.get('id', 0)
-        async with db.txn():
-            async with db.cursor() as cursor:
-                await cursor.execute('SELECT * FROM poker_event WHERE id=%s', (event_id,))
-                row = await cursor.fetchone()
-        if row:
-            await self.handle_command_row(row)
-
-    async def handle_command_row(self, db, row):
-        self.log_info("handle_command_row %s", row)
-        event = Event.from_row(row)
-        table = self.tables.get(row.table_id, None)
+    async def on_poker_event_cmd(self, db: DBI, *, id, type, table_id, client_id):
+        if not id or table_id:
+            return
+        table = self.tables.get(table_id, None)
         if not table:
             return
+        event_row = db.get_event(id)
+        if not event_row:
+            return
+        await table.handle_cmd(db, event_row)
 
     def table_kwargs_from_row(self, row):
         kwargs = row._asdict()

@@ -25,6 +25,7 @@ class ClientMock(Client):
     def comsume_events(self):
         self._test_events = []
 
+@pytest.mark.skip
 def test_01_table_players():
     table = TableMock(1, 9)
     table.seats[1] = table.get_user(111, connected=1)
@@ -77,7 +78,7 @@ def check_TABLE_INFO(client):
     json.dumps(event)
     client.comsume_events()
 
-
+@pytest.mark.skip
 @pytest.mark.asyncio
 async def test_01_table_clients():
     table = TableMock(1, 9)

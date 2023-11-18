@@ -32,7 +32,7 @@ def test_02_ws_valid_token():
 
     with ws_test:
         params = urlencode(dict(access_token=access_token))
-        with ws_test.websocket_connect(f"/v1/ws?{params}") as websocket:
+        with ws_test.websocket_connect(f"/v1/ws?{params}") as ws:
             pass
 
 if __name__=='__main__':

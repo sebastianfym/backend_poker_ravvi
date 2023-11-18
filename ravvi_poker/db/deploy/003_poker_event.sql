@@ -12,5 +12,5 @@ ALTER TABLE
 ADD
   CONSTRAINT "poker_event_client_id" 
   FOREIGN KEY ("client_id") 
-  REFERENCES "public"."user_ws_client" ("id") 
+  REFERENCES "public"."user_client" ("id") 
   ON UPDATE NO ACTION ON DELETE NO ACTION;

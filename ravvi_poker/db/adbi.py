@@ -4,6 +4,7 @@ import json
 import psycopg
 import psycopg_pool
 from psycopg.rows import namedtuple_row, dict_row
+from psycopg.connection import Notify
 
 logger = logging.getLogger(__name__)
 
@@ -80,19 +81,19 @@ class DBI:
             row = await cursor.fetchone()
             return row
 
-    async def ws_client_create(self, session_id):
-        async with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+    async def create_user_client(self, session_id):
+        async with self.cursor() as cursor:
             await cursor.execute(
-                "INSERT INTO user_ws_client (session_id) VALUES (%s) RETURNING id, created_ts",
+                "INSERT INTO user_client (session_id) VALUES (%s) RETURNING id, opened_ts",
                 (session_id,),
             )
             row = await cursor.fetchone()
             return row
 
-    async def ws_client_close(self, client_id):
-        async with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+    async def close_user_client(self, client_id):
+        async with self.cursor() as cursor:
             await cursor.execute(
-                "UPDATE user_ws_client SET closed_ts=now_utc() WHERE id=%s RETURNING closed_ts",
+                "UPDATE user_client SET closed_ts=now_utc() WHERE id=%s RETURNING closed_ts",
                 (client_id,),
             )
             row = await cursor.fetchone()
@@ -105,7 +106,7 @@ class DBI:
 
     async def save_event(self, *, type, table_id, game_id=None, user_id=None, client_id=None, **kwargs):
         props = json.dumps(kwargs) if kwargs else None
-        async with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+        async with self.cursor() as cursor:
             await cursor.execute(
                 "INSERT INTO poker_event (table_id, client_id, game_id, user_id, event_type, event_props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id, event_ts",
                 (table_id, client_id, game_id, user_id, type, props),
@@ -113,19 +114,21 @@ class DBI:
             row = await cursor.fetchone()
             return row
     
-    async def get_event(self, id):
-        pass
+    async def get_event(self, event_id):
+        async with self.cursor() as cursor:
+            await cursor.execute('SELECT * FROM poker_event WHERE id=%s', (event_id,))
+            return await cursor.fetchone()
 
     async def get_open_tables(self):
-        async with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+        async with self.cursor() as cursor:
             await cursor.execute("SELECT * FROM poker_table WHERE parent_id IS NULL and closed_ts IS NULL")
             rows = await cursor.fetchall()
         return rows
     
     # GAMES
-    async def game_create(self, *, table_id, users, game_type, game_subtype, game_props):
+    async def create_game(self, *, table_id, users, game_type, game_subtype, game_props):
         game = None
-        async with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+        async with self.cursor() as cursor:
             await cursor.execute("INSERT INTO poker_game (table_id,game_type,game_subtype,begin_ts) VALUES (%s,%s,%s,now_utc()) RETURNING *",
                            (table_id, game_type, game_subtype))
             game = await cursor.fetchone()
@@ -133,8 +136,8 @@ class DBI:
             await cursor.executemany("INSERT INTO poker_game_user (game_id, user_id, balance_begin) VALUES (%s, %s, %s)", params_seq)
         return game
 
-    async def game_close(self, game_id, users):
-        async with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+    async def close_game(self, game_id, users):
+        async with self.cursor() as cursor:
             for u in users:
                 await cursor.execute("UPDATE poker_game_user SET balance_end=%s WHERE game_id=%s AND user_id=%s",
                                (u.balance, game_id, u.id))

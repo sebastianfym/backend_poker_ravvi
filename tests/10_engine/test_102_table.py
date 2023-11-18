@@ -1,4 +1,5 @@
 import pytest
+import asyncio
 from ravvi_poker.engine.table import Table, User
 from ravvi_poker.engine.game import Game
 
@@ -133,7 +134,7 @@ async def test_102_2_user_lifecycle():
     # выходим со стола (выход запрещен)
     table._user_exit_enabled = False
     async with db:
-        await  table.handle_cmd_exit(db, user_id=USER_ID, client_id=None)
+        await  table.handle_cmd_exit(db, user_id=USER_ID)
     assert not db._events
 
     assert user and user.id == USER_ID
@@ -147,7 +148,7 @@ async def test_102_2_user_lifecycle():
     # выходим со стола (выход разрешен)
     table._user_exit_enabled = True
     async with db:
-        await  table.handle_cmd_exit(db, user_id=USER_ID, client_id=None)
+        await  table.handle_cmd_exit(db, user_id=USER_ID)
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
     assert db._event.type == PLAYER_EXIT_EVENT_TYPE
@@ -287,7 +288,7 @@ async def test_102_2_user_lifecycle():
 
     # выходим со стола
     async with db:
-        await  table.handle_cmd_exit(db, user_id=USER_ID, client_id=210)
+        await  table.handle_cmd_exit(db, user_id=USER_ID)
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
     assert db._event.type == 299
@@ -366,14 +367,13 @@ class X_DBI:
         pass
     
     async def emit_event(self, event):
-        logging.info("db_event: %s", event)
         X_DBI._events.append(event)
 
-    async def game_begin(self, *, table_id, users, game_type, game_subtype, game_props):
+    async def create_game(self, *, table_id, users, game_type, game_subtype, game_props):
         X_DBI._game_id += 1
         return X_DBI.GameRow(X_DBI._game_id)
 
-    async def game_close(self, game_id, users):
+    async def close_game(self, game_id, users):
         pass
 
     @property
@@ -437,4 +437,3 @@ if __name__=='__main__':
     import asyncio
     asyncio.run(test_102_2_user_lifecycle())
     asyncio.run(test_102_9_run_all_together())
-    #asyncio.run(test_102_3_user_move_seat())

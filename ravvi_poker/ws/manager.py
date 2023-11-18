@@ -15,29 +15,25 @@ class WS_Manager(DBI_Listener):
     logger = logging.getLogger(__name__)
 
     def __init__(self):
-        super().__init__(['poker_event_msg'])
+        super().__init__()
         self.clients = {}
         self.table_subscribers = {}
         self.last_event_id = None
-    
-    async def on_notification(self, db, msg):
-        payload = json.loads(msg.payload)
-        event_id = payload.get('id', 0)
-        async with db.txn():
-            async with db.cursor() as cursor:
-                await cursor.execute('SELECT * FROM poker_event WHERE id=%s', (event_id,))
-                row = await cursor.fetchone()
-        if row:
-            await self.handle_event_row(row)
+        self.channels = dict(
+            poker_event_msg = self.on_poker_event_msg
+        )
 
-    async def handle_event_row(self, row):
-        event = Event.from_row(row)
+    async def on_poker_event_msg(self, db: DBI, *, id, type, table_id, client_id):
+        if not id or table_id:
+            return
         counter = 0
-        if row.client_id:
+        if client_id:
             # send directly to specific client
-            client = self.clients.get(row.client_id, None)
+            client = self.clients.get(client_id, None)
             if not client:
                 return
+            event_row = db.get_event(id)
+            event = Event.from_row(event_row)
             client.put_event(event)
             counter += 1
             if event.type == Event.TABLE_INFO:
@@ -46,12 +42,15 @@ class WS_Manager(DBI_Listener):
         else:
             # send based on subscriptions
             subscribers = self.table_subscribers.get(event.table_id, {})
+            if subscribers:
+                event_row = db.get_event(id)
+                event = Event.from_row(event_row)
             for client in subscribers.values():
                 client.put_event(event)
                 counter += 1
         if counter:
-            self.log_info("handle_event_row %s: %s", counter, event)
-
+            self.log_info("on_poker_event_cmd %s: %s", counter, event)
+        
     def subscribe(self, client, table_id):
         subscribers = self.table_subscribers.get(table_id, None)
         if subscribers is None:
@@ -88,7 +87,7 @@ class WS_Manager(DBI_Listener):
                 session = await db.get_session_info(uuid=session_uuid)
                 if not session:
                     raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
-                row = await db.ws_client_create(session_id=session.session_id)
+                row = await db.create_user_client(session_id=session.session_id)
         await ws.accept()
         client = WS_Client(self, ws, user_id=session.user_id, client_id=row.id)
         self.clients[client.client_id] = client.client_id
@@ -105,6 +104,6 @@ class WS_Manager(DBI_Listener):
         try:
             async with DBI() as db:
                 async with db.txn():
-                    await db.ws_client_close(row.id)
+                    await db.close_user_client(row.id)
         except:
             pass

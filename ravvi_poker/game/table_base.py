@@ -42,7 +42,7 @@ class Table(ObjectLogger):
         else:
             username='u'+str(user_id)
             image_id = None
-        return User(id=user_id, username=username, image_id=image_id, balance=0, connected=connected)
+        return User(id=user_id, username=username, image_id=image_id, balance=0)
 
     async def start(self):
         self.task = asyncio.create_task(self.run_wrappwer())

@@ -85,6 +85,9 @@ class Table(ObjectLogger):
     async def on_user_leave(self, db, user):
         self.log_debug('on_user_leave(%s)', user.id if user else None)
 
+    async def on_game_ended(self, db):
+        self.log_debug('on_game_ended()')
+
     async def emit_event(self, db: DBI, event):
         event.update(table_id=self.table_id)
         self.log_debug('emit_event: %s', event)
@@ -119,78 +122,87 @@ class Table(ObjectLogger):
             game_info = self.game.get_info(users=users, client_user_id=user_id)
             result.update(game_info)
         return result
+    
+    async def handle_cmd(self, db, user_id, client_id, cmd_type, kwargs):
+        async with self.lock:
+            if cmd_type == Event.CMD_TABLE_JOIN:
+                take_seat = kwargs.get('take_seat', None)
+                await self.handle_cmd_join(db, user_id, client_id, take_seat)
+            elif cmd_type == Event.CMD_TAKE_SEAT:
+                seat_idx = kwargs.get('seat_idx', None)
+                await self.handle_cmd_take_seat(db, user_id, seat_idx)
+            elif cmd_type == Event.CMD_TABLE_LEAVE:
+                await self.handle_cmd_exit(db, user_id)
+            elif self.game:
+                await self.game.handle_cmd(db, user_id, cmd_type, kwargs)
 
     async def handle_cmd_join(self, db, user_id, client_id, take_seat):
-        async with self.lock:
-            # check seats allocation
-            user, seat_idx, seats_available = self.find_user(user_id)
-            if not user:
-                # init user object
-                user = await self.user_factory(db, user_id)
-            if not user.clients:
-                await self.on_user_join(db, user)
-            user.clients.add(client_id)
-            # try to take a seat
-            new_seat_idx, user_info = None, None
-            if (
-                seat_idx is None
-                and take_seat
-                and self.user_enter_enabled
-                and seats_available
-            ):
-                new_seat_idx = seats_available[0]
-                self.seats[new_seat_idx] = user
-                await self.on_player_enter(db, user, new_seat_idx)
-                user_info = user.get_info()
-            # info for events
-            table_info = self.get_table_info(user_id)
-        # emit events
-        if new_seat_idx is not None and user_info:
+        # check seats allocation
+        user, seat_idx, seats_available = self.find_user(user_id)
+        if not user:
+            # init user object
+            user = await self.user_factory(db, user_id)
+        if not user.clients:
+            await self.on_user_join(db, user)
+        user.clients.add(client_id)
+        # try to take a seat
+        new_seat_idx, user_info = None, None
+        if (
+            seat_idx is None
+            and take_seat
+            and self.user_enter_enabled
+            and seats_available
+        ):
+            new_seat_idx = seats_available[0]
+            self.seats[new_seat_idx] = user
+            await self.on_player_enter(db, user, new_seat_idx)
+            # broadcast
+            user_info = user.get_info()
             await self.broadcast_PLAYER_ENTER(db, user_info, new_seat_idx)
+        # response
+        table_info = self.get_table_info(user_id)
         await self.emit_TABLE_INFO(db, client_id, table_info)
 
     async def handle_cmd_take_seat(self, db, user_id: int, seat_idx: int):
-        async with self.lock:
-            # check seats allocation
-            user, old_seat_idx, seats_available = self.find_user(user_id)
-            if not user or not self.user_enter_enabled:
-                return False
-            if seat_idx not in seats_available:
+        # check seats allocation
+        user, old_seat_idx, seats_available = self.find_user(user_id)
+        if not user:
+            return False
+        if seat_idx not in seats_available:
+            return False
+        if old_seat_idx is None:
+            if not self.user_enter_enabled:
                 return False
             self.seats[seat_idx] = user
-            if old_seat_idx:
-                self.seats[old_seat_idx] = None
-            else:
-                await self.on_player_enter(db, user, seat_idx)                
+            await self.on_player_enter(db, user, seat_idx)
             user_info = user.get_info()
-        if old_seat_idx is None:
-            await self.broadcast_PLAYER_ENTER(db, user_info, seat_idx)
+            await self.broadcast_PLAYER_ENTER(db, user_info, seat_idx)         
         else:
+            self.seats[old_seat_idx] = None
+            self.seats[seat_idx] = user
             await self.broadcast_PLAYER_SEAT(db, user_id, seat_idx)
         return True
 
-    async def handle_cmd_exit(self, db, user_id: int, client_id = None):
+    async def handle_cmd_exit(self, db, user_id: int):
         if not self.user_exit_enabled:
             return False
-        async with self.lock:
-            # check seats allocation
-            user, seat_idx, _ = self.find_user(user_id)
-            if not user or seat_idx is None:
-                return
-            self.seats[seat_idx] = None
-            await self.on_player_exit(db, user, seat_idx)
+        # check seats allocation
+        user, seat_idx, _ = self.find_user(user_id)
+        if not user or seat_idx is None:
+            return
+        self.seats[seat_idx] = None
+        await self.on_player_exit(db, user, seat_idx)
         await self.broadcast_PLAYER_EXIT(db, user.id)
 
     async def handle_client_close(self, db, user_id, client_id):
-        async with self.lock:
-            # check seats allocation
-            user, seat_idx, _ = self.find_user(user_id)
-            if not user or client_id not in user.clients:
-                return
-            user.clients.remove(client_id)
-            if seat_idx is None and not user.connected:
-                await self.on_user_leave(db, user)
-                del self.users[user.id]
+        # check seats allocation
+        user, seat_idx, _ = self.find_user(user_id)
+        if not user or client_id not in user.clients:
+            return
+        user.clients.remove(client_id)
+        if seat_idx is None and not user.connected:
+            await self.on_user_leave(db, user)
+            del self.users[user.id]
 
     async def start(self):
         self.log_info('start')
@@ -251,21 +263,21 @@ class Table(ObjectLogger):
         self.dealer_idx = players[0][0]
         return [user for _, user in players]
 
-    async def game_create(self, users):
+    async def create_game(self, users):
         from .game import Game
         game: Game = await self.game_factory(users)
         async with self.DBI() as db:
-            row = await db.game_begin(table_id=self.table_id,
+            row = await db.create_game(table_id=self.table_id,
                 game_type=game.game_type, game_subtype=game.game_subtype, game_props=game.game_props,
                 users=users,
             )
             game.game_id = row.id
         return game
     
-    async def game_close(self, game):
+    async def close_game(self, game):
         users = [p.user for p in game.players]
         async with self.DBI() as db:
-            await db.game_close(game_id=self.game.game_id, users=users)
+            await db.close_game(game_id=self.game.game_id, users=users)
 
     async def users_cleanup(self, db):
         # remove users based on user_can_stay return
@@ -287,7 +299,7 @@ class Table(ObjectLogger):
             users = self.get_game_players()
             if not users:
                 return
-            self.game = await self.game_create(users)
+            self.game = await self.create_game(users)
 
         try:
             await self.game.run()
@@ -295,5 +307,5 @@ class Table(ObjectLogger):
             self.log_exception("%s", str(e))
 
         async with self.lock:
-            await self.game_close(self.game)
+            await self.close_game(self.game)
             self.game = None

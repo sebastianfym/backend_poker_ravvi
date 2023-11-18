@@ -7,7 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from ..db.adbi import DBI
 from ..api.utils import jwt_get
 from .manager import WS_Manager
-from .client import handle_new_connection
 
 logger = logging.getLogger(__name__)
 
