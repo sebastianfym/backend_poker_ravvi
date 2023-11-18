@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime
 from ..db import DBI
-from .event import Event, TABLE_CLOSED, TABLE_NEXT_LEVEL_INFO
+from ..engine.event import Event, TABLE_CLOSED, TABLE_NEXT_LEVEL_INFO
 from .table_base import Table
 
 class Table_SNG(Table):

@@ -3,7 +3,7 @@ import json
 import asyncio
 from fastapi import WebSocket, WebSocketDisconnect, WebSocketException, status
 
-from ..game.event import Event
+from ..engine.event import Event
 from ..db.adbi import DBI
 from ..db.listener import DBI_Listener
 from ..api.utils import jwt_get

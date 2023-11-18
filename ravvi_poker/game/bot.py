@@ -3,7 +3,7 @@ import asyncio
 import random
 from .client import Client
 from .bet import Bet
-from .event import Event, CMD_TABLE_JOIN
+from ..engine.event import Event, CMD_TABLE_JOIN
 
 
 class Bot(Client):

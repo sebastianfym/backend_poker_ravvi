@@ -1,5 +1,5 @@
 import pytest
-from ravvi_poker.game.cards import Card, get_deck_52, get_deck_36
+from ravvi_poker.engine.cards import Card, get_deck_52, get_deck_36
 
 
 def test_01_1_cards():

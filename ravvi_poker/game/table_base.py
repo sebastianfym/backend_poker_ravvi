@@ -5,7 +5,7 @@ import asyncio
 
 from ..logging import ObjectLogger
 from ..db import DBI
-from .event import Event, TABLE_INFO, TABLE_CLOSED, PLAYER_ENTER, PLAYER_EXIT
+from ..engine.event import Event, TABLE_INFO, TABLE_CLOSED, PLAYER_ENTER, PLAYER_EXIT
 from .client import Client
 from .poker_nlh import NLH_subtype_factory
 from .poker_plo import PLO_subtype_factory

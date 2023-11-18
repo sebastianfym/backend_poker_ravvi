@@ -1,7 +1,7 @@
 from itertools import combinations
 from enum import Enum, IntEnum, unique
 
-from .cards import Card
+from ..engine.cards import Card
 
 @unique
 class HandType(Enum):

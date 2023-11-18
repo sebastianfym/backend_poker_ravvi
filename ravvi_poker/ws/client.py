@@ -5,7 +5,7 @@ from fastapi import WebSocket, WebSocketDisconnect, WebSocketException, status
 from starlette.websockets import WebSocketState
 
 from ..logging import ObjectLogger
-from ..game.event import Event
+from ..engine.event import Event
 from ..db.adbi import DBI
 from ..api.utils import jwt_get
 

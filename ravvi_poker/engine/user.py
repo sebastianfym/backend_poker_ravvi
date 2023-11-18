@@ -1,14 +1,13 @@
 from typing import Set
-from dataclasses import dataclass, field
 
 
-@dataclass
 class User:
-    id: int
-    username: str
-    image_id: int | None = None
-    balance: int = 0
-    clients: Set[int] = field(default_factory=set)
+    def __init__(self, id, username, image_id=None) -> None:
+        self.id = id
+        self.username = username or f"u{id}"
+        self.image_id = None
+        self.balance = None
+        self.clients = set()
 
     @property
     def connected(self):

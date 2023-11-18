@@ -8,7 +8,7 @@ from starlette.websockets import WebSocketState
 from .utils import jwt_get
 from ..game.manager import Manager
 from ..game.client import Client
-from ..game.event import Event
+from ..engine.event import Event
 from ..db.dbi import DBI
 
 logger = logging.getLogger(__name__)

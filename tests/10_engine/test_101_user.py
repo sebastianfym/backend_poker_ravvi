@@ -5,7 +5,7 @@ def test_101_1_user():
     assert user.id == 777
     #assert user.username == 'test'
     #assert user.image_id is None
-    assert user.balance == 0
+    assert user.balance is None
     assert len(user.clients) == 0
     assert user.connected == False
 

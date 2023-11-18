@@ -2,7 +2,7 @@ import logging
 import json
 import asyncio
 
-from ..game.event import Event
+from .event import Event
 from ..db.adbi import DBI
 from ..db.listener import DBI_Listener
 from ..game.table_base import Table
@@ -42,24 +42,30 @@ class Engine_Manager(DBI_Listener):
         if row:
             await self.handle_command_row(row)
 
-    async def handle_command_row(self, row):
+    async def handle_command_row(self, db, row):
         self.log_info("handle_command_row %s", row)
         event = Event.from_row(row)
         table = self.tables.get(row.table_id, None)
         if not table:
             return
 
+    def table_kwargs_from_row(self, row):
+        kwargs = row._asdict()
+        props = kwargs.pop("game_settings", {}) or {}
+        kwargs.update(props)
+        return kwargs
+        
+    def table_factory(self, *, id, table_type, **kwargs):
+        if table_type=='RING_GAME':
+            return Table_RING(id=id, table_type=table_type, **kwargs)
+        if table_type=='SNG':
+            return Table_SNG(id=id, table_type=table_type, **kwargs)
+
     async def handle_table_row(self, table_row):
         self.log_info("handle_table_row: %s", table_row)
         try:
-            # prepare table kwargs
-            kwargs = table_row._asdict()
-            props = kwargs.pop("game_settings", {}) or {}
-            kwargs.update(props)
-            if table_row.table_type == "RING_GAME":
-                table = Table_RING(**kwargs)
-            elif table_row.table_type == "SNG":
-                table = Table_SNG(**kwargs)
+            kwargs = self.table_kwargs_from_row(table_row)
+            table = self.table_factory(**kwargs)
             self.tables[table.table_id] = table
             # run table task
             await table.start()

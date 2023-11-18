@@ -2,7 +2,7 @@ import logging
 from typing import Mapping
 from ..db import DBI
 from ..logging import Logger_MixIn
-from .event import Event, TABLE_ERROR
+from ..engine.event import Event, TABLE_ERROR
 from .table_base import Table
 from .table_ring import Table_RING
 from .table_sng import Table_SNG

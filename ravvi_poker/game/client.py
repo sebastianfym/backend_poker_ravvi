@@ -1,6 +1,6 @@
 import asyncio
 from ..logging import ObjectLogger
-from .event import Event
+from ..engine.event import Event
 
 
 
