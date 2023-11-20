@@ -1,9 +1,10 @@
 from typing import List, Mapping
 import asyncio
+import inspect
 
-from ..logging import ObjectLogger
-from ..db.adbi import DBI
-from .event import (
+from ...logging import ObjectLogger
+from ...db.adbi import DBI
+from ..event import (
     Event,
     TABLE_INFO,
     TABLE_CLOSED,
@@ -11,9 +12,7 @@ from .event import (
     PLAYER_SEAT,
     PLAYER_EXIT,
 )
-from ..game.poker_nlh import NLH_subtype_factory
-from ..game.poker_plo import PLO_subtype_factory
-from .user import User
+from ..user import User
 
 
 class Table(ObjectLogger):
@@ -23,10 +22,34 @@ class Table(ObjectLogger):
     NEW_GAME_DELAY = 3
     AFTER_GAME_DELAY = 3
 
-    def __init__(self, id, *, table_seats, club_id=None, **kwargs):
+    @classmethod
+    def kwargs_keys(cls):
+        keys = set()
+        if cls.__base__ != ObjectLogger:
+            keys.update(cls.__base__.kwargs_keys())
+        spec = inspect.getfullargspec(cls)
+        keys.update()
+        if spec.kwonlyargs:
+            keys.update(spec.kwonlyargs)
+        if spec.kwonlydefaults:
+            keys.update(spec.kwonlydefaults)
+        return keys
+
+    @classmethod
+    def split_kwargs(cls, **kwargs):
+        keys = cls.kwargs_keys()
+        needed, other = {}, {}
+        for k, v in kwargs.items():
+            target = needed if k in keys else other
+            target[k] = v
+        return needed, other
+
+
+    def __init__(self, id, parent_id=None, *, table_seats, club_id=None, game_type=None, game_subtype=None):
         super().__init__(logger_name=__name__)
         self.club_id = club_id
         self.table_id = id
+        self.parent_id = parent_id
         self.table_seats = table_seats
         self.seats: List[User] = [None] * table_seats
         self.dealer_idx = -1
@@ -34,6 +57,8 @@ class Table(ObjectLogger):
         self.task: asyncio.Task = None
         self.task_stop = False
         self.lock = asyncio.Lock()
+        self.game_type = game_type
+        self.game_subtype = game_subtype
         self.game = None
 
     def log_prefix(self):
@@ -52,7 +77,8 @@ class Table(ObjectLogger):
         raise NotImplementedError()
 
     async def user_factory(self, db, user_id):
-        raise NotImplementedError()
+        username='u'+str(user_id)
+        return User(id=user_id, username=username)
 
     async def game_factory(self, users):
         raise NotImplementedError()
@@ -71,14 +97,12 @@ class Table(ObjectLogger):
         return user, seat_idx, seats_available
 
     async def on_user_join(self, db ,user):
-        self.log_debug('on_user_join(%s)', user.id if user else None)
+        pass
 
     async def on_player_enter(self, db, user, seat_idx):
-        self.log_debug('on_player_enter(%s, %s)', user.id if user else None, seat_idx)
         user.balance = 1
 
     async def on_player_exit(self, db, user, seat_idx):
-        self.log_debug('on_player_exit(%s, %s)', user.id if user else None, seat_idx)
         # return table balance to user
         user.balance = 0
 
@@ -95,6 +119,11 @@ class Table(ObjectLogger):
 
     async def emit_TABLE_INFO(self, db, client_id, table_info):
         event = TABLE_INFO(client_id=client_id, **table_info)
+        await self.emit_event(db, event)
+
+    async def broadcast_TABLE_CLOSED(self, db):
+        redirect_id = self.parent_id or self.table_id
+        event = TABLE_CLOSED(table_redirect_id=redirect_id)
         await self.emit_event(db, event)
 
     async def broadcast_PLAYER_ENTER(self, db, user_info, seat_idx):
@@ -124,6 +153,7 @@ class Table(ObjectLogger):
         return result
     
     async def handle_cmd(self, db, user_id, client_id, cmd_type, kwargs):
+        self.log_info("handle_cmd: %s/%s %s %s", user_id, client_id, cmd_type, kwargs)
         async with self.lock:
             if cmd_type == Event.CMD_TABLE_JOIN:
                 take_seat = kwargs.get('take_seat', None)
@@ -233,10 +263,17 @@ class Table(ObjectLogger):
         finally:
             self.log_info("end")
 
+    async def sleep(self, delay: float):
+        await asyncio.sleep(delay)
+
     async def run_table(self):
         while not self.task_stop:
+            await self.sleep(self.NEW_GAME_DELAY)
             await self.run_game()
-            await asyncio.sleep(self.AFTER_GAME_DELAY)
+        
+        #async with self.DBI() as db:
+        #    await  db.close_table(self.table_id)
+        #    await self.broadcast_TABLE_CLOSED(db)
 
     def user_can_play(self, user):
         return isinstance(user.balance, (int, float)) and user.balance>0
@@ -264,8 +301,7 @@ class Table(ObjectLogger):
         return [user for _, user in players]
 
     async def create_game(self, users):
-        from .game import Game
-        game: Game = await self.game_factory(users)
+        game = await self.game_factory(users)
         async with self.DBI() as db:
             row = await db.create_game(table_id=self.table_id,
                 game_type=game.game_type, game_subtype=game.game_subtype, game_props=game.game_props,
@@ -279,7 +315,7 @@ class Table(ObjectLogger):
         async with self.DBI() as db:
             await db.close_game(game_id=self.game.game_id, users=users)
 
-    async def users_cleanup(self, db):
+    async def remove_users(self, db):
         # remove users based on user_can_stay return
         for seat_idx, user in enumerate(self.seats):
             if not user:

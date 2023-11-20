@@ -43,16 +43,22 @@ class DBI_Listener(Logger_MixIn):
         async with DBI() as db:
             async with db.txn():
                 for key in self.channels:
+                    self.log_debug("listen: %s", key)
                     await db.execute(f"LISTEN {key}")
                 await self.on_listen_begin(db)
+            self.log_info('process notifications ...')
             async for msg in db.dbi.notifies():
                 async with db.txn():
-                    await self.on_notification(db, msg)
+                    try:
+                        await self.on_notification(db, msg)
+                    except Exception as e:
+                        self.log_exception("%s", e)
 
     async def on_listen_begin(self, db):
         pass
 
     async def on_notification(self, db: DBI, msg: Notify):
+        self.log_info("on_notification: %s", msg)
         handler = self.channels.get(msg.channel)
         if not callable(handler):
             return

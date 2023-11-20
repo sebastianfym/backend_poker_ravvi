@@ -34,3 +34,4 @@ MANIFEST
 .coverage.*
 coverage.xml
 tests.xml
+tests/*.log

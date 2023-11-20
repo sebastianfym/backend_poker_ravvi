@@ -9,10 +9,16 @@ class TestManager(DBI_Listener):
     logger = logging.getLogger(__name__)
 
     def __init__(self) -> None:
-        super().__init__(['poker_event_msg'])
+        super().__init__()
+        self.channels = {
+            'poker_event_cmd': self.handler
+        }
 
-    async def on_notification(self, db, msg):
-        print(msg)
+#    async def on_notification(self, db, msg):
+#        print(msg)
+
+    async def handler(self, db, **kwargs):
+        print(kwargs)
 
 async def main_task():
     await DBI.pool_open()

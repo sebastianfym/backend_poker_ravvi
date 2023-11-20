@@ -12,7 +12,7 @@ from ..api.utils import jwt_get
 logger = logging.getLogger(__name__)
 
 class WS_Client(ObjectLogger):
-    def __init__(self, manager, ws, user_id, client_id, *, logger_name=None) -> None:
+    def __init__(self, manager, ws: WebSocket, user_id, client_id, *, logger_name=None) -> None:
         logger_name = logger_name or (__name__ + f".{client_id}")
         super().__init__(logger_name)
         self.manager = manager
@@ -60,6 +60,7 @@ class WS_Client(ObjectLogger):
     async def send_event(self, event: Event):
         if self.is_connected:
             await self.ws.send_json(event)
+            self.log_debug('send_event: %s', event)
 
     async def recv_commands(self):
         try:
@@ -67,9 +68,9 @@ class WS_Client(ObjectLogger):
                 command = await self.ws.receive_json()
                 await self.manager.handle_command(self, command)
         except asyncio.CancelledError:
-            self.log_debug("CancelledError")
+            self.log_debug("cancel")
         except WebSocketDisconnect:
-            self.log_debug("WebSocketDisconnect")
+            self.log_debug("disconnect")
         except Exception as ex:
             self.log_exception(" %s: %s", self.user_id, ex)
 
@@ -84,4 +85,3 @@ class WS_Client(ObjectLogger):
                 await t2
         finally:
             self.log_info("end")
-

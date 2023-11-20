@@ -99,12 +99,57 @@ class DBI:
             row = await cursor.fetchone()
             return row
 
+    # TABLES
+
+    async def create_table(self, club_id, **kwargs):
+        # split base and extra props
+        row = {}
+        columns = ["table_type", "table_name", "table_seats", "game_type", "game_subtype"]
+        for k in columns:
+            v = kwargs.pop(k, None)
+            row[k] = v
+        row.update(game_settings=json.dumps(kwargs))
+        async with self.cursor() as cursor:
+            fields = ", ".join(["club_id"] + list(row.keys()))
+            values = [club_id] + list(row.values())
+            values_pattern = ", ".join(["%s"] * len(values))
+            sql = f"INSERT INTO poker_table ({fields}) VALUES ({values_pattern}) RETURNING *"
+            await cursor.execute(sql, values)
+            row = await cursor.fetchone()
+            if row is not None:
+                props = row.pop("game_settings", {})
+                row.update(props)
+        return row
+    
+#    def set_table_opened(self, table_id):
+#        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+#            cursor.execute("UPDATE poker_table SET opened_ts=NOW() WHERE id=%s RETURNING opened_ts",(table_id,))
+#            row = cursor.fetchone()
+#            return row.opened_ts if row else None
+
+    async def close_table(self, table_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("UPDATE poker_table SET closed_ts=now_utc() WHERE id=%s RETURNING closed_ts",(table_id,))
+            row = await cursor.fetchone()
+            return row.closed_ts if row else None
+    
+    async def create_table_user(self, table_id, user_id):
+        async with self.cursor() as cursor:
+            sql = f"INSERT INTO poker_table_user (table_id, user_id) VALUES (%s,%s)"
+            await cursor.execute(sql, (table_id, user_id))
+
+#    def table_user_game(self, table_id, user_id, last_game_id):
+#        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
+#            sql = f"UPDATE poker_table_user SET last_game_id=%s WHERE table_id=%s AND user_id=%s"
+#            cursor.execute(sql, (last_game_id, table_id, user_id))
+
     # EVENTS
 
     async def emit_event(self, event):
         return await self.save_event(**event)
 
     async def save_event(self, *, type, table_id, game_id=None, user_id=None, client_id=None, **kwargs):
+        logger.debug("save_event: %s %s/%s %s/%s %s", type, table_id, game_id, user_id, client_id, kwargs)
         props = json.dumps(kwargs) if kwargs else None
         async with self.cursor() as cursor:
             await cursor.execute(

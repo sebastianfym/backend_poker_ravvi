@@ -24,7 +24,8 @@ class WS_Manager(DBI_Listener):
         )
 
     async def on_poker_event_msg(self, db: DBI, *, id, type, table_id, client_id):
-        if not id or table_id:
+        self.log_debug("on_poker_event_msg: %s %s %s %s", id, type, table_id, client_id)
+        if not id or not table_id:
             return
         counter = 0
         if client_id:
@@ -32,9 +33,9 @@ class WS_Manager(DBI_Listener):
             client = self.clients.get(client_id, None)
             if not client:
                 return
-            event_row = db.get_event(id)
+            event_row = await db.get_event(id)
             event = Event.from_row(event_row)
-            client.put_event(event)
+            await client.put_event(event)
             counter += 1
             if event.type == Event.TABLE_INFO:
                 self.unsubscribe(client, event.table_id)
@@ -43,10 +44,10 @@ class WS_Manager(DBI_Listener):
             # send based on subscriptions
             subscribers = self.table_subscribers.get(event.table_id, {})
             if subscribers:
-                event_row = db.get_event(id)
+                event_row = await db.get_event(id)
                 event = Event.from_row(event_row)
             for client in subscribers.values():
-                client.put_event(event)
+                await client.put_event(event)
                 counter += 1
         if counter:
             self.log_info("on_poker_event_cmd %s: %s", counter, event)
@@ -60,10 +61,12 @@ class WS_Manager(DBI_Listener):
         client.tables.add(table_id)
 
     def unsubscribe(self, client, table_id):
-        subscribers = self.table_subscribers.get(table_id, None)
-        if subscribers and client.cliend_id in subscribers:
-            del subscribers[client.cliend_id]
+        if table_id not in client.tables:
+            return
         client.tables.remove(table_id)
+        subscribers = self.table_subscribers.get(table_id, None)
+        if subscribers and client.client_id in subscribers:
+            del subscribers[client.client_id]
         # cleanup 
         if subscribers is not None and len(subscribers)==0:
             del self.table_subscribers[table_id]
@@ -73,8 +76,7 @@ class WS_Manager(DBI_Listener):
         table_id = cmd.pop('table_id', None)
         type = cmd.pop('type', None)
         async with DBI() as db:
-            async with db.txn():
-                await db.save_event(table_id=table_id, type=type, client_id=client.client_id, user_id=client.user_id, **cmd)
+            await db.save_event(table_id=table_id, type=type, client_id=client.client_id, user_id=client.user_id, **cmd)
 
     async def handle_connection(self, ws: WebSocket, access_token: str):
         # get session uuid from access_token
@@ -90,13 +92,13 @@ class WS_Manager(DBI_Listener):
                 row = await db.create_user_client(session_id=session.session_id)
         await ws.accept()
         client = WS_Client(self, ws, user_id=session.user_id, client_id=row.id)
-        self.clients[client.client_id] = client.client_id
+        self.clients[client.client_id] = client
         try:
             await client.run()
         except Exception as ex:
             self.log_exception("ws: %s", ex)
         finally:
-            for table_id in client.tables:
+            for table_id in list(client.tables):
                 self.unsubscribe(client, table_id)
             if client.client_id in self.clients:
                 del self.clients[client.client_id]

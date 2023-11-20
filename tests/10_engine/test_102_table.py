@@ -1,6 +1,7 @@
 import pytest
 import asyncio
-from ravvi_poker.engine.table import Table, User
+from ravvi_poker.engine.user import User
+from ravvi_poker.engine.table import Table
 from ravvi_poker.engine.game import Game
 
 # see X_DBI & X_Table at the end of file
@@ -420,11 +421,8 @@ class X_Table(Table):
         return self._user_exit_enabled
 
     async def user_factory(self, db, user_id):
-        user = self.users.get(user_id, None)
-        if not user:
-            username='u'+str(user_id)
-            user = User(id=user_id, username=username)
-            self.users[user_id] = user
+        username='u'+str(user_id)
+        user = User(id=user_id, username=username)
         return user
     
     async def game_factory(self, users):
