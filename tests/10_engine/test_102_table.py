@@ -6,14 +6,14 @@ from ravvi_poker.engine.game import Game
 
 # see X_DBI & X_Table at the end of file
 
-def test_102_1_table_info():
+def test_01_table_info():
     table = X_Table(1)
     info = table.get_table_info(777)
 
     assert info['table_id'] == 1
 
 @pytest.mark.asyncio
-async def test_102_2_user_lifecycle():
+async def test_02_user_lifecycle():
     TABLE_ID = 777
     USER_ID = 666
     TABLE_INFO_EVENT_TYPE = 101
@@ -327,8 +327,9 @@ async def test_102_2_user_lifecycle():
     assert seat_idx is None
     assert all(s is None for s in table.seats)
 
+#@pytest.mark.skip
 @pytest.mark.asyncio
-async def test_102_9_run_all_together():
+async def test_09_run_all_together():
     TABLE_ID = 777
     X_DBI._events_keep = True
     db = X_DBI()
@@ -346,6 +347,9 @@ async def test_102_9_run_all_together():
     await table.stop()
 
     db._print_events()
+
+import logging
+logger = logging.getLogger(__name__)
 
 from collections import namedtuple
 
@@ -421,8 +425,8 @@ class X_Table(Table):
         return self._user_exit_enabled
 
     async def user_factory(self, db, user_id):
-        username='u'+str(user_id)
-        user = User(id=user_id, username=username)
+        user = User(id=user_id, username='u'+str(user_id))
+        logger.info('user created: %s', user.__dict__)
         return user
     
     async def game_factory(self, users):
@@ -431,7 +435,7 @@ class X_Table(Table):
 
 if __name__=='__main__':
     import logging
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     import asyncio
-    asyncio.run(test_102_2_user_lifecycle())
-    asyncio.run(test_102_9_run_all_together())
+    asyncio.run(test_02_user_lifecycle())
+    asyncio.run(test_09_run_all_together())

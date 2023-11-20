@@ -77,8 +77,7 @@ class Table(ObjectLogger):
         raise NotImplementedError()
 
     async def user_factory(self, db, user_id):
-        username='u'+str(user_id)
-        return User(id=user_id, username=username)
+        return User(id=user_id, username='u'+str(user_id))
 
     async def game_factory(self, users):
         raise NotImplementedError()
@@ -172,6 +171,7 @@ class Table(ObjectLogger):
         if not user:
             # init user object
             user = await self.user_factory(db, user_id)
+            self.users[user_id] = user
         if not user.clients:
             await self.on_user_join(db, user)
         user.clients.add(client_id)
