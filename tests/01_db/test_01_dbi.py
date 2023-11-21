@@ -4,7 +4,7 @@ from ravvi_poker.db.adbi import DBI
 
 
 @pytest.mark.asyncio
-async def test_01_dbi_context():
+async def test_dbi_context():
     row1 = None
     row2 = None
     row3 = None
@@ -22,11 +22,30 @@ async def test_01_dbi_context():
         pass
 
     async with DBI() as db:
-        row = await db.get_device(row1.uuid)
+        row = await db.get_device(row1.id)
         assert not row
 
-        row = await db.get_device(row2.uuid)
+        row = await db.get_device(row2.id)
         assert row and row.id == row2.id
 
-        row = await db.get_device(row3.uuid)
+        row = await db.get_device(row3.id)
         assert not row
+
+
+@pytest.mark.asyncio
+async def test_dbi_use_id_or_uuid():
+    db = DBI()
+    with pytest.raises(ValueError):
+        key, value = db.use_id_or_uuid(None, None)
+
+    key, value = db.use_id_or_uuid(111, None)
+    assert key == "id"
+    assert value == 111
+
+    key, value = db.use_id_or_uuid(111, "UUID-111")
+    assert key == "id"
+    assert value == 111
+
+    key, value = db.use_id_or_uuid(None, "UUID-111")
+    assert key == "uuid"
+    assert value == "UUID-111"

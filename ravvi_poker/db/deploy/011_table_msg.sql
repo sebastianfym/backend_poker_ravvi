@@ -10,7 +10,7 @@ CREATE TABLE public.table_msg (
 	CONSTRAINT table_msg_pkey PRIMARY KEY (id),
 	CONSTRAINT table_msg_fk_cmd FOREIGN KEY (cmd_id) REFERENCES public.table_cmd(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
 	CONSTRAINT table_msg_fk_client FOREIGN KEY (client_id) REFERENCES public.user_client(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-	CONSTRAINT table_msg_fk_table FOREIGN KEY (table_id) REFERENCES public.table_profile(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+	CONSTRAINT table_msg_fk_table FOREIGN KEY (table_id) REFERENCES public.table_profile(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
 	CONSTRAINT table_msg_fk_game FOREIGN KEY (game_id) REFERENCES public.game_profile(id) ON DELETE RESTRICT ON UPDATE RESTRICT
 );
 -- CREATE INDEX table_msg_idx_client ON public.table_msg USING btree (client_id);

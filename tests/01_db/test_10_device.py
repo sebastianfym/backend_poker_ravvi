@@ -4,13 +4,19 @@ from ravvi_poker.db.adbi import DBI
 
 
 @pytest.mark.asyncio
-async def test_01_devices(devices):
-    assert len(devices) == 10
+async def test_device(device):
+    def check_row(row):
+        assert row
+        assert row.id == device.id
+        assert row.uuid == device.uuid
+        assert row.created_ts
+        assert row.closed_ts is None
+
     async with DBI() as db:
-        for d in devices:
-            row = await db.get_device(d.uuid)
-            assert row
-            assert d.id == row.id
-            assert d.uuid
-            assert d.created_ts
-            assert d.closed_ts is None
+        # by id
+        row = await db.get_device(device.id)
+        check_row(row)
+
+        # by uuid
+        row = await db.get_device(uuid=device.uuid)
+        check_row(row)

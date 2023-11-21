@@ -7,22 +7,21 @@ CREATE TABLE public.user_client (
 	CONSTRAINT user_client_fk_session FOREIGN KEY (session_id) REFERENCES public.user_session(id) ON DELETE RESTRICT ON UPDATE RESTRICT
 );
 
-CREATE OR REPLACE FUNCTION user_client_notify() RETURNS trigger 
+CREATE OR REPLACE FUNCTION user_client_closed_trg_proc() RETURNS TRIGGER 
 AS $$
 DECLARE
   payload VARCHAR;
   x VARCHAR;
 BEGIN
   SELECT json_build_object('client_id',NEW.id)::VARCHAR INTO payload;
-  --IF OLD.closed_ts IS NULL AND NEW.closed_ts IS NOT NULL THEN
   SELECT pg_notify('user_client_closed', payload) INTO x;
-  --END IF;
-  RETURN NULL;
+  RETURN NEW;
 END; $$
 LANGUAGE plpgsql;
 
 CREATE OR REPLACE 
-TRIGGER user_client_trigger
-AFTER UPDATE OF closed_ts ON "user_client" 
+TRIGGER user_client_closed_trg
+AFTER UPDATE OF closed_ts ON user_client 
 FOR EACH ROW
-EXECUTE FUNCTION user_client_notify();
+WHEN (OLD.closed_ts IS NULL AND NEW.closed_ts IS NOT NULL)
+EXECUTE PROCEDURE user_client_closed_trg_proc();

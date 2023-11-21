@@ -21,8 +21,8 @@ async def test_txn_context():
         pass
 
     async with DBI() as db:
-        row = await db.get_device(row1.uuid)
+        row = await db.get_device(row1.id)
         assert row and row.id == row1.id
 
-        row = await db.get_device(row2.uuid)
+        row = await db.get_device(row2.id)
         assert not row
