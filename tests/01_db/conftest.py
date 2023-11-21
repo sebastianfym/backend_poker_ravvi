@@ -3,6 +3,7 @@ import pytest
 import pytest_asyncio
 
 from ravvi_poker.db.adbi import DBI
+from helpers.services import Services
 
 
 @pytest_asyncio.fixture(autouse=True, scope="package")
@@ -30,6 +31,7 @@ async def users():
             row = await db.create_user()
             rows.append(row)
     yield rows
+
 
 @pytest_asyncio.fixture
 async def client():

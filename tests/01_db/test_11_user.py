@@ -2,6 +2,7 @@ import pytest
 
 from ravvi_poker.db.adbi import DBI
 
+
 @pytest.mark.asyncio
 async def test_01_users(users):
     assert len(users) == 10
@@ -11,4 +12,3 @@ async def test_01_users(users):
             assert row
             assert u.id == row.id
             assert u.created_ts
-

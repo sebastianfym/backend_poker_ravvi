@@ -32,13 +32,13 @@ class DBI:
     async def pool_open(cls):
         cls.pool = psycopg_pool.AsyncConnectionPool(conninfo=cls.conninfo(), open=False)
         await cls.pool.open()
-        logger.debug("DBI.pool: ready")
+        logger.debug("pool: ready")
 
     @classmethod
     async def pool_close(cls):
         await cls.pool.close()
         cls.pool = None
-        logger.debug("DBI.pool: closed")
+        logger.debug("pool: closed")
 
     def __init__(self) -> None:
         self.dbi = None
@@ -183,18 +183,18 @@ class DBI:
     async def create_table(self, *, club_id=None, table_type, table_name, table_seats, game_type, game_subtype, props=None):
         props = json.dumps(props or {})
         async with self.cursor() as cursor:
-            sql = "INSERT INTO \"table\" (club_id, table_type, table_name, table_seats, game_type, game_subtype, props) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING *"
+            sql = "INSERT INTO table_profile (club_id, table_type, table_name, table_seats, game_type, game_subtype, props) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING *"
             await cursor.execute(sql, (club_id, table_type, table_name, table_seats, game_type, game_subtype, props))
             return await cursor.fetchone()
     
     async def get_table(self, table_id):
         async with self.cursor() as cursor:
-            await cursor.execute("SELECT * FROM \"table\" WHERE id=%s", (table_id,))
+            await cursor.execute("SELECT * FROM table_profile WHERE id=%s", (table_id,))
             return await cursor.fetchone()       
 
     async def get_open_tables(self):
         async with self.cursor() as cursor:
-            await cursor.execute("SELECT * FROM \"table\" WHERE parent_id IS NULL and closed_ts IS NULL")
+            await cursor.execute("SELECT * FROM table_profile WHERE parent_id IS NULL and closed_ts IS NULL")
             rows = await cursor.fetchall()
         return rows
 
@@ -206,7 +206,7 @@ class DBI:
 
     async def close_table(self, table_id):
         async with self.cursor() as cursor:
-            await cursor.execute("UPDATE \"table\" SET closed_ts=now_utc() WHERE id=%s RETURNING *",(table_id,))
+            await cursor.execute("UPDATE table_profile SET closed_ts=now_utc() WHERE id=%s RETURNING *",(table_id,))
             return await cursor.fetchone()
         
     # EVENTS

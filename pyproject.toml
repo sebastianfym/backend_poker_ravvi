@@ -34,7 +34,7 @@ tests = [
     "pytest",
     "pytest-cov",
     "pytest-asyncio",
-    "pytest-dependency"
+    "pytest-dependency",
     "httpx"
 ]
 
@@ -55,3 +55,6 @@ namespaces = false
 
 [tool.setuptools.dynamic]
 version = {attr = "ravvi_poker.build.version"}
+
+[tool.black]
+line-length = 120

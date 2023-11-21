@@ -3,6 +3,7 @@ import pytest_asyncio
 
 from ravvi_poker.db.adbi import DBI
 
+
 @pytest_asyncio.fixture(scope="module")
 async def table():
     async with DBI() as db:
@@ -31,6 +32,7 @@ async def test_01_table(table):
         rows = await db.get_open_tables()
         assert rows
 
+
 @pytest.mark.dependency(depends=["test_01_table"])
 @pytest.mark.asyncio
 async def test_02_table_users(table, users):
@@ -42,6 +44,7 @@ async def test_02_table_users(table, users):
             assert row.table_id == table.id
             assert row.user_id == user.id
             assert row.last_game_id is None
+
 
 @pytest.mark.dependency(depends=["test_02_table_users"])
 @pytest.mark.asyncio

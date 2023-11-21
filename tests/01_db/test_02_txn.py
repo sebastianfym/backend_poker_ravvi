@@ -9,13 +9,13 @@ async def test_txn_context():
     row2 = None
     async with DBI() as db:
         async with DBI_Txn(db):
-            row1 = await db.create_device() 
+            row1 = await db.create_device()
     assert row1
 
     try:
         async with DBI() as db:
             async with DBI_Txn(db):
-                row2 = await db.create_device() 
+                row2 = await db.create_device()
                 raise ValueError()
     except ValueError:
         pass
@@ -26,4 +26,3 @@ async def test_txn_context():
 
         row = await db.get_device(row2.uuid)
         assert not row
-
