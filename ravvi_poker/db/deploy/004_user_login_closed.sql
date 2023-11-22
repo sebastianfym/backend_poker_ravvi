@@ -1,5 +1,4 @@
 CREATE INDEX user_login_idx_closed ON public.user_login (user_id, closed_ts);
-CREATE INDEX user_session_idx_closed ON public.user_session (login_id, closed_ts);
 
 CREATE OR REPLACE FUNCTION user_login_closed_trg_proc() RETURNS TRIGGER 
 AS $$

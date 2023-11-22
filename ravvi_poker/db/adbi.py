@@ -264,44 +264,66 @@ class DBI:
             row = await cursor.fetchone()
         return row
         
-    # EVENTS
-
-    async def emit_event(self, event):
-        return await self.save_event(**event)
-
-    async def save_event(self, *, type, table_id, game_id=None, user_id=None, client_id=None, **kwargs):
-        logger.debug("save_event: %s %s/%s %s/%s %s", type, table_id, game_id, user_id, client_id, kwargs)
-        props = json.dumps(kwargs) if kwargs else None
-        async with self.cursor() as cursor:
-            await cursor.execute(
-                "INSERT INTO \"event\" (table_id, client_id, game_id, type, props) VALUES (%s, %s, %s, %s, %s) RETURNING id, created_ts",
-                (table_id, client_id, game_id, user_id, type, props),
-            )
-            return await cursor.fetchone()
-    
-    async def get_event(self, event_id):
-        async with self.cursor() as cursor:
-            await cursor.execute('SELECT * FROM \"event\" WHERE id=%s', (event_id,))
-            return await cursor.fetchone()
-    
     # GAMES
     
-    async def create_game(self, *, table_id, users, game_type, game_subtype, game_props):
-        game = None
+    async def create_game(self, *, table_id: int, game_type, game_subtype, props, players):
+        props = json.dumps(props or {})
         async with self.cursor() as cursor:
-            await cursor.execute("INSERT INTO poker_game (table_id,game_type,game_subtype,begin_ts) VALUES (%s,%s,%s,now_utc()) RETURNING *",
-                           (table_id, game_type, game_subtype))
+            await cursor.execute("INSERT INTO game_profile (table_id,game_type,game_subtype,props) VALUES (%s,%s,%s,%s) RETURNING *",
+                           (table_id, game_type, game_subtype, props))
             game = await cursor.fetchone()
-            params_seq = [(game.id, u.id, u.balance) for u in users]
-            await cursor.executemany("INSERT INTO poker_game_user (game_id, user_id, balance_begin) VALUES (%s, %s, %s)", params_seq)
+            if players:
+                params_seq = [(game.id, u.user_id, u.balance) for u in players]
+                await cursor.executemany("INSERT INTO game_player (game_id, user_id, balance_begin) VALUES (%s, %s, %s)", params_seq)
         return game
-
-    async def close_game(self, game_id, users):
+    
+    async def get_game_and_players(self, id: int):
         async with self.cursor() as cursor:
-            for u in users:
-                await cursor.execute("UPDATE poker_game_user SET balance_end=%s WHERE game_id=%s AND user_id=%s",
-                               (u.balance, game_id, u.id))
-            await cursor.execute("UPDATE poker_game SET end_ts=now_utc() WHERE id=%s RETURNING *",(game_id,))
+            await cursor.execute("SELECT * FROM game_profile WHERE id=%s", (id,))
+            game = await cursor.fetchone()
+            await cursor.execute("SELECT * FROM game_player WHERE game_id=%s", (id,))
+            players = await cursor.fetchall()
+        return game, players
+
+    async def close_game(self, id: int, players):
+        async with self.cursor() as cursor:
+            for u in players:
+                await cursor.execute("UPDATE game_player SET balance_end=%s WHERE game_id=%s AND user_id=%s",
+                               (u.balance, id, u.user_id))
+            await cursor.execute("UPDATE game_profile SET end_ts=now_utc() WHERE id=%s RETURNING *",(id,))
             return await cursor.fetchone()
 
+    # EVENTS (TABLE_CMD)
 
+    async def create_table_cmd(self, *, client_id, table_id, cmd_type, props):
+        props = json.dumps(props or {})
+        async with self.cursor() as cursor:
+            await cursor.execute(
+                "INSERT INTO table_cmd (client_id, table_id, cmd_type, props) VALUES (%s,%s,%s,%s) RETURNING id, created_ts",
+                (client_id, table_id, cmd_type, props),
+            )
+            return await cursor.fetchone()
+
+    async def get_table_cmd(self, id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM table_cmd WHERE id=%s", (id,))
+            row = await cursor.fetchone()
+        return row
+
+    # EVENTS (TABLE_MSG)
+
+    async def create_table_msg(self, *, table_id, game_id, msg_type, props, cmd_id=None, client_id=None):
+        props = json.dumps(props or {})
+        async with self.cursor() as cursor:
+            await cursor.execute(
+                "INSERT INTO table_msg (table_id, game_id, msg_type, props, cmd_id, client_id) VALUES (%s,%s,%s,%s,%s,%s) RETURNING id, created_ts",
+                (table_id, game_id, msg_type, props, cmd_id, client_id),
+            )
+            return await cursor.fetchone()
+
+    async def get_table_msg(self, id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM table_msg WHERE id=%s", (id,))
+            row = await cursor.fetchone()
+        return row
+    

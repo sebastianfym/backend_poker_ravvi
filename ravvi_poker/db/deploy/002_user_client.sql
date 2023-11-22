@@ -7,6 +7,8 @@ CREATE TABLE public.user_client (
 	CONSTRAINT user_client_fk_session FOREIGN KEY (session_id) REFERENCES public.user_session(id) ON DELETE RESTRICT ON UPDATE RESTRICT
 );
 
+CREATE INDEX user_client_idx_closed ON public.user_client (session_id, closed_ts);
+
 CREATE OR REPLACE FUNCTION user_client_closed_trg_proc() RETURNS TRIGGER 
 AS $$
 DECLARE

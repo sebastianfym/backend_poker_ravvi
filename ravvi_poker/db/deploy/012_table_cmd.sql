@@ -13,20 +13,20 @@ CREATE TABLE public.table_cmd (
 -- CREATE INDEX table_cmd_idx_client ON public.table_cmd USING btree (client_id);
 -- CREATE INDEX table_cmd_idx_table ON public.table_cmd USING btree (table_id);
 
-CREATE OR REPLACE FUNCTION table_cmd_notify() RETURNS trigger 
+CREATE OR REPLACE FUNCTION table_cmd_created_trg_func() RETURNS trigger 
 AS $$
 DECLARE
   payload VARCHAR;
   x VARCHAR;
 BEGIN
-  SELECT json_build_object('table_id',NEW.table_id,'cmd_id', NEW.id)::VARCHAR INTO payload;
+  SELECT json_build_object('cmd_id', NEW.id, 'table_id',NEW.table_id)::VARCHAR INTO payload;
   SELECT pg_notify('table_cmd', payload) INTO x;
-  RETURN NULL;
+  RETURN NEW;
 END; $$
 LANGUAGE plpgsql;
 
 CREATE OR REPLACE 
-TRIGGER table_cmd_trigger
+TRIGGER table_cmd_created_trg
 AFTER INSERT ON table_cmd
 FOR EACH ROW
-EXECUTE FUNCTION table_cmd_notify();
+EXECUTE FUNCTION table_cmd_created_trg_func();

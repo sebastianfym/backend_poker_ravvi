@@ -6,7 +6,7 @@ cover_pylib = False
 
 [report]
 show_missing = True
-skip_covered = True
+skip_covered = False
 sort = Cover
 # Regexes for lines to exclude from consideration
 exclude_lines =

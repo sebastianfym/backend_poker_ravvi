@@ -1,3 +1,4 @@
+import asyncio
 import pytest
 
 from ravvi_poker.db.adbi import DBI
@@ -43,3 +44,30 @@ async def test_session_info(session):
 
         row = await db.get_session_info(uuid=session.uuid)
         check_row(row)
+
+@pytest.mark.dependency(depends=["test_session"])
+@pytest.mark.asyncio
+async def test_session_close(session):
+    async with DBI() as db:
+        x_session = await db.create_session(session.login_id)
+        assert not x_session.closed_ts
+
+    async with DBI() as db:
+        await db.close_session(session.id)
+    await asyncio.sleep(1)
+
+    async with DBI() as db:
+        session = await db.get_session(session.id)
+        assert session.closed_ts
+        x_session = await db.get_session(x_session.id)
+        assert not x_session.closed_ts
+
+    async with DBI() as db:
+        await db.close_login(session.login_id)
+
+    async with DBI() as db:
+        session = await db.get_session(session.id)
+        assert session.closed_ts
+        x_session = await db.get_session(x_session.id)
+        assert session.closed_ts
+        assert session.closed_ts < x_session.closed_ts

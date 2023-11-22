@@ -4,16 +4,6 @@ import pytest_asyncio
 from ravvi_poker.db.adbi import DBI
 
 
-@pytest_asyncio.fixture(scope="module")
-async def table():
-    async with DBI() as db:
-        row = await db.create_table(
-            table_type="REGULAR", table_seats=9, table_name="PUBLIC", game_type="NLH", game_subtype="DEFAULT"
-        )
-        assert row
-        return row
-
-
 @pytest.mark.dependency()
 @pytest.mark.asyncio
 async def test_table(table):

@@ -65,3 +65,12 @@ async def client(session):
         row = await db.create_client(session.id)
         assert row
     yield row
+
+@pytest_asyncio.fixture()
+async def table():
+    async with DBI() as db:
+        row = await db.create_table(
+            table_type="REGULAR", table_seats=9, table_name="PUBLIC", game_type="NLH", game_subtype="DEFAULT"
+        )
+        assert row
+    yield row

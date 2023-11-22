@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<diagram version="1" name="user.erd">
+	<entities>
+		<data-source id="postgres-jdbc-18bf6c6930d-43a7cac09d5f48f0">
+			<entity id="1" name="user_device" fq-name="public.user_device" order="0" font="Segoe UI:9:0" x="514" y="40">
+				<path name="public"/>
+				<path name="develop"/>
+			</entity>
+			<entity id="2" name="user_login" fq-name="public.user_login" order="1" font="Segoe UI:9:0" x="277" y="147">
+				<path name="public"/>
+				<path name="develop"/>
+			</entity>
+			<entity id="3" name="user_profile" fq-name="public.user_profile" order="2" font="Segoe UI:9:0" x="514" y="244">
+				<path name="public"/>
+				<path name="develop"/>
+			</entity>
+			<entity id="4" name="user_session" fq-name="public.user_session" order="3" font="Segoe UI:9:0" x="40" y="147">
+				<path name="public"/>
+				<path name="develop"/>
+			</entity>
+		</data-source>
+	</entities>
+	<relations>
+		<relation name="login_fk_device" fq-name="public.user_login.login_fk_device" type="fk" pk-ref="1" fk-ref="2"/>
+		<relation name="user_session_login_id_fkey" fq-name="public.user_session.user_session_login_id_fkey" type="fk" pk-ref="2" fk-ref="4"/>
+		<relation name="login_fk_user" fq-name="public.user_login.login_fk_user" type="fk" pk-ref="3" fk-ref="2"/>
+	</relations>
+</diagram>
