@@ -4,15 +4,8 @@ import inspect
 
 from ...logging import ObjectLogger
 from ...db.adbi import DBI
-from ..event import (
-    Event,
-    TABLE_INFO,
-    TABLE_CLOSED,
-    PLAYER_ENTER,
-    PLAYER_SEAT,
-    PLAYER_EXIT,
-)
 from ..user import User
+from ..events import Command, Message
 
 
 class Table(ObjectLogger):
@@ -20,7 +13,6 @@ class Table(ObjectLogger):
     TABLE_TYPE = None
 
     NEW_GAME_DELAY = 3
-    AFTER_GAME_DELAY = 3
 
     @classmethod
     def kwargs_keys(cls):
@@ -99,11 +91,12 @@ class Table(ObjectLogger):
         pass
 
     async def on_player_enter(self, db, user, seat_idx):
+        # TODO buyin
         user.balance = 1
 
     async def on_player_exit(self, db, user, seat_idx):
-        # return table balance to user
-        user.balance = 0
+        # TODO return table balance to user
+        user.balance = None
 
     async def on_user_leave(self, db, user):
         self.log_debug('on_user_leave(%s)', user.id if user else None)
@@ -111,61 +104,61 @@ class Table(ObjectLogger):
     async def on_game_ended(self, db):
         self.log_debug('on_game_ended()')
 
-    async def emit_event(self, db: DBI, event):
-        event.update(table_id=self.table_id)
-        self.log_debug('emit_event: %s', event)
-        await db.emit_event(event)
+    async def emit_msg(self, db: DBI, msg: Message):
+        msg.update(table_id=self.table_id)
+        self.log_debug('emit_msg: %s', msg)
+        await db.create_table_msg(**msg)
 
     async def emit_TABLE_INFO(self, db, client_id, table_info):
-        event = TABLE_INFO(client_id=client_id, **table_info)
-        await self.emit_event(db, event)
+        msg = Message(msg_type=Message.Type.TABLE_INFO, client_id=client_id, **table_info)
+        await self.emit_msg(db, msg)
 
     async def broadcast_TABLE_CLOSED(self, db):
         redirect_id = self.parent_id or self.table_id
-        event = TABLE_CLOSED(table_redirect_id=redirect_id)
-        await self.emit_event(db, event)
+        msg = Message(msg_type=Message.Type.TABLE_CLOSED, table_redirect_id=redirect_id)
+        await self.emit_msg(db, msg)
 
     async def broadcast_PLAYER_ENTER(self, db, user_info, seat_idx):
-        event = PLAYER_ENTER(seat_id=seat_idx, user=user_info)
-        await self.emit_event(db, event)
+        msg = Message(msg_type=Message.Type.PLAYER_ENTER, seat_id=seat_idx, user=user_info)
+        await self.emit_msg(db, msg)
 
     async def broadcast_PLAYER_SEAT(self, db, user_id, seat_idx):
-        event = PLAYER_SEAT(user_id=user_id, seat_id=seat_idx)
-        await self.emit_event(db, event)
+        msg = Message(msg_type=Message.Type.PLAYER_SEAT, user_id=user_id, seat_id=seat_idx)
+        await self.emit_msg(db, msg)
 
     async def broadcast_PLAYER_EXIT(self, db, user_id):
-        event = PLAYER_EXIT(user_id=user_id)
-        await self.emit_event(db, event)
+        msg = Message(msg_type=Message.Type.PLAYER_EXIT, user_id=user_id)
+        await self.emit_msg(db, msg)
 
     def get_table_info(self, user_id):
-        users = {u.id: u.get_info() for u in self.seats if u is not None}
+        users_info = {u.id: u.get_info() for u in self.seats if u is not None}
         result = dict(
             table_id=self.table_id,
             table_redirect_id=self.table_id,
             table_type=self.table_type,
             seats=[None if u is None else u.id for u in self.seats],
-            users=users,
+            users=users_info,
         )
         if self.game:
-            game_info = self.game.get_info(users=users, client_user_id=user_id)
+            game_info = self.game.get_info(user_id=user_id, users_info=users_info)
             result.update(game_info)
         return result
     
-    async def handle_cmd(self, db, user_id, client_id, cmd_type, kwargs):
-        self.log_info("handle_cmd: %s/%s %s %s", user_id, client_id, cmd_type, kwargs)
+    async def handle_cmd(self, db, user_id, client_id, cmd_type: Command.Type, props: dict):
+        self.log_info("handle_cmd: %s/%s %s %s", user_id, client_id, cmd_type, props)
         async with self.lock:
-            if cmd_type == Event.CMD_TABLE_JOIN:
-                take_seat = kwargs.get('take_seat', None)
-                await self.handle_cmd_join(db, user_id, client_id, take_seat)
-            elif cmd_type == Event.CMD_TAKE_SEAT:
-                seat_idx = kwargs.get('seat_idx', None)
-                await self.handle_cmd_take_seat(db, user_id, seat_idx)
-            elif cmd_type == Event.CMD_TABLE_LEAVE:
-                await self.handle_cmd_exit(db, user_id)
+            if cmd_type == Command.Type.JOIN:
+                take_seat = props.get('take_seat', None)
+                await self.handle_cmd_join(db, user_id=user_id, client_id=client_id, take_seat=take_seat)
+            elif cmd_type == Command.Type.TAKE_SEAT:
+                seat_idx = props.get('seat_idx', None)
+                await self.handle_cmd_take_seat(db, user_id=user_id, seat_idx=seat_idx)
+            elif cmd_type == Command.Type.EXIT:
+                await self.handle_cmd_exit(db, user_id=user_id)
             elif self.game:
-                await self.game.handle_cmd(db, user_id, cmd_type, kwargs)
+                await self.game.handle_cmd(db, user_id=user_id, cmd_type=cmd_type, props=props)
 
-    async def handle_cmd_join(self, db, user_id, client_id, take_seat):
+    async def handle_cmd_join(self, db, *, user_id, client_id, take_seat):
         # check seats allocation
         user, seat_idx, seats_available = self.find_user(user_id)
         if not user:
@@ -193,7 +186,7 @@ class Table(ObjectLogger):
         table_info = self.get_table_info(user_id)
         await self.emit_TABLE_INFO(db, client_id, table_info)
 
-    async def handle_cmd_take_seat(self, db, user_id: int, seat_idx: int):
+    async def handle_cmd_take_seat(self, db, *, user_id: int, seat_idx: int):
         # check seats allocation
         user, old_seat_idx, seats_available = self.find_user(user_id)
         if not user:
@@ -213,7 +206,7 @@ class Table(ObjectLogger):
             await self.broadcast_PLAYER_SEAT(db, user_id, seat_idx)
         return True
 
-    async def handle_cmd_exit(self, db, user_id: int):
+    async def handle_cmd_exit(self, db, *, user_id: int):
         if not self.user_exit_enabled:
             return False
         # check seats allocation
@@ -224,7 +217,7 @@ class Table(ObjectLogger):
         await self.on_player_exit(db, user, seat_idx)
         await self.broadcast_PLAYER_EXIT(db, user.id)
 
-    async def handle_client_close(self, db, user_id, client_id):
+    async def handle_client_close(self, db, *, user_id, client_id):
         # check seats allocation
         user, seat_idx, _ = self.find_user(user_id)
         if not user or client_id not in user.clients:
@@ -270,7 +263,10 @@ class Table(ObjectLogger):
         while not self.task_stop:
             await self.sleep(self.NEW_GAME_DELAY)
             await self.run_game()
-        
+            async with self.lock:
+                async with self.DBI() as db:
+                    await self.remove_users(db)
+
         #async with self.DBI() as db:
         #    await  db.close_table(self.table_id)
         #    await self.broadcast_TABLE_CLOSED(db)
@@ -304,8 +300,8 @@ class Table(ObjectLogger):
         game = await self.game_factory(users)
         async with self.DBI() as db:
             row = await db.create_game(table_id=self.table_id,
-                game_type=game.game_type, game_subtype=game.game_subtype, game_props=game.game_props,
-                users=users,
+                game_type=game.game_type, game_subtype=game.game_subtype, props=game.game_props,
+                players=users,
             )
             game.game_id = row.id
         return game
@@ -313,7 +309,7 @@ class Table(ObjectLogger):
     async def close_game(self, game):
         users = [p.user for p in game.players]
         async with self.DBI() as db:
-            await db.close_game(game_id=self.game.game_id, users=users)
+            await db.close_game(self.game.game_id, players=users)
 
     async def remove_users(self, db):
         # remove users based on user_can_stay return
@@ -323,7 +319,7 @@ class Table(ObjectLogger):
             if self.user_can_stay(user):
                 continue
             self.seats[seat_idx] = None
-            self.on_player_exit(db, user, seat_idx)
+            await self.on_player_exit(db, user, seat_idx)
             await self.broadcast_PLAYER_EXIT(db, user.id)
             self.log_info("user %s removed, seat %s available", user.id, seat_idx)
             if not user.connected:

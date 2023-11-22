@@ -1,28 +1,38 @@
 import pytest
 import asyncio
+
+import logging
+logger = logging.getLogger(__name__)
+
+from ravvi_poker.db.adbi import DBI
 from ravvi_poker.engine.user import User
+from ravvi_poker.engine.events import Command, Message
 from ravvi_poker.engine.table import Table
 from ravvi_poker.engine.game import Game
 
-# see X_DBI & X_Table at the end of file
+from helpers.x_dbi import X_DBI
+from helpers.x_table import X_Table, X_Game
 
-def test_01_table_info():
-    table = X_Table(1)
-    info = table.get_table_info(777)
+@pytest.mark.dependency()
+def test_x_classes():
+   X_DBI.check_methods_compatibility()
+   X_Table.check_methods_compatibility()
+   X_Game.check_methods_compatibility()
 
-    assert info['table_id'] == 1
 
+@pytest.mark.dependency(depends=["test_x_classes"])
 @pytest.mark.asyncio
-async def test_02_user_lifecycle():
+async def test_user_lifecycle():
     TABLE_ID = 777
     USER_ID = 666
     TABLE_INFO_EVENT_TYPE = 101
     PLAYER_ENTER_EVENT_TYPE = 201
     PLAYER_SEAT_EVENT_TYPE = 202
     PLAYER_EXIT_EVENT_TYPE = 299
+    BUYIN_VALUE = 1111111111
 
     db = X_DBI()
-    table = X_Table(TABLE_ID)
+    table = X_Table(TABLE_ID, BUYIN_VALUE)
     assert not table.users
 
     # ПОЛЬЗОВАТЕЛЬ НЕ СИДИТ ЗА СТОЛОМ
@@ -33,11 +43,11 @@ async def test_02_user_lifecycle():
     # подключаемся без места (посадка запрещена)
     table._user_enter_enabled = False
     async with db:
-        await table.handle_cmd_join(db, user_id=USER_ID, client_id=100, take_seat=False)
+        await table.handle_cmd(db, user_id=USER_ID, client_id=100, cmd_type=Command.Type.JOIN, props=dict(take_seat=False))
     # подтверждение подключения
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
-    assert db._event.type == TABLE_INFO_EVENT_TYPE
+    assert db._event.msg_type == Message.Type(TABLE_INFO_EVENT_TYPE)
     assert db._event.client_id==100
 
     user, seat_idx, _ = table.find_user(USER_ID)
@@ -48,14 +58,20 @@ async def test_02_user_lifecycle():
     assert seat_idx is None
     assert all(s is None for s in table.seats)
 
+    # садимся на место 3 (посадка запрещена)
+    async with db:
+        await table.handle_cmd(db, user_id=USER_ID, client_id=100, cmd_type=Command.Type.TAKE_SEAT, props=dict(seat_idx=3))
+    # подтверждение
+    assert not db._events
+    
     # c запросом места (посадка запрещена)
     table._user_enter_enabled = False
     async with db:
-        await table.handle_cmd_join(db, user_id=USER_ID, client_id=101, take_seat=True)
+        await table.handle_cmd(db, user_id=USER_ID, client_id=101, cmd_type=Command.Type.JOIN, props=dict(take_seat=True))
     # подтверждение подключения
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
-    assert db._event.type == TABLE_INFO_EVENT_TYPE
+    assert db._event.msg_type == Message.Type(TABLE_INFO_EVENT_TYPE)
     assert db._event.client_id==101
 
     user, seat_idx, _ = table.find_user(USER_ID)
@@ -69,11 +85,11 @@ async def test_02_user_lifecycle():
     # без места (посадка разрешена)
     table._user_enter_enabled = True
     async with db:
-        await table.handle_cmd_join(db, user_id=USER_ID, client_id=110, take_seat=False)
+        await table.handle_cmd(db, user_id=USER_ID, client_id=110, cmd_type=Command.Type.JOIN, props=dict(take_seat=False))
     # подтверждение подключения
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
-    assert db._event.type == TABLE_INFO_EVENT_TYPE
+    assert db._event.msg_type == Message.Type(TABLE_INFO_EVENT_TYPE)
     assert db._event.client_id==110
 
     user, seat_idx, _ = table.find_user(USER_ID)
@@ -86,16 +102,16 @@ async def test_02_user_lifecycle():
 
     # садимся на место 3
     async with db:
-        await table.handle_cmd_take_seat(db, user_id=USER_ID, seat_idx=3)
+        await table.handle_cmd(db, user_id=USER_ID, client_id=100, cmd_type=Command.Type.TAKE_SEAT, props=dict(seat_idx=3))
     # подтверждение
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
-    assert db._event.type == PLAYER_ENTER_EVENT_TYPE
+    assert db._event.msg_type == Message.Type(PLAYER_ENTER_EVENT_TYPE)
 
     # сел на место 3
     user, seat_idx, _ = table.find_user(USER_ID)
     assert user and user.id == USER_ID
-    assert user.balance == 1
+    assert user.balance == BUYIN_VALUE
     assert user.connected
     assert user.clients == {100, 101, 110}
     assert seat_idx == 3
@@ -104,28 +120,28 @@ async def test_02_user_lifecycle():
 
     # садимся на место (invalid user)
     async with db:
-        await table.handle_cmd_take_seat(db, user_id=123456, seat_idx=7)
+        await table.handle_cmd(db, user_id=123456, client_id=100, cmd_type=Command.Type.TAKE_SEAT, props=dict(seat_idx=3))
     # подтверждение
     assert not db._events
 
     # садимся на место (invalid seat_idx)
     async with db:
-        await table.handle_cmd_take_seat(db, user_id=USER_ID, seat_idx=123456)
+        await table.handle_cmd(db, user_id=USER_ID, client_id=100, cmd_type=Command.Type.TAKE_SEAT, props=dict(seat_idx=123456))
     # подтверждение
     assert not db._events
 
     # садимся на место 7
     async with db:
-        await table.handle_cmd_take_seat(db, user_id=USER_ID, seat_idx=7)
+        await table.handle_cmd(db, user_id=USER_ID, client_id=100, cmd_type=Command.Type.TAKE_SEAT, props=dict(seat_idx=7))
     # подтверждение
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
-    assert db._event.type == PLAYER_SEAT_EVENT_TYPE
+    assert db._event.msg_type == Message.Type(PLAYER_SEAT_EVENT_TYPE)
 
     # сел на место 7
     user, seat_idx, _ = table.find_user(USER_ID)
     assert user and user.id == USER_ID
-    assert user.balance == 1
+    assert user.balance == BUYIN_VALUE
     assert user.connected
     assert user.clients == {100, 101, 110}
     assert seat_idx == 7
@@ -135,11 +151,11 @@ async def test_02_user_lifecycle():
     # выходим со стола (выход запрещен)
     table._user_exit_enabled = False
     async with db:
-        await  table.handle_cmd_exit(db, user_id=USER_ID)
+        await  table.handle_cmd(db, user_id=USER_ID, client_id=100, cmd_type=Command.Type.EXIT, props={})
     assert not db._events
 
     assert user and user.id == USER_ID
-    assert user.balance == 1
+    assert user.balance == BUYIN_VALUE
     assert user.connected
     assert user.clients == {100, 101, 110}
     assert seat_idx == 7
@@ -149,10 +165,10 @@ async def test_02_user_lifecycle():
     # выходим со стола (выход разрешен)
     table._user_exit_enabled = True
     async with db:
-        await  table.handle_cmd_exit(db, user_id=USER_ID)
+        await  table.handle_cmd(db, user_id=USER_ID, client_id=100, cmd_type=Command.Type.EXIT, props={})
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
-    assert db._event.type == PLAYER_EXIT_EVENT_TYPE
+    assert db._event.msg_type == Message.Type(PLAYER_EXIT_EVENT_TYPE)
 
     user, seat_idx, _ = table.find_user(USER_ID)
     assert user and user.id == USER_ID
@@ -165,28 +181,28 @@ async def test_02_user_lifecycle():
     # выходим со стола (invalid user)
     table._user_exit_enabled = True
     async with db:
-        await  table.handle_cmd_exit(db, user_id=123456)
+        await  table.handle_cmd(db, user_id=123456, client_id=100, cmd_type=Command.Type.EXIT, props={})
     assert not db._events
 
     # c запросом места (посадка разрешена)
     table._user_enter_enabled = True
     async with db:
-        await table.handle_cmd_join(db, user_id=USER_ID, client_id=111, take_seat=True)
+        await table.handle_cmd(db, user_id=USER_ID, client_id=111, cmd_type=Command.Type.JOIN, props=dict(take_seat=True))
     # подтверждение подключения
     assert len(db._events) == 2
     e201 = db._events[0]
     assert e201.table_id == TABLE_ID
-    assert e201.type == PLAYER_ENTER_EVENT_TYPE
+    assert e201.msg_type == Message.Type(PLAYER_ENTER_EVENT_TYPE)
     assert e201.client_id is None
     e101 = db._events[1]
     assert e101.table_id == TABLE_ID
-    assert e101.type == TABLE_INFO_EVENT_TYPE
+    assert e101.msg_type == Message.Type(TABLE_INFO_EVENT_TYPE)
     assert e101.client_id==111
 
     # сел на место 0
     user, seat_idx, _ = table.find_user(USER_ID)
     assert user and user.id == USER_ID
-    assert user.balance == 1
+    assert user.balance == BUYIN_VALUE
     assert user.connected
     assert user.clients == {100, 101, 110, 111}
     assert seat_idx == 0
@@ -198,16 +214,16 @@ async def test_02_user_lifecycle():
     # подключаемся без места (посадка запрещена)
     table._user_enter_enabled = False
     async with db:
-        await table.handle_cmd_join(db, user_id=USER_ID, client_id=200, take_seat=False)
+        await table.handle_cmd(db, user_id=USER_ID, client_id=200, cmd_type=Command.Type.JOIN, props=dict(take_seat=False))
     # подтверждение подключения
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
-    assert db._event.type == TABLE_INFO_EVENT_TYPE
+    assert db._event.msg_type == Message.Type(TABLE_INFO_EVENT_TYPE)
     assert db._event.client_id==200
     
     user, seat_idx, _ = table.find_user(USER_ID)
     assert user and user.id == USER_ID
-    assert user.balance == 1
+    assert user.balance == BUYIN_VALUE
     assert user.connected
     assert user.clients == {100, 101, 110, 111, 200}
     assert seat_idx == 0
@@ -217,16 +233,16 @@ async def test_02_user_lifecycle():
     # c запросом места (посадка запрещена)
     table._user_enter_enabled = False
     async with db:
-        await table.handle_cmd_join(db, user_id=USER_ID, client_id=201, take_seat=True)
+        await table.handle_cmd(db, user_id=USER_ID, client_id=201, cmd_type=Command.Type.JOIN, props=dict(take_seat=True))
     # подтверждение подключения
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
-    assert db._event.type == TABLE_INFO_EVENT_TYPE
+    assert db._event.msg_type == Message.Type(TABLE_INFO_EVENT_TYPE)
     assert db._event.client_id==201
 
     user, seat_idx, _ = table.find_user(USER_ID)
     assert user and user.id == USER_ID
-    assert user.balance == 1
+    assert user.balance == BUYIN_VALUE
     assert user.connected
     assert user.clients == {100, 101, 110, 111, 200, 201}
     assert seat_idx == 0
@@ -240,12 +256,12 @@ async def test_02_user_lifecycle():
     # подтверждение подключения
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
-    assert db._event.type == TABLE_INFO_EVENT_TYPE
+    assert db._event.msg_type == Message.Type(TABLE_INFO_EVENT_TYPE)
     assert db._event.client_id==210
 
     user, seat_idx, _ = table.find_user(USER_ID)
     assert user and user.id == USER_ID
-    assert user.balance == 1
+    assert user.balance == BUYIN_VALUE
     assert user.connected
     assert user.clients == {100, 101, 110, 111, 200, 201, 210}
     assert seat_idx == 0
@@ -255,16 +271,16 @@ async def test_02_user_lifecycle():
     # c запросом места (посадка разрешена)
     table._user_enter_enabled = True
     async with db:
-        await table.handle_cmd_join(db, user_id=USER_ID, client_id=211, take_seat=True)
+        await table.handle_cmd(db, user_id=USER_ID, client_id=211, cmd_type=Command.Type.JOIN, props=dict(take_seat=True))
     # подтверждение подключения
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
-    assert db._event.type == TABLE_INFO_EVENT_TYPE
+    assert db._event.msg_type == Message.Type(TABLE_INFO_EVENT_TYPE)
     assert db._event.client_id==211
 
     user, seat_idx, _ = table.find_user(USER_ID)
     assert user and user.id == USER_ID
-    assert user.balance == 1
+    assert user.balance == BUYIN_VALUE
     assert user.connected
     assert user.clients == {100, 101, 110, 111, 200, 201, 210, 211}
     assert seat_idx == 0
@@ -279,7 +295,7 @@ async def test_02_user_lifecycle():
         assert not db._events
         user, seat_idx, _ = table.find_user(USER_ID)
         assert user and user.id == USER_ID
-        assert user.balance == 1
+        assert user.balance == BUYIN_VALUE
         assert user.connected
         assert client_id not in user.clients
         assert seat_idx == 0
@@ -289,10 +305,10 @@ async def test_02_user_lifecycle():
 
     # выходим со стола
     async with db:
-        await  table.handle_cmd_exit(db, user_id=USER_ID)
+        await  table.handle_cmd(db, user_id=USER_ID, client_id=210, cmd_type=Command.Type.EXIT, props={})
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
-    assert db._event.type == 299
+    assert db._event.msg_type == 299
 
     user, seat_idx, _ = table.find_user(USER_ID)
     assert user and user.id == USER_ID
@@ -327,115 +343,44 @@ async def test_02_user_lifecycle():
     assert seat_idx is None
     assert all(s is None for s in table.seats)
 
-#@pytest.mark.skip
+@pytest.mark.dependency(depends=["test_user_lifecycle"])
 @pytest.mark.asyncio
-async def test_09_run_all_together():
+async def test_run_all_together():
     TABLE_ID = 777
     X_DBI._events_keep = True
     db = X_DBI()
-    table = X_Table(TABLE_ID)
+    table = X_Table(TABLE_ID, 2)
+    table.NEW_GAME_DELAY = 1
+
+    async def stop_game(timeout=10):
+        for _ in range(timeout*10):
+            await asyncio.sleep(0.1)
+            async with table.lock:
+                if table.game:
+                    table.game._stop = True
+                    break
 
     await table.start()
     await asyncio.sleep(1)
-    async with db:
-        await table.handle_cmd_join(db, user_id=111, client_id=111, take_seat=True)
-    await asyncio.sleep(1)
-    async with db:
-        await table.handle_cmd_join(db, user_id=222, client_id=222, take_seat=True)
-    while X_DBI._game_id<3:
+    for i in range(1, 2):
+        async with db:
+            await table.handle_cmd(db, user_id=i*10, client_id=i*100, cmd_type=Command.Type.JOIN, props=dict(take_seat=True))
+        if i<2:
+            continue
+    for i in range(2, 8):
+        async with db:
+            await table.handle_cmd(db, user_id=i*10, client_id=i*100, cmd_type=Command.Type.JOIN, props=dict(take_seat=True))
+        await stop_game()
+    for i in range(60):
+        async with table.lock:
+            players = [u for u in table.seats if u]
+            if len(players)<2:
+                break
+            if table.game:
+                table.game._stop = True
         await asyncio.sleep(1)
+
     await table.stop()
 
-    db._print_events()
-
-import logging
-logger = logging.getLogger(__name__)
-
-from collections import namedtuple
-
-class X_DBI:
-    _game_id = 1
-    _events = list()
-    _events_keep = False
-    
-    GameRow = namedtuple('GameRow', ['id'])
-
-    def __init__(self) -> None:
-        pass
-
-    async def __aenter__(self):
-        if not X_DBI._events_keep:
-            X_DBI._events = []
-        return self
-
-    async def __aexit__(self, exc_type, exc_value, exc_tb):
-        pass
-    
-    async def emit_event(self, event):
-        X_DBI._events.append(event)
-
-    async def create_game(self, *, table_id, users, game_type, game_subtype, game_props):
-        X_DBI._game_id += 1
-        return X_DBI.GameRow(X_DBI._game_id)
-
-    async def close_game(self, game_id, users):
-        pass
-
-    @property
-    def _event(self):
-        return X_DBI._events[-1] if X_DBI._events else None
-
-    def _print_events(self):
-        for x in X_DBI._events:
-            print(x)
-
-class X_Game(Game):
-    DBI = X_DBI
-    GAME_TYPE = 'X_GT'
-    GAME_SUBTYPE = 'X_GST'
-
-    def __init__(self, table, users) -> None:
-        super().__init__(table, users)
-
-    async def run(self):
-        async with self.table.lock:
-            async with self.DBI() as db:
-                await self.broadcast_GAME_BEGIN(db)
-        await asyncio.sleep(3)
-        async with self.table.lock:
-            async with self.DBI() as db:
-                await self.broadcast_GAME_END(db)
-
-
-class X_Table(Table):
-    DBI = X_DBI
-    TABLE_TYPE = 'X'
-
-    def __init__(self, id):
-        super().__init__(id, table_seats=9)
-        self._user_enter_enabled = True
-        self._user_exit_enabled = True
-
-    @property
-    def user_enter_enabled(self):
-        return self._user_enter_enabled
-
-    @property
-    def user_exit_enabled(self):
-        return self._user_exit_enabled
-
-    async def user_factory(self, db, user_id):
-        user = User(id=user_id, username='u'+str(user_id))
-        logger.info('user created: %s', user.__dict__)
-        return user
-    
-    async def game_factory(self, users):
-        return X_Game(self, users)
-
-
-if __name__=='__main__':
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-    import asyncio
-    asyncio.run(test_02_user_lifecycle())
-    asyncio.run(test_09_run_all_together())
+#    for x in db._events:
+#        logger.info("%s: %s", x.msg_type, x.props)

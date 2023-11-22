@@ -3,11 +3,7 @@ from ..db.adbi import DBI
 from .user import User
 from .table import Table
 from .player import Player
-from .event import (
-    Event,
-    GAME_BEGIN,
-    GAME_END,
-)
+from .events import Message
 
 class Game(ObjectLogger):
     DBI = DBI
@@ -23,7 +19,7 @@ class Game(ObjectLogger):
     def log_prefix(self):
         return f"{self.game_id}:"
     
-    def player_factory(self, user):
+    def player_factory(self, user) -> Player:
         return Player(user)
     
     @property
@@ -49,16 +45,16 @@ class Game(ObjectLogger):
 
     async def broadcast_GAME_BEGIN(self, db):
         game_info = self.get_info()
-        event = GAME_BEGIN(**game_info)
-        await self.emit_event(db, event)
+        msg = Message(msg_type=Message.Type.GAME_BEGIN, props=game_info)
+        await self.emit_msg(db, msg)
 
     async def broadcast_GAME_END(self, db):
-        event = GAME_END()
-        await self.emit_event(db, event)
+        msg = Message(msg_type=Message.Type.GAME_END)
+        await self.emit_msg(db, msg)
 
-    async def emit_event(self, db, event):
-        event.update(game_id=self.game_id)
-        await self.table.emit_event(db, event)
+    async def emit_msg(self, db, msg):
+        msg.update(game_id=self.game_id)
+        await self.table.emit_msg(db, msg)
 
     @property
     def current_player(self):

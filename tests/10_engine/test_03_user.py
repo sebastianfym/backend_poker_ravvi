@@ -1,6 +1,6 @@
 from ravvi_poker.engine.user import User
 
-def test_101_1_user():
+def test_engine_user():
     user = User(777, 'test')
     assert user.id == 777
     #assert user.username == 'test'

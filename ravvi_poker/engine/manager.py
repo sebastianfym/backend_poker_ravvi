@@ -16,7 +16,7 @@ class Engine_Manager(DBI_Listener):
         super().__init__()
         self.tables : Mapping[int, Table] = None
         self.channels = {
-            'event_cmd' : self.on_event_cmd,
+            'table_cmd' : self.on_table_cmd,
             'user_client_closed' : self.on_user_client_closed
         }
 
@@ -40,26 +40,24 @@ class Engine_Manager(DBI_Listener):
             await self.handle_table_row(r)
         self.log_info("tables ready")
 
-    async def on_event_cmd(self, db: DBI, *, event_id=None, event_type=None, table_id=None, client_id=None):
-        self.log_debug("on_event_cmd: %s %s %s", event_id, table_id, event_type)
-        if not id or not table_id:
-            return
+    async def on_table_cmd(self, db: DBI, *, cmd_id, table_id):
+        self.log_debug("on_table_cmd: %s %s %s", table_id, cmd_id)
         table = self.tables.get(table_id, None)
         if not table:
             self.log_warning('table %s not found', table_id)
             return
-        event = await db.get_event(id)
-        if not event:
-            self.log_warning('event %s not found', id)
+        cmd = await db.get_table_cmd(cmd_id)
+        if not cmd:
+            self.log_warning('table_cmd %s not found', cmd_id)
             return
-        client = await db.get_client_info(client_id)
+        client = await db.get_client_info(cmd.client_id)
         if not client:
-            self.log_warning('client %s not found', client_id)
+            self.log_warning('client %s not found', cmd.client_id)
             return
-        await table.handle_cmd(db, client.user_id, event.client_id, event.type, event.props or {})
+        await table.handle_cmd(db, client.user_id, client.id, cmd.cmd_type, cmd.props or {})
 
     async def on_user_client_closed(self, db: DBI, *, client_id):
-        self.log_debug("on_user_client_closed: %s %s %s", client_id)
+        self.log_debug("on_user_client_closed: %s ", client_id)
         client = await db.get_client_info(client_id)
         if not client:
             self.log_warning('client %s not found', client_id)
