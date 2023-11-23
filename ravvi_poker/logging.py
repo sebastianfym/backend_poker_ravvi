@@ -2,6 +2,7 @@ import os
 import sys
 import yaml
 import logging
+from logging import getLogger
 from logging.handlers import TimedRotatingFileHandler
 
 
@@ -79,8 +80,20 @@ class Logger_MixIn:
         prefix = self.log_prefix()
         self.logger.exception(prefix + msg, *args, **kwargs)
 
-
 class ObjectLogger(Logger_MixIn):
     def __init__(self, logger_name) -> None:
         super().__init__()
-        self.logger = logging.getLogger(logger_name)
+        self.logger = getLogger(logger_name)
+
+class ObjectLoggerAdapter(logging.LoggerAdapter):
+    def __init__(self, logger, obj, attr) -> None:
+        super().__init__(logger, None)
+        self.obj = obj
+        self.attr = attr
+
+    def process(self, msg, kwargs):
+        value = getattr(self.obj, self.attr, None)
+        if value is not None:
+            msg = f"{value}: "+msg
+        return super().process(msg, kwargs)
+

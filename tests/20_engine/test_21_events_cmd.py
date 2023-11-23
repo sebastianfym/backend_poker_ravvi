@@ -2,7 +2,12 @@ import pytest
 
 from ravvi_poker.engine.events import Command
 
-def test_events_command():
+def test_command():
+
+    assert Command.Type.verify(11)
+    assert Command.Type.verify(Command.Type.JOIN)
+    assert Command.Type.decode('JOIN') == Command.Type.JOIN
+    assert Command.Type.decode(11) == Command.Type.JOIN
 
     with pytest.raises(TypeError):
         x = Command()

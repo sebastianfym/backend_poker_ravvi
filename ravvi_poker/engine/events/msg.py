@@ -1,4 +1,5 @@
 from enum import IntEnum, unique
+import copy
 
 @unique
 class MessageType(IntEnum):
@@ -40,7 +41,6 @@ class Message(dict):
         super().__init__(table_id=table_id, game_id=game_id, msg_type=msg_type, cmd_id=cmd_id, client_id=client_id, props=props)
         self.id = id
 
-
     @property
     def table_id(self):
         return self.get('table_id')
@@ -67,3 +67,31 @@ class Message(dict):
 
     def __getattr__(self, attr_name):
         return self.props.get(attr_name, None)
+   
+
+    def clone(self):
+        props=copy.deepcopy(self.props)
+        return Message(self.id, table_id=self.table_id, game_id=self.game_id, msg_type=self.msg_type, cmd_id=self.cmd_id, client_id=self.client_id, **props)
+
+    def hide_private_info(self, for_user_id):
+        def hide_cards(props: dict):
+            user_id = props.get('user_id',None)
+            cards_open = props.pop("cards_open", None)
+            if not cards_open and user_id!=for_user_id:
+                cards = props.get('cards',[])
+                cards = [0 for _ in cards]
+                props.update(cards=cards)
+                props.pop("hand_type", None)
+                props.pop("hand_cards", None)
+        msg = self.clone()
+        if msg.msg_type == Message.Type.TABLE_INFO:
+            users = msg.users or []
+            for u in users:
+                hide_cards(u)
+        elif msg.msg_type == Message.Type.PLAYER_CARDS:
+            hide_cards(msg.props)
+        elif msg.msg_type == Message.Type.GAME_PLAYER_MOVE:
+            if msg.user_id != for_user_id:
+                msg.props.pop("options",None)
+        return msg
+    

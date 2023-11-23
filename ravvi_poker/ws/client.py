@@ -1,20 +1,16 @@
-import logging
 import asyncio
 from contextlib import suppress
 from fastapi import WebSocket, WebSocketDisconnect, WebSocketException, status
 from starlette.websockets import WebSocketState
 
-from ..logging import ObjectLogger
-from ..engine.event import Event
-from ..db.adbi import DBI
-from ..api.utils import jwt_get
+from ..logging import ObjectLoggerAdapter, getLogger
+from ..engine.events import Message, Command
 
-logger = logging.getLogger(__name__)
+logger = getLogger(__name__)
 
-class WS_Client(ObjectLogger):
-    def __init__(self, manager, ws: WebSocket, user_id, client_id, *, logger_name=None) -> None:
-        logger_name = logger_name or (__name__ + f".{client_id}")
-        super().__init__(logger_name)
+class WS_Client:
+    def __init__(self, manager, ws: WebSocket, user_id, client_id) -> None:
+        self.log = ObjectLoggerAdapter(logger, self, 'client_id')
         self.manager = manager
         self.ws = ws
         self.user_id = user_id
@@ -26,62 +22,52 @@ class WS_Client(ObjectLogger):
     def is_connected(self):
         return self.ws.client_state == WebSocketState.CONNECTED
 
-    async def put_event(self, event):
-        await self.queue.put(event)
+    async def put_msg(self, msg: Message):
+        await self.queue.put(msg)
 
-    async def run_queue(self):
+    async def run_msg_queue(self):
+        self.log.debug("run_msg_queue: begin")
         while self.is_connected:
-            event: Event = await self.queue.get()
+            msg: Message = await self.queue.get()
             try:
-                self.log_debug("process_event: %s", event)
-                event = self.handle_event(event)
-                await self.send_event(event)
+                await self.send_msg(msg)
             except asyncio.CancelledError:
+                self.log.info("run_msg_queue: cancelled")
                 break
-            except Exception as ex:
-                self.log_exception("process_event: %s: %s", event, ex)
+            except Exception as e:
+                self.log.exception("msg: %s: %s", msg, e)
+                break
             finally:
                 self.queue.task_done()
+        self.log.debug("run_msg_queue: end")
 
-    def handle_event(self, event: Event):
-        event = event.clone()
-        if event.type == Event.PLAYER_CARDS:
-            if event.user_id != self.user_id and not event.cards_open:
-                cards = [0 for _ in event.cards]
-                event.update(cards=cards)
-                event.pop("hand_type", None)
-                event.pop("hand_cards", None)
-            del event["cards_open"]
-        elif event.type == Event.GAME_PLAYER_MOVE:
-            if event.user_id != self.user_id:
-                del event["options"]
-        return event
-
-    async def send_event(self, event: Event):
-        if self.is_connected:
-            await self.ws.send_json(event)
-            self.log_debug('send_event: %s', event)
+    async def send_msg(self, msg: Message):
+        if not self.is_connected:
+            return
+        msg = msg.hide_private_info(self.user_id)
+        await self.ws.send_json(msg)
+        self.log.debug('send_msg: %s', msg)
 
     async def recv_commands(self):
         try:
             while self.is_connected:
-                command = await self.ws.receive_json()
-                await self.manager.handle_command(self, command)
+                cmd = await self.ws.receive_json()
+                cmd = Command(client_id=self.client_id, **cmd)
+                await self.manager.handle_cmd(self, cmd)
         except asyncio.CancelledError:
-            self.log_debug("cancel")
+            self.log.debug("cancel")
         except WebSocketDisconnect:
-            self.log_debug("disconnect")
+            self.log.debug("disconnect")
         except Exception as ex:
-            self.log_exception(" %s: %s", self.user_id, ex)
+            self.log.exception(" %s: %s", self.user_id, ex)
 
     async def run(self):
-        self.log_info("begin")
+        self.log.info("begin")
         try:
-            t1 = asyncio.create_task(self.recv_commands())
-            t2 = asyncio.create_task(self.run_queue())
-            await t1
-            t2.cancel()
+            msg_task = asyncio.create_task(self.run_msg_queue())
+            await self.recv_commands()
+            msg_task.cancel()
             with suppress(asyncio.exceptions.CancelledError):
-                await t2
+                await msg_task
         finally:
-            self.log_info("end")
+            self.log.info("end")

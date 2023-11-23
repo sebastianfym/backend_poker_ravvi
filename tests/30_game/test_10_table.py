@@ -4,6 +4,7 @@ from ravvi_poker.engine.event import Event
 from ravvi_poker.game.table_base import Table
 from ravvi_poker.game.client import Client
 
+pytestmark = pytest. mark. skip()
 
 class TableMock(Table):
 

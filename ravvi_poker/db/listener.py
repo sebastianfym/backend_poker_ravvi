@@ -2,44 +2,44 @@ import logging
 import asyncio
 import json
 
-from ..logging import Logger_MixIn
 from .adbi import DBI, Notify
 from .txn import DBI_Txn
 
-class DBI_Listener(Logger_MixIn):
+logger = logging.getLogger(__name__)
 
-    logger = logging.getLogger(__name__)
+class DBI_Listener:
 
     def __init__(self) -> None:
         super().__init__()
+        self.log = logger
         self.task : asyncio.Task = None
         self.ready = asyncio.Event()
         self.channels = {}
 
     async def start(self):
-        self.log_info("start")
+        self.log.info("start")
         self.task = asyncio.create_task(self.run())
         await self.ready.wait()
-        self.log_info("started")
+        self.log.info("started")
 
     async def stop(self):
-        self.log_info("stop")
+        self.log.info("stop")
         if self.task:
             if not self.task.done():
                 self.task.cancel()
         await self.task
         self.task = None
-        self.log_info("stopped")
+        self.log.info("stopped")
 
     async def run(self):
         while True:
             try:
                 await self.process_events()
             except asyncio.CancelledError:
-                self.log_info("cancelled")
+                self.log.info("cancelled")
                 break
             except Exception as ex:
-                self.log_exception("exception: %s", str(ex))
+                self.log.exception("exception: %s", str(ex))
                 await asyncio.sleep(5)
             finally:
                 self.ready.clear()
@@ -48,17 +48,17 @@ class DBI_Listener(Logger_MixIn):
         async with DBI() as db:
             async with DBI_Txn(db):
                 for key in self.channels:
-                    self.log_info("listen: %s", key)
+                    self.log.info("listen: %s", key)
                     await db.listen(key)
                 await self.on_listen(db)
             self.ready.set()
-            self.log_info('ready, process notifications ...')
+            self.log.info('ready, process notifications ...')
             async for msg in db.dbi.notifies():
                 async with DBI_Txn(db):
                     try:
                         await self.on_notify(db, msg)
                     except Exception as e:
-                        self.log_exception("%s", e)
+                        self.log.exception("%s", e)
 
     async def on_listen(self, db: DBI):
         pass

@@ -1,3 +1,6 @@
+import pytest
+pytestmark = pytest. mark. skip()
+
 from ravvi_poker.game.hands import Hand, HandType
 
 

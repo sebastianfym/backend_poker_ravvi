@@ -5,7 +5,6 @@ from fastapi import FastAPI
 from fastapi import WebSocket, WebSocketDisconnect, WebSocketException, status
 from fastapi.middleware.cors import CORSMiddleware
 from ..db.adbi import DBI
-from ..api.utils import jwt_get
 from .manager import WS_Manager
 
 logger = logging.getLogger(__name__)

@@ -2,13 +2,14 @@ from typing import List, Mapping
 import asyncio
 import inspect
 
-from ...logging import ObjectLogger
+from ...logging import getLogger, ObjectLoggerAdapter
 from ...db.adbi import DBI
 from ..user import User
 from ..events import Command, Message
 
+logger = getLogger(__name__)
 
-class Table(ObjectLogger):
+class Table:
     DBI = DBI
     TABLE_TYPE = None
 
@@ -17,7 +18,7 @@ class Table(ObjectLogger):
     @classmethod
     def kwargs_keys(cls):
         keys = set()
-        if cls.__base__ != ObjectLogger:
+        if cls.__base__:
             keys.update(cls.__base__.kwargs_keys())
         spec = inspect.getfullargspec(cls)
         keys.update()
@@ -38,7 +39,7 @@ class Table(ObjectLogger):
 
 
     def __init__(self, id, parent_id=None, *, table_seats, club_id=None, game_type=None, game_subtype=None):
-        super().__init__(logger_name=__name__)
+        self.log = ObjectLoggerAdapter(logger, self, 'table_id')
         self.club_id = club_id
         self.table_id = id
         self.parent_id = parent_id
@@ -52,9 +53,6 @@ class Table(ObjectLogger):
         self.game_type = game_type
         self.game_subtype = game_subtype
         self.game = None
-
-    def log_prefix(self):
-        return f"{self.table_id}:"
 
     @property
     def table_type(self):
@@ -99,14 +97,14 @@ class Table(ObjectLogger):
         user.balance = None
 
     async def on_user_leave(self, db, user):
-        self.log_debug('on_user_leave(%s)', user.id if user else None)
+        self.log.debug('on_user_leave(%s)', user.id if user else None)
 
     async def on_game_ended(self, db):
-        self.log_debug('on_game_ended()')
+        self.log.debug('on_game_ended()')
 
     async def emit_msg(self, db: DBI, msg: Message):
         msg.update(table_id=self.table_id)
-        self.log_debug('emit_msg: %s', msg)
+        self.log.debug('emit_msg: %s', msg)
         await db.create_table_msg(**msg)
 
     async def emit_TABLE_INFO(self, db, client_id, table_info):
@@ -145,7 +143,7 @@ class Table(ObjectLogger):
         return result
     
     async def handle_cmd(self, db, user_id, client_id, cmd_type: Command.Type, props: dict):
-        self.log_info("handle_cmd: %s/%s %s %s", user_id, client_id, cmd_type, props)
+        self.log.info("handle_cmd: %s/%s %s %s", user_id, client_id, cmd_type, props)
         async with self.lock:
             if cmd_type == Command.Type.JOIN:
                 take_seat = props.get('take_seat', None)
@@ -228,12 +226,12 @@ class Table(ObjectLogger):
             del self.users[user.id]
 
     async def start(self):
-        self.log_info('start')
+        self.log.info('start')
         self.task = asyncio.create_task(self.run_table_wrapper())
-        self.log_info('started')
+        self.log.info('started')
 
     async def stop(self):
-        self.log_info('stop...')
+        self.log.info('stop...')
         if not self.task:
             return
         if not self.task.done():
@@ -243,18 +241,18 @@ class Table(ObjectLogger):
         except asyncio.CancelledError:
             pass
         self.task = None
-        self.log_info('stopped')
+        self.log.info('stopped')
 
     async def run_table_wrapper(self):
-        self.log_info("begin")
+        self.log.info("begin")
         try:
             await self.run_table()
         except asyncio.CancelledError:
             pass
         except Exception as ex:
-            self.log_exception("%s", ex)
+            self.log.exception("%s", ex)
         finally:
-            self.log_info("end")
+            self.log.info("end")
 
     async def sleep(self, delay: float):
         await asyncio.sleep(delay)
@@ -321,7 +319,7 @@ class Table(ObjectLogger):
             self.seats[seat_idx] = None
             await self.on_player_exit(db, user, seat_idx)
             await self.broadcast_PLAYER_EXIT(db, user.id)
-            self.log_info("user %s removed, seat %s available", user.id, seat_idx)
+            self.log.info("user %s removed, seat %s available", user.id, seat_idx)
             if not user.connected:
                 await self.on_user_leave(db, user)
                 del self.users[user.id]
@@ -336,7 +334,7 @@ class Table(ObjectLogger):
         try:
             await self.game.run()
         except Exception as e:
-            self.log_exception("%s", str(e))
+            self.log.exception("%s", str(e))
 
         async with self.lock:
             await self.close_game(self.game)

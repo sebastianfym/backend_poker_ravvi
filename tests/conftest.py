@@ -1,8 +1,5 @@
-import asyncio
 import pytest
-import pytest_asyncio
-
-from ravvi_poker.db.adbi import DBI
+import asyncio
 
 @pytest.fixture(autouse=True, scope="session")
 def event_loop():

@@ -1,24 +1,24 @@
-from ..logging import ObjectLogger
+import logging
+from ..logging import ObjectLoggerAdapter
 from ..db.adbi import DBI
 from .user import User
 from .table import Table
 from .player import Player
 from .events import Message
 
-class Game(ObjectLogger):
+logger = logging.getLogger(__name__)
+
+class Game:
     DBI = DBI
     GAME_TYPE = None
     GAME_SUBTYPE = None
 
     def __init__(self, table, users) -> None:
-        super().__init__(__name__)
+        self.log = ObjectLoggerAdapter(logger, self, 'game_id')
         self.table: Table = table
         self.game_id = None
         self.players = [self.player_factory(u) for u in users]
 
-    def log_prefix(self):
-        return f"{self.game_id}:"
-    
     def player_factory(self, user) -> Player:
         return Player(user)
     

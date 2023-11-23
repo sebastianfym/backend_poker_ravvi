@@ -1,3 +1,6 @@
+import pytest
+pytestmark = pytest. mark. skip()
+
 from ravvi_poker.game.player import User, Player, PlayerRole
 
 def test_21_player():

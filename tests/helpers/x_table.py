@@ -29,8 +29,11 @@ class X_Game(Game):
         async with self.table.lock:
             async with self.DBI() as db:
                 await self.broadcast_GAME_BEGIN(db)
+
         while not self._stop:
+            self.players_rotate()
             await asyncio.sleep(0.1)
+
         async with self.table.lock:
             p = self.current_player
             p.user.balance = max(0, p.user.balance-1)
