@@ -6,9 +6,10 @@ from fastapi import WebSocket, WebSocketDisconnect, WebSocketException, status
 from ..engine.events import Command, Message
 from ..db.adbi import DBI
 from ..db.listener import DBI_Listener
-from ..api.utils import jwt_get
+from ..engine.jwt import jwt_get
 from .client import WS_Client
 
+logger = logging.getLogger(__name__)
 
 class WS_Manager(DBI_Listener):
 
@@ -16,6 +17,7 @@ class WS_Manager(DBI_Listener):
 
     def __init__(self):
         super().__init__()
+        self.log = logger
         self.clients = {}
         self.table_subscribers = {}
         self.last_event_id = None
@@ -23,32 +25,35 @@ class WS_Manager(DBI_Listener):
             "table_msg": self.on_table_msg
         }
 
-    async def on_table_msg(self, db: DBI, *, id, type, table_id, client_id):
-        self.log.debug("on_table_msg: %s %s %s %s", id, type, table_id, client_id)
-        if not id or not table_id:
+    async def on_table_msg(self, db: DBI, *, msg_id, table_id):
+        self.log.debug("on_table_msg: %s %s", msg_id, table_id)
+        if not msg_id or not table_id:
             return
-        if client_id:
+        msg = await db.get_table_msg(msg_id)
+        if not msg:
+            return
+        msg = Message(msg.id, msg_type=msg.msg_type, table_id=msg.table_id, game_id=msg.game_id, cmd_id=msg.cmd_id, client_id=msg.client_id, **msg.props)
+        if msg.client_id:
             # send directly to specific client
-            client = self.clients.get(client_id, None)
+            client = self.clients.get(msg.client_id, None)
             if not client:
                 return
-            subscribers = {client_id: client}
+            subscribers = {msg.client_id: client}
         else:
             # send based on subscriptions
             subscribers = self.table_subscribers.get(msg.table_id, {})
-
         if not subscribers:
             return
-        msg = await db.get_table_msg(id)
-        msg = Message(**msg)
         counter = 0
         for client in subscribers.values():
             if msg.msg_type == Message.Type.TABLE_INFO:
+                if not msg.table_redirect_id:
+                    msg.props.update(table_redirect_id=msg.table_id)
                 self.unsubscribe(client, msg.table_id)
                 self.subscribe(client, msg.table_redirect_id)
-            await client.put_event(msg)
+            await client.put_msg(msg)
             counter += 1
-        self.log.info("on_table_msg %s: %s", counter, msg)
+        self.log.info("on_table_msg: %s %s", counter, msg)
         
     def subscribe(self, client, table_id):
         subscribers = self.table_subscribers.get(table_id, None)
@@ -63,48 +68,42 @@ class WS_Manager(DBI_Listener):
             return
         client.tables.remove(table_id)
         subscribers = self.table_subscribers.get(table_id, None)
-        if subscribers and client.client_id in subscribers:
-            del subscribers[client.client_id]
+        if subscribers:
+            subscribers.pop(client.client_id, None)
         # cleanup 
         if subscribers is not None and len(subscribers)==0:
-            del self.table_subscribers[table_id]
+            self.table_subscribers.pop(table_id, None)
 
     async def handle_cmd(self, client, cmd):
         self.log.info("handle_command: %s", str(cmd))
-        table_id = cmd.pop('table_id', None)
-        type = cmd.pop('type', None)
         async with DBI() as db:
-            await db.create_table_cmd(client_id=client.client_id, table_id=table_id, cmd_type=type, user_id=client.user_id, **cmd)
+            await db.create_table_cmd(client_id=client.client_id, table_id=cmd.table_id, cmd_type=cmd.cmd_type, props=cmd.props)
+        
 
-    async def handle_connection(self, ws: WebSocket, access_token: str):
+    async def handle_connect(self, ws: WebSocket, access_token: str) -> WS_Client:
         # get session uuid from access_token
         session_uuid = jwt_get(access_token, "session_uuid")
         if not session_uuid:
             raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
         # get session info
         async with DBI() as db:
-            async with db.txn():
-                session = await db.get_session_info(uuid=session_uuid)
-                if not session:
-                    raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
-                row = await db.create_user_client(session_id=session.session_id)
+            session = await db.get_session_info(uuid=session_uuid)
+            if not session:
+                raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
+            row = await db.create_client(session_id=session.session_id)
         await ws.accept()
         client = WS_Client(self, ws, user_id=session.user_id, client_id=row.id)
         self.clients[client.client_id] = client
-        try:
-            await client.run()
-        except Exception as ex:
-            self.log.exception("ws: %s", ex)
-        finally:
-            for table_id in list(client.tables):
-                self.unsubscribe(client, table_id)
-            if client.client_id in self.clients:
-                del self.clients[client.client_id]
-
+        return client
+    
+    async def handle_disconnect(self, client):
+        for table_id in list(client.tables):
+            self.unsubscribe(client, table_id)
+        if client.client_id in self.clients:
+            del self.clients[client.client_id]
         try:
             async with DBI() as db:
-                async with db.txn():
-                    await db.close_user_client(row.id)
-        except:
-            pass
+                await db.close_client(client.client_id)
+        except Exception as e:
+            self.log.exception("ws: %s", e)
 

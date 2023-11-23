@@ -33,7 +33,7 @@ def cmd_deploy_changes(args):
         db.commit()
 
 
-def main():
+def main(args=None):
     parser = argparse.ArgumentParser()
     parser.set_defaults(func=None)
     parser.add_argument("--debug", action="store_true", help="Debug logging")
@@ -54,7 +54,7 @@ def main():
     cmd.set_defaults(func=cmd_deploy_changes)
     cmd.add_argument("database", nargs="?", help="Name of database")
 
-    args = parser.parse_args()
+    args = parser.parse_args(args=args)
     if not args.func:
         parser.print_help()
         return

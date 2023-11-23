@@ -34,6 +34,9 @@ class X_WebSocket:
     @property
     def client_state(self):
         return WebSocketState.CONNECTED if self._commands else None
+    
+    async def accept(self):
+        pass
 
     async def receive_json(self):
         while True:

@@ -52,14 +52,19 @@ class WS_Client:
         try:
             while self.is_connected:
                 cmd = await self.ws.receive_json()
-                cmd = Command(client_id=self.client_id, **cmd)
-                await self.manager.handle_cmd(self, cmd)
+                await self.handle_cmd(cmd)
         except asyncio.CancelledError:
             self.log.debug("cancel")
         except WebSocketDisconnect:
             self.log.debug("disconnect")
         except Exception as ex:
             self.log.exception(" %s: %s", self.user_id, ex)
+
+    async def handle_cmd(self, cmd: dict):
+        cmd.pop('id', None)
+        cmd.pop('client_id', None)
+        cmd = Command(client_id = self.client_id, **cmd)
+        await self.manager.handle_cmd(self, cmd)
 
     async def run(self):
         self.log.info("begin")
