@@ -11,12 +11,8 @@ from helpers.x_wss import X_WebSocket
 logger = logging.getLogger(__name__)
 
 @pytest.mark.asyncio
-async def test_ws_manager(table, session):
-
-    async with DBI() as db:
-        session_info = await db.get_session_info(session.id)
-
-    access_token = jwt_encode(session_uuid=str(session.uuid))
+async def test_ws_manager(table, access):
+    session_info, access_token = access
     x_ws = X_WebSocket()
 
     manager = WS_Manager()

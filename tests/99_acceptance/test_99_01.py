@@ -1,5 +1,6 @@
 import pytest
-pytestmark = pytest. mark. skip()
+
+pytestmark = pytest.mark.skip()
 
 import logging
 import asyncio
@@ -25,12 +26,3 @@ async def test_99_01_01():
     assert c1.ws_log
 
     await c1.ws_close()
-
-if __name__=='__main__':
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-    import os
-    start_from = os.path.dirname(__file__)
-    pytest.main([start_from])
-#    import asyncio
-#    asyncio.run(test_99_01_01())

@@ -20,7 +20,17 @@ def test_x_classes():
    X_Game.check_methods_compatibility()
 
 
-@pytest.mark.dependency(depends=["test_x_classes"])
+@pytest.mark.dependency()
+def test_table_kwargs():
+    keys = Table.kwargs_keys()
+    assert keys == {'table_seats', 'club_id', 'game_type', 'game_subtype'}
+
+    needed, other = Table.split_kwargs(table_seats=9, buyin_min=1000)
+    assert needed == dict(table_seats=9)
+    assert other == dict(buyin_min=1000)
+
+
+@pytest.mark.dependency(depends=["test_x_classes","test_table_kwargs"])
 @pytest.mark.asyncio
 async def test_user_lifecycle():
     TABLE_ID = 777

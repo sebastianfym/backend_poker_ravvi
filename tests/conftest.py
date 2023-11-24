@@ -3,18 +3,19 @@ import asyncio
 import pytest_asyncio
 
 from ravvi_poker.db.adbi import DBI
+from ravvi_poker.engine.jwt import jwt_encode
 
-@pytest.fixture(autouse=True, scope="session")
-def event_loop():
-    loop = asyncio.get_event_loop()
-    yield loop
-    loop.close()
+#@pytest.fixture(autouse=True, scope="session")
+#def event_loop():
+#    loop = asyncio.get_event_loop()
+#    yield loop
+#    loop.close()
 
-@pytest_asyncio.fixture(autouse=True, scope="package")
-async def dbi_pool():
-    await DBI.pool_open()
-    yield
-    await DBI.pool_close()
+#@pytest_asyncio.fixture(autouse=True)
+#async def dbi_pool():
+#    await DBI.pool_open()
+#    yield
+#    await DBI.pool_close()
 
 
 @pytest_asyncio.fixture
@@ -61,6 +62,13 @@ async def session(login):
         row = await db.create_session(login.id)
         assert row
     yield row
+
+@pytest_asyncio.fixture
+async def access(session):
+    async with DBI() as db:
+        session_info = await db.get_session_info(session.id)
+    access_token = jwt_encode(session_uuid=str(session.uuid))
+    yield session_info, access_token
 
 
 @pytest_asyncio.fixture

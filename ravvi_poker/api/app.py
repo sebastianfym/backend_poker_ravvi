@@ -8,7 +8,7 @@ from . import images
 from . import lobby
 from . import clubs
 from . import tables
-from . import ws
+#from . import ws
 from . import debug
 
 v1 = APIRouter(prefix="/v1")

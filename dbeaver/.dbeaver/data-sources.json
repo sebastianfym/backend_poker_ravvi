@@ -4,7 +4,7 @@
 		"postgres-jdbc-18bf6c6930d-43a7cac09d5f48f0": {
 			"provider": "postgresql",
 			"driver": "postgres-jdbc",
-			"name": "develop",
+			"name": "local-docker",
 			"save-password": true,
 			"configuration": {
 				"host": "localhost",
@@ -14,7 +14,8 @@
 				"configurationType": "MANUAL",
 				"type": "dev",
 				"provider-properties": {},
-				"auth-model": "native"
+				"auth-model": "native",
+				"events": {}
 			}
 		}
 	},

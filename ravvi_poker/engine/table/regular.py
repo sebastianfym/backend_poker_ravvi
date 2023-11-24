@@ -1,8 +1,8 @@
 from .base import Table
 
-class Table_Regular(Table):
+class Table_REGULAR(Table):
 
-    TABLE_TYPE = "RING_GAME"
+    TABLE_TYPE = "REGULAR"
 
     def __init__(self, id, *, buyin_min=1000, buyin_max=None, **kwargs):
         base, kwargs = super().split_kwargs(**kwargs)

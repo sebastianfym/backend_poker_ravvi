@@ -18,7 +18,7 @@ class Table:
     @classmethod
     def kwargs_keys(cls):
         keys = set()
-        if cls.__base__:
+        if hasattr(cls.__base__,'kwargs_keys'):
             keys.update(cls.__base__.kwargs_keys())
         spec = inspect.getfullargspec(cls)
         keys.update()

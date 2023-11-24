@@ -28,6 +28,9 @@ wheels/
 *.egg
 MANIFEST
 
+# tmp
+*.bak
+
 # Unit test / coverage reports
 .cache
 .coverage

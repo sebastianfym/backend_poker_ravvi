@@ -17,6 +17,7 @@ class DBI:
     DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "develop")
 
     pool = None
+    pool_ref = 0
 
     ForeignKeyViolation = psycopg.errors.ForeignKeyViolation
 
@@ -33,23 +34,32 @@ class DBI:
 
     @classmethod
     async def pool_open(cls):
+#        cls.pool_ref += 1
+#        if cls.pool_ref == 1:
         cls.pool = psycopg_pool.AsyncConnectionPool(conninfo=cls.conninfo(), open=False)
         await cls.pool.open()
         logger.debug("pool: ready")
 
     @classmethod
     async def pool_close(cls):
+#        cls.pool_ref -= 1
+#        if cls.pool_ref==0:
         await cls.pool.close()
         cls.pool = None
         logger.debug("pool: closed")
 
     def __init__(self) -> None:
+        self.dbi_pool = None
         self.dbi = None
 
     # CONTEXT
 
     async def __aenter__(self):
-        self.dbi = await self.pool.getconn()
+        if self.pool:
+            self.dbi_pool = self.pool
+            self.dbi = await self.dbi_pool.getconn()
+        else:
+            self.dbi = await psycopg.AsyncConnection.connect(self.conninfo())
         return self
 
     async def __aexit__(self, exc_type, exc_value, exc_tb):
@@ -57,7 +67,11 @@ class DBI:
             await self.dbi.commit()
         else:
             await self.dbi.rollback()
-        await self.pool.putconn(self.dbi)
+        if self.dbi_pool:
+            await self.dbi_pool.putconn(self.dbi)
+            self.dbi_pool = None
+        else:
+            await self.dbi.close()
         self.dbi = None
 
     def cursor(self, *args, row_factory=namedtuple_row, **kwargs):

@@ -9,7 +9,7 @@ import magic
 from PIL import Image
 
 from ravvi_poker.api.images import MAX_IMAGE_DIMENSION
-from ravvi_poker.api.main import app
+from ravvi_poker.api.app import app
 from ravvi_poker.db.dbi import DBI
 
 client = TestClient(app)

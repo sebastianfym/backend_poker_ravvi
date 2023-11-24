@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 from fastapi import WebSocketException, WebSocketDisconnect
 from fastapi.testclient import TestClient
 
-from ravvi_poker.api.main import app as api_app
+from ravvi_poker.api.app import app as api_app
 from ravvi_poker.ws.app import app as ws_app
 
 api_test = TestClient(api_app)
