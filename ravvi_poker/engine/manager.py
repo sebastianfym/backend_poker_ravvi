@@ -9,16 +9,12 @@ from .table import Table, Table_Regular
 
 
 class Engine_Manager(DBI_Listener):
-
     logger = logging.getLogger(__name__)
 
     def __init__(self):
         super().__init__()
-        self.tables : Mapping[int, Table] = None
-        self.channels = {
-            'table_cmd' : self.on_table_cmd,
-            'user_client_closed' : self.on_user_client_closed
-        }
+        self.tables: Mapping[int, Table] = None
+        self.channels = {"table_cmd": self.on_table_cmd, "user_client_closed": self.on_user_client_closed}
 
     async def run(self):
         try:
@@ -44,15 +40,15 @@ class Engine_Manager(DBI_Listener):
         self.log_debug("on_table_cmd: %s %s %s", table_id, cmd_id)
         table = self.tables.get(table_id, None)
         if not table:
-            self.log_warning('table %s not found', table_id)
+            self.log_warning("table %s not found", table_id)
             return
         cmd = await db.get_table_cmd(cmd_id)
         if not cmd:
-            self.log_warning('table_cmd %s not found', cmd_id)
+            self.log_warning("table_cmd %s not found", cmd_id)
             return
         client = await db.get_client_info(cmd.client_id)
         if not client:
-            self.log_warning('client %s not found', cmd.client_id)
+            self.log_warning("client %s not found", cmd.client_id)
             return
         await table.handle_cmd(db, client.user_id, client.id, cmd.cmd_type, cmd.props or {})
 
@@ -60,7 +56,7 @@ class Engine_Manager(DBI_Listener):
         self.log_debug("on_user_client_closed: %s ", client_id)
         client = await db.get_client_info(client_id)
         if not client:
-            self.log_warning('client %s not found', client_id)
+            self.log_warning("client %s not found", client_id)
             return
         user_id = client.user_id
         for table in self.tables.values():
@@ -73,21 +69,21 @@ class Engine_Manager(DBI_Listener):
         props = kwargs.pop("game_settings", {}) or {}
         kwargs.update(props)
         return kwargs
-        
+
     def table_factory(self, *, id, table_type, **kwargs):
-        if table_type=='RING_GAME':
+        if table_type == "RING_GAME":
             return Table_Regular(id=id, **kwargs)
-        #if table_type=='SNG':
+        # if table_type=='SNG':
         #    return Table_SNG(id=id, table_type=table_type, **kwargs)
 
-    async def handle_table_row(self, table_row):
-        self.log_info("handle_table_row: %s", table_row)
+    async def handle_table_row(self, row):
+        self.log_info("handle_table_row: %s", row)
         try:
-            kwargs = self.table_kwargs_from_row(table_row)
+            kwargs = row._asdict()
             table = self.table_factory(**kwargs)
             self.tables[table.table_id] = table
             # run table task
             await table.start()
 
         except Exception as ex:
-            self.log_exception("add_table %s: %s", table_row, ex)
+            self.log_exception("add_table %s: %s", row, ex)

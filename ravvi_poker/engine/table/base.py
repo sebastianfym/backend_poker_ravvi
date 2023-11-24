@@ -9,6 +9,7 @@ from ..events import Command, Message
 
 logger = getLogger(__name__)
 
+
 class Table:
     DBI = DBI
     TABLE_TYPE = None
@@ -18,7 +19,7 @@ class Table:
     @classmethod
     def kwargs_keys(cls):
         keys = set()
-        if hasattr(cls.__base__,'kwargs_keys'):
+        if hasattr(cls.__base__, "kwargs_keys"):
             keys.update(cls.__base__.kwargs_keys())
         spec = inspect.getfullargspec(cls)
         keys.update()
@@ -37,9 +38,8 @@ class Table:
             target[k] = v
         return needed, other
 
-
     def __init__(self, id, parent_id=None, *, table_seats, club_id=None, game_type=None, game_subtype=None):
-        self.log = ObjectLoggerAdapter(logger, self, 'table_id')
+        self.log = ObjectLoggerAdapter(logger, self, "table_id")
         self.club_id = club_id
         self.table_id = id
         self.parent_id = parent_id
@@ -57,7 +57,7 @@ class Table:
     @property
     def table_type(self):
         return self.TABLE_TYPE
-    
+
     @property
     def user_enter_enabled(self):
         raise NotImplementedError()
@@ -67,7 +67,7 @@ class Table:
         raise NotImplementedError()
 
     async def user_factory(self, db, user_id):
-        return User(id=user_id, username='u'+str(user_id))
+        return User(id=user_id, username="u" + str(user_id))
 
     async def game_factory(self, users):
         raise NotImplementedError()
@@ -85,7 +85,7 @@ class Table:
             user = self.users.get(user_id, None)
         return user, seat_idx, seats_available
 
-    async def on_user_join(self, db ,user):
+    async def on_user_join(self, db, user):
         pass
 
     async def on_player_enter(self, db, user, seat_idx):
@@ -97,14 +97,14 @@ class Table:
         user.balance = None
 
     async def on_user_leave(self, db, user):
-        self.log.debug('on_user_leave(%s)', user.id if user else None)
+        self.log.debug("on_user_leave(%s)", user.id if user else None)
 
     async def on_game_ended(self, db):
-        self.log.debug('on_game_ended()')
+        self.log.debug("on_game_ended()")
 
     async def emit_msg(self, db: DBI, msg: Message):
         msg.update(table_id=self.table_id)
-        self.log.debug('emit_msg: %s', msg)
+        self.log.debug("emit_msg: %s", msg)
         await db.create_table_msg(**msg)
 
     async def emit_TABLE_INFO(self, db, client_id, table_info):
@@ -141,15 +141,15 @@ class Table:
             game_info = self.game.get_info(user_id=user_id, users_info=users_info)
             result.update(game_info)
         return result
-    
+
     async def handle_cmd(self, db, user_id, client_id, cmd_type: Command.Type, props: dict):
         self.log.info("handle_cmd: %s/%s %s %s", user_id, client_id, cmd_type, props)
         async with self.lock:
             if cmd_type == Command.Type.JOIN:
-                take_seat = props.get('take_seat', None)
+                take_seat = props.get("take_seat", None)
                 await self.handle_cmd_join(db, user_id=user_id, client_id=client_id, take_seat=take_seat)
             elif cmd_type == Command.Type.TAKE_SEAT:
-                seat_idx = props.get('seat_idx', None)
+                seat_idx = props.get("seat_idx", None)
                 await self.handle_cmd_take_seat(db, user_id=user_id, seat_idx=seat_idx)
             elif cmd_type == Command.Type.EXIT:
                 await self.handle_cmd_exit(db, user_id=user_id)
@@ -168,12 +168,7 @@ class Table:
         user.clients.add(client_id)
         # try to take a seat
         new_seat_idx, user_info = None, None
-        if (
-            seat_idx is None
-            and take_seat
-            and self.user_enter_enabled
-            and seats_available
-        ):
+        if seat_idx is None and take_seat and self.user_enter_enabled and seats_available:
             new_seat_idx = seats_available[0]
             self.seats[new_seat_idx] = user
             await self.on_player_enter(db, user, new_seat_idx)
@@ -197,7 +192,7 @@ class Table:
             self.seats[seat_idx] = user
             await self.on_player_enter(db, user, seat_idx)
             user_info = user.get_info()
-            await self.broadcast_PLAYER_ENTER(db, user_info, seat_idx)         
+            await self.broadcast_PLAYER_ENTER(db, user_info, seat_idx)
         else:
             self.seats[old_seat_idx] = None
             self.seats[seat_idx] = user
@@ -226,12 +221,12 @@ class Table:
             del self.users[user.id]
 
     async def start(self):
-        self.log.info('start')
+        self.log.info("start")
         self.task = asyncio.create_task(self.run_table_wrapper())
-        self.log.info('started')
+        self.log.info("started")
 
     async def stop(self):
-        self.log.info('stop...')
+        self.log.info("stop...")
         if not self.task:
             return
         if not self.task.done():
@@ -241,7 +236,7 @@ class Table:
         except asyncio.CancelledError:
             pass
         self.task = None
-        self.log.info('stopped')
+        self.log.info("stopped")
 
     async def run_table_wrapper(self):
         self.log.info("begin")
@@ -265,13 +260,13 @@ class Table:
                 async with self.DBI() as db:
                     await self.remove_users(db)
 
-        #async with self.DBI() as db:
+        # async with self.DBI() as db:
         #    await  db.close_table(self.table_id)
         #    await self.broadcast_TABLE_CLOSED(db)
 
     def user_can_play(self, user):
-        return isinstance(user.balance, (int, float)) and user.balance>0
-    
+        return isinstance(user.balance, (int, float)) and user.balance > 0
+
     def user_can_stay(self, user):
         if user.balance is None:
             return True
@@ -297,13 +292,16 @@ class Table:
     async def create_game(self, users):
         game = await self.game_factory(users)
         async with self.DBI() as db:
-            row = await db.create_game(table_id=self.table_id,
-                game_type=game.game_type, game_subtype=game.game_subtype, props=game.game_props,
+            row = await db.create_game(
+                table_id=self.table_id,
+                game_type=game.game_type,
+                game_subtype=game.game_subtype,
+                props=game.game_props,
                 players=users,
             )
             game.game_id = row.id
         return game
-    
+
     async def close_game(self, game):
         users = [p.user for p in game.players]
         async with self.DBI() as db:
@@ -323,7 +321,7 @@ class Table:
             if not user.connected:
                 await self.on_user_leave(db, user)
                 del self.users[user.id]
-    
+
     async def run_game(self):
         async with self.lock:
             users = self.get_game_players()

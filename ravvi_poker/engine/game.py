@@ -8,20 +8,21 @@ from .events import Message
 
 logger = logging.getLogger(__name__)
 
+
 class Game:
     DBI = DBI
     GAME_TYPE = None
     GAME_SUBTYPE = None
 
     def __init__(self, table, users) -> None:
-        self.log = ObjectLoggerAdapter(logger, self, 'game_id')
+        self.log = ObjectLoggerAdapter(logger, self, "game_id")
         self.table: Table = table
         self.game_id = None
         self.players = [self.player_factory(u) for u in users]
 
     def player_factory(self, user) -> Player:
         return Player(user)
-    
+
     @property
     def game_type(self):
         return self.GAME_TYPE
@@ -33,13 +34,13 @@ class Game:
     @property
     def game_props(self):
         return None
-    
+
     def get_info(self, user_id=None, users_info=None):
         info = dict(
-            game_id = self.game_id, 
-            game_type = self.game_type,
-            game_subtype = self.game_subtype,
-            players = [x.user_id for x in self.players],
+            game_id=self.game_id,
+            game_type=self.game_type,
+            game_subtype=self.game_subtype,
+            players=[x.user_id for x in self.players],
         )
         return info
 
@@ -66,4 +67,3 @@ class Game:
 
     async def run(self):
         raise NotImplementedError()
-

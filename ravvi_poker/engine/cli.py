@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 def cmd_run(args):
     run_async_loop()
 
+
 def main():
     parser = argparse.ArgumentParser(usage="ravvi_poker_engine [-h] OPTIONS COMMAND ...")
     parser.set_defaults(func=None)

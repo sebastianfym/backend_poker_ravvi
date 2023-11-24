@@ -20,4 +20,3 @@ def jwt_get(token, *args):
 
     values = [decoded.get(attr, None) for attr in args]
     return values[0] if len(values) == 1 else values
-
