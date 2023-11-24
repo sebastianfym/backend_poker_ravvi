@@ -1,6 +1,6 @@
 from time import time_ns
 from itertools import combinations
-from ravvi_poker.game.hands import Card, Hand
+from ravvi_poker.engine.poker.hands import Card, Hand
 
 def brutforce():
     cards = list(range(1, 53))

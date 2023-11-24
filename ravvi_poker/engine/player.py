@@ -5,6 +5,8 @@ class Player:
     def __init__(self, user: User) -> None:
         self.user = user
         self.balance_0 = user.balance
+        self.cards = None
+        self.cards_open = False
 
     @property
     def user_id(self) -> int:

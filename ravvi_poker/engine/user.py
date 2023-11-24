@@ -2,7 +2,7 @@ from typing import Set
 
 
 class User:
-    def __init__(self, id, username, image_id=None) -> None:
+    def __init__(self, id, username=None, image_id=None) -> None:
         self.id = id
         self.username = username or f"u{id}"
         self.image_id = None

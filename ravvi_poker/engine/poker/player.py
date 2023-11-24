@@ -1,7 +1,8 @@
 from typing import List, Tuple
 from enum import IntFlag
 
-from .user import User
+from ..user import User
+from ..player import Player as PlayerBase
 from .bet import Bet
 
 class PlayerRole(IntFlag):
@@ -10,7 +11,7 @@ class PlayerRole(IntFlag):
     SMALL_BLIND = 2
     BIG_BLIND = 4
 
-class Player:
+class Player(PlayerBase):
 
     ROLE_DEFAULT = 0
     ROLE_DEALER = 1
@@ -18,26 +19,15 @@ class Player:
     ROLE_BIG_BLIND = 3
 
     def __init__(self, user: User) -> None:
-        self.user = user
+        super().__init__(user)
         self.role = Player.ROLE_DEFAULT
-        self.cards = None
-        self.cards_open = False
         self.hand = None
         self.active = True
         self.bet_type = None
         self.bet_amount = 0
         self.bet_delta = 0
         self.bet_total = 0
-        self.balance_0 = user.balance
 
-    @property
-    def user_id(self) -> int:
-        return self.user.id
-   
-    @property
-    def balance(self) -> int:
-        return self.user.balance
-    
     @property
     def bet_max(self) -> int:
         return self.bet_amount + self.balance

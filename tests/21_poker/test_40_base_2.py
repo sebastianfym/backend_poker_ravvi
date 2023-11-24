@@ -1,23 +1,19 @@
-from typing import List
 import pytest
-from ravvi_poker.engine.poker.player import User, PlayerRole
+from ravvi_poker.engine.poker.base import PokerBase, Message, User, PlayerRole
 
-from ravvi_poker.game.user import User
-from ravvi_poker.engine.poker.bet import Bet
-from ravvi_poker.game.poker import PokerBase, Round, Player, Event
 
 class PokerBaseTest(PokerBase):
-    def __init__(self, table, game_id, users: List[User], deck=None) -> None:
+    def __init__(self, table, game_id, users, deck=None) -> None:
         super().__init__(table, game_id, users)
         self._deck = deck
-        self._event = None
+        self._msg = None
 
-    async def broadcast(self, event: Event):
-        self._event = event
+    async def emit_msg(self, db, msg):
+        self._msg = msg
 
 @pytest.mark.asyncio
 async def test_41_poker_base_2_players():
-    users = [User(x, f"u{x}", 1000) for x in [111, 222]]
+    users = [User(x, f"u{x}", None) for x in [111, 222]]
     
     # game with random deck
     game = PokerBaseTest(None, 1, users)
@@ -64,10 +60,3 @@ async def test_41_poker_base_2_players():
     for p in game.players:
         assert p.cards == []
         assert p.cards_open == False
-
-
-if __name__=="__main__":
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-    import asyncio
-    asyncio.run(test_41_poker_base_2_players())

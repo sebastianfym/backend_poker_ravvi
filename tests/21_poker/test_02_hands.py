@@ -1,10 +1,9 @@
 import pytest
-pytestmark = pytest. mark. skip()
 
-from ravvi_poker.game.hands import Hand, HandType
+from ravvi_poker.engine.poker.hands import Hand, HandType
 
 
-def test_02_01_hand_mask():
+def test_hand_mask():
     cards = []
     hand = Hand(cards)
     assert hand.mask == 0
@@ -19,7 +18,7 @@ def test_02_01_hand_mask():
     assert str(hand) == "A♠ A♣ A♦ A♥ 2♠"
 
 
-def test_02_02_samples_HIGH_CARD():
+def test_samples_HIGH_CARD():
     # "♠", "♣", "♦", "♥"
     cards = ["2♠"]
     hand = Hand(cards)
@@ -58,7 +57,7 @@ def test_02_02_samples_HIGH_CARD():
     assert str(hand) == "A♣ 9♣ 6♠ 3♠ 2♠"
 
 
-def test_02_03_samples_ONE_PAIR():
+def test_samples_ONE_PAIR():
     # "♠", "♣", "♦", "♥"
     cards = ["2♠", "2♣"]
     hand = Hand(cards)
@@ -81,7 +80,7 @@ def test_02_03_samples_ONE_PAIR():
     assert str(hand) == "A♥ 7♥ 3♦ 2♠ 2♣"
 
 
-def test_02_04_samples_TWO_PAIR():
+def test_samples_TWO_PAIR():
     # "♠", "♣", "♦", "♥"
 
     cards = ["2♠", "2♣", "3♦", "3♣"]
@@ -95,7 +94,7 @@ def test_02_04_samples_TWO_PAIR():
     assert str(hand) == "A♥ 3♣ 3♦ 2♠ 2♣"
 
 
-def test_02_05_samples_THREE_OF_KIND():
+def test_samples_THREE_OF_KIND():
     # "♠", "♣", "♦", "♥"
 
     cards = ["2♠", "2♣", "2♦"]
@@ -114,7 +113,7 @@ def test_02_05_samples_THREE_OF_KIND():
     assert str(hand) == "T♣ 3♣ 2♠ 2♣ 2♦"
 
 
-def test_02_06_samples_FOUR_OF_KIND():
+def test_samples_FOUR_OF_KIND():
     # "♠", "♣", "♦", "♥"
 
     cards = ["2♠", "2♣", "2♦", "2♥"]
@@ -128,7 +127,7 @@ def test_02_06_samples_FOUR_OF_KIND():
     assert str(hand) == "T♣ 2♠ 2♣ 2♦ 2♥"
 
 
-def test_02_07_samples_FULL_HOUSE():
+def test_samples_FULL_HOUSE():
     # "♠", "♣", "♦", "♥"
 
     cards = ["2♠", "2♣", "T♣", "T♦", "2♥"]
@@ -137,7 +136,7 @@ def test_02_07_samples_FULL_HOUSE():
     assert str(hand) == "T♣ T♦ 2♠ 2♣ 2♥"
 
 
-def test_02_08_samples_52_STRAIGHT():
+def test_samples_52_STRAIGHT():
     cards = ["T♠", "A♣", "Q♣", "K♦", "J♥"]
     hand = Hand(cards, deck36=False)
     assert hand.type == (HandType.STRAIGHT, 14)
@@ -149,7 +148,7 @@ def test_02_08_samples_52_STRAIGHT():
     assert str(hand) == "A♣ 5♦ 4♣ 3♥ 2♠"
 
 
-def test_02_09_samples_36_STRAIGHT():
+def test_samples_36_STRAIGHT():
     cards = ["T♠", "A♣", "Q♣", "K♦", "J♥"]
     hand = Hand(cards, deck36=True)
     assert hand.type == (HandType.STRAIGHT, 14)
@@ -161,7 +160,7 @@ def test_02_09_samples_36_STRAIGHT():
     assert str(hand) == "A♣ 9♦ 8♣ 7♥ 6♠"
 
 
-def test_02_10_samples_FLUSH():
+def test_samples_FLUSH():
     cards = ["T♠", "2♠", "J♠", "4♠", "K♠"]
     hand = Hand(cards)
     assert hand.type == (HandType.FLUSH, 13, 11, 10, 4, 2)
@@ -173,7 +172,7 @@ def test_02_10_samples_FLUSH():
     assert str(hand) == "J♥ 7♥ 4♥ 3♥ 2♥"
 
 
-def test_02_11_samples_STRAIGHT_FLUSH():
+def test_samples_STRAIGHT_FLUSH():
     cards = ["6♠", "2♠", "3♠", "4♠", "5♠"]
     hand = Hand(cards)
     assert hand.type == (HandType.STRAIGHT_FLUSH, 6)

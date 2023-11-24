@@ -2,7 +2,7 @@ from typing import List, Tuple
 from itertools import combinations
 
 from ..engine.cards import get_deck_36
-from .hands import HandType
+from ..engine.poker.hands import HandType
 from .poker import PokerBase, Bet
 
 

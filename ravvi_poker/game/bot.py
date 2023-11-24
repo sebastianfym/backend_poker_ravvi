@@ -2,7 +2,7 @@ import logging
 import asyncio
 import random
 from .client import Client
-from .bet import Bet
+from ..engine.poker.bet import Bet
 from ..engine.event import Event, CMD_TABLE_JOIN
 
 

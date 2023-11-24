@@ -1,7 +1,7 @@
-from ravvi_poker.game.player import User, Player, Bet
-from ravvi_poker.game.multibank import get_banks
+from ravvi_poker.engine.poker.player import User, Player, Bet
+from ravvi_poker.engine.poker.multibank import get_banks
 
-def test_31_multibank():
+def test_multibank_1():
     users = [User(x, f"u{x}", 1000) for x in [111, 222, 333, 444, 555, 666, 777, 888, 999]]
     players = [Player(u) for u in users]
     players[0].bet_total = 100
@@ -36,7 +36,7 @@ def test_31_multibank():
     amount, group = banks[2]
     assert amount == 100
 
-def test_32_multibank():
+def test_multibank_2():
     users = [User(x, f"u{x}", 1000) for x in [111, 222, 333, 444, 555, 666, 777, 888, 999]]
     players = [Player(u) for u in users]
     players[0].bet_total = 100
@@ -74,7 +74,3 @@ def test_32_multibank():
     assert amount == 200
     amount, group = banks[4]
     assert amount == 100
-
-if __name__=="__main__":
-    test_31_multibank()
-    test_32_multibank()

@@ -1,10 +1,10 @@
 import pytest
-pytestmark = pytest. mark. skip()
 
-from ravvi_poker.game.player import User, Player, PlayerRole
+from ravvi_poker.engine.poker.player import User, Player, PlayerRole
 
 def test_21_player():
-    u = User(77, 'u77', None, 1000)
+    u = User(77, 'u77', None)
+    u.balance = 1000
     
     p = Player(u)
     assert p.user == u
@@ -46,8 +46,3 @@ def test_21_player_role():
     assert PlayerRole.DEALER in role
     assert PlayerRole.SMALL_BLIND in role
     assert PlayerRole.BIG_BLIND not in role
-
-if __name__=="__main__":
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-    test_21_player_role()

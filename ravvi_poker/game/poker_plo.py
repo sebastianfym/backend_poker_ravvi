@@ -1,6 +1,6 @@
 from itertools import combinations
 
-from .hands import Hand
+from ..engine.poker.hands import Hand
 from .poker import PokerBase
 
 

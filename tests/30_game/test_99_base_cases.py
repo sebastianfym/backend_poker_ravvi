@@ -6,7 +6,7 @@ import pytest
 from ravvi_poker.engine.cards import Card
 from ravvi_poker.engine.event import Event
 from ravvi_poker.game.user import User
-from ravvi_poker.game.bet import Bet
+from ravvi_poker.engine.poker.bet import Bet
 from ravvi_poker.game.poker import PokerBase
 
 

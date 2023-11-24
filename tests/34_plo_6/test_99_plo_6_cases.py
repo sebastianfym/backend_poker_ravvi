@@ -3,10 +3,10 @@ import os
 import json
 import pytest
 from ravvi_poker.engine.cards import Card
-from ravvi_poker.game.hands import HandType
+from ravvi_poker.engine.poker.hands import HandType
 from ravvi_poker.engine.event import Event
 from ravvi_poker.game.user import User
-from ravvi_poker.game.bet import Bet
+from ravvi_poker.engine.poker.bet import Bet
 
 from ravvi_poker.game.poker_plo import Poker_PLO_6
 
