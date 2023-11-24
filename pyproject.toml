@@ -25,7 +25,8 @@ dependencies = [
     "websockets",
     "pydantic[email]",
     "Pillow",
-    "python-magic"
+    "python-magic",
+    "aiohttp"
 ]
 
 [project.optional-dependencies]
