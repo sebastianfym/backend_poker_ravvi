@@ -1,4 +1,5 @@
 import logging
+import asyncio
 import pytest
 from ravvi_poker.engine.poker.base import PokerBase
 
@@ -18,4 +19,4 @@ async def test_case(game_case):
 
     game = X_Game(None, 1, **kwargs)
     await game.run()
-#    assert not game._check_steps
+    assert not game._check_steps

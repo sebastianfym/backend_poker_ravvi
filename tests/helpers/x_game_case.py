@@ -27,7 +27,6 @@ class X_CaseMixIn:
         super().__init__(table, game_id, x_users(_users), **kwargs)
         self._deck = [Card(x).code for x in _deck]
         self._check_steps = list(enumerate(_moves, 1))
-        logger.info("%s %s", self.table, self.game_id)
 
     def setup_cards(self):
         super().setup_cards()
@@ -38,21 +37,19 @@ class X_CaseMixIn:
         await super().emit_msg(db, msg)
 
     def x_check_msg(self, msg: Message):
-        self.log.debug("%s", msg)
         assert self._check_steps
         step_num, step = self._check_steps.pop(0)
         step_msg = f"msg {step_num}"
-        pre, check_event, post = None, None, None
         if isinstance(step, dict):
-            check_event = step
+            expected = step
         else:
             raise ValueError('invalid check entry', step_num)
 
-        msg_type = check_event.pop('type')
-        check_event['msg_type'] = Message.Type.decode(msg_type)
-        #check_event = Message(**check_event)
-        for k, ev in check_event.items():
-            rv = msg.get(k, None)
+        msg_type = expected.pop('type')
+        expected['msg_type'] = Message.Type.decode(msg_type)
+        self.log.debug("%s expected: %s", step_num, msg)
+        for k, ev in expected.items():
+            rv = getattr(msg, k, None)
             if k=='cards' and ev:
                 ev = [Card(x).code for x in ev]
             elif k=='options' and ev:
@@ -61,7 +58,7 @@ class X_CaseMixIn:
             elif k=='bet':
                 ev = Bet.decode(ev)
                 rv = Bet.decode(rv)
-            assert ev == rv, f"{step_msg} - {k}"
+            assert ev == rv, f"{step_msg} - {k}: {ev} / {rv}"
 
 
     async def wait_for_player_bet(self):
@@ -79,12 +76,14 @@ class X_CaseMixIn:
             # do nothing
             return
         cmd_type = cmd.pop('type')
-        cmd_type = Command.Type.decode(cmd_type)
+        cmd_type = Command.Type.BET if cmd_type=='CMD_PLAYER_BET' else Command.Type.decode(cmd_type)
+        assert cmd_type == Command.Type.BET, step_msg
+        cmd['bet'] = Bet.decode(cmd['bet'])
         cmd = Command(table_id=-1, client_id=-1, cmd_type=cmd_type, **cmd)
-        assert cmd.cmd_type == Command.Type.BET, step_msg
+        self.log.debug("cmd %s", cmd)
         assert cmd.user_id == self.current_player.user_id, step_msg
         async with self.DBI() as db:
-            await self.handle_cmd(self, db, cmd.user_id, cmd.client_id, cmd.cmd_type, cmd.props)
+            await self.handle_cmd(db, cmd.user_id, cmd.client_id, cmd.cmd_type, cmd.props)
 
 def create_game_case(base):
 # creating class dynamically 

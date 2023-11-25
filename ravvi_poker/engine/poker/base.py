@@ -3,7 +3,7 @@ import random
 import asyncio
 from itertools import zip_longest, groupby, combinations
 
-from ...logging import getLogger, ObjectLoggerAdapter
+from ...logging import getLogger
 
 from .bet import Bet
 from .hands import Hand, HandType
@@ -11,7 +11,7 @@ from .player import User, Player, PlayerRole
 from .multibank import get_banks
 
 from ..game import Game
-from ..events import Message, Command
+from ..events import Command
 
 from enum import IntEnum, unique
 
@@ -116,10 +116,10 @@ class PokerBase(Game):
 
     # CMD
     async def handle_cmd(self, db, user_id, client_id, cmd_type: Command.Type, props: dict):
-        if cmd_type == Command.Type.JOIN:
+        if cmd_type == Command.Type.BET:
             bet_type = props.get("bet", None)
             raise_delta = props.get("amount", None)
-            await self.handle_cmd_bet(db, user_id=user_id, bet_type=bet_type, raise_delta=raise_delta)
+            self.handle_cmd_bet(db, user_id=user_id, bet_type=bet_type, raise_delta=raise_delta)
 
     # MSG
 
@@ -202,18 +202,18 @@ class PokerBase(Game):
                 await asyncio.wait_for(self.wait_for_player_bet(), self.bet_timeout)
             except asyncio.exceptions.TimeoutError:
                 self.log.info("player timeout: %s", player.user_id)
-        if player.bet_type is None:
-            if Bet.CHECK in options:
-                self.handle_cmd_bet(player.user_id, Bet.CHECK, None)
-            else:
-                self.handle_cmd_bet(player.user_id, Bet.FOLD, None)
         async with self.DBI() as db:
+            if player.bet_type is None:
+                if Bet.CHECK in options:
+                    self.handle_cmd_bet(db, user_id=player.user_id, bet_type=Bet.CHECK, raise_delta=None)
+                else:
+                    self.handle_cmd_bet(db, user_id=player.user_id, bet_type=Bet.FOLD, raise_delta=None)
             await self.broadcast_PLAYER_BET(db, player)
 
     async def wait_for_player_bet(self):
         await self.bet_event.wait()
 
-    def handle_cmd_bet(self, *, user_id, bet_type, raise_delta):
+    def handle_cmd_bet(self, db, *, user_id, bet_type, raise_delta):
         self.log.info("handle_bet: %s %s %s", user_id, bet_type, raise_delta)
         p = self.current_player
         assert p.user_id == user_id
@@ -365,6 +365,7 @@ class PokerBase(Game):
             await self.broadcast_GAME_END(db)
 
         # end
+        await asyncio.sleep(0.0001)
         self.log.info("end")
 
     async def run_players_loop(self):
