@@ -8,7 +8,6 @@ from . import images
 from . import lobby
 from . import clubs
 from . import tables
-#from . import ws
 from . import debug
 
 v1 = APIRouter(prefix="/v1")
@@ -18,7 +17,6 @@ v1.include_router(images.router)
 v1.include_router(lobby.router)
 v1.include_router(clubs.router)
 v1.include_router(tables.router)
-#v1.include_router(ws.router)
 v1.include_router(debug.router)
 
 app = FastAPI()
