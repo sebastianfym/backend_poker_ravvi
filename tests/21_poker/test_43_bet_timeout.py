@@ -12,7 +12,7 @@ async def test_31_bet_timeout():
     
     # game with random deck
     game = PokerBase(None, 1, users)
-    game.bet_timeout = 2
+    game.bet_timeout = 0.1
 
     game.setup_players_roles()
     game.setup_cards()
@@ -27,9 +27,3 @@ async def test_31_bet_timeout():
     assert p444.user_id == 444
     assert p444.bet_type is None
 
-
-if __name__=="__main__":
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-    import asyncio
-    asyncio.run(test_31_bet_timeout())

@@ -23,8 +23,9 @@ class X_CaseMixIn:
     SLEEP_SHOWDOWN_CARDS = 0
     SLEEP_GAME_END = 0
 
-    def __init__(self, table, game_id, _users, _deck, _moves, **kwargs) -> None:
-        super().__init__(table, game_id, x_users(_users), **kwargs)
+    def __init__(self, table, _users, _deck, _moves, **kwargs) -> None:
+        super().__init__(table, x_users(_users), **kwargs)
+        self.game_id = 1
         self._deck = [Card(x).code for x in _deck]
         self._check_steps = list(enumerate(_moves, 1))
 

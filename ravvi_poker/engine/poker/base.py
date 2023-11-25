@@ -33,9 +33,9 @@ class PokerBase(Game):
     SLEEP_SHOWDOWN_CARDS = 1.5
     SLEEP_GAME_END = 4
 
-    def __init__(self, table, game_id, users: List[User], 
+    def __init__(self, table, users: List[User], 
                  *, blind_value=1, blind_small=None, blind_big=None, ante=None, **kwargs) -> None:
-        super().__init__(table=table, game_id=game_id, users=users)
+        super().__init__(table=table, users=users)
         self.log.logger = logger
         self.round = None
         self.deck = None

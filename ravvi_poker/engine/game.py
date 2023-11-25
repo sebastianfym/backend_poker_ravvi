@@ -17,10 +17,10 @@ class Game:
     GAME_SUBTYPE = None
     GAME_DECK = 52
 
-    def __init__(self, table, game_id, users) -> None:
+    def __init__(self, table, users) -> None:
         self.log = ObjectLoggerAdapter(logger, self, "game_id")
         self.table: Table = table
-        self.game_id = game_id
+        self.game_id = None
         self.players = [self.player_factory(u) for u in users]
         self.dealer_id = None
         self.deck = None
@@ -76,17 +76,13 @@ class Game:
     # CMD
 
     async def handle_cmd(self, db, user_id, client_id, cmd_type: Command.Type, props: dict):
-        pass 
+        raise NotImplementedError()
 
     # MSG
 
     async def broadcast_GAME_BEGIN(self, db):
         game_info = self.get_info()
         msg = Message(msg_type=Message.Type.GAME_BEGIN, props=game_info)
-        await self.emit_msg(db, msg)
-
-    async def broadcast_GAME_END(self, db):
-        msg = Message(msg_type=Message.Type.GAME_END)
         await self.emit_msg(db, msg)
 
     async def broadcast_GAME_CARDS(self, db):
@@ -98,13 +94,6 @@ class Game:
             user_id = player.user_id,
             cards = player.cards,
             cards_open = player.cards_open,
-            **kwargs
-        )
-        await self.emit_msg(db, msg)
-
-    async def broadcast_PLAYER_MOVE(self, db, player, **kwargs):
-        msg = Message(msg_type=Message.Type.GAME_PLAYER_MOVE, 
-            user_id = player.user_id, 
             **kwargs
         )
         await self.emit_msg(db, msg)

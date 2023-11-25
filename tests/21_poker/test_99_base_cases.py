@@ -17,6 +17,6 @@ def pytest_generate_tests(metafunc):
 async def test_case(game_case):
     name, kwargs = game_case
 
-    game = X_Game(None, 1, **kwargs)
+    game = X_Game(None, **kwargs)
     await game.run()
     assert not game._check_steps
