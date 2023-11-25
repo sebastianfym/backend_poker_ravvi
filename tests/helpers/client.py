@@ -6,7 +6,7 @@ import json
 import time
 from urllib.parse import urlencode
 
-from ravvi_poker.engine.event import Event, CMD_PLAYER_BET, CMD_TABLE_JOIN
+from ravvi_poker.engine.events import Message, Command
 
 logger = logging.getLogger(__name__)
 

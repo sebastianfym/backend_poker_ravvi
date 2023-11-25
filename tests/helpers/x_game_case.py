@@ -4,6 +4,7 @@ from ravvi_poker.engine.user import User
 from ravvi_poker.engine.cards import Card
 from ravvi_poker.engine.events import Message, Command
 from ravvi_poker.engine.poker.bet import Bet
+from ravvi_poker.engine.poker.hands import HandType
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +49,12 @@ class X_CaseMixIn:
 
         msg_type = expected.pop('type')
         expected['msg_type'] = Message.Type.decode(msg_type)
-        self.log.debug("%s expected: %s", step_num, msg)
+        cmp = [(k, v, getattr(msg, k, None))for k, v in expected.items()]
+        #self.log.info("%s msg: %s", step_num, msg.props)
+        #self.log.info("%s expected: %s", step_num, cmp)
         for k, ev in expected.items():
             rv = getattr(msg, k, None)
-            if k=='cards' and ev:
+            if k in ('cards','hand_cards') and ev:
                 ev = [Card(x).code for x in ev]
             elif k=='options' and ev:
                 ev = [Bet.decode(x) for x in ev]
@@ -59,6 +62,9 @@ class X_CaseMixIn:
             elif k=='bet':
                 ev = Bet.decode(ev)
                 rv = Bet.decode(rv)
+            elif k=='hand_type':
+                ev = HandType.decode(ev)
+                rv = HandType.decode(rv)
             assert ev == rv, f"{step_msg} - {k}: {ev} / {rv}"
 
 

@@ -1,9 +1,7 @@
 from typing import List, Tuple
-from itertools import combinations
 
-from ..engine.cards import get_deck_36
-from ..engine.poker.hands import HandType
-from .poker import PokerBase, Bet
+from .hands import HandType
+from .base import PokerBase, Bet
 
 
 class Poker_NLH_X(PokerBase):
@@ -26,13 +24,11 @@ class Poker_NLH_X(PokerBase):
 
 
 class Poker_NLH_REGULAR(Poker_NLH_X):
-    GAME_TYPE = "NLH"
     GAME_SUBTYPE = "REGULAR"
     GAME_DECK = 52
 
 
 class Poker_NLH_AOF(Poker_NLH_X):
-    GAME_TYPE = "NLH"
     GAME_SUBTYPE = "AOF"
     GAME_DECK = 52
 
@@ -49,7 +45,6 @@ class Poker_NLH_AOF(Poker_NLH_X):
 
 
 class Poker_NLH_3M1(Poker_NLH_X):
-    GAME_TYPE = "NLH"
     GAME_SUBTYPE = "3-1"
     GAME_DECK = 52
 
@@ -57,7 +52,6 @@ class Poker_NLH_3M1(Poker_NLH_X):
 
 
 class Poker_NLH_6P(Poker_NLH_X):
-    GAME_TYPE = "NLH"
     GAME_SUBTYPE = "6+"
     GAME_DECK = 36
 
@@ -73,7 +67,10 @@ class Poker_NLH_6P(Poker_NLH_X):
         HandType.STRAIGHT_FLUSH
     ]
 
+NLH_GAMES = [
+    Poker_NLH_REGULAR,
+    Poker_NLH_AOF,
+    Poker_NLH_3M1,
+    Poker_NLH_6P
+]
 
-NLH_subtype_factory = {}
-for factory in [Poker_NLH_REGULAR, Poker_NLH_AOF, Poker_NLH_3M1, Poker_NLH_6P]:
-    NLH_subtype_factory[factory.GAME_SUBTYPE] = factory

@@ -1,2 +1,2 @@
 from .base import Table
-from .regular import Table_REGULAR
+from .rg import Table_RG

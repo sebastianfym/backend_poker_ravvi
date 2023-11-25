@@ -1,22 +1,25 @@
 import pytest
 
-from ravvi_poker.game.user import User
+from ravvi_poker.engine.user import User
 from ravvi_poker.engine.poker.bet import Bet
-from ravvi_poker.game.poker import PokerBase
+from ravvi_poker.engine.poker.base import PokerBase
 
 
 @pytest.mark.asyncio
 async def test_31_bet_timeout():
 
-    users = [User(x, f"u{x}", None, 1000) for x in [111, 333, 444]]
+    users = [User(x, f"u{x}", None) for x in [111, 333, 444]]
+    for u in users:
+        u.clients.add(u.id)
+        u.balance = 1000
     
     # game with random deck
-    game = PokerBase(None, 1, users)
+    game = PokerBase(None, users)
     game.bet_timeout = 0.1
 
     game.setup_players_roles()
     game.setup_cards()
-    await game.broadcast_GAME_BEGIN()
+    #await game.broadcast_GAME_BEGIN()
     await game.run_PREFLOP()
 
     p111, p333, p444 = sorted(game.players, key=lambda x: x.user_id)

@@ -7,7 +7,7 @@ import asyncio
 import pytest
 
 from helpers.services import Services
-from helpers.client import Client, Event
+from helpers.client import Client, Message
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ async def test_99_01_01():
     await c1.register()
     
     await c1.ws_connect()
-    async with c1.ws_response(Event.TABLE_INFO) as t:
+    async with c1.ws_response(Message.Type.TABLE_INFO) as t:
         await c1.cmd_TABLE_JOIN(table_id=11, take_seat=True)
     logger.info('r_time: %.3fms', t.time_ms)
     

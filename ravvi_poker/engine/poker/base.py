@@ -126,7 +126,7 @@ class PokerBase(Game):
     async def broadcast_PLAYER_CARDS(self, db, player):
         hand_type, hand_cards = None, None
         if player.hand:
-            hand_type = player.hand.type[0],
+            hand_type = player.hand.type[0]
             hand_cards = [c.code for c in player.hand.cards]
         await super().broadcast_PLAYER_CARDS(db, player, hand_type=hand_type, hand_cards=hand_cards)
 

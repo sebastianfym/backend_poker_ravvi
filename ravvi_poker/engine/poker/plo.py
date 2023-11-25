@@ -1,10 +1,9 @@
 from itertools import combinations
 
-from ..engine.poker.hands import Hand
-from .poker import PokerBase
-
+from .base import PokerBase
 
 class Poker_PLO_X(PokerBase):
+    GAME_TYPE = "PLO"
 
     def get_bet_limits(self, player=None):
         p = player or self.current_player
@@ -29,7 +28,6 @@ class Poker_PLO_X(PokerBase):
 
 
 class Poker_PLO_4(Poker_PLO_X):
-    GAME_TYPE = "PLO"
     GAME_SUBTYPE = "PLO4"
     GAME_DECK = 52
 
@@ -37,7 +35,6 @@ class Poker_PLO_4(Poker_PLO_X):
 
 
 class Poker_PLO_5(Poker_PLO_X):
-    GAME_TYPE = "PLO"
     GAME_SUBTYPE = "PLO5"
     GAME_DECK = 52
 
@@ -45,13 +42,13 @@ class Poker_PLO_5(Poker_PLO_X):
 
 
 class Poker_PLO_6(Poker_PLO_X):
-    GAME_TYPE = "PLO"
     GAME_SUBTYPE = "PLO6"
     GAME_DECK = 52
 
     PLAYER_CARDS_FREFLOP = 6
 
-
-PLO_subtype_factory = {}
-for factory in [Poker_PLO_4, Poker_PLO_5, Poker_PLO_6]:
-    PLO_subtype_factory[factory.GAME_SUBTYPE] = factory
+PLO_GAMES = [
+    Poker_PLO_4,
+    Poker_PLO_5,
+    Poker_PLO_6,
+]
