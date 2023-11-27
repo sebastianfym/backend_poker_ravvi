@@ -15,3 +15,20 @@ def api_guest(api_client: TestClient):
     response = api_client.post("/v1/auth/register", json={})
     assert response.status_code == 200
     yield UserAccessTokens(**response.json())
+
+@pytest.fixture
+def api_client_2():
+    client = TestClient(app)
+    yield client
+
+@pytest.fixture
+def api_guest_2(api_client: TestClient):
+    response = api_client.post("/v1/auth/register", json={})
+    assert response.status_code == 200
+    yield UserAccessTokens(**response.json())
+
+@pytest.fixture
+def api_guest_3(api_client: TestClient):
+    response = api_client.post("/v1/auth/register", json={})
+    assert response.status_code == 200
+    yield UserAccessTokens(**response.json())

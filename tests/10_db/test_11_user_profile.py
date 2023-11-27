@@ -9,6 +9,7 @@ async def test_user(user):
         assert row
         assert row.id == user.id
         assert row.uuid == user.uuid
+        assert row.username
         assert row.created_ts
         assert row.closed_ts is None
 

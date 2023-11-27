@@ -250,7 +250,7 @@ class DBI:
 
     # CLUB
 
-    async def create_club(self, *, user_id, name, description, image_id):
+    async def create_club(self, *, user_id, name=None, description=None, image_id=None):
         club_sql = "INSERT INTO club (founder_id, name, description, image_id) VALUES (%s,%s,%s,%s) RETURNING *"
         member_sql = "INSERT INTO club_member (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,%s,now_utc(),0)"
         async with self.cursor() as cursor:
@@ -311,7 +311,14 @@ class DBI:
             await cursor.execute("SELECT * FROM club_member WHERE id=%s",(member_id,))
             row = await cursor.fetchone()
         return row
-        
+
+    async def get_clubs_for_user(self, user_id):
+        sql = "SELECT c.*, u.user_role, u.approved_ts FROM club_member u JOIN club c ON c.id=u.club_id WHERE u.user_id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql,(user_id,))
+            rows = await cursor.fetchall()
+        return rows
+
     # TABLE
 
     async def create_table(self, *, club_id=None, table_type, table_name, table_seats, game_type, game_subtype, props=None):

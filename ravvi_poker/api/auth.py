@@ -9,7 +9,8 @@ from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_4
 from ..engine.jwt import jwt_get, jwt_encode
 from ..engine.passwd import password_hash, password_verify
 from ..db.adbi import DBI as ADBI
-from ..db.dbi import DBI as SDBI
+
+from .utils import SessionUUID, get_session_and_user
 
 log = getLogger(__name__)
 
@@ -148,39 +149,6 @@ async def v1_login_form(form_data: Annotated[OAuth2PasswordRequestForm, Depends(
     return response
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/auth/login")
-
-async def get_current_session_uuid(access_token: Annotated[str, Depends(oauth2_scheme)]):
-    session_uuid = jwt_get(access_token, "session_uuid")
-    if not session_uuid:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return session_uuid
-
-SessionUUID = Annotated[str, Depends(get_current_session_uuid)]
-
-
-def get_session_and_user(dbi, session_uuid):
-    session = dbi.get_session_info(uuid=session_uuid)
-    if not session or session.session_closed_ts:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid session")
-    user = dbi.get_user(id=session.user_id)
-    if not user or user.closed_ts:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid user")
-    return session, user
-
-
-async def async_get_session_and_user(db, session_uuid):
-    session = await db.get_session_info(uuid=session_uuid)
-    if not session or session.session_closed_ts or session.login_closed_ts:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid session")
-    user = await db.get_user(id=session.user_id)
-    if not user or user.closed_ts:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid user")
-    return session, user
 
 class UserChangePassword(BaseModel):
     current_password: str | None = None
@@ -193,7 +161,7 @@ async def v1_user_password(params: UserChangePassword, session_uuid: SessionUUID
     if not params.new_password:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="New password required")
     async with ADBI() as db:
-        session, user = await async_get_session_and_user(db, session_uuid)
+        _, user = await get_session_and_user(db, session_uuid)
         if user.password_hash:
             if not params.current_password:
                 raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
