@@ -248,6 +248,70 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    # CLUB
+
+    async def create_club(self, *, user_id, name, description, image_id):
+        club_sql = "INSERT INTO club (founder_id, name, description, image_id) VALUES (%s,%s,%s,%s) RETURNING *"
+        member_sql = "INSERT INTO club_member (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,%s,now_utc(),0)"
+        async with self.cursor() as cursor:
+            await cursor.execute(club_sql,(user_id, name, description, image_id))
+            club = await cursor.fetchone()
+            await cursor.execute(member_sql,(club.id, user_id,'OWNER'))
+        return club
+
+    async def get_club(self, id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM club WHERE id=%s",(id,))
+            row = await cursor.fetchone()
+        return row
+
+    async def get_club_members(self, club_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM club_member WHERE club_id=%s", (club_id,))
+            rows = await cursor.fetchall()
+        return rows
+
+    async def update_club(self, id, **kwargs):
+        params = ", ".join([f"{key}=%s" for key in kwargs])
+        values = list(kwargs.values()) + [id]
+        sql = f"UPDATE club SET {params} WHERE id=%s RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, values)
+            row = await cursor.fetchone()
+        return row
+
+    async def create_club_member(self, club_id, user_id, user_comment):
+        sql = "INSERT INTO club_member (club_id, user_id, user_comment, user_role, approved_ts, approved_by) VALUES (%s,%s,%s,%s,NULL,NULL) RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql,(club_id, user_id, user_comment,'PLAYER'))
+            row = await cursor.fetchone()
+        return row
+
+    async def get_club_member(self, member_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM club_member WHERE id=%s",(member_id,))
+            row = await cursor.fetchone()
+        return row
+
+    async def approve_club_member(self, member_id, approved_by, club_comment):
+        sql = "UPDATE club_member SET approved_ts=now_utc(), approved_by=%s, club_comment=%s WHERE id=%s RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (approved_by, club_comment, member_id))
+            row = await cursor.fetchone()
+        return row
+
+    async def find_club_member(self, club_id, user_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM club_member WHERE club_id=%s AND user_id=%s",(club_id, user_id))
+            row = await cursor.fetchone()
+        return row
+
+    async def close_club_member(self, member_id, club_comment):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM club_member WHERE id=%s",(member_id,))
+            row = await cursor.fetchone()
+        return row
+        
     # TABLE
 
     async def create_table(self, *, club_id=None, table_type, table_name, table_seats, game_type, game_subtype, props=None):

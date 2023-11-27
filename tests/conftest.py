@@ -86,3 +86,11 @@ async def table():
         )
         assert row
     yield row
+
+@pytest_asyncio.fixture()
+async def club_and_owner():
+    async with DBI() as db:
+        owner = await db.create_user()
+        club = await db.create_club(user_id=owner.id, name=str(owner.id), description=str(owner.id), image_id=None)
+        assert club
+    yield club, owner
