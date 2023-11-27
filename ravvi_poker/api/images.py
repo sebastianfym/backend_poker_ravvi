@@ -11,7 +11,7 @@ from pydantic import BaseModel, field_validator
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 
 from ..db.dbi import DBI
-from .auth import RequireSessionUUID, get_session_and_user
+from .auth import SessionUUID, get_session_and_user
 
 router = APIRouter(prefix="/images", tags=["images"])
 
@@ -47,7 +47,7 @@ class ImageUpload(BaseModel):
 
 
 @router.get("", summary="Get available images")
-async def v1_get_available_images(session_uuid: RequireSessionUUID):
+async def v1_get_available_images(session_uuid: SessionUUID):
     """Get available images"""
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
@@ -74,7 +74,7 @@ def resize_image(image: bytes) -> bytes:
         return buf.getvalue()
 
 @router.post("", summary="Upload image")
-async def v1_upload_image(params: ImageUpload, session_uuid: RequireSessionUUID):
+async def v1_upload_image(params: ImageUpload, session_uuid: SessionUUID):
     """Upload image"""
 
     image = base64.b64decode(params.image_data, validate=True)
@@ -95,7 +95,7 @@ async def v1_upload_image(params: ImageUpload, session_uuid: RequireSessionUUID)
 
 
 @router.get("/{image_id}", summary="Get image by id")
-async def v1_get_image(image_id: int, session_uuid: RequireSessionUUID):
+async def v1_get_image(image_id: int, session_uuid: SessionUUID):
     """Get image by id"""
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
@@ -112,7 +112,7 @@ async def v1_get_image(image_id: int, session_uuid: RequireSessionUUID):
 
 
 @router.delete("/{image_id}", status_code=204, summary="Delete image by id")
-async def v1_delete_image(image_id: int, session_uuid: RequireSessionUUID):
+async def v1_delete_image(image_id: int, session_uuid: SessionUUID):
     """Delete image by id"""
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)

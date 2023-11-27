@@ -377,12 +377,12 @@ class DBI:
     
     def table_user_register(self, table_id, user_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            sql = f"INSERT INTO poker_table_user (table_id, user_id) VALUES (%s,%s)"
+            sql = "INSERT INTO poker_table_user (table_id, user_id) VALUES (%s,%s)"
             cursor.execute(sql, (table_id, user_id))
 
     def table_user_game(self, table_id, user_id, last_game_id):
         with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            sql = f"UPDATE poker_table_user SET last_game_id=%s WHERE table_id=%s AND user_id=%s"
+            sql = "UPDATE poker_table_user SET last_game_id=%s WHERE table_id=%s AND user_id=%s"
             cursor.execute(sql, (last_game_id, table_id, user_id))
 
     def get_table(self, table_id):

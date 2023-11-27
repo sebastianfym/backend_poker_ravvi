@@ -6,7 +6,7 @@ from pydantic import BaseModel, EmailStr
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 
 from ..db.dbi import DBI
-from .auth import RequireSessionUUID, get_session_and_user
+from .auth import SessionUUID, get_session_and_user
 
 router = APIRouter(prefix="/user", tags=["user"])
 
@@ -42,7 +42,7 @@ class UserTempEmail(BaseModel):
 
 
 @router.get("/profile", summary="Get user")
-async def v1_get_user(session_uuid: RequireSessionUUID):
+async def v1_get_user(session_uuid: SessionUUID):
     """Get user"""
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
@@ -57,7 +57,7 @@ async def v1_get_user(session_uuid: RequireSessionUUID):
 
 
 @router.delete("/profile", status_code=204, summary="Deactivate user")
-async def v1_deactivate_user(session_uuid: RequireSessionUUID):
+async def v1_deactivate_user(session_uuid: SessionUUID):
     """Deactivate user"""
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
@@ -67,7 +67,7 @@ async def v1_deactivate_user(session_uuid: RequireSessionUUID):
 
 
 @router.patch("/profile", summary="Update user")
-async def v1_update_user(params: UserProps, session_uuid: RequireSessionUUID):
+async def v1_update_user(params: UserProps, session_uuid: SessionUUID):
     """Update user"""
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
@@ -92,7 +92,7 @@ async def v1_update_user(params: UserProps, session_uuid: RequireSessionUUID):
 
 
 @router.post("/profile/email", summary="Set user email")
-async def v1_set_user_email(params: UserEmail, session_uuid: RequireSessionUUID):
+async def v1_set_user_email(params: UserEmail, session_uuid: SessionUUID):
     """Set user email"""
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
@@ -109,7 +109,7 @@ async def v1_set_user_email(params: UserEmail, session_uuid: RequireSessionUUID)
 
 
 @router.post("/profile/email/{uuid}", summary="Approve user email")
-async def v1_approve_user_email(uuid: str, session_uuid: RequireSessionUUID):
+async def v1_approve_user_email(uuid: str, session_uuid: SessionUUID):
     """Approve user email"""
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
@@ -130,7 +130,7 @@ async def v1_approve_user_email(uuid: str, session_uuid: RequireSessionUUID):
 
 
 @router.get("/{user_id}/profile", summary="Get user info")
-async def v1_get_user_profile(user_id: int, session_uuid: RequireSessionUUID):
+async def v1_get_user_profile(user_id: int, session_uuid: SessionUUID):
     """Get user profile info"""
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)

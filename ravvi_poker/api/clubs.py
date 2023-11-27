@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from . import utils
 from ..db.dbi import DBI
-from .auth import RequireSessionUUID, get_session_and_user
+from .auth import SessionUUID, get_session_and_user
 
 router = APIRouter(prefix="/clubs", tags=["clubs"])
 
@@ -34,7 +34,7 @@ class ClubMemberProfile(BaseModel):
 
 
 @router.post("", status_code=201, summary="Create new club")
-async def v1_create_club(params: ClubProps, session_uuid: RequireSessionUUID):
+async def v1_create_club(params: ClubProps, session_uuid: SessionUUID):
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
         image = dbi.get_user_images(user.id, id=params.image_id) if params.image_id else None
@@ -54,7 +54,7 @@ async def v1_create_club(params: ClubProps, session_uuid: RequireSessionUUID):
 
 
 @router.get("", summary="List clubs for current user")
-async def v1_list_clubs(session_uuid: RequireSessionUUID):
+async def v1_list_clubs(session_uuid: SessionUUID):
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
         clubs = dbi.get_clubs_for_user(user_id=user.id)
@@ -72,7 +72,7 @@ async def v1_list_clubs(session_uuid: RequireSessionUUID):
 
 
 @router.get("/{club_id}", summary="Get club by id")
-async def v1_get_club(club_id: int, session_uuid: RequireSessionUUID):
+async def v1_get_club(club_id: int, session_uuid: SessionUUID):
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
         club = dbi.get_club(club_id)
@@ -91,7 +91,7 @@ async def v1_get_club(club_id: int, session_uuid: RequireSessionUUID):
 
 
 @router.patch("/{club_id}", summary="Update club")
-async def v1_update_club(club_id: int, params: ClubProps, session_uuid: RequireSessionUUID):
+async def v1_update_club(club_id: int, params: ClubProps, session_uuid: SessionUUID):
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
         club = dbi.get_club(club_id)
@@ -118,7 +118,7 @@ async def v1_update_club(club_id: int, params: ClubProps, session_uuid: RequireS
 
 
 @router.delete("/{club_id}", status_code=204, summary="Delete club")
-async def v1_delete_club(club_id: int, session_uuid: RequireSessionUUID):
+async def v1_delete_club(club_id: int, session_uuid: SessionUUID):
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
         club = dbi.get_club(club_id)
@@ -133,7 +133,7 @@ async def v1_delete_club(club_id: int, session_uuid: RequireSessionUUID):
 
 
 @router.get("/{club_id}/members", summary="Get club memebrs")
-async def v1_get_club_members(club_id: int, session_uuid: RequireSessionUUID):
+async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
         club = dbi.get_club(club_id)
@@ -153,7 +153,7 @@ async def v1_get_club_members(club_id: int, session_uuid: RequireSessionUUID):
 
 
 @router.post("/{club_id}/members", summary="Submit join request")
-async def v1_join_club(club_id: int, session_uuid: RequireSessionUUID):
+async def v1_join_club(club_id: int, session_uuid: SessionUUID):
     DEFAULT_USER_ROLE = "PLAYER"
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
@@ -176,7 +176,7 @@ async def v1_join_club(club_id: int, session_uuid: RequireSessionUUID):
 
 
 @router.post("/{club_id}/members/{member_id}", summary="Approve join request")
-async def v1_approve_join_request(club_id: int, member_id: int, session_uuid: RequireSessionUUID):
+async def v1_approve_join_request(club_id: int, member_id: int, session_uuid: SessionUUID):
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
         club = dbi.get_club(club_id)
@@ -202,7 +202,7 @@ async def v1_approve_join_request(club_id: int, member_id: int, session_uuid: Re
 
 
 @router.delete("/{club_id}/members/{member_id}", status_code=204, summary="Delete club member")
-async def v1_delete_club_member(club_id: int, member_id: int, session_uuid: RequireSessionUUID):
+async def v1_delete_club_member(club_id: int, member_id: int, session_uuid: SessionUUID):
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
         club = dbi.get_club(club_id)

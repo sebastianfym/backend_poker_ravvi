@@ -5,13 +5,13 @@ from pydantic import BaseModel
 
 from . import utils
 from ..db.dbi import DBI
-from .auth import RequireSessionUUID, get_session_and_user
+from .auth import SessionUUID, get_session_and_user
 from .tables import TableProps
 
 router = APIRouter(prefix="/lobby", tags=["lobby"])
 
 @router.get("/entry_tables", status_code=200, summary="Get game entry points")
-async def v1_get_entry_tables(session_uuid: RequireSessionUUID):
+async def v1_get_entry_tables(session_uuid: SessionUUID):
     with DBI() as dbi:
         #_, user = get_session_and_user(dbi, session_uuid)
         tables = dbi.get_lobby_entry_tables()

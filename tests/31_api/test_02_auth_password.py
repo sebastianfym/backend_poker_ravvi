@@ -1,64 +1,63 @@
 import pytest
-pytestmark = pytest. mark. skip()
 
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN, HTTP_422_UNPROCESSABLE_ENTITY
 from fastapi.testclient import TestClient
+from ravvi_poker.api.auth import UserAccessTokens
 
-from ravvi_poker.api.app import app
-
-client = TestClient(app)
-
-
-def register_guest():
-    response = client.post("/v1/auth/register", json={})
-    assert response.status_code == 200
-    result = response.json()
-    access_token = result["access_token"]
-    return access_token
-
-
-def test_change_password():
-    # register new guest
-    access_token = register_guest()
-    headers = {"Authorization": "Bearer " + access_token}
+def test_change_password(api_client: TestClient, api_guest: UserAccessTokens):
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
 
     params = dict(new_password="test")
-    response = client.post("/v1/auth/password", headers=headers, json=params)
+    response = api_client.post("/v1/auth/password", json=params)
     assert response.status_code == 200
 
     params = dict(new_password="new_test", current_password="test")
-    response = client.post("/v1/auth/password", headers=headers, json=params)
+    response = api_client.post("/v1/auth/password", json=params)
+    assert response.status_code == 200
+
+    # logout
+    response = api_client.post("/v1/auth/logout")
     assert response.status_code == 200
 
 
-def test_change_password_negative():
-    # register new guest
-    access_token = register_guest()
-    headers = {"Authorization": "Bearer " + access_token}
-
+#@pytest.mark.skip
+def test_change_password_negative(api_client: TestClient, api_guest: UserAccessTokens):
     # try w/o access_token
-    response = client.post("/v1/auth/password", headers=None, json=None)
-    assert response.status_code == 401
+    response = api_client.post("/v1/auth/password", headers=None, json=None)
+    assert response.status_code == HTTP_401_UNAUTHORIZED
+
+    # set headers
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
 
     # try no params
-    response = client.post("/v1/auth/password", headers=headers, json=None)
-    assert response.status_code == 422
+    response = api_client.post("/v1/auth/password", json=None)
+    assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
 
     # try bad password
     params = dict(new_password="")
-    response = client.post("/v1/auth/password", headers=headers, json=params)
-    assert response.status_code == 400
+    response = api_client.post("/v1/auth/password", json=params)
+    assert response.status_code == HTTP_400_BAD_REQUEST
 
     # try wrong current password
-    params = dict(current_password="something", new_password="test")
-    response = client.post("/v1/auth/password", headers=headers, json=params)
-    assert response.status_code == 401
+    params = dict(current_password="wrong", new_password="test")
+    response = api_client.post("/v1/auth/password", json=params)
+    assert response.status_code == HTTP_401_UNAUTHORIZED
 
     # set password
     params = dict(new_password="test")
-    response = client.post("/v1/auth/password", headers=headers, json=params)
+    response = api_client.post("/v1/auth/password", json=params)
     assert response.status_code == 200
 
-    # try wrong current password
-    params = dict(current_password="something", new_password="new_test")
-    response = client.post("/v1/auth/password", headers=headers, json=params)
+    # try wrong empty password
+    params = dict(current_password="", new_password="new_test")
+    response = api_client.post("/v1/auth/password", json=params)
     assert response.status_code == 401
+
+    # try wrong empty password
+    params = dict(current_password="wrong", new_password="new_test")
+    response = api_client.post("/v1/auth/password", json=params)
+    assert response.status_code == 401
+
+    # logout
+    response = api_client.post("/v1/auth/logout")
+    assert response.status_code == 200

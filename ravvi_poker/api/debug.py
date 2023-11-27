@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from starlette.status import HTTP_404_NOT_FOUND
 
 from ..db.dbi import DBI
-from .auth import RequireSessionUUID, get_session_and_user
+from .auth import SessionUUID, get_session_and_user
 
 router = APIRouter(prefix="/debug", tags=["debug"])
 
@@ -24,7 +24,7 @@ class DebugMessageCreate(BaseModel):
 
 
 @router.post("", summary="Send debug message")
-async def v1_send_debug_message(params: DebugMessageCreate, session_uuid: RequireSessionUUID):
+async def v1_send_debug_message(params: DebugMessageCreate, session_uuid: SessionUUID):
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
         game = dbi.get_game(params.game_id)
@@ -45,7 +45,7 @@ async def v1_send_debug_message(params: DebugMessageCreate, session_uuid: Requir
 
 
 @router.get("", summary="Get debug messages")
-async def v1_get_debug_messages(session_uuid: RequireSessionUUID):
+async def v1_get_debug_messages(session_uuid: SessionUUID):
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
         debug_messages = dbi.get_debug_messages(user.id)

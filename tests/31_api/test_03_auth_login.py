@@ -1,42 +1,37 @@
 import pytest
-pytestmark = pytest. mark. skip()
 
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN, HTTP_422_UNPROCESSABLE_ENTITY
 from fastapi.testclient import TestClient
-
-from ravvi_poker.api.app import app
-
-client = TestClient(app)
+from ravvi_poker.api.auth import UserAccessTokens
 
 
-def register_guest_and_set_password(password):
-    response = client.post("/v1/auth/register", json={})
-    assert response.status_code == 200
-    result = response.json()
-    username = result["username"]
-    device_token = result["device_token"]
-    access_token = result["access_token"]
+def test_auth_login(api_client: TestClient, api_guest: UserAccessTokens):
 
-    headers = {"Authorization": "Bearer " + access_token}
+    # set headers
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+    
+    # change password
     params = dict(new_password="test")
-    response = client.post("/v1/auth/password", headers=headers, json=params)
+    response = api_client.post("/v1/auth/password", json=params)
     assert response.status_code == 200
 
-    return username, device_token
+    # logout
+    response = api_client.post("/v1/auth/logout")
+    assert response.status_code == 200
 
+    api_client.headers = None
 
-def test_auth_login():
-    # register new guest
-    username, device_token = register_guest_and_set_password("test")
+    # try user id
+    params = dict(username=str(api_guest.user_id), password="test", client_id=api_guest.device_token)
+    response = api_client.post("/v1/auth/login", data=params)
+    assert response.status_code == 200
+    result = UserAccessTokens(**response.json())
+    assert result.device_token == api_guest.device_token
+    assert result.login_token != api_guest.login_token
+    assert result.access_token is not None
 
-    # try correct params
-    params1 = dict(username=username, password="test", client_id=device_token)
-    response1 = client.post("/v1/auth/login", data=params1)
-    assert response1.status_code == 200
+    api_client.headers = {"Authorization": "Bearer " + result.access_token}
 
-    result1 = response1.json()
-    assert result1
-    assert isinstance(result1["device_token"], str)
-    assert isinstance(result1["access_token"], str)
-    assert result1["token_type"] == "bearer"
-    assert isinstance(result1["user_id"], int)
-    assert isinstance(result1["username"], str)
+    # logout
+    response = api_client.post("/v1/auth/logout")
+    assert response.status_code == 200

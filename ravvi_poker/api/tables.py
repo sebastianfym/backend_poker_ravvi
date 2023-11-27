@@ -6,7 +6,7 @@ from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 from pydantic import BaseModel, model_validator, field_validator
 
 from ..db.dbi import DBI
-from .auth import RequireSessionUUID, get_session_and_user
+from .auth import SessionUUID, get_session_and_user
 
 from .clubs import router as clubs_router
 
@@ -38,7 +38,7 @@ class TableProps(TableCreate):
     club_id: int | None
 
 @clubs_router.get("/{club_id}/tables", status_code=200, summary="Get club tables")
-async def v1_get_club_tables(club_id: int, session_uuid: RequireSessionUUID):
+async def v1_get_club_tables(club_id: int, session_uuid: SessionUUID):
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
         club = dbi.get_club(club_id)
@@ -60,7 +60,7 @@ async def v1_get_club_tables(club_id: int, session_uuid: RequireSessionUUID):
     return list([map_row(row) for row in tables])
 
 @clubs_router.post("/{club_id}/tables", status_code=201, summary="Create club table")
-async def v1_create_club_table(club_id: int, params: TableCreate, session_uuid: RequireSessionUUID):
+async def v1_create_club_table(club_id: int, params: TableCreate, session_uuid: SessionUUID):
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
         club = dbi.get_club(club_id)
@@ -73,7 +73,7 @@ async def v1_create_club_table(club_id: int, params: TableCreate, session_uuid: 
     return TableProps(**table)
 
 @router.get("/tables/{table_id}/result", status_code=200, summary="Get table (SNG/MTT) result")
-async def v1_get_table_result(table_id: int, session_uuid: RequireSessionUUID):
+async def v1_get_table_result(table_id: int, session_uuid: SessionUUID):
     with DBI() as dbi:
         _, user = get_session_and_user(dbi, session_uuid)
         table = dbi.get_table(table_id)

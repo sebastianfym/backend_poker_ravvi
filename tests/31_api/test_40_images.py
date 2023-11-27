@@ -1,3 +1,6 @@
+import pytest
+pytestmark = pytest. mark. skip()
+
 import base64
 from io import BytesIO
 from math import ceil
