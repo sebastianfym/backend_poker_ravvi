@@ -78,6 +78,7 @@ async def test_club_member(club_and_owner, user):
     assert member.approved_by is None
     assert member.club_comment is None
     assert member.closed_ts is None
+    assert member.closed_by is None
 
     async with DBI() as db:
         member = await db.get_club_member(member.id)
@@ -105,7 +106,8 @@ async def test_club_member(club_and_owner, user):
     assert member.approved_by == owner.id
     assert member.club_comment == 'club comment'
     assert member.closed_ts is None
-
+    assert member.closed_by is None
+   
     assert clubs
     uclub = clubs[0]
     assert uclub.id == club.id
@@ -115,3 +117,11 @@ async def test_club_member(club_and_owner, user):
         members = await db.get_club_members(club.id)
     assert members and len(members)==2
 
+    async with DBI() as db:
+        member = await db.close_club_member(member.id, owner.id, 'close comment')
+        clubs = await db.get_clubs_for_user(user.id)
+
+    assert member.closed_ts
+    assert member.closed_by == owner.id
+
+    assert not clubs

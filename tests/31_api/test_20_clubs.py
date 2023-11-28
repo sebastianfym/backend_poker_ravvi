@@ -127,3 +127,9 @@ def test_21_club_join(api_client: TestClient, api_guest: UserAccessTokens, api_c
     assert members
     assert pending and len(pending) == 1
 
+    p = pending[0]
+    response = api_client.post(f"/v1/clubs/{club.id}/members/{p.id}")
+    assert response.status_code == 200
+    member = ClubMemberProfile(**response.json())
+    assert member.user_approved
+

@@ -2,6 +2,7 @@ ALTER TABLE public.club ALTER COLUMN name DROP NOT NULL;
 ALTER TABLE public.club ALTER COLUMN name SET DEFAULT NULL;
 ALTER TABLE public.club ADD closed_ts timestamp NULL DEFAULT NULL;
 ALTER TABLE public.club_member ADD closed_ts timestamp NULL DEFAULT NULL;
+ALTER TABLE public.club_member ADD closed_by bigint NULL DEFAULT NULL;
 ALTER TABLE public.club_member ADD user_comment varchar(255) NULL DEFAULT NULL;
 ALTER TABLE public.club_member ADD club_comment varchar(255) NULL DEFAULT NULL;
 

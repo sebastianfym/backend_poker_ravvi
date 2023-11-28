@@ -169,43 +169,44 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID):
 
 @router.post("/{club_id}/members/{member_id}", summary="Approve join request")
 async def v1_approve_join_request(club_id: int, member_id: int, session_uuid: SessionUUID):
-    with DBI() as dbi:
-        _, user = get_session_and_user(dbi, session_uuid)
-        club = dbi.get_club(club_id)
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        new_member = dbi.get_club_member(club_id, member_id)
-        if not new_member:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member not found")
-        user_member = dbi.get_club_member(club_id, user.id)        
+        user_member = await db.find_club_member(club_id, user.id)
         if not user_member or user_member.user_role != "OWNER":
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
-        if new_member.approved_ts is None:
-            new_member = dbi.approve_club_member(club.id, user.id, member_id)
-        new_member_profile = dbi.get_user(id=new_member.user_id)
+        member = await db.get_club_member(member_id)
+        if not member or member.club_id!=club.id:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member not found")
+        if member.approved_ts is None:
+            member = await db.approve_club_member(member_id, user.id, None)
+        new_member_profile = await db.get_user(member.user_id)
 
     return ClubMemberProfile(
         id=new_member_profile.id,
         username=new_member_profile.username,
         image_id=new_member_profile.image_id,
-        user_role=new_member.user_role,
-        user_approved=new_member.approved_ts is not None
+        user_role=member.user_role,
+        user_approved=member.approved_ts is not None
     )
 
 
 @router.delete("/{club_id}/members/{member_id}", status_code=204, summary="Close club member")
 async def v1_close_club_member(club_id: int, member_id: int, session_uuid: SessionUUID):
-    with DBI() as dbi:
-        _, user = get_session_and_user(dbi, session_uuid)
-        club = dbi.get_club(club_id)
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        member = dbi.get_club_member(club_id, member_id)
+        user_member = await db.find_club_member(club_id, user.id)
+        if not user_member or user_member.user_role != "OWNER":
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
+        member = db.get_club_member(member_id)
         if not member:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member not found")
         user_member = dbi.get_club_member(club_id, user.id) 
-        if not user_member or user_member.user_role != "OWNER":
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
         dbi.delete_club_member(club.id, member_id)
 
     return {}

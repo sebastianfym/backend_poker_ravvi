@@ -293,6 +293,12 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def find_club_member(self, club_id, user_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM club_member WHERE club_id=%s AND user_id=%s",(club_id, user_id))
+            row = await cursor.fetchone()
+        return row
+
     async def approve_club_member(self, member_id, approved_by, club_comment):
         sql = "UPDATE club_member SET approved_ts=now_utc(), approved_by=%s, club_comment=%s WHERE id=%s RETURNING *"
         async with self.cursor() as cursor:
@@ -300,20 +306,15 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    async def find_club_member(self, club_id, user_id):
+    async def close_club_member(self, member_id, closed_by, club_comment):
+        sql = "UPDATE club_member SET closed_ts=now_utc(), closed_by=%s, club_comment=%s WHERE id=%s RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute("SELECT * FROM club_member WHERE club_id=%s AND user_id=%s",(club_id, user_id))
-            row = await cursor.fetchone()
-        return row
-
-    async def close_club_member(self, member_id, club_comment):
-        async with self.cursor() as cursor:
-            await cursor.execute("SELECT * FROM club_member WHERE id=%s",(member_id,))
+            await cursor.execute(sql,(closed_by, club_comment, member_id))
             row = await cursor.fetchone()
         return row
 
     async def get_clubs_for_user(self, user_id):
-        sql = "SELECT c.*, u.user_role, u.approved_ts FROM club_member u JOIN club c ON c.id=u.club_id WHERE u.user_id=%s"
+        sql = "SELECT c.*, m.user_role, m.approved_ts FROM club_member m JOIN club c ON c.id=m.club_id WHERE m.user_id=%s and m.closed_ts IS NULL"
         async with self.cursor() as cursor:
             await cursor.execute(sql,(user_id,))
             rows = await cursor.fetchall()
