@@ -1,17 +1,20 @@
+import logging
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.exceptions import HTTPException
 from pydantic import BaseModel, EmailStr
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 
-from ..db.dbi import DBI
-from .auth import SessionUUID, get_session_and_user
+from ..db.adbi import DBI as ADBI
+from .utils import SessionUUID, get_session_and_user
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/user", tags=["user"])
 
 
-class UserProfile(BaseModel):
+class UserPrivateProfile(BaseModel):
     id: int
     has_password: bool
     username: str | None = None
@@ -19,7 +22,7 @@ class UserProfile(BaseModel):
     image_id: int | None = None
 
 
-class UserProfileInfo(BaseModel):
+class UserPublicInfo(BaseModel):
     id: int
     username: str | None = None
     image_id: int | None = None
@@ -41,13 +44,13 @@ class UserTempEmail(BaseModel):
     is_active: bool
 
 
-@router.get("/profile", summary="Get user")
-async def v1_get_user(session_uuid: SessionUUID):
-    """Get user"""
-    with DBI() as dbi:
-        _, user = get_session_and_user(dbi, session_uuid)
+@router.get("/profile", summary="Get user private profile")
+async def v1_get_user_profile(session_uuid: SessionUUID):
+    """Get user private profile"""
+    async with ADBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
 
-    return UserProfile(
+    return UserPrivateProfile(
         id=user.id,
         username=user.username,
         email=user.email,
@@ -55,88 +58,34 @@ async def v1_get_user(session_uuid: SessionUUID):
         image_id=user.image_id
     )
 
-@router.get("/{user_id}/profile", summary="Get user info")
-async def v1_get_user_profile(user_id: int, session_uuid: SessionUUID):
-    """Get user profile info"""
-    with DBI() as dbi:
-        _, user = get_session_and_user(dbi, session_uuid)
-        searched_user = dbi.get_user(id=user_id)
-        if not searched_user:
+@router.patch("/profile", summary="Update user profile")
+async def v1_update_user(props: UserProps, session_uuid: SessionUUID, request: Request):
+    """Update user profile"""
+    async with ADBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        kwargs = props.model_dump(exclude_unset=True)
+        if kwargs:
+            user = await db.update_user(user.id, **kwargs)
+
+    return UserPrivateProfile(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        has_password=bool(user.password_hash),
+        image_id=user.image_id
+    )
+
+@router.get("/{user_id}", summary="Get user public info")
+async def v1_get_user_info(user_id: int, session_uuid: SessionUUID):
+    """Get user public info"""
+    async with ADBI() as db:
+        await get_session_and_user(db, session_uuid)
+        user = await db.get_user(user_id)
+        if not user:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="User not found")
 
-    return UserProfileInfo(
-        id=searched_user.id,
-        username=searched_user.username,
-        image_id=searched_user.image_id
-    )
-
-@router.patch("/profile", summary="Update user")
-async def v1_update_user(params: UserProps, session_uuid: SessionUUID):
-    """Update user"""
-    with DBI() as dbi:
-        _, user = get_session_and_user(dbi, session_uuid)
-        user_params = params.model_dump(exclude_unset=True)
-        if user_params:
-            image_id = user_params.get("image_id")
-            image = dbi.get_user_images(user.id, id=image_id) if image_id else None
-            if image_id is not None and not image:
-                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Image not found")
-            new_username = user_params.get("username")
-            if dbi.is_username_in_use(user.id, new_username):
-                raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Username already in use")
-            user = dbi.update_user_profile(user.id, **user_params)
-
-    return UserProfile(
+    return UserPublicInfo(
         id=user.id,
         username=user.username,
-        email=user.email,
-        has_password=bool(user.password_hash),
-        image_id=user.image_id
-    )
-
-@router.delete("/profile", status_code=204, summary="Deactivate user")
-async def v1_deactivate_user(session_uuid: SessionUUID):
-    """Deactivate user"""
-    with DBI() as dbi:
-        _, user = get_session_and_user(dbi, session_uuid)
-        dbi.deactivate_user(user.id)
-
-    return {}
-
-
-@router.post("/profile/email", summary="Set user email")
-async def v1_set_user_email(params: UserEmail, session_uuid: SessionUUID):
-    """Set user email"""
-    with DBI() as dbi:
-        _, user = get_session_and_user(dbi, session_uuid)
-        if params.email == user.email:
-            raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Email already installed")
-        temp_email = dbi.create_temp_email(user.id, params.email)
-
-    return UserTempEmail(
-        user_id=temp_email.user_id,
-        uuid=temp_email.uuid,
-        temp_email=temp_email.temp_email,
-        is_active=not temp_email.closed_ts
-    )
-
-
-@router.post("/profile/email/{uuid}", summary="Approve user email")
-async def v1_approve_user_email(uuid: str, session_uuid: SessionUUID):
-    """Approve user email"""
-    with DBI() as dbi:
-        _, user = get_session_and_user(dbi, session_uuid)
-        temp_email = dbi.get_temp_email(user.id, uuid)
-        if not temp_email:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Not found")
-        if temp_email.closed_ts:
-            raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Confirmation expired")
-        user = dbi.set_temp_email(user.id, uuid)
-
-    return UserProfile(
-        id=user.id,
-        username=user.username,
-        email=user.email,
-        has_password=bool(user.password_hash),
         image_id=user.image_id
     )

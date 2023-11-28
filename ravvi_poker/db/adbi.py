@@ -125,6 +125,15 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def update_user(self, id, **kwargs):
+        params = ", ".join([f"{key}=%s" for key in kwargs])
+        values = list(kwargs.values()) + [id]
+        sql = f"UPDATE user_profile SET {params} WHERE id=%s RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, values)
+            row = await cursor.fetchone()
+        return row
+
     async def update_user_password(self, id, password_hash):
         sql = "UPDATE user_profile SET password_hash=%s WHERE id=%s"
         async with self.cursor() as cursor:
