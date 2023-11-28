@@ -20,7 +20,7 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessTokens):
     # Создаем стол NLH
     params = {
         "table_name": "TEST",
-        "table_type": "RING_GAME",
+        "table_type": "RG",
         "table_seats": 6,
         "game_type": "NLH",
         "game_subtype": "REGULAR"
@@ -31,7 +31,7 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessTokens):
     assert table
     assert table.id
     assert table.table_name == "TEST"
-    assert table.table_type == "RING_GAME"
+    assert table.table_type == "RG"
     assert table.table_seats == 6
     assert table.game_type == "NLH"
     assert table.game_subtype == "REGULAR"
@@ -39,7 +39,7 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessTokens):
 
     params = {
         "table_name": "TEST NLH AOF",
-        "table_type": "RING_GAME",
+        "table_type": "RG",
         "table_seats": 6,
         "game_type": "NLH",
         "game_subtype": "AOF"
@@ -50,7 +50,7 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessTokens):
     assert table
     assert table.id
     assert table.table_name == "TEST NLH AOF"
-    assert table.table_type == "RING_GAME"
+    assert table.table_type == "RG"
     assert table.table_seats == 6
     assert table.game_type == "NLH"
     assert table.game_subtype == "AOF"

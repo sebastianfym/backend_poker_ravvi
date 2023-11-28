@@ -46,9 +46,10 @@ class WS_Client:
             return
         msg = msg.hide_private_info(self.user_id)
         await self.ws.send_json(msg)
-        self.log.debug('send_msg: %s', msg)
+        self.log.info('send_msg: %s', msg)
 
     async def recv_commands(self):
+        self.log.info('recv_commands: ...')
         try:
             while self.is_connected:
                 cmd = await self.ws.receive_json()

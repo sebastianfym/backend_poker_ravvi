@@ -1,10 +1,14 @@
 import logging
 import pytest
 
-logger = logging.getLogger(__name__)
+from helpers.services import Services
+
+log = logging.getLogger(__name__)
 
 @pytest.fixture(autouse=True, scope='session')
-def api_service():
-    logger.info('start api service')
+def services():
+    Services.start()
+#    log.info('SERVICES START')
     yield
-    logger.info('stop api service')
+#    log.info('SERVICES STOP')
+    Services.stop()

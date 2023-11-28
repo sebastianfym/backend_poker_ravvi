@@ -13,7 +13,7 @@ async def test_table(table):
         assert row
         assert row.id == table.id
         assert row.table_name == "PUBLIC"
-        assert row.table_type == "REGULAR"
+        assert row.table_type == "RG"
         assert row.table_seats == 9
         assert row.game_type == "NLH"
         assert row.game_subtype == "DEFAULT"

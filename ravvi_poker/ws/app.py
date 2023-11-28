@@ -29,4 +29,8 @@ app = FastAPI(lifespan=lifespan)
 @app.websocket("/v1/ws")
 async def v1_ws_endpoint(ws: WebSocket, access_token: str = None):
     logger.info('v1_ws_endpoint')
-    await manager.handle_connect(ws, access_token)
+    client = await manager.handle_connect(ws, access_token)
+    try:
+        await client.run()
+    finally:
+        await manager.handle_disconnect(client)

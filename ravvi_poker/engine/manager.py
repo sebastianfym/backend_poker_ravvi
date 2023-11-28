@@ -5,7 +5,7 @@ from typing import Mapping
 
 from ..db import DBI
 from ..db.listener import DBI_Listener
-from .table import Table, Table_Regular
+from .table import Table, Table_RG, Table_SNG
 
 
 class Engine_Manager(DBI_Listener):
@@ -30,39 +30,39 @@ class Engine_Manager(DBI_Listener):
             self.tables = None
 
     async def on_listen(self, db: DBI):
-        self.log_info("load tables")
+        self.log.info("load tables")
         rows = await db.get_open_tables()
         for r in rows:
             await self.handle_table_row(r)
-        self.log_info("tables ready")
+        self.log.info("tables ready")
 
     async def on_table_cmd(self, db: DBI, *, cmd_id, table_id):
-        self.log_debug("on_table_cmd: %s %s %s", table_id, cmd_id)
+        self.log.debug("on_table_cmd: %s %s %s", table_id, cmd_id)
         table = self.tables.get(table_id, None)
         if not table:
-            self.log_warning("table %s not found", table_id)
+            self.log.warning("table %s not found", table_id)
             return
         cmd = await db.get_table_cmd(cmd_id)
         if not cmd:
-            self.log_warning("table_cmd %s not found", cmd_id)
+            self.log.warning("table_cmd %s not found", cmd_id)
             return
         client = await db.get_client_info(cmd.client_id)
         if not client:
-            self.log_warning("client %s not found", cmd.client_id)
+            self.log.warning("client %s not found", cmd.client_id)
             return
-        await table.handle_cmd(db, client.user_id, client.id, cmd.cmd_type, cmd.props or {})
+        await table.handle_cmd(db, client.user_id, client.client_id, cmd.cmd_type, cmd.props or {})
 
     async def on_user_client_closed(self, db: DBI, *, client_id):
-        self.log_debug("on_user_client_closed: %s ", client_id)
+        self.log.debug("on_user_client_closed: %s ", client_id)
         client = await db.get_client_info(client_id)
         if not client:
-            self.log_warning("client %s not found", client_id)
+            self.log.warning("client %s not found", client_id)
             return
         user_id = client.user_id
         for table in self.tables.values():
             if client.user_id not in table.users:
                 continue
-            table.handle_client_close(db, user_id, client_id)
+            await table.handle_client_close(db, user_id=user_id, client_id=client_id)
 
     def table_kwargs_from_row(self, row):
         kwargs = row._asdict()
@@ -71,19 +71,21 @@ class Engine_Manager(DBI_Listener):
         return kwargs
 
     def table_factory(self, *, id, table_type, **kwargs):
-        if table_type == "RING_GAME":
-            return Table_Regular(id=id, **kwargs)
-        # if table_type=='SNG':
-        #    return Table_SNG(id=id, table_type=table_type, **kwargs)
+        if table_type == "RG":
+            return Table_RG(id=id, **kwargs)
+        elif table_type=='SNG':
+            return Table_SNG(id=id, table_type=table_type, **kwargs)
+        self.log.error("table %s unknown table_type=%s", id, table_type)
 
     async def handle_table_row(self, row):
-        self.log_info("handle_table_row: %s", row)
+        self.log.info("handle_table_row: %s", row)
         try:
             kwargs = row._asdict()
             table = self.table_factory(**kwargs)
+            if not table:
+                return
             self.tables[table.table_id] = table
             # run table task
             await table.start()
-
         except Exception as ex:
-            self.log_exception("add_table %s: %s", row, ex)
+            self.log.exception("add_table %s: %s", row, ex)

@@ -21,6 +21,8 @@ class Table_RG(Table):
     def on_user_seat_taken(self, user, user_seat_idx):
         user.balance = self.buyin_min
 
+    async def game_factory(self, users):
+        raise NotImplementedError()
 
 #    async def run_table(self):
 #        while True:

@@ -3,7 +3,6 @@ from .dbi import DBI
 
 def create_database(db_name):
     conninfo = DBI.conninfo('postgres')
-    print(conninfo)
     with psycopg.connect(conninfo, autocommit=True) as dbi:
         with dbi.cursor() as cur:
             dbi.execute(f"CREATE DATABASE {db_name} TEMPLATE template0")

@@ -8,7 +8,7 @@ from urllib.parse import urlencode
 
 from ravvi_poker.engine.events import Message, Command
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 class Client:
     API_URL = 'http://localhost:8001'
@@ -54,7 +54,7 @@ class Client:
         self.device_token = data['device_token']
         self.access_token = data['access_token']
         self.user_id = data['user_id']
-        logger.debug('registered: user_id = %s', self.user_id)
+        log.debug('registered: user_id = %s', self.user_id)
 
     async def ws_connect(self):
         assert not self.ws
@@ -63,38 +63,44 @@ class Client:
         self.ws = await websockets.connect(uri)
         assert self.ws
         self.ws_task = asyncio.create_task(self.run_ws_recv())
+        await asyncio.sleep(0.1)
 
     async def run_ws_recv(self):
-        logger.debug("run_ws_recv ...")
+        log.info("run_ws_recv ...")
         try:
             while True:
                 msg = await self.ws.recv()
                 kwargs = json.loads(msg)
-                event = Event(**kwargs)
-                logger.debug("ws recv: %s", event)
+                msg = Message(**kwargs)
+                log.info("ws recv: %s", msg)
                 async with self.ws_lock:
-                    self.ws_log.append(event)
-                    if self.ws_event_type==event.type:
+                    self.ws_log.append(msg)
+                    msg_type = Message.Type.decode(msg.msg_type)
+                    if self.ws_event_type==msg_type:
                         self.ws_event.set()
 
         except websockets.ConnectionClosed as e:
-            logger.debug("run_ws_recv: closed: %s: %s", type(e), e)
+            log.info("run_ws_recv: closed: %s: %s", type(e), e)
         except asyncio.CancelledError:
-            logger.debug("run_ws_recv: cancel")
+            log.info("run_ws_recv: cancel")
         except Exception as e:
-            logger.error("run_ws_recv: error: %s, %s", type(e), e)
-        logger.debug("run_ws_recv: end")
+            log.error("run_ws_recv: error: %s, %s", type(e), e)
+        log.info("run_ws_recv: end")
 
     async def ws_close(self):
         if not self.ws:
             return
         await self.ws.close()
-        if not self.ws_task.done():
-            self.ws_task.cancel()
+        #if not self.ws_task.done():
+        #    self.ws_task.cancel()
         await self.ws_task
 
     async def cmd_TABLE_JOIN(self, **kwargs):
-        await self.ws.send(json.dumps(CMD_TABLE_JOIN(**kwargs)))
+        cmd = dict(cmd_type=11, **kwargs)
+        cmd = json.dumps(cmd)
+        log.info("cmd %s", cmd)
+        ret = await self.ws.send(cmd)
+        log.info("cmd %s", ret)
 
     def ws_response(self, event_type, timeout=2):
         return WS_Response(self, event_type, timeout)

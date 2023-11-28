@@ -1,5 +1,4 @@
 from datetime import datetime
-from ..event import Event, TABLE_CLOSED, TABLE_NEXT_LEVEL_INFO
 from .base import Table
 
 
@@ -8,13 +7,14 @@ class Table_SNG(Table):
 
     def __init__(self, id, *, level_time=3, buyin_value=10000, buyin_cost=None, **kwargs):
         super().__init__(id, **kwargs)
+        self.buyin_value = buyin_value
+        self.buyin_cost = buyin_cost
         self.started = None
-        self.levels = LEVEL_SCHEDULE_STANDARD
+        self.level_schedule = LEVEL_SCHEDULE_STANDARD
         self.level_time = level_time
         self.level_current = 0
         self.level_reminder = None
         self.level_next = None
-        self.buyin_value = buyin_value
 
     @property
     def user_enter_enabled(self):
@@ -33,29 +33,27 @@ class Table_SNG(Table):
             now = datetime.utcnow().replace(microsecond=0)
             run_seconds = (now - self.started).total_seconds()
             level_seconds = self.level_time * 60
-            self.level_current = min(int(run_seconds / level_seconds), len(self.levels) - 1)
+            self.level_current = min(int(run_seconds / level_seconds), len(self.level_schedule) - 1)
             self.level_reminder = level_seconds - run_seconds % level_seconds
-            level_next = min(self.level_current + 1, len(self.levels) - 1)
+            level_next = min(self.level_current + 1, len(self.level_schedule) - 1)
             if level_next == self.level_next:
                 continue
-            blind_small, blind_big, ante = self.levels[level_next]
+            blind_small, blind_big, ante = self.level_schedule[level_next]
             self.level_next = level_next
-            event = TABLE_NEXT_LEVEL_INFO(
-                self.table_id, seconds=self.level_reminder, blind_small=blind_small, blind_big=blind_big
-            )
-            await self.broadcast(event)
+            async with self.DBI() as db:
+                self.broadcast_TABLE_NEXT_LEVEL_INFO(db, seconds=self.level_reminder, blind_small=blind_small, blind_big=blind_big)
 
     async def run_table(self):
         # wait for players take all seats available
         while not all(self.seats):
-            await asyncio.sleep(1)
+            await self.sleep(1)
 
         # players
         users = self.get_players(2, exclude_offile=False)
-        with DBI() as db:
+        async with self.DBI() as db:
             db.set_table_opened(self.table_id)
             for u in users:
-                db.table_user_register(self.table_id, u.id)
+                db.create_table_user(self.table_id, u.id)
 
         self.started = datetime.utcnow().replace(microsecond=0)
         self.task2 = asyncio.create_task(self.run_levels())
@@ -63,7 +61,7 @@ class Table_SNG(Table):
         while users:
             await asyncio.sleep(self.NEW_GAME_DELAY)
 
-            blind_small, blind_big, ante = self.levels[self.level_current]
+            blind_small, blind_big, ante = self.level_schedule[self.level_current]
             game_id = await self.run_game(users, blind_value=blind_small)
             with DBI() as db:
                 for u in users:
@@ -74,9 +72,9 @@ class Table_SNG(Table):
             # refresh users
             users = self.get_players(2, exclude_offile=False)
 
-        with DBI() as db:
-            self.closed = db.set_table_closed(self.table_id)
-        await self.broadcast(TABLE_CLOSED(table_redirect_id=self.table_id))
+        async with self.DBI() as db:
+            await  db.close_table(self.table_id)
+            await self.broadcast_TABLE_CLOSED(db)
 
 
 LEVEL_SCHEDULE_STANDARD = [

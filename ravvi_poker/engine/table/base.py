@@ -99,7 +99,7 @@ class Table:
     async def on_user_leave(self, db, user):
         self.log.debug("on_user_leave(%s)", user.id if user else None)
 
-    async def on_game_ended(self, db):
+    async def on_game_end(self, db):
         self.log.debug("on_game_ended()")
 
     async def emit_msg(self, db: DBI, msg: Message):
@@ -109,6 +109,10 @@ class Table:
 
     async def emit_TABLE_INFO(self, db, client_id, table_info):
         msg = Message(msg_type=Message.Type.TABLE_INFO, client_id=client_id, **table_info)
+        await self.emit_msg(db, msg)
+
+    async def broadcast_TABLE_NEXT_LEVEL_INFO(self, db, **kwargs):
+        msg = Message(msg_type=Message.Type.TABLE_NEXT_LEVEL_INFO, **kwargs)
         await self.emit_msg(db, msg)
 
     async def broadcast_TABLE_CLOSED(self, db):
@@ -134,15 +138,16 @@ class Table:
             table_id=self.table_id,
             table_redirect_id=self.table_id,
             table_type=self.table_type,
-            seats=[None if u is None else u.id for u in self.seats],
-            users=users_info,
+            seats=[None if u is None else u.id for u in self.seats]
         )
         if self.game:
             game_info = self.game.get_info(user_id=user_id, users_info=users_info)
             result.update(game_info)
+        result.update(users=list(users_info.values()))
         return result
 
-    async def handle_cmd(self, db, user_id, client_id, cmd_type: Command.Type, props: dict):
+    async def handle_cmd(self, db, user_id, client_id, cmd_type: int, props: dict):
+        cmd_type = Command.Type.decode(cmd_type)
         self.log.info("handle_cmd: %s/%s %s %s", user_id, client_id, cmd_type, props)
         async with self.lock:
             if cmd_type == Command.Type.JOIN:
@@ -155,6 +160,8 @@ class Table:
                 await self.handle_cmd_exit(db, user_id=user_id)
             elif self.game:
                 await self.game.handle_cmd(db, user_id=user_id, cmd_type=cmd_type, props=props)
+            else:
+                self.log.warning("handle_cmd: unknown cmd_type = %s", cmd_type)
 
     async def handle_cmd_join(self, db, *, user_id, client_id, take_seat):
         # check seats allocation
@@ -328,7 +335,6 @@ class Table:
             if not users:
                 return
             self.game = await self.create_game(users)
-
         try:
             await self.game.run()
         except Exception as e:
