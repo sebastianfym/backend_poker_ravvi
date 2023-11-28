@@ -17,6 +17,10 @@ log = getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+class RegisterParams(BaseModel):
+    device_token: str | None = None
+    device_props: dict | None = None
+
 class DeviceInfo(BaseModel):
     device_token: str | None = None
     login_token: str  | None = None
@@ -33,7 +37,7 @@ class UserAccessTokens(BaseModel):
 
 
 @router.post("/register")
-async def v1_register_guest(params: DeviceInfo, request: Request) -> UserAccessTokens:
+async def v1_register_guest(params: RegisterParams, request: Request) -> UserAccessTokens:
     """Register user account (guest)"""
 
     client_host = request.client.host
