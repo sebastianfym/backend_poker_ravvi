@@ -1,6 +1,7 @@
 import logging
 import os
 import json
+import base64
 import psycopg
 import psycopg_pool
 from psycopg.rows import namedtuple_row, dict_row
@@ -246,6 +247,31 @@ class DBI:
         async with self.cursor() as cursor:
             await cursor.execute(sql, (client_id,))
             row = await cursor.fetchone()
+        return row
+
+    # IMAGE
+
+    async def create_image(self, owner_id, mime_type, image_data):
+        if isinstance(image_data, bytes):
+            image_data = base64.b64encode(image_data).decode()
+        sql = "INSERT INTO image (owner_id, mime_type, image_data) VALUES (%s, %s, %s) RETURNING id, owner_id, mime_type"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (owner_id, mime_type, image_data))
+            row = await cursor.fetchone()
+        return row
+
+    async def get_image(self, id):
+        sql = "SELECT * FROM image WHERE id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (id,))
+            row = await cursor.fetchone()
+        return row
+
+    async def get_images_for_user(self, user_id):
+        sql = "SELECT id, owner_id, mime_type FROM image WHERE owner_id=%s or owner_id IS NULL"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (user_id,))
+            row = await cursor.fetchall()
         return row
 
     # CLUB
