@@ -8,7 +8,7 @@ from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_4
 
 from ..engine.jwt import jwt_get, jwt_encode
 from ..engine.passwd import password_hash, password_verify
-from ..db.adbi import DBI as ADBI
+from ..db import DBI
 
 from .utils import SessionUUID, get_session_and_user
 
@@ -40,7 +40,7 @@ async def v1_register_guest(params: DeviceInfo, request: Request) -> UserAccessT
     device_uuid = jwt_get(params.device_token, "device_uuid")
     log.info("%s: auth.register device=%s", client_host, device_uuid)
 
-    async with ADBI() as db:
+    async with DBI() as db:
         user = await db.create_user()
         device = await db.get_device(uuid=device_uuid) if device_uuid else None
         if not device or device.closed_ts:
@@ -70,7 +70,7 @@ async def v1_device_login(params: DeviceInfo, request: Request) -> UserAccessTok
     login_uuid = jwt_get(params.login_token, "login_uuid")
     log.info("%s: auth.device device=%s login=%s", client_host, device_uuid, login_uuid)
 
-    async with ADBI() as db:
+    async with DBI() as db:
         device = await db.get_device(uuid=device_uuid) if device_uuid else None
         login  = await db.get_login(uuid=login_uuid) if login_uuid else None
         user   = await db.get_user(id=login.user_id) if login and not login.closed_ts else None
@@ -118,7 +118,7 @@ async def v1_login_form(form_data: Annotated[OAuth2PasswordRequestForm, Depends(
     except ValueError:
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
     
-    async with ADBI() as db:
+    async with DBI() as db:
         device = await db.get_device(uuid=device_uuid) if device_uuid else None
         if not device:
             device = await db.create_device()
@@ -160,7 +160,7 @@ async def v1_user_password(params: UserChangePassword, session_uuid: SessionUUID
     """Change password"""
     if not params.new_password:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="New password required")
-    async with ADBI() as db:
+    async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         if user.password_hash:
             if not params.current_password:
@@ -177,7 +177,7 @@ async def v1_user_password(params: UserChangePassword, session_uuid: SessionUUID
 @router.post("/logout")
 async def v1_user_logout(session_uuid: SessionUUID):
     """Logout"""    
-    async with ADBI() as db:
+    async with DBI() as db:
         session = await db.get_session_info(uuid=session_uuid) if session_uuid else None
         if session:
             await db.close_session(session.session_id)

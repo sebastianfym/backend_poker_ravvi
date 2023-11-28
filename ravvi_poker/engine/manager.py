@@ -3,7 +3,7 @@ import json
 import asyncio
 from typing import Mapping
 
-from ..db.adbi import DBI
+from ..db import DBI
 from ..db.listener import DBI_Listener
 from .table import Table, Table_Regular
 

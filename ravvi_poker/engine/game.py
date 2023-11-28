@@ -1,6 +1,6 @@
 import logging
 from ..logging import ObjectLoggerAdapter
-from ..db.adbi import DBI
+from ..db import DBI
 
 from .cards import get_deck_36, get_deck_52
 from .user import User

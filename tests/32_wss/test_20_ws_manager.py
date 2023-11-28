@@ -1,7 +1,7 @@
 import logging
 import pytest
 
-from ravvi_poker.db.adbi import DBI
+from ravvi_poker.db.dbi import DBI
 from ravvi_poker.engine.events import Command, Message
 from ravvi_poker.engine.jwt import jwt_encode
 from ravvi_poker.ws.manager import WS_Manager

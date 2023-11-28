@@ -4,7 +4,7 @@ import asyncio
 from fastapi import WebSocket, WebSocketDisconnect, WebSocketException, status
 
 from ..engine.events import Command, Message
-from ..db.adbi import DBI
+from ..db import DBI
 from ..db.listener import DBI_Listener
 from ..engine.jwt import jwt_get
 from .client import WS_Client

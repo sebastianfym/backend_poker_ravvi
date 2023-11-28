@@ -6,7 +6,7 @@ from fastapi.exceptions import HTTPException
 from pydantic import BaseModel, EmailStr
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 
-from ..db.adbi import DBI as ADBI
+from ..db import DBI as DBI
 from .utils import SessionUUID, get_session_and_user
 
 log = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ class UserTempEmail(BaseModel):
 @router.get("/profile", summary="Get user private profile")
 async def v1_get_user_profile(session_uuid: SessionUUID):
     """Get user private profile"""
-    async with ADBI() as db:
+    async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
 
     return UserPrivateProfile(
@@ -61,7 +61,7 @@ async def v1_get_user_profile(session_uuid: SessionUUID):
 @router.patch("/profile", summary="Update user profile")
 async def v1_update_user(props: UserProps, session_uuid: SessionUUID, request: Request):
     """Update user profile"""
-    async with ADBI() as db:
+    async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         kwargs = props.model_dump(exclude_unset=True)
         if kwargs:
@@ -78,7 +78,7 @@ async def v1_update_user(props: UserProps, session_uuid: SessionUUID, request: R
 @router.get("/{user_id}", summary="Get user public info")
 async def v1_get_user_info(user_id: int, session_uuid: SessionUUID):
     """Get user public info"""
-    async with ADBI() as db:
+    async with DBI() as db:
         await get_session_and_user(db, session_uuid)
         user = await db.get_user(user_id)
         if not user:

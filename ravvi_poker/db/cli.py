@@ -1,37 +1,23 @@
 import logging
 import argparse
 
-from .dbi import DBI
 from . import schema
 from . import deploy
+from . import utils
 
 
 def cmd_create_database(args):
     """Create and init database from schema files = production state"""
-    DBI.create_database(args.database)
-
-    with DBI(db_name=args.database) as db:
-        for name, sql in schema.getSQLFiles():
-            sql = sql.replace("%", "%%")
-            print("===", name, "===")
-            db.execute(sql)
-        db.commit()
-
+    utils.create_database(args.database)
+    utils.apply_sql_files(args.database, schema.getSQLFiles())
 
 def cmd_drop_database(args):
     """Drops database (expected to be used during tests)"""
-    DBI.drop_database(args.database)
-
+    utils.drop_database(args.database)
 
 def cmd_deploy_changes(args):
     """Apply schema changes and data manipulation during version upgrade"""
-    with DBI(db_name=args.database) as db:
-        for name, sql in deploy.getSQLFiles():
-            sql = sql.replace("%", "%%")
-            print("===", name, "===")
-            db.execute(sql)
-        db.commit()
-
+    utils.apply_sql_files(args.database, deploy.getSQLFiles())
 
 def main(args=None):
     parser = argparse.ArgumentParser()

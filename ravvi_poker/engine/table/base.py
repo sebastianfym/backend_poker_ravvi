@@ -3,7 +3,7 @@ import asyncio
 import inspect
 
 from ...logging import getLogger, ObjectLoggerAdapter
-from ...db.adbi import DBI
+from ...db import DBI
 from ..user import User
 from ..events import Command, Message
 

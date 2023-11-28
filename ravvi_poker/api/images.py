@@ -12,7 +12,7 @@ from PIL import Image
 from pydantic import BaseModel, field_validator
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 
-from ..db.adbi import DBI as ADBI
+from ..db import DBI
 from .utils import SessionUUID, get_session_and_user
 
 log = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class ImageProfile(BaseModel):
 @router.post("", summary="Upload image")
 async def v1_upload_image(file: UploadFile, session_uuid: SessionUUID):
     """Upload image"""
-    async with ADBI() as db:
+    async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
 
         log.info("file %s %s", file.content_type, file.size)
@@ -67,7 +67,7 @@ async def v1_upload_image(file: UploadFile, session_uuid: SessionUUID):
 @router.get("/{image_id}", summary="Get image by id")
 async def v1_get_image(image_id: int, session_uuid: SessionUUID):
     """Get image by id"""
-    async with ADBI() as db:
+    async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         image = await db.get_image(image_id)
         if not image:
@@ -83,7 +83,7 @@ async def v1_get_image(image_id: int, session_uuid: SessionUUID):
 @router.get("", summary="Get available images")
 async def v1_get_avaiable_image(session_uuid: SessionUUID):
     """Get images for user"""
-    async with ADBI() as db:
+    async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         images = await db.get_images_for_user(user.id)
 

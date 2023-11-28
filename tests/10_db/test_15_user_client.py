@@ -1,6 +1,6 @@
 import pytest
 
-from ravvi_poker.db.adbi import DBI
+from ravvi_poker.db.dbi import DBI
 from helpers.x_listener import X_DBI_Listener
 
 

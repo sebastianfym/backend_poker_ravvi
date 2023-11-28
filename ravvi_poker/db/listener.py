@@ -2,7 +2,7 @@ import logging
 import asyncio
 import json
 
-from .adbi import DBI, Notify
+from .dbi import DBI, Notify
 from .txn import DBI_Txn
 
 logger = logging.getLogger(__name__)

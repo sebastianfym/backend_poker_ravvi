@@ -1,7 +1,7 @@
 import logging
 import pytest
 
-from ravvi_poker.db.adbi import DBI
+from ravvi_poker.db.dbi import DBI
 
 log = logging.getLogger(__name__)
 

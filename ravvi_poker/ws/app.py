@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi import WebSocket, WebSocketDisconnect, WebSocketException, status
 from fastapi.middleware.cors import CORSMiddleware
-from ..db.adbi import DBI
+from ..db import DBI
 from .manager import WS_Manager
 
 logger = logging.getLogger(__name__)

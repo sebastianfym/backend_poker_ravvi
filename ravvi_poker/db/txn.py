@@ -1,4 +1,4 @@
-from .adbi import DBI
+from .dbi import DBI
 
 class DBI_Txn:
     def __init__(self, db: DBI) -> None:

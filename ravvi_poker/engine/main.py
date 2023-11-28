@@ -1,7 +1,7 @@
 import logging
 import asyncio
 
-from ..db.adbi import DBI
+from ..db import DBI
 from .manager import Engine_Manager
 
 logger = logging.getLogger(__name__)

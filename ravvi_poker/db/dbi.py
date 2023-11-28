@@ -1,8 +1,12 @@
 import logging
 import os
 import json
+import base64
 import psycopg
+import psycopg_pool
 from psycopg.rows import namedtuple_row, dict_row
+from psycopg.connection import Notify
+
 
 logger = logging.getLogger(__name__)
 
@@ -13,384 +17,397 @@ class DBI:
     DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
     DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "develop")
 
+    pool = None
+    pool_ref = 0
+
+    ForeignKeyViolation = psycopg.errors.ForeignKeyViolation
+
     @classmethod
-    def create_database(cls, db_name):
+    def conninfo(cls, db_name: str | None = None):
         conninfo = psycopg.conninfo.make_conninfo(
             host=cls.DB_HOST,
             port=cls.DB_PORT,
+            dbname=db_name or cls.DB_NAME,
             user=cls.DB_USER,
             password=cls.DB_PASSWORD,
-            dbname="postgres",
         )
-        with psycopg.connect(conninfo, autocommit=True) as dbi:
-            with dbi.cursor() as cur:
-                dbi.execute(f"CREATE DATABASE {db_name} TEMPLATE template0")
+        return conninfo
 
     @classmethod
-    def drop_database(cls, db_name):
-        conninfo = psycopg.conninfo.make_conninfo(
-            host=cls.DB_HOST,
-            port=cls.DB_PORT,
-            user=cls.DB_USER,
-            password=cls.DB_PASSWORD,
-            dbname="postgres",
-        )
-        with psycopg.connect(conninfo, autocommit=True) as dbi:
-            with dbi.cursor() as cur:
-                cur.execute(f"DROP DATABASE IF EXISTS {db_name}")
+    async def pool_open(cls):
+#        cls.pool_ref += 1
+#        if cls.pool_ref == 1:
+        cls.pool = psycopg_pool.AsyncConnectionPool(conninfo=cls.conninfo(), open=False)
+        await cls.pool.open()
+        logger.debug("pool: ready")
 
-    def __init__(self, *, db_name=None, autocommit=False) -> None:
-        self.db_name = db_name
-        self.autocommit = autocommit
+    @classmethod
+    async def pool_close(cls):
+#        cls.pool_ref -= 1
+#        if cls.pool_ref==0:
+        await cls.pool.close()
+        cls.pool = None
+        logger.debug("pool: closed")
+
+    def __init__(self) -> None:
+        self.dbi_pool = None
         self.dbi = None
 
-    def connect(self):
-        conninfo = psycopg.conninfo.make_conninfo(
-            host=self.DB_HOST,
-            port=self.DB_PORT,
-            user=self.DB_USER,
-            password=self.DB_PASSWORD,
-            dbname=self.db_name or self.DB_NAME,
-        )
-        self.dbi = psycopg.connect(conninfo, autocommit=self.autocommit)
+    # CONTEXT
+
+    async def __aenter__(self):
+        if self.pool:
+            self.dbi_pool = self.pool
+            self.dbi = await self.dbi_pool.getconn()
+        else:
+            self.dbi = await psycopg.AsyncConnection.connect(self.conninfo())
         return self
 
-    def close(self):
-        if self.dbi:
-            self.dbi.close()
-
-    def commit(self):
-        self.dbi.commit()
-
-    def __enter__(self):
-        self.connect()
-        return self
-
-    def __exit__(self, exc_type, exc_value, exc_tb):
+    async def __aexit__(self, exc_type, exc_value, exc_tb):
         if exc_type is None:
-            self.commit()
-        self.close()
+            await self.dbi.commit()
+        else:
+            await self.dbi.rollback()
+        if self.dbi_pool:
+            await self.dbi_pool.putconn(self.dbi)
+            self.dbi_pool = None
+        else:
+            await self.dbi.close()
+        self.dbi = None
 
-    def execute(self, query, **kwargs):
-        return self.dbi.execute(query, params=kwargs)
-    
     def cursor(self, *args, row_factory=namedtuple_row, **kwargs):
         return self.dbi.cursor(*args, row_factory=row_factory, **kwargs)
-
-    def create_device(self, device_props):
-        device_props = json.dumps(device_props) if device_props else None
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute(
-                "INSERT INTO user_device (props) VALUES (%s) RETURNING id, uuid",
-                (device_props,),
-            )
-            return cursor.fetchone()
-
-    def get_device(self, *, id=None, uuid=None):
-        sql = "SELECT * FROM user_device WHERE "
-        if id:
-            sql += "id=%s"
-            args = [id]
-        elif uuid:
-            sql += "uuid=%s"
-            args = [uuid]
+    
+    def use_id_or_uuid(self, id, uuid):
+        if id is not None:
+            key, value = 'id', id
+        elif uuid is not None:
+            key, value = 'uuid', uuid
         else:
-            return None
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute(sql, args)
-            return cursor.fetchone()
+            raise ValueError('login: id or uuid required')
+        return key, value
 
-    def create_user_account(self):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("INSERT INTO user_profile (username) VALUES (NULL) RETURNING id, uuid")
-            user = cursor.fetchone()
-            username = f"u{user.id}"
-            cursor.execute("UPDATE user_profile SET username=%s WHERE id=%s RETURNING id, uuid, username, password_hash", (username, user.id))
-            user = cursor.fetchone()
-            return user
+    async def listen(self, channel):
+        await self.dbi.execute(f'LISTEN {channel}')
 
-    def get_user(self, *, id=None, uuid=None, username=None):
-        sql = "SELECT * FROM user_profile WHERE "
-        if id:
-            sql += "id=%s"
-            args = [id]
-        elif uuid:
-            sql += "uuid=%s"
-            args = [uuid]
-        elif username:
-            sql += "username=%s"
-            args = [username]
-        else:
-            return None
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute(sql, args)
-            return cursor.fetchone()
+    # DEVICE 
 
-    def update_user_password(self, id, password_hash):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("UPDATE user_profile SET password_hash=%s WHERE id=%s RETURNING id, uuid, username", (password_hash, id))
-            return cursor.fetchone()
-
-    def create_user_login(self, user_id, device_id):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute(
-                "INSERT INTO user_login (user_id, device_id) VALUES (%s, %s) RETURNING id, uuid",
-                (user_id, device_id),
-            )
-            return cursor.fetchone()
+    async def create_device(self, props=None):
+        props = json.dumps(props) if props else None
+        sql = "INSERT INTO user_device (props) VALUES (%s) RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (props,))
+            row = await cursor.fetchone()
+        return row
         
-    def get_user_login(self, *, id=None, uuid=None):
-        sql = "SELECT * FROM user_login WHERE "
-        if id:
-            sql += "id=%s"
-            args = [id]
-        elif uuid:
-            sql += "uuid=%s"
-            args = [uuid]
-        else:
-            return None
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute(sql, args)
-            return cursor.fetchone()
+    async def get_device(self, id=None, *, uuid=None):
+        key, value = self.use_id_or_uuid(id, uuid)
+        sql = f"SELECT * FROM user_device WHERE {key}=%s" # nosec
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (value,))
+            row = await cursor.fetchone()
+        return row
+        
+    # USER
 
-    def close_user_login(self, *, uuid=None):
-        if not uuid:
-            return
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            self.dbi.execute("UPDATE user_login SET closed_ts=NOW() WHERE uuid=%s", (uuid,))
+    async def create_user(self):
+        sql = "INSERT INTO user_profile (username) VALUES (NULL) RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql)
+            row = await cursor.fetchone()
+        return row
 
-    def create_user_session(self, login_id):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute(
-                "INSERT INTO user_session (login_id) VALUES (%s) RETURNING id, uuid",
-                (login_id,),
-            )
-            return cursor.fetchone()
+    async def get_user(self, id=None, *, uuid=None):
+        key, value = self.use_id_or_uuid(id, uuid)
+        sql = f"SELECT * FROM user_profile WHERE {key}=%s" # nosec
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (value,))
+            row = await cursor.fetchone()
+        return row
 
-    def get_session_info(self, *, uuid):
-        sql = """
+    async def update_user(self, id, **kwargs):
+        params = ", ".join([f"{key}=%s" for key in kwargs])
+        values = list(kwargs.values()) + [id]
+        sql = f"UPDATE user_profile SET {params} WHERE id=%s RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, values)
+            row = await cursor.fetchone()
+        return row
+
+    async def update_user_password(self, id, password_hash):
+        sql = "UPDATE user_profile SET password_hash=%s WHERE id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (password_hash, id))
+
+    async def close_user(self, id=None, *, uuid=None):
+        key, value = self.use_id_or_uuid(id, uuid)
+        sql = f"UPDATE user_profile SET closed_ts=now_utc() WHERE {key}=%s RETURNING *" # nosec
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (value,))
+            row = await cursor.fetchone()
+        return row
+    
+    # LOGIN
+
+    async def create_login(self, device_id, user_id):
+        sql = "INSERT INTO user_login (device_id, user_id) VALUES (%s, %s) RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (device_id, user_id))
+            row = await cursor.fetchone()
+        return row
+        
+    async def get_login(self, id=None, *, uuid=None):
+        key, value = self.use_id_or_uuid(id, uuid)
+        sql = f"SELECT * FROM user_login WHERE {key}=%s" # nosec
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (value,))
+            row = await cursor.fetchone()
+        return row
+        
+    async def close_login(self, id=None, *, uuid=None):
+        key, value = self.use_id_or_uuid(id, uuid)
+        sql = f"UPDATE user_login SET closed_ts=now_utc() WHERE {key}=%s RETURNING *" # nosec
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (value,))
+            row = await cursor.fetchone()
+        return row
+                    
+    # SESSION
+
+    async def create_session(self, login_id):
+        sql = "INSERT INTO user_session (login_id) VALUES (%s) RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (login_id,))
+            row = await cursor.fetchone()
+        return row
+
+    async def get_session(self, id=None, *, uuid=None):
+        key, value = self.use_id_or_uuid(id, uuid)
+        sql = f"SELECT * FROM user_session WHERE {key}=%s" # nosec
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (value,))
+            row = await cursor.fetchone()
+        return row
+        
+    async def get_session_info(self, id=None, *, uuid=None):
+        key, value = self.use_id_or_uuid(id, uuid)
+        sql = f"""
             SELECT 
-                s.id session_id, s.uuid session_uuid, 
-                l.id login_id, l.uuid login_uuid,
-                d.id device_id, d.uuid device_uuid,
+                s.id session_id, s.uuid session_uuid, s.closed_ts session_closed_ts,
+                l.id login_id, l.uuid login_uuid, l.closed_ts login_closed_ts,
+                d.id device_id, d.uuid device_uuid, d.closed_ts device_closed_ts,
                 l.user_id
             FROM user_session s
             JOIN user_login l ON l.id=s.login_id
             JOIN user_device d ON d.id=l.device_id
-            WHERE s.uuid=%s
-            """
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute(sql, (uuid,))
-            return cursor.fetchone()
+            WHERE s.{key}=%s
+            """ # nosec
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (value,))
+            row = await cursor.fetchone()
+        return row
 
-    def close_user_session(self, *, session_id, login_id):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            if session_id:
-                self.dbi.execute("UPDATE user_session SET closed_ts=NOW() WHERE id=%s", (session_id,))
-            if login_id:
-                self.dbi.execute("UPDATE user_login SET closed_ts=NOW() WHERE id=%s", (login_id,))
+    async def close_session(self, id=None, *, uuid=None):
+        key, value = self.use_id_or_uuid(id, uuid)
+        async with self.cursor() as cursor:
+            sql = f"UPDATE user_session SET closed_ts=now_utc() WHERE {key}=%s RETURNING *" # nosec
+            await cursor.execute( sql, (value,))
+            row = await cursor.fetchone()
+        return row
 
-    def deactivate_user(self, user_id):
-        sql = """
-            UPDATE user_session
-            SET closed_ts=NOW()
-            WHERE login_id in (
-                SELECT id
-                FROM user_login
-                WHERE user_id=%s
+
+    # CLIENT
+
+    async def create_client(self, session_id):
+        async with self.cursor() as cursor:
+            await cursor.execute(
+                "INSERT INTO user_client (session_id) VALUES (%s) RETURNING *",
+                (session_id,),
             )
-            """
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute(sql, (user_id,))
-            cursor.execute("UPDATE user_login SET closed_ts=NOW() WHERE user_id=%s", (user_id,))
-            cursor.execute("UPDATE user_profile SET closed_ts=NOW() WHERE id=%s", (user_id,))
+            row = await cursor.fetchone()
+        return row
+    
+    async def get_client(self, id=None, *, uuid=None):
+        key, value = self.use_id_or_uuid(id, uuid)
+        async with self.cursor() as cursor:
+            sql = f"SELECT * FROM user_client WHERE {key}=%s" # nosec
+            await cursor.execute(sql, (value,))
+            row = await cursor.fetchone()
+        return row
+    
+    async def get_client_info(self, id=None, *, uuid=None):
+        key, value = self.use_id_or_uuid(id, uuid)
+        sql = f"""
+        select
+            c.id client_id, c.closed_ts,
+            c.session_id, s.login_id, l.user_id  
+            from user_client c
+            join user_session s on s.id = c.session_id 
+            join user_login l on l.id = s.login_id
+        where c.{key}=%s
+        """ # nosec
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (value,))
+            row = await cursor.fetchone()
+        return row
 
-    def update_user_profile(self, user_id, **kwargs):
-        params = ", ".join([f"{key}=%s" for key in kwargs])
-        values = list(kwargs.values()) + [user_id]
-        sql = f"UPDATE user_profile SET {params} WHERE id=%s RETURNING *"
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute(sql, values)
-            return cursor.fetchone()
+    async def close_client(self, client_id):
+        sql = "UPDATE user_client SET closed_ts=now_utc() WHERE id=%s RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (client_id,))
+            row = await cursor.fetchone()
+        return row
 
-    def create_temp_email(self, user_id, temp_email):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("UPDATE temp_email SET closed_ts=NOW() WHERE user_id=%s AND closed_ts is NULL", (user_id,))
-            cursor.execute("INSERT INTO temp_email (user_id, temp_email) VALUES (%s, %s) RETURNING *", (user_id,temp_email))
-            return cursor.fetchone()
+    # IMAGE
 
-    def get_temp_email(self, user_id, uuid):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("SELECT * FROM temp_email WHERE user_id=%s AND uuid=%s", (user_id,uuid))
-            return cursor.fetchone()
+    async def create_image(self, owner_id, mime_type, image_data):
+        if isinstance(image_data, bytes):
+            image_data = base64.b64encode(image_data).decode()
+        sql = "INSERT INTO image (owner_id, mime_type, image_data) VALUES (%s, %s, %s) RETURNING id, owner_id, mime_type"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (owner_id, mime_type, image_data))
+            row = await cursor.fetchone()
+        return row
 
-    def set_temp_email(self, user_id, uuid):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("UPDATE temp_email SET closed_ts=NOW() WHERE user_id=%s AND uuid=%s RETURNING *", (user_id,uuid))
-            temp_email = cursor.fetchone()
-            cursor.execute("UPDATE user_profile SET email=%s WHERE id=%s RETURNING *", (temp_email.temp_email,user_id))
-            return cursor.fetchone()
-
-    def is_username_in_use(self, user_id, username):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("SELECT id FROM user_profile WHERE id!=%s AND username=%s", (user_id,username))
-            return bool(cursor.fetchone())
-
-    # IMAGES
-
-    def get_image(self, image_id):
+    async def get_image(self, id):
         sql = "SELECT * FROM image WHERE id=%s"
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute(sql, (image_id,))
-            return cursor.fetchone()
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (id,))
+            row = await cursor.fetchone()
+        return row
 
-    def get_user_images(self, owner_id, id=None, uuid=None, image_data=None):
-        args = [owner_id]
-        sql = "SELECT * FROM image WHERE (owner_id=%s or owner_id is NULL)"
-        if id:
-            args.append(id)
-            sql += " and id=%s"
-        if uuid:
-            args.append(uuid)
-            sql += " and uuid=%s"
-        if image_data:
-            args.append(image_data)
-            sql += " and image_data=%s"
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute(sql, args)
-            if len(args) > 1:
-                return cursor.fetchone()
-            return cursor.fetchall()
-
-    def create_user_image(self, owner_id, image_data, mime_type):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("INSERT INTO image (owner_id, image_data, mime_type) VALUES (%s, %s, %s) RETURNING *", (owner_id, image_data, mime_type))
-            return cursor.fetchone()
-
-    def delete_image(self, image_id):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("DELETE FROM image WHERE id=%s", (image_id,))
+    async def get_images_for_user(self, user_id):
+        sql = "SELECT id, owner_id, mime_type FROM image WHERE owner_id=%s or owner_id IS NULL"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (user_id,))
+            row = await cursor.fetchall()
+        return row
 
     # LOBBY
-    def get_lobby_entry_tables(self):
+
+    async def get_lobby_entry_tables(self):
+        sql = "SELECT * FROM table_profile WHERE table_type='RING_GAME' and club_id IS NULL AND parent_id IS NULL AND closed_ts IS NULL"
         result = {}
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("SELECT * FROM poker_table WHERE table_type='RING_GAME' and club_id IS NULL AND parent_id IS NULL AND closed_ts IS NULL")
-            for row in cursor:
+        async with self.cursor() as cursor:
+            await cursor.execute(sql)
+            async for row in cursor:
                 key = row.game_type, row.game_subtype
                 if key in result:
                     continue
                 result[key] = row
         return list(result.values())
 
+    # CLUB
 
-    # CLUBS
+    async def create_club(self, *, user_id, name=None, description=None, image_id=None):
+        club_sql = "INSERT INTO club (founder_id, name, description, image_id) VALUES (%s,%s,%s,%s) RETURNING *"
+        member_sql = "INSERT INTO club_member (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,%s,now_utc(),0)"
+        async with self.cursor() as cursor:
+            await cursor.execute(club_sql,(user_id, name, description, image_id))
+            club = await cursor.fetchone()
+            await cursor.execute(member_sql,(club.id, user_id,'OWNER'))
+        return club
 
-    def create_club(self, *, founder_id, name, description, image_id):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("INSERT INTO club (founder_id, name, description, image_id) VALUES (%s,%s,%s,%s) RETURNING *",(founder_id, name, description, image_id))
-            club = cursor.fetchone()
-            cursor.execute("INSERT INTO club_member (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,'OWNER',NOW(),0)",(club.id, founder_id))
-            return club
+    async def get_club(self, id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM club WHERE id=%s",(id,))
+            row = await cursor.fetchone()
+        return row
 
-    def get_club(self, club_id):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("SELECT * FROM club WHERE id=%s",(club_id,))
-            return cursor.fetchone()
+    async def get_club_members(self, club_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM club_member WHERE club_id=%s", (club_id,))
+            rows = await cursor.fetchall()
+        return rows
 
-    def update_club(self, club_id, **kwargs):
+    async def update_club(self, id, **kwargs):
         params = ", ".join([f"{key}=%s" for key in kwargs])
-        values = list(kwargs.values()) + [club_id]
+        values = list(kwargs.values()) + [id]
         sql = f"UPDATE club SET {params} WHERE id=%s RETURNING *"
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute(sql, values)
-            return cursor.fetchone()
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, values)
+            row = await cursor.fetchone()
+        return row
 
-    def get_clubs_for_user(self, *, user_id):
-        sql = "SELECT c.*, u.user_role, u.approved_ts FROM club_member u JOIN club c ON c.id=u.club_id WHERE u.user_id=%s"
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute(sql,(user_id,))
-            return cursor.fetchall()
+    async def create_club_member(self, club_id, user_id, user_comment):
+        sql = "INSERT INTO club_member (club_id, user_id, user_comment, user_role, approved_ts, approved_by) VALUES (%s,%s,%s,%s,NULL,NULL) RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql,(club_id, user_id, user_comment,'PLAYER'))
+            row = await cursor.fetchone()
+        return row
 
-    def delete_club(self, club_id):
-        # TODO вернуться после утверждения жизненных циклов стола и участника клуба 
-        pass
+    async def get_club_member(self, member_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM club_member WHERE id=%s",(member_id,))
+            row = await cursor.fetchone()
+        return row
 
-    def create_join_club_request(self, *, club_id, user_id, user_role):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("INSERT INTO club_member (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,%s,NULL,NULL) RETURNING *",(club_id, user_id, user_role))
-            return cursor.fetchone()
+    async def find_club_member(self, club_id, user_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM club_member WHERE club_id=%s AND user_id=%s",(club_id, user_id))
+            row = await cursor.fetchone()
+        return row
 
-    def approve_club_member(self, club_id, user_id, member_id):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("UPDATE club_member SET approved_ts=NOW(), approved_by=%s WHERE club_id=%s AND user_id=%s RETURNING *",(user_id, club_id, member_id))
-            return cursor.fetchone()
+    async def approve_club_member(self, member_id, approved_by, club_comment):
+        sql = "UPDATE club_member SET approved_ts=now_utc(), approved_by=%s, club_comment=%s WHERE id=%s RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (approved_by, club_comment, member_id))
+            row = await cursor.fetchone()
+        return row
 
-    def get_club_members(self, club_id):
-        sql = "SELECT u.*, x.user_role, x.approved_ts FROM club_member x JOIN user_profile u ON u.id=x.user_id WHERE x.club_id=%s"
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute(sql,(club_id,))
-            return cursor.fetchall()
+    async def close_club_member(self, member_id, closed_by, club_comment):
+        sql = "UPDATE club_member SET closed_ts=now_utc(), closed_by=%s, club_comment=%s WHERE id=%s RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql,(closed_by, club_comment, member_id))
+            row = await cursor.fetchone()
+        return row
 
-    def get_club_member(self, club_id, user_id):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("SELECT * FROM club_member WHERE club_id=%s AND user_id=%s",(club_id,user_id))
-            return cursor.fetchone()
+    async def get_clubs_for_user(self, user_id):
+        sql = "SELECT c.*, m.user_role, m.approved_ts FROM club_member m JOIN club c ON c.id=m.club_id WHERE m.user_id=%s and m.closed_ts IS NULL"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql,(user_id,))
+            rows = await cursor.fetchall()
+        return rows
 
-    def delete_club_member(self, club_id, member_id):
-        # TODO вернуться после утверждения жизненных циклов стола и участника клуба
-        pass
+    # TABLE
 
-    # TABLES
-
-    def create_table(self, club_id, **kwargs):
-        # split base and extra props
-        row = {}
-        columns = ["table_type", "table_name", "table_seats", "game_type", "game_subtype"]
-        for k in columns:
-            v = kwargs.pop(k, None)
-            row[k] = v
-        row.update(game_settings=json.dumps(kwargs))
-        with self.dbi.cursor(row_factory=dict_row) as cursor:
-            fields = ", ".join(["club_id"] + list(row.keys()))
-            values = [club_id] + list(row.values())
-            values_pattern = ", ".join(["%s"] * len(values))
-            sql = f"INSERT INTO poker_table ({fields}) VALUES ({values_pattern}) RETURNING *"
-            cursor.execute(sql, values)
-            row = cursor.fetchone()
-            if row is not None:
-                props = row.pop("game_settings", {})
-                row.update(props)
+    async def create_table(self, *, club_id=None, table_type, table_name, table_seats, game_type, game_subtype, props=None):
+        props = json.dumps(props or {})
+        sql = "INSERT INTO table_profile (club_id, table_type, table_name, table_seats, game_type, game_subtype, props) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (club_id, table_type, table_name, table_seats, game_type, game_subtype, props))
+            row = await cursor.fetchone()
         return row
     
-    def set_table_opened(self, table_id):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("UPDATE poker_table SET opened_ts=NOW() WHERE id=%s RETURNING opened_ts",(table_id,))
-            row = cursor.fetchone()
-            return row.opened_ts if row else None
+    async def get_table(self, table_id):
+        sql = "SELECT * FROM table_profile WHERE id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (table_id,))
+            row = await cursor.fetchone()
+        return row    
 
-    def set_table_closed(self, table_id):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("UPDATE poker_table SET closed_ts=NOW() WHERE id=%s RETURNING closed_ts",(table_id,))
-            row = cursor.fetchone()
-            return row.closed_ts if row else None
+    async def get_open_tables(self):
+        sql = "SELECT * FROM table_profile WHERE parent_id IS NULL and closed_ts IS NULL"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql)
+            rows = await cursor.fetchall()
+        return rows
+
+    async def create_table_user(self, table_id, user_id):
+        sql = "INSERT INTO table_user (table_id, user_id) VALUES (%s,%s) RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (table_id, user_id))
+            row = await cursor.fetchone()
+        return row
+
+    async def close_table(self, table_id):
+        sql = "UPDATE table_profile SET closed_ts=now_utc() WHERE id=%s RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql,(table_id,))
+            row = await cursor.fetchone()
+        return row
     
-    def table_user_register(self, table_id, user_id):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            sql = "INSERT INTO poker_table_user (table_id, user_id) VALUES (%s,%s)"
-            cursor.execute(sql, (table_id, user_id))
-
-    def table_user_game(self, table_id, user_id, last_game_id):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            sql = "UPDATE poker_table_user SET last_game_id=%s WHERE table_id=%s AND user_id=%s"
-            cursor.execute(sql, (last_game_id, table_id, user_id))
-
-    def get_table(self, table_id):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("SELECT * FROM poker_table WHERE id=%s",(table_id,))
-            return cursor.fetchone()
-
-    def get_table_result(self, table_id):
+    async def get_table_result(self, table_id):
         sql = """
         SELECT tu.user_id, u.username, u.image_id, tu.last_game_id, gu.balance_begin, gu.balance_end, g.end_ts
         FROM poker_table_user tu
@@ -399,77 +416,73 @@ class DBI:
         JOIN poker_game g ON g.id=gu.game_id
         WHERE tu.table_id=%s
         """
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute(sql,(table_id,))
-            return cursor.fetchall()
-
-    def get_tables_for_club(self, *, club_id):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("SELECT * FROM poker_table WHERE club_id=%s AND parent_id IS NULL and closed_ts IS NULL",(club_id,))
-            tables = cursor.fetchall()
-        return tables
-    
-
-    def delete_table(self, table_id):
-        # TODO дождаться определения жизненного цикла стола
-        pass
-
-    # temporary method to get list of tables
-    def get_active_tables(self):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("SELECT * FROM poker_table WHERE closed_ts IS NULL")
-            tables = cursor.fetchall()
-        return tables
+        async with self.cursor() as cursor:
+            await cursor.execute(sql,(table_id,))
+            rows = cursor.fetchall()
+        return rows
         
     # GAMES
-    def game_begin(self, *, table_id, users, game_type, game_subtype, **game_props):
-        game = None
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("INSERT INTO poker_game (table_id,game_type,game_subtype) VALUES (%s,%s,%s) RETURNING *",(table_id,game_type, game_subtype))
-            game = cursor.fetchone()
-            params_seq = [(game.id, u.id, u.balance) for u in users]
-            cursor.executemany("INSERT INTO poker_game_user (game_id, user_id, balance_begin) VALUES (%s, %s, %s)", params_seq)
+    
+    async def create_game(self, *, table_id: int, game_type, game_subtype, props, players):
+        props = json.dumps(props or {})
+        async with self.cursor() as cursor:
+            sql = "INSERT INTO game_profile (table_id,game_type,game_subtype,props) VALUES (%s,%s,%s,%s) RETURNING *"
+            await cursor.execute(sql, (table_id, game_type, game_subtype, props))
+            game = await cursor.fetchone()
+            if players:
+                sql = "INSERT INTO game_player (game_id, user_id, balance_begin) VALUES (%s, %s, %s)"
+                params_seq = [(game.id, u.user_id, u.balance) for u in players]
+                await cursor.executemany(sql, params_seq)
         return game
+    
+    async def get_game_and_players(self, id: int):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM game_profile WHERE id=%s", (id,))
+            game = await cursor.fetchone()
+            await cursor.execute("SELECT * FROM game_player WHERE game_id=%s", (id,))
+            players = await cursor.fetchall()
+        return game, players
 
-    def game_end(self, game_id, users):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            for u in users:
-                cursor.execute("UPDATE poker_game_user SET balance_end=%s WHERE game_id=%s AND user_id=%s",
-                               (u.balance, game_id, u.id))
-            cursor.execute("UPDATE poker_game SET end_ts=NOW() WHERE id=%s RETURNING *",(game_id,))
-            return cursor.fetchone()
-        
-    def save_event(self, *, type, table_id, game_id=None, user_id=None, props: dict=None):
-        if props:
-            data = {}
-            for k, v in props.items():
-                if k in ('type', 'table_id', 'game_id'):
-                    continue
-                if k=='user_id' and user_id is not None:
-                    continue
-                data[k] = v
-            data = json.dumps(data)
-        else:
-            data = None
-        #logger.debug("%s %s %s %s save: %s", type, table_id, game_id, user_id, data)
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("INSERT INTO poker_event (table_id, game_id, user_id, event_type, event_props) VALUES (%s, %s, %s, %s, %s) RETURNING id, event_ts",
-                           (table_id, game_id, user_id, type, data))
-            return cursor.fetchone()
+    async def close_game(self, id: int, players):
+        player_sql = "UPDATE game_player SET balance_end=%s WHERE game_id=%s AND user_id=%s"
+        profile_sql = "UPDATE game_profile SET end_ts=now_utc() WHERE id=%s RETURNING *"
+        async with self.cursor() as cursor:
+            for u in players:
+                await cursor.execute(player_sql, (u.balance, id, u.user_id))
+            await cursor.execute(profile_sql, (id,))
+            return await cursor.fetchone()
 
-    def get_game(self, game_id):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("SELECT * FROM poker_game WHERE id=%s",(game_id,))
-            return cursor.fetchone()
+    # EVENTS (TABLE_CMD)
 
-    # DEBUG
-    def create_debug_message(self, user_id, game_id, table_id, debug_message):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("INSERT INTO debug (user_id, game_id, table_id, debug_message) VALUES (%s,%s,%s,%s) RETURNING *",
-                           (user_id,game_id,table_id,debug_message,))
-            return cursor.fetchone()
+    async def create_table_cmd(self, *, client_id, table_id, cmd_type, props):
+        props = json.dumps(props or {})
+        async with self.cursor() as cursor:
+            await cursor.execute(
+                "INSERT INTO table_cmd (client_id, table_id, cmd_type, props) VALUES (%s,%s,%s,%s) RETURNING id, created_ts",
+                (client_id, table_id, cmd_type, props),
+            )
+            return await cursor.fetchone()
 
-    def get_debug_messages(self, user_id):
-        with self.dbi.cursor(row_factory=namedtuple_row) as cursor:
-            cursor.execute("SELECT * FROM debug WHERE user_id=%s",(user_id,))
-            return cursor.fetchall()
+    async def get_table_cmd(self, id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM table_cmd WHERE id=%s", (id,))
+            row = await cursor.fetchone()
+        return row
+
+    # EVENTS (TABLE_MSG)
+
+    async def create_table_msg(self, *, table_id, game_id, msg_type, props, cmd_id=None, client_id=None):
+        props = json.dumps(props or {})
+        async with self.cursor() as cursor:
+            await cursor.execute(
+                "INSERT INTO table_msg (table_id, game_id, msg_type, props, cmd_id, client_id) VALUES (%s,%s,%s,%s,%s,%s) RETURNING id, created_ts",
+                (table_id, game_id, msg_type, props, cmd_id, client_id),
+            )
+            return await cursor.fetchone()
+
+    async def get_table_msg(self, id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM table_msg WHERE id=%s", (id,))
+            row = await cursor.fetchone()
+        return row
+    

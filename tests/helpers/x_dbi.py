@@ -1,7 +1,7 @@
 import logging
 from collections import namedtuple
 
-from ravvi_poker.db.adbi import DBI
+from ravvi_poker.db.dbi import DBI
 from ravvi_poker.engine.events import Command, Message
 
 from .x_utils import check_func_args

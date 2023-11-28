@@ -1,6 +1,6 @@
 import pytest
 
-from ravvi_poker.db.adbi import DBI
+from ravvi_poker.db.dbi import DBI
 
 
 @pytest.mark.asyncio

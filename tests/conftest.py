@@ -2,7 +2,7 @@ import pytest
 import asyncio
 import pytest_asyncio
 
-from ravvi_poker.db.adbi import DBI
+from ravvi_poker.db.dbi import DBI
 from ravvi_poker.engine.jwt import jwt_encode
 
 #@pytest.fixture(autouse=True, scope="session")
