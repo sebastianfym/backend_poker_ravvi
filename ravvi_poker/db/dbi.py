@@ -19,7 +19,7 @@ class DBI:
 
     pool = None
     pool_ref = 0
-
+    
     ForeignKeyViolation = psycopg.errors.ForeignKeyViolation
 
     @classmethod
@@ -61,6 +61,7 @@ class DBI:
             self.dbi = await self.dbi_pool.getconn()
         else:
             self.dbi = await psycopg.AsyncConnection.connect(self.conninfo())
+        #logger.info('connection open')
         return self
 
     async def __aexit__(self, exc_type, exc_value, exc_tb):
@@ -73,6 +74,7 @@ class DBI:
             self.dbi_pool = None
         else:
             await self.dbi.close()
+        #logger.info('connection closed')
         self.dbi = None
 
     def cursor(self, *args, row_factory=namedtuple_row, **kwargs):
@@ -431,7 +433,7 @@ class DBI:
             game = await cursor.fetchone()
             if players:
                 sql = "INSERT INTO game_player (game_id, user_id, balance_begin) VALUES (%s, %s, %s)"
-                params_seq = [(game.id, u.user_id, u.balance) for u in players]
+                params_seq = [(game.id, u.id, u.balance) for u in players]
                 await cursor.executemany(sql, params_seq)
         return game
     
@@ -448,14 +450,25 @@ class DBI:
         profile_sql = "UPDATE game_profile SET end_ts=now_utc() WHERE id=%s RETURNING *"
         async with self.cursor() as cursor:
             for u in players:
-                await cursor.execute(player_sql, (u.balance, id, u.user_id))
+                await cursor.execute(player_sql, (u.balance, id, u.id))
             await cursor.execute(profile_sql, (id,))
             return await cursor.fetchone()
 
     # EVENTS (TABLE_CMD)
+    def json_dumps(self, obj):
+        def encoder(x):
+            if hasattr(x, '__int__'):
+                return int(x)
+            if hasattr(x, '__str__'):
+                return str(x)
+            type_name = x.__class__.__name__
+            raise TypeError(f"Object of type {type_name} is not serializable")
+        return json.dumps(obj, default=encoder)
+    
+    # EVENTS (TABLE_CMD)
 
     async def create_table_cmd(self, *, client_id, table_id, cmd_type, props):
-        props = json.dumps(props or {})
+        props = self.json_dumps(props or {})
         async with self.cursor() as cursor:
             await cursor.execute(
                 "INSERT INTO table_cmd (client_id, table_id, cmd_type, props) VALUES (%s,%s,%s,%s) RETURNING id, created_ts",
@@ -469,10 +482,14 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def set_table_cmd_processed(self, id):
+        async with self.cursor() as cursor:
+            await cursor.execute("UPDATE table_cmd SET processed_ts=now_utc() WHERE id=%s", (id,))
+
     # EVENTS (TABLE_MSG)
 
     async def create_table_msg(self, *, table_id, game_id, msg_type, props, cmd_id=None, client_id=None):
-        props = json.dumps(props or {})
+        props = self.json_dumps(props or {})
         async with self.cursor() as cursor:
             await cursor.execute(
                 "INSERT INTO table_msg (table_id, game_id, msg_type, props, cmd_id, client_id) VALUES (%s,%s,%s,%s,%s,%s) RETURNING id, created_ts",

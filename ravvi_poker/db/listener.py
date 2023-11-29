@@ -1,6 +1,7 @@
 import logging
 import asyncio
 import json
+import contextlib
 
 from .dbi import DBI, Notify
 from .txn import DBI_Txn
@@ -13,36 +14,40 @@ class DBI_Listener:
         super().__init__()
         self.log = logger
         self.task : asyncio.Task = None
+        self.task_stop = False
         self.ready = asyncio.Event()
         self.channels = {}
 
     async def start(self):
-        self.log.info("start")
+        self.log.debug("start ...")
+        self.task_stop = False
         self.task = asyncio.create_task(self.run())
         await self.ready.wait()
         self.log.info("started")
 
     async def stop(self):
-        self.log.info("stop")
+        self.log.debug("stop ...")
+        self.task_stop = True
         if self.task:
             if not self.task.done():
                 self.task.cancel()
-        await self.task
+            with contextlib.suppress(asyncio.exceptions.CancelledError):
+                await self.task
         self.task = None
         self.log.info("stopped")
 
     async def run(self):
-        while True:
+        self.log.info("begin")
+        while not self.task_stop:
             try:
                 await self.process_events()
             except asyncio.CancelledError:
                 self.log.info("cancelled")
-                break
+                self.task_stop = True
             except Exception as ex:
                 self.log.exception("exception: %s", str(ex))
-                await asyncio.sleep(5)
-            finally:
-                self.ready.clear()
+        self.ready.clear()
+        self.log.info("end")
     
     async def process_events(self):
         async with DBI() as db:
@@ -64,6 +69,7 @@ class DBI_Listener:
         pass
 
     async def on_notify(self, db: DBI, msg: Notify):
+        self.log.info("on_notify: %s", msg)
         handler = self.channels.get(msg.channel)
         if callable(handler):
             payload = json.loads(msg.payload) if msg.payload else {}

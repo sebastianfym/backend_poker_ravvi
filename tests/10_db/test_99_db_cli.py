@@ -14,5 +14,4 @@ def test_db_schema():
 def test_db_deploy():
     from ravvi_poker.db.deploy import getSQLFiles
     files = getSQLFiles()
-
     assert files is not None

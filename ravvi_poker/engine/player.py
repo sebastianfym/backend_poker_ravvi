@@ -9,6 +9,10 @@ class Player:
         self.cards_open = False
 
     @property
+    def id(self) -> int:
+        return self.user.id
+
+    @property
     def user_id(self) -> int:
         return self.user.id
 

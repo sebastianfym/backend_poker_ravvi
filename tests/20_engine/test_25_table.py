@@ -20,17 +20,7 @@ def test_x_classes():
    X_Game.check_methods_compatibility()
 
 
-@pytest.mark.dependency()
-def test_table_kwargs():
-    keys = Table.kwargs_keys()
-    assert keys == {'table_seats', 'club_id', 'game_type', 'game_subtype'}
-
-    needed, other = Table.split_kwargs(table_seats=9, buyin_min=1000)
-    assert needed == dict(table_seats=9)
-    assert other == dict(buyin_min=1000)
-
-
-@pytest.mark.dependency(depends=["test_x_classes","test_table_kwargs"])
+@pytest.mark.dependency(depends=["test_x_classes"])
 @pytest.mark.asyncio
 async def test_user_lifecycle():
     TABLE_ID = 777
@@ -53,7 +43,7 @@ async def test_user_lifecycle():
     # подключаемся без места (посадка запрещена)
     table._user_enter_enabled = False
     async with db:
-        await table.handle_cmd(db, user_id=USER_ID, client_id=100, cmd_type=Command.Type.JOIN, props=dict(take_seat=False))
+        await table.handle_cmd(db, cmd_id=11, user_id=USER_ID, client_id=100, cmd_type=Command.Type.JOIN, props=dict(take_seat=False))
     # подтверждение подключения
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
@@ -70,14 +60,14 @@ async def test_user_lifecycle():
 
     # садимся на место 3 (посадка запрещена)
     async with db:
-        await table.handle_cmd(db, user_id=USER_ID, client_id=100, cmd_type=Command.Type.TAKE_SEAT, props=dict(seat_idx=3))
+        await table.handle_cmd(db, cmd_id=12, user_id=USER_ID, client_id=100, cmd_type=Command.Type.TAKE_SEAT, props=dict(seat_idx=3))
     # подтверждение
     assert not db._events
     
     # c запросом места (посадка запрещена)
     table._user_enter_enabled = False
     async with db:
-        await table.handle_cmd(db, user_id=USER_ID, client_id=101, cmd_type=Command.Type.JOIN, props=dict(take_seat=True))
+        await table.handle_cmd(db, cmd_id=13, user_id=USER_ID, client_id=101, cmd_type=Command.Type.JOIN, props=dict(take_seat=True))
     # подтверждение подключения
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
@@ -95,7 +85,7 @@ async def test_user_lifecycle():
     # без места (посадка разрешена)
     table._user_enter_enabled = True
     async with db:
-        await table.handle_cmd(db, user_id=USER_ID, client_id=110, cmd_type=Command.Type.JOIN, props=dict(take_seat=False))
+        await table.handle_cmd(db, cmd_id=14, user_id=USER_ID, client_id=110, cmd_type=Command.Type.JOIN, props=dict(take_seat=False))
     # подтверждение подключения
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
@@ -112,7 +102,7 @@ async def test_user_lifecycle():
 
     # садимся на место 3
     async with db:
-        await table.handle_cmd(db, user_id=USER_ID, client_id=100, cmd_type=Command.Type.TAKE_SEAT, props=dict(seat_idx=3))
+        await table.handle_cmd(db, cmd_id=15, user_id=USER_ID, client_id=100, cmd_type=Command.Type.TAKE_SEAT, props=dict(seat_idx=3))
     # подтверждение
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
@@ -130,19 +120,19 @@ async def test_user_lifecycle():
 
     # садимся на место (invalid user)
     async with db:
-        await table.handle_cmd(db, user_id=123456, client_id=100, cmd_type=Command.Type.TAKE_SEAT, props=dict(seat_idx=3))
+        await table.handle_cmd(db, cmd_id=16, user_id=123456, client_id=100, cmd_type=Command.Type.TAKE_SEAT, props=dict(seat_idx=3))
     # подтверждение
     assert not db._events
 
     # садимся на место (invalid seat_idx)
     async with db:
-        await table.handle_cmd(db, user_id=USER_ID, client_id=100, cmd_type=Command.Type.TAKE_SEAT, props=dict(seat_idx=123456))
+        await table.handle_cmd(db, cmd_id=17, user_id=USER_ID, client_id=100, cmd_type=Command.Type.TAKE_SEAT, props=dict(seat_idx=123456))
     # подтверждение
     assert not db._events
 
     # садимся на место 7
     async with db:
-        await table.handle_cmd(db, user_id=USER_ID, client_id=100, cmd_type=Command.Type.TAKE_SEAT, props=dict(seat_idx=7))
+        await table.handle_cmd(db, cmd_id=18, user_id=USER_ID, client_id=100, cmd_type=Command.Type.TAKE_SEAT, props=dict(seat_idx=7))
     # подтверждение
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
@@ -161,7 +151,7 @@ async def test_user_lifecycle():
     # выходим со стола (выход запрещен)
     table._user_exit_enabled = False
     async with db:
-        await  table.handle_cmd(db, user_id=USER_ID, client_id=100, cmd_type=Command.Type.EXIT, props={})
+        await  table.handle_cmd(db, cmd_id=19, user_id=USER_ID, client_id=100, cmd_type=Command.Type.EXIT, props={})
     assert not db._events
 
     assert user and user.id == USER_ID
@@ -175,7 +165,7 @@ async def test_user_lifecycle():
     # выходим со стола (выход разрешен)
     table._user_exit_enabled = True
     async with db:
-        await  table.handle_cmd(db, user_id=USER_ID, client_id=100, cmd_type=Command.Type.EXIT, props={})
+        await  table.handle_cmd(db, cmd_id=20, user_id=USER_ID, client_id=100, cmd_type=Command.Type.EXIT, props={})
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
     assert db._event.msg_type == Message.Type(PLAYER_EXIT_EVENT_TYPE)
@@ -191,13 +181,13 @@ async def test_user_lifecycle():
     # выходим со стола (invalid user)
     table._user_exit_enabled = True
     async with db:
-        await  table.handle_cmd(db, user_id=123456, client_id=100, cmd_type=Command.Type.EXIT, props={})
+        await  table.handle_cmd(db, cmd_id=21, user_id=123456, client_id=100, cmd_type=Command.Type.EXIT, props={})
     assert not db._events
 
     # c запросом места (посадка разрешена)
     table._user_enter_enabled = True
     async with db:
-        await table.handle_cmd(db, user_id=USER_ID, client_id=111, cmd_type=Command.Type.JOIN, props=dict(take_seat=True))
+        await table.handle_cmd(db, cmd_id=22, user_id=USER_ID, client_id=111, cmd_type=Command.Type.JOIN, props=dict(take_seat=True))
     # подтверждение подключения
     assert len(db._events) == 2
     e201 = db._events[0]
@@ -224,7 +214,7 @@ async def test_user_lifecycle():
     # подключаемся без места (посадка запрещена)
     table._user_enter_enabled = False
     async with db:
-        await table.handle_cmd(db, user_id=USER_ID, client_id=200, cmd_type=Command.Type.JOIN, props=dict(take_seat=False))
+        await table.handle_cmd(db, cmd_id=31, user_id=USER_ID, client_id=200, cmd_type=Command.Type.JOIN, props=dict(take_seat=False))
     # подтверждение подключения
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
@@ -243,7 +233,7 @@ async def test_user_lifecycle():
     # c запросом места (посадка запрещена)
     table._user_enter_enabled = False
     async with db:
-        await table.handle_cmd(db, user_id=USER_ID, client_id=201, cmd_type=Command.Type.JOIN, props=dict(take_seat=True))
+        await table.handle_cmd(db, cmd_id=32, user_id=USER_ID, client_id=201, cmd_type=Command.Type.JOIN, props=dict(take_seat=True))
     # подтверждение подключения
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
@@ -262,7 +252,7 @@ async def test_user_lifecycle():
     # без места (посадка разрешена)
     table._user_enter_enabled = True
     async with db:
-        await table.handle_cmd_join(db, user_id=USER_ID, client_id=210, take_seat=False)
+        await table.handle_cmd_join(db, cmd_id=33, user_id=USER_ID, client_id=210, take_seat=False)
     # подтверждение подключения
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
@@ -281,7 +271,7 @@ async def test_user_lifecycle():
     # c запросом места (посадка разрешена)
     table._user_enter_enabled = True
     async with db:
-        await table.handle_cmd(db, user_id=USER_ID, client_id=211, cmd_type=Command.Type.JOIN, props=dict(take_seat=True))
+        await table.handle_cmd(db, cmd_id=34, user_id=USER_ID, client_id=211, cmd_type=Command.Type.JOIN, props=dict(take_seat=True))
     # подтверждение подключения
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
@@ -315,7 +305,7 @@ async def test_user_lifecycle():
 
     # выходим со стола
     async with db:
-        await  table.handle_cmd(db, user_id=USER_ID, client_id=210, cmd_type=Command.Type.EXIT, props={})
+        await  table.handle_cmd(db, cmd_id=35, user_id=USER_ID, client_id=210, cmd_type=Command.Type.EXIT, props={})
     assert len(db._events) == 1
     assert db._event.table_id == TABLE_ID
     assert db._event.msg_type == 299
@@ -374,12 +364,12 @@ async def test_run_all_together():
     await asyncio.sleep(1)
     for i in range(1, 2):
         async with db:
-            await table.handle_cmd(db, user_id=i*10, client_id=i*100, cmd_type=Command.Type.JOIN, props=dict(take_seat=True))
+            await table.handle_cmd(db, cmd_id=100+i, user_id=i*10, client_id=i*100, cmd_type=Command.Type.JOIN, props=dict(take_seat=True))
         if i<2:
             continue
     for i in range(2, 8):
         async with db:
-            await table.handle_cmd(db, user_id=i*10, client_id=i*100, cmd_type=Command.Type.JOIN, props=dict(take_seat=True))
+            await table.handle_cmd(db, cmd_id=200+i, user_id=i*10, client_id=i*100, cmd_type=Command.Type.JOIN, props=dict(take_seat=True))
         await stop_game()
     for i in range(60):
         async with table.lock:

@@ -34,7 +34,7 @@ class PokerBase(Game):
     SLEEP_GAME_END = 4
 
     def __init__(self, table, users: List[User], 
-                 *, blind_small=1, blind_big=None, ante=None, **kwargs) -> None:
+                 *, blind_small=1, blind_big=None, ante=None, bet_timeout=15, **kwargs) -> None:
         super().__init__(table=table, users=users)
         self.log.logger = logger
         self.round = None
@@ -51,7 +51,7 @@ class PokerBase(Game):
         self.bet_raise = 0
         self.bet_total = 0
         self.bet_event = asyncio.Event()
-        self.bet_timeout = 30
+        self.bet_timeout = bet_timeout
         self.count_in_the_game = 0
         self.count_has_options = 0
 
@@ -60,7 +60,8 @@ class PokerBase(Game):
         return dict(
             blind_small = self.blind_small,
             blind_big = self.blind_big,
-            ante = self.ante
+            ante = self.ante,
+            bet_timeout = self.bet_timeout
         )
 
     def player_factory(self, user) -> Player:

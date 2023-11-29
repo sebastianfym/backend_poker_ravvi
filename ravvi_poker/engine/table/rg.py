@@ -3,12 +3,12 @@ from .base import Table
 class Table_RG(Table):
     TABLE_TYPE = "RG"
 
-    def __init__(self, id, *, buyin_min=1000, buyin_max=None, **kwargs):
-        base, game_props = super().split_kwargs(**kwargs)
-        super().__init__(id, **base)
+    def parse_props(self, buyin_min=100, buyin_max=None, bet_timeout=15, **kwargs):
         self.buyin_min = buyin_min
         self.buyin_max = buyin_max
-        self.game_props = game_props
+        self.game_props.update(
+            bet_timeout = bet_timeout
+        )
 
     @property
     def user_enter_enabled(self):
@@ -18,7 +18,7 @@ class Table_RG(Table):
     def user_exit_enabled(self):
         return True
 
-    def on_user_seat_taken(self, user, user_seat_idx):
+    async def on_player_enter(self, db, user, seat_idx):
         user.balance = self.buyin_min
 
 #    async def run_table(self):

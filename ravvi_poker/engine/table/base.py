@@ -1,6 +1,7 @@
 from typing import List, Mapping
 import asyncio
 import inspect
+import contextlib
 
 from ...logging import getLogger, ObjectLoggerAdapter
 from ...db import DBI
@@ -16,33 +17,11 @@ class Table:
 
     NEW_GAME_DELAY = 3
 
-    @classmethod
-    def kwargs_keys(cls):
-        keys = set()
-        if hasattr(cls.__base__, "kwargs_keys"):
-            keys.update(cls.__base__.kwargs_keys())
-        spec = inspect.getfullargspec(cls)
-        keys.update()
-        if spec.kwonlyargs:
-            keys.update(spec.kwonlyargs)
-        if spec.kwonlydefaults:
-            keys.update(spec.kwonlydefaults)
-        return keys
-
-    @classmethod
-    def split_kwargs(cls, **kwargs):
-        keys = cls.kwargs_keys()
-        needed, other = {}, {}
-        for k, v in kwargs.items():
-            target = needed if k in keys else other
-            target[k] = v
-        return needed, other
-
-    def __init__(self, id, parent_id=None, *, table_seats, club_id=None, game_type=None, game_subtype=None, **game_props):
+    def __init__(self, id, *, table_seats, parent_id=None, club_id=None, game_type=None, game_subtype=None, props=None, **kwargs):
         self.log = ObjectLoggerAdapter(logger, self, "table_id")
-        self.club_id = club_id
         self.table_id = id
         self.parent_id = parent_id
+        self.club_id = club_id
         self.table_seats = table_seats
         self.seats: List[User] = [None] * table_seats
         self.dealer_idx = -1
@@ -52,8 +31,13 @@ class Table:
         self.lock = asyncio.Lock()
         self.game_type = game_type
         self.game_subtype = game_subtype
-        self.game_props = game_props
+        self.game_props = {}
         self.game = None
+        self.log.info("props: %s", props)
+        self.parse_props(**(props or {}))
+
+    def parse_props(self, **kwargs):
+        pass
 
     @property
     def table_type(self):
@@ -73,6 +57,9 @@ class Table:
 
     async def game_factory(self, users):
         from ..game import get_game_class
+        for u in users:
+            self.log.info("user(%s, %s)", u.id, u.balance)
+        self.log.info("game_factory(%s, %s, %s)", self.game_type, self.game_subtype, self.game_props)
         game_class = get_game_class(self.game_type, self.game_subtype)
         return game_class(self, users, **self.game_props)
 
@@ -111,8 +98,8 @@ class Table:
         self.log.debug("emit_msg: %s", msg)
         await db.create_table_msg(**msg)
 
-    async def emit_TABLE_INFO(self, db, client_id, table_info):
-        msg = Message(msg_type=Message.Type.TABLE_INFO, client_id=client_id, **table_info)
+    async def emit_TABLE_INFO(self, db, *, cmd_id, client_id, table_info):
+        msg = Message(msg_type=Message.Type.TABLE_INFO, cmd_id=cmd_id, client_id=client_id, **table_info)
         await self.emit_msg(db, msg)
 
     async def broadcast_TABLE_NEXT_LEVEL_INFO(self, db, **kwargs):
@@ -150,13 +137,13 @@ class Table:
         result.update(users=list(users_info.values()))
         return result
 
-    async def handle_cmd(self, db, user_id, client_id, cmd_type: int, props: dict):
+    async def handle_cmd(self, db, *, cmd_id:int, cmd_type: int, user_id:int, client_id:int, props: dict):
         cmd_type = Command.Type.decode(cmd_type)
         self.log.info("handle_cmd: %s/%s %s %s", user_id, client_id, cmd_type, props)
         async with self.lock:
             if cmd_type == Command.Type.JOIN:
                 take_seat = props.get("take_seat", None)
-                await self.handle_cmd_join(db, user_id=user_id, client_id=client_id, take_seat=take_seat)
+                await self.handle_cmd_join(db, cmd_id=cmd_id, client_id=client_id, user_id=user_id, take_seat=take_seat)
             elif cmd_type == Command.Type.TAKE_SEAT:
                 seat_idx = props.get("seat_idx", None)
                 await self.handle_cmd_take_seat(db, user_id=user_id, seat_idx=seat_idx)
@@ -167,7 +154,7 @@ class Table:
             else:
                 self.log.warning("handle_cmd: unknown cmd_type = %s", cmd_type)
 
-    async def handle_cmd_join(self, db, *, user_id, client_id, take_seat):
+    async def handle_cmd_join(self, db, *, cmd_id, client_id, user_id, take_seat):
         # check seats allocation
         user, seat_idx, seats_available = self.find_user(user_id)
         if not user:
@@ -180,7 +167,7 @@ class Table:
         # try to take a seat
         new_seat_idx, user_info = None, None
         if seat_idx is None and take_seat and self.user_enter_enabled and seats_available:
-            new_seat_idx = seats_available[0]
+            new_seat_idx = seats_available.pop(0)
             self.seats[new_seat_idx] = user
             await self.on_player_enter(db, user, new_seat_idx)
             # broadcast
@@ -188,7 +175,7 @@ class Table:
             await self.broadcast_PLAYER_ENTER(db, user_info, new_seat_idx)
         # response
         table_info = self.get_table_info(user_id)
-        await self.emit_TABLE_INFO(db, client_id, table_info)
+        await self.emit_TABLE_INFO(db, cmd_id=cmd_id, client_id=client_id, table_info=table_info)
 
     async def handle_cmd_take_seat(self, db, *, user_id: int, seat_idx: int):
         # check seats allocation
@@ -232,20 +219,17 @@ class Table:
             del self.users[user.id]
 
     async def start(self):
-        self.log.info("start")
+        self.log.debug("start")
         self.task = asyncio.create_task(self.run_table_wrapper())
         self.log.info("started")
 
     async def stop(self):
-        self.log.info("stop...")
+        self.log.debug("stop...")
         if not self.task:
             return
-        if not self.task.done():
-            self.task_stop = True
-        try:
+        self.task_stop = True
+        with contextlib.suppress(asyncio.exceptions.CancelledError):
             await self.task
-        except asyncio.CancelledError:
-            pass
         self.task = None
         self.log.info("stopped")
 

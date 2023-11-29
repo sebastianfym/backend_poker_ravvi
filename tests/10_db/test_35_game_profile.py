@@ -10,9 +10,13 @@ class X_Player:
         self.balance = balance
 
     @property
-    def user_id(self):
+    def id(self):
         return self.user.id
     
+    @property
+    def user_id(self):
+        return self.user.id
+
 #@pytest.mark.dependency()
 @pytest.mark.asyncio
 async def test_game_create(table, users_10):

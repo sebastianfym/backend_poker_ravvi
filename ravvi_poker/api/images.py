@@ -36,14 +36,14 @@ async def v1_upload_image(file: UploadFile, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
 
-        log.info("file %s %s", file.content_type, file.size)
+        log.debug("file %s %s", file.content_type, file.size)
         image_data = await file.read()
         with Image.open(BytesIO(image_data)) as im:
             format = im.format
             width, height = im.size
             max_dim = max(width, height)
             resize_ratio = MAX_IMAGE_DIMENSION/max_dim
-            log.info("image %s %s %s", format, width, height)
+            log.debug("image %s %s %s", format, width, height)
             if resize_ratio<1:
                 im = im.resize((ceil(width*resize_ratio), ceil(height*resize_ratio)))
                 width, height = im.size
@@ -54,7 +54,7 @@ async def v1_upload_image(file: UploadFile, session_uuid: SessionUUID):
             image_data = buffer.getvalue()
 
         mime_type = magic.from_buffer(image_data, mime=True)
-        log.info("image %s %s", mime_type, len(image_data))
+        log.debug("image %s %s", mime_type, len(image_data))
 
         image = await db.create_image(user.id, mime_type, image_data)
 

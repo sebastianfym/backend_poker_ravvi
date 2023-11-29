@@ -24,6 +24,9 @@ class HandType(Enum):
             if r is not None:
                 return r
         return cls._value2member_map_[x]
+    
+    def __str__(self) -> str:
+        return super().__str__()
 
 class Hand:
     def __init__(self, cards, deck36=False) -> None:

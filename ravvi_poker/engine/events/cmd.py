@@ -18,7 +18,7 @@ class CommandType(IntEnum):
         if isinstance(x, str):
             return cls.__members__[x]
         return cls._value2member_map_[x]
-
+    
 
 class Command(dict):
     Type = CommandType

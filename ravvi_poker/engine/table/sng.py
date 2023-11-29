@@ -5,16 +5,18 @@ from .base import Table
 class Table_SNG(Table):
     TABLE_TYPE = "SNG"
 
-    def __init__(self, id, *, level_time=3, buyin_value=10000, buyin_cost=None, **kwargs):
-        super().__init__(id, **kwargs)
-        self.buyin_value = buyin_value
-        self.buyin_cost = buyin_cost
+    def __init__(self, id, parent_id, *, level_time=3, buyin_value=10000, buyin_cost=None, **kwargs):
+        super().__init__(id, parent_id, **kwargs)
         self.started = None
-        self.level_schedule = LEVEL_SCHEDULE_STANDARD
-        self.level_time = level_time
         self.level_current = 0
         self.level_reminder = None
         self.level_next = None
+
+    def parse_props(self, level_time=3, buyin_value=10000, buyin_cost=None, **kwargs):
+        self.level_schedule = LEVEL_SCHEDULE_STANDARD
+        self.level_time = level_time
+        self.buyin_value = buyin_value
+        self.buyin_cost = buyin_cost
 
     @property
     def user_enter_enabled(self):

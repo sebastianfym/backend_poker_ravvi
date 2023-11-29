@@ -47,8 +47,6 @@ class X_Table(Table):
 
     @classmethod
     def check_methods_compatibility(cls):
-        #check_func_args(cls.user_enter_enabled, Table.user_enter_enabled)
-        #check_func_args(cls.user_exit_enabled, Table.user_exit_enabled)
         check_func_args(cls.on_player_enter, Table.on_player_enter)
         check_func_args(cls.on_player_exit, Table.on_player_exit)
         check_func_args(cls.user_factory, Table.user_factory)
