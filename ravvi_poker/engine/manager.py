@@ -37,7 +37,7 @@ class Engine_Manager(DBI_Listener):
         self.log.info("tables ready")
 
     async def on_table_cmd(self, db: DBI, *, cmd_id, table_id):
-        self.log.debug("on_table_cmd: %s %s %s", table_id, cmd_id)
+        self.log.info("on_table_cmd: %s %s %s", table_id, cmd_id)
         table = self.tables.get(table_id, None)
         if not table:
             self.log.warning("table %s not found", table_id)
@@ -50,7 +50,10 @@ class Engine_Manager(DBI_Listener):
         if not client:
             self.log.warning("client %s not found", cmd.client_id)
             return
-        await table.handle_cmd(db, client.user_id, client.client_id, cmd.cmd_type, cmd.props or {})
+        try:
+            await table.handle_cmd(db, client.user_id, client.client_id, cmd.cmd_type, cmd.props or {})
+        except Exception as e:
+            self.log.exception("%s", e)
 
     async def on_user_client_closed(self, db: DBI, *, client_id):
         self.log.debug("on_user_client_closed: %s ", client_id)

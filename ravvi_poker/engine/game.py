@@ -10,7 +10,6 @@ from .events import Message, Command
 
 logger = logging.getLogger(__name__)
 
-
 class Game:
     DBI = DBI
     GAME_TYPE = None
@@ -132,3 +131,13 @@ class Game:
 
     async def run(self):
         raise NotImplementedError()
+
+from .poker.nlh import NLH_GAMES
+from .poker.plo import PLO_GAMES
+
+GAME_CLASSES = NLH_GAMES+PLO_GAMES
+GAME_CLASSES_MAP = {(cls.GAME_TYPE, cls.GAME_SUBTYPE):cls for cls in GAME_CLASSES}
+
+def get_game_class(game_type, game_subtype):
+    key = (game_type, game_subtype)
+    return GAME_CLASSES_MAP.get(key, None)

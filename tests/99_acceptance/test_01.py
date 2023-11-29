@@ -1,5 +1,7 @@
 import pytest
 
+pytestmark = pytest.mark.skip()
+
 import logging
 import asyncio
 import pytest

@@ -38,7 +38,7 @@ class Table:
             target[k] = v
         return needed, other
 
-    def __init__(self, id, parent_id=None, *, table_seats, club_id=None, game_type=None, game_subtype=None):
+    def __init__(self, id, parent_id=None, *, table_seats, club_id=None, game_type=None, game_subtype=None, **game_props):
         self.log = ObjectLoggerAdapter(logger, self, "table_id")
         self.club_id = club_id
         self.table_id = id
@@ -52,6 +52,7 @@ class Table:
         self.lock = asyncio.Lock()
         self.game_type = game_type
         self.game_subtype = game_subtype
+        self.game_props = game_props
         self.game = None
 
     @property
@@ -60,17 +61,20 @@ class Table:
 
     @property
     def user_enter_enabled(self):
-        raise NotImplementedError()
+        return True
 
     @property
     def user_exit_enabled(self):
-        raise NotImplementedError()
+        return True
 
     async def user_factory(self, db, user_id):
-        return User(id=user_id, username="u" + str(user_id))
+        user = await db.get_user(user_id)
+        return User(id=user.id, username=user.username)
 
     async def game_factory(self, users):
-        raise NotImplementedError()
+        from ..game import get_game_class
+        game_class = get_game_class(self.game_type, self.game_subtype)
+        return game_class(self, users, **self.game_props)
 
     def find_user(self, user_id):
         user, seat_idx = None, None

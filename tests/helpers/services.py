@@ -2,6 +2,7 @@ import logging
 from subprocess import Popen, DEVNULL
 import signal
 import time
+import os
 
 log = logging.getLogger(__name__)
 
@@ -27,7 +28,9 @@ class Services:
     def start_service(cls, name):
         if getattr(cls, name):
             return
-        cmd = f"coverage run --data-file=.coverage.{name} --rcfile=.coveragerc -m ravvi_poker.{name}.cli --log-file {name}.log run"
+        root = os.path.join(os.path.dirname(__file__),'..')
+        root = os.path.abspath(root)
+        cmd = f"coverage run --data-file={root}/.coverage.{name} --rcfile={root}/.coveragerc -m ravvi_poker.{name}.cli --log-file {root}/{name}.log run"
         handle = cls.start_subprocess(cmd)
         log.info('service %s started', name)
         setattr(cls, name, handle)

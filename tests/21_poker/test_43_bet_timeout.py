@@ -14,7 +14,7 @@ async def test_31_bet_timeout():
         u.balance = 1000
     
     # game with random deck
-    game = PokerBase(None, users)
+    game = PokerBase(None, users, blind_small=1)
     game.bet_timeout = 0.1
 
     game.setup_players_roles()

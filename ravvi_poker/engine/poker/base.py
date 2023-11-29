@@ -34,7 +34,7 @@ class PokerBase(Game):
     SLEEP_GAME_END = 4
 
     def __init__(self, table, users: List[User], 
-                 *, blind_value=1, blind_small=None, blind_big=None, ante=None, **kwargs) -> None:
+                 *, blind_small=1, blind_big=None, ante=None, **kwargs) -> None:
         super().__init__(table=table, users=users)
         self.log.logger = logger
         self.round = None
@@ -42,7 +42,7 @@ class PokerBase(Game):
         self.cards = None
         self.banks = None
 
-        self.blind_small = blind_small or blind_value
+        self.blind_small = blind_small
         self.blind_big = blind_big or self.blind_small*2
         self.ante = ante
 
@@ -54,6 +54,14 @@ class PokerBase(Game):
         self.bet_timeout = 30
         self.count_in_the_game = 0
         self.count_has_options = 0
+
+    @property
+    def game_props(self):
+        return dict(
+            blind_small = self.blind_small,
+            blind_big = self.blind_big,
+            ante = self.ante
+        )
 
     def player_factory(self, user) -> Player:
         return Player(user)

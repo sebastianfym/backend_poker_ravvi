@@ -6,7 +6,7 @@ from ravvi_poker.engine.poker.base import PokerBase, User, PlayerRole
 async def test_41_poker_base_2_players():
     users = [User(x, f"u{x}", None) for x in [111, 222]]
     
-    game = PokerBase(None, users)
+    game = PokerBase(None, users, blind_small=1)
     assert game.table is None
     assert game.game_id is None
     assert game.round is None

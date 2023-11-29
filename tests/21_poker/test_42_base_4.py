@@ -6,7 +6,7 @@ async def test_42_poker_4_players():
     users = [User(x, f"u{x}", 1000) for x in [111, 222, 333, 444]]
     
     # game with random deck
-    game = PokerBase(None, users)
+    game = PokerBase(None, users, blind_small=1)
     assert game.table is None
     assert game.game_id is None
     assert game.round is None

@@ -1,4 +1,6 @@
 {
+    "blind_small": 1,
+    "blind_big": 2,
     "users": [
         {"id": 111, "username": "u1", "balance": 102},
         {"id": 222, "username": "u2", "balance": 98},
