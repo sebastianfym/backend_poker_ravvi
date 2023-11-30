@@ -1,5 +1,5 @@
 import pytest
-from ravvi_poker.engine.cards import Card, get_deck_52, get_deck_36
+from ravvi_poker.engine.cards import Card, Deck
 
 def test_cards():
     c = Card(0)
@@ -117,7 +117,7 @@ def test_cards_samples():
 
 
 def test_deck_52():
-    deck = get_deck_52()
+    deck = Deck(52)
     assert len(deck) == 52
     u = set(deck)
     assert len(u) == 52
@@ -126,11 +126,11 @@ def test_deck_52():
 
 
 def test_deck_36():
-    deck = get_deck_36()
+    deck = Deck(36)
     assert len(deck) == 36
     u = set(deck)
     assert len(u) == 36
-    for i, code in enumerate(deck):
+    for code in deck:
         c = Card(code)
         assert c.rank >= 6
 

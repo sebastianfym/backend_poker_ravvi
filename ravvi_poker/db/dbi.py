@@ -92,6 +92,9 @@ class DBI:
     async def listen(self, channel):
         await self.dbi.execute(f'LISTEN {channel}')
 
+    async def unlisten(self, channel):
+        await self.dbi.execute(f'UNLISTEN {channel}')
+
     # DEVICE 
 
     async def create_device(self, props=None):

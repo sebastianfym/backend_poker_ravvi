@@ -82,7 +82,7 @@ async def client(session):
 async def table():
     async with DBI() as db:
         row = await db.create_table(
-            table_type="RG", table_seats=9, table_name="PUBLIC", game_type="NLH", game_subtype="DEFAULT"
+            table_type="RG", table_seats=9, table_name="PUBLIC", game_type="NLH", game_subtype="REGULAR"
         )
         assert row
     yield row

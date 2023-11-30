@@ -2,14 +2,14 @@ import logging
 import asyncio
 
 from ..db import DBI
-from .manager import Engine_Manager
+from .table.manager import TableManager
 
 logger = logging.getLogger(__name__)
 
 
 async def start_engine():
     await DBI.pool_open()
-    engine = Engine_Manager()
+    engine = TableManager()
     await engine.start()
     return engine
 

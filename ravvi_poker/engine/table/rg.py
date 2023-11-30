@@ -1,4 +1,4 @@
-from .base import Table
+from .base import Table, DBI
 
 class Table_RG(Table):
     TABLE_TYPE = "RG"
@@ -18,14 +18,23 @@ class Table_RG(Table):
     def user_exit_enabled(self):
         return True
 
-    async def on_player_enter(self, db, user, seat_idx):
-        user.balance = self.buyin_min
+    async def on_player_enter(self, db: DBI, user, seat_idx):
+        # lobby: get user_profile balance
+        account = await db.get_user(user.id)
+        if not account:
+            return False
+        buyin = self.buyin_min
+        new_balance = account.balance-buyin
+        self.log.info("user %s buyin %s -> balance %s", user.id, buyin, new_balance)
+        if new_balance<0:
+            return False
+        await db.update_user(user.id, balance=new_balance)
+        user.balance = buyin
+        return True
 
-#    async def run_table(self):
-#        while True:
-#            await self.sleep(self.NEW_GAME_DELAY)
-#            # try to start new game
-#            users = self.get_players(2)
-#            if users:
-#                await self.run_game(users)
-#            await self.remove_users()
+    async def on_player_exit(self, db, user, seat_idx):
+        account = await db.get_user(user.id)
+        new_balance = account.balance+user.balance
+        self.log.info("user %s exit %s -> balance %s", user.id, user.balance, new_balance)
+        await db.update_user(user.id, balance=new_balance)
+        user.balance = None

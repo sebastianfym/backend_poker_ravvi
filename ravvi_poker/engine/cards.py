@@ -1,3 +1,5 @@
+from random import SystemRandom
+
 class Card:
     RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"]
     # (S)pades(♠) (C)lubs(♣) (D)iamonds(♦) (H)earts(♥)
@@ -83,9 +85,22 @@ class Card:
         return f"{self.RANKS[self.rank-2]}{self.SUITS[self.suit-1]}"
 
 
-def get_deck_52():
-    return list(range(1, 53))
+class Deck:
+    def __init__(self, deck_type) -> None:
+        if deck_type not in (36, 52):
+            raise ValueError(f"Invalid deck_type {deck_type}")
+        self.cards = list(range(1, 53))
+        if deck_type == 36:
+            self.cards = list(filter(lambda x: Card(x).rank >= 6, self.cards))
+        self.rng = SystemRandom()
+        #self.rng.shuffle(self.cards)
 
+    def get_next(self):
+        idx = self.rng.randint(0, len(self.cards)-1)
+        return self.cards.pop(idx)
 
-def get_deck_36():
-    return list(filter(lambda x: Card(x).rank >= 6, get_deck_52()))
+    def __len__(self):
+        return len(self.cards)
+    
+    def __iter__(self):
+        return iter(self.cards)

@@ -1,8 +1,9 @@
 import logging
+
 from ..logging import ObjectLoggerAdapter
 from ..db import DBI
 
-from .cards import get_deck_36, get_deck_52
+from .cards import Deck
 from .user import User
 from .table import Table
 from .player import Player
@@ -17,9 +18,9 @@ class Game:
     GAME_DECK = 52
 
     def __init__(self, table, users) -> None:
-        self.log = ObjectLoggerAdapter(logger, self, "game_id")
         self.table: Table = table
         self.game_id = None
+        self.log = ObjectLoggerAdapter(logger, lambda: self.game_id)
         self.players = [self.player_factory(u) for u in users]
         self.dealer_id = None
         self.deck = None
@@ -52,16 +53,15 @@ class Game:
 
     # CARDS
 
-    def cards_get_deck(self):
-        if self.GAME_DECK==52:
-            return get_deck_52() 
-        elif self.GAME_DECK==36:
-            return get_deck_36()
-        raise ValueError(f"Invalid GAME_DECK {self.GAME_DECK}")
+    def setup_cards(self):
+        # deck
+        self.deck = Deck(self.GAME_DECK)
+        self.cards = []
+        # players
+        for p in self.players:
+            p.cards = []
+            p.cards_open = False
             
-    def cards_get_next(self):
-        return self.deck.pop(0)
-
     # PLAYERS
 
     @property
@@ -125,6 +125,7 @@ class Game:
 
     async def emit_msg(self, db, msg):
         msg.update(game_id=self.game_id)
+        self.log.info("msg: %s", msg)
         # TODO
         if self.table:
             await self.table.emit_msg(db, msg)
@@ -132,12 +133,13 @@ class Game:
     async def run(self):
         raise NotImplementedError()
 
-from .poker.nlh import NLH_GAMES
-from .poker.plo import PLO_GAMES
-
-GAME_CLASSES = NLH_GAMES+PLO_GAMES
-GAME_CLASSES_MAP = {(cls.GAME_TYPE, cls.GAME_SUBTYPE):cls for cls in GAME_CLASSES}
 
 def get_game_class(game_type, game_subtype):
+    from .poker.nlh import NLH_GAMES
+    from .poker.plo import PLO_GAMES
+
+    GAME_CLASSES = NLH_GAMES+PLO_GAMES
+    GAME_CLASSES_MAP = {(cls.GAME_TYPE, cls.GAME_SUBTYPE):cls for cls in GAME_CLASSES}
+
     key = (game_type, game_subtype)
     return GAME_CLASSES_MAP.get(key, None)

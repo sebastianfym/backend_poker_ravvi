@@ -18,6 +18,12 @@ def x_users(_users):
         users.append(u)
     return users
 
+class X_Deck:
+    def __init__(self, cards):
+        self.cards = cards
+    def get_next(self):
+        return self.cards.pop(0)
+
 class X_CaseMixIn:
     SLEEP_ROUND_BEGIN = 0
     SLEEP_ROUND_END = 0
@@ -32,7 +38,7 @@ class X_CaseMixIn:
 
     def setup_cards(self):
         super().setup_cards()
-        self.deck = self._deck
+        self.deck = X_Deck(self._deck)
 
     async def emit_msg(self, db, msg: Message):
         self.x_check_msg(msg)

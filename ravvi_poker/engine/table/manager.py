@@ -3,38 +3,41 @@ import json
 import asyncio
 from typing import Mapping
 
-from ..db import DBI
-from ..db.listener import DBI_Listener
-from .table import Table, Table_RG, Table_SNG
+from ...db import DBI
+from ...db.listener import DBI_Listener
+from . import Table, Table_RG, Table_SNG
 
 logger = logging.getLogger(__name__)
 
-class Engine_Manager(DBI_Listener):
+class TableManager(DBI_Listener):
 
     def __init__(self):
         super().__init__()
         self.log = logger
-        self.tables: Mapping[int, Table] = None
-        self.channels = {
+        self.tables_accept = True
+        self.tables: Mapping[int, Table] = {}
+        self.listener = DBI_Listener()
+        self.listener.log = self.log
+        self.listener.on_listen = self.on_listen
+        self.listener.channels = {
             "table_profile_created": self.on_table_profile_created, 
             "table_cmd": self.on_table_cmd, 
             "user_client_closed": self.on_user_client_closed
         }
 
-    async def run(self):
-        try:
-            self.tables = {}
-            await super().run()
-        except asyncio.CancelledError:
-            pass
-        finally:
-            self.log.info("shutdown tables ...")
-            for x in self.tables.values():
-                x.task_stop = True
-            for x in self.tables.values():
-                await x.stop()
-            self.log.info("shutdown tables done")
-            self.tables = None
+    async def start(self):
+        await self.listener.start()
+
+    async def stop(self):
+        self.log.info("shutdown tables ...")
+        self.tables_accept = False
+        for x in self.tables.values():
+            x.task_stop = True
+        for x in self.tables.values():
+            await x.stop()
+        self.log.info("shutdown tables done")
+        await self.listener.stop()
+        self.tables = {}
 
     async def on_listen(self, db: DBI):
         self.log.info("load tables")
@@ -93,6 +96,8 @@ class Engine_Manager(DBI_Listener):
         self.log.error("table %s unknown table_type=%s", row.id, row.table_type)
 
     async def handle_table_row(self, row):
+        if not self.tables_accept:
+            return
         self.log.info("handle_table_row: %s", row.id)
         if row.id in self.tables:
             self.log.warning("%s already in tables", row.id)

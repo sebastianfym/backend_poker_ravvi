@@ -4,7 +4,7 @@ import pytest_asyncio
 import asyncio
 
 from ravvi_poker.db import DBI
-from ravvi_poker.engine.manager import Engine_Manager
+from ravvi_poker.engine.table.manager import TableManager
 
 log = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ async def send_cmd_table_join(client, table):
 @pytest_asyncio.fixture()
 async def engine():
     #await DBI.pool_open()
-    manager = Engine_Manager()
+    manager = TableManager()
     #await manager.start()
     yield manager
     await manager.stop()
@@ -46,27 +46,27 @@ async def engine():
     await asyncio.sleep(1)
 
 @pytest.mark.asyncio
-async def test_engine_manager(engine):
+async def test_table_manager(engine):
 
     # закрыть все существующие столы (невидимы для engine manager)
     async with DBI() as db:
         await db.dbi.execute('UPDATE table_profile SET closed_ts=now_utc()')
 
     # создадим один стол до старта engine
-    table_1 = await create_table()
+    table = await create_table()
 
     # запуск engine       
     await engine.start()
     
     # проверяем что существующий стол подхвачен  запущен
-    assert table_1.id in engine.tables
-    x_table = engine.tables[table_1.id]
+    assert table.id in engine.tables
+    x_table = engine.tables[table.id]
 
 
     # два пользователя/клиента
     user_1 = await create_user()
     client_1 = await create_client(user_1)
-    await send_cmd_table_join(client_1, table_1)
+    await send_cmd_table_join(client_1, table)
     await asyncio.sleep(1)
     assert user_1.id in x_table.users
     assert user_1.id in [u.id for u in x_table.seats if u]
@@ -74,7 +74,7 @@ async def test_engine_manager(engine):
 
     user_2 = await create_user()
     client_2 = await create_client(user_2)
-    await send_cmd_table_join(client_2, table_1)
+    await send_cmd_table_join(client_2, table)
     await asyncio.sleep(1)
     assert user_2.id in x_table.users
     assert user_2.id in [u.id for u in x_table.seats if u]

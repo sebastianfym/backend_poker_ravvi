@@ -10,11 +10,11 @@ logger = getLogger(__name__)
 
 class WS_Client:
     def __init__(self, manager, ws: WebSocket, user_id, client_id) -> None:
-        self.log = ObjectLoggerAdapter(logger, self, 'client_id')
         self.manager = manager
         self.ws = ws
         self.user_id = user_id
         self.client_id = client_id
+        self.log = ObjectLoggerAdapter(logger, lambda: self.client_id)
         self.tables = set()
         self.queue = asyncio.Queue()
 

@@ -41,9 +41,6 @@ class DBI_Listener:
         while not self.task_stop:
             try:
                 await self.process_events()
-            except asyncio.CancelledError:
-                self.log.info("cancelled")
-                self.task_stop = True
             except Exception as ex:
                 self.log.exception("exception: %s", str(ex))
         self.ready.clear()
@@ -62,8 +59,16 @@ class DBI_Listener:
                 async with DBI_Txn(db):
                     try:
                         await self.on_notify(db, msg)
+                    except asyncio.CancelledError:
+                        self.log.info("cancelled")
+                        self.task_stop = True
+                        break
                     except Exception as e:
                         self.log.exception("%s", e)
+            async with DBI_Txn(db):
+                for key in self.channels:
+                    self.log.info("unlisten: %s", key)
+                    await db.unlisten(key)
 
     async def on_listen(self, db: DBI):
         pass

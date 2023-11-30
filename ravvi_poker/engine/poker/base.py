@@ -1,5 +1,4 @@
 from typing import List, Tuple
-import random
 import asyncio
 from itertools import zip_longest, groupby, combinations
 
@@ -162,6 +161,7 @@ class PokerBase(Game):
         self.bet_total = 0
 
         for p in self.players:
+            self.log.info("%s %s %s ", p.id, p.in_the_game, p.has_bet_opions)
             self.bet_total += p.bet_total
             if not p.in_the_game:
                 continue
@@ -170,6 +170,7 @@ class PokerBase(Game):
                 self.count_has_options += 1
             if self.bet_level<p.bet_amount:
                 self.bet_level = p.bet_amount
+        
         self.log.info(f"status: in_the_game:{self.count_in_the_game} has_options:{self.count_has_options} bet_id: {self.bet_id} bet_level:{self.bet_level}")
 
     # BET
@@ -295,18 +296,6 @@ class PokerBase(Game):
         for p in self.players[3:]:
             p.role = PlayerRole.DEFAULT
 
-    def setup_cards(self):
-        # deck
-        if not self.deck:
-            self.deck = self.cards_get_deck()
-        random.shuffle(self.deck)
-        self.cards = []
-        # players
-        for p in self.players:
-            p.cards = []
-            p.cards_open = False
-
-
     async def open_cards(self, db):
         if not (self.count_in_the_game>1 and self.count_has_options<=1):
             return
@@ -411,8 +400,8 @@ class PokerBase(Game):
         self.players_rotate()
         for _ in range(self.PLAYER_CARDS_FREFLOP):
             for p in self.players:
-                p.cards.append(self.cards_get_next())
-        self.cards_get_next()
+                p.cards.append(self.deck.get_next())
+        self.deck.get_next()
 
         async with self.DBI() as db:
             for p in self.players:
@@ -462,7 +451,7 @@ class PokerBase(Game):
         self.log.info("FLOP begin")
 
         for _ in range(3):
-            self.cards.append(self.cards_get_next())
+            self.cards.append(self.deck.get_next())
         async with self.DBI() as db:
             await self.broadcast_GAME_CARDS(db)
             self.players_to_role(PlayerRole.DEALER)
@@ -480,7 +469,7 @@ class PokerBase(Game):
         self.log.info("TERN begin")
 
         for _ in range(1):
-            self.cards.append(self.cards_get_next())
+            self.cards.append(self.deck.get_next())
         async with self.DBI() as db:
             await self.broadcast_GAME_CARDS(db)
             self.players_to_role(PlayerRole.DEALER)
@@ -498,7 +487,7 @@ class PokerBase(Game):
         self.log.info("RIVER begin")
 
         for _ in range(1):
-            self.cards.append(self.cards_get_next())
+            self.cards.append(self.deck.get_next())
         async with self.DBI() as db:
             await self.broadcast_GAME_CARDS(db)
             self.players_to_role(PlayerRole.DEALER)

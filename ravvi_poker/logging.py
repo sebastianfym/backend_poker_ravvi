@@ -56,13 +56,12 @@ def logging_configure(args):
         )
 
 class ObjectLoggerAdapter(logging.LoggerAdapter):
-    def __init__(self, logger, obj, attr) -> None:
+    def __init__(self, logger, func) -> None:
         super().__init__(logger, None)
-        self.obj = obj
-        self.attr = attr
+        self.func = func
 
     def process(self, msg, kwargs):
-        value = getattr(self.obj, self.attr, None)
+        value = self.func()
         if value is not None:
             msg = f"{value}: "+msg
         return super().process(msg, kwargs)

@@ -1,3 +1,5 @@
+ALTER TABLE public.user_profile ADD balance numeric(20,0) NOT NULL DEFAULT 1000;
+
 CREATE OR REPLACE FUNCTION user_profile_name_trg_proc() RETURNS TRIGGER 
 AS $$
 BEGIN

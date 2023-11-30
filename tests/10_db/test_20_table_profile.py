@@ -16,7 +16,7 @@ async def test_table(table):
         assert row.table_type == "RG"
         assert row.table_seats == 9
         assert row.game_type == "NLH"
-        assert row.game_subtype == "DEFAULT"
+        assert row.game_subtype == "REGULAR"
         assert row.props == {}
 
         rows = await db.get_open_tables()

@@ -18,8 +18,8 @@ class Table:
     NEW_GAME_DELAY = 3
 
     def __init__(self, id, *, table_seats, parent_id=None, club_id=None, game_type=None, game_subtype=None, props=None, **kwargs):
-        self.log = ObjectLoggerAdapter(logger, self, "table_id")
         self.table_id = id
+        self.log = ObjectLoggerAdapter(logger, lambda: self.table_id)
         self.parent_id = parent_id
         self.club_id = club_id
         self.table_seats = table_seats
@@ -82,6 +82,7 @@ class Table:
     async def on_player_enter(self, db, user, seat_idx):
         # TODO buyin
         user.balance = 1
+        return True
 
     async def on_player_exit(self, db, user, seat_idx):
         # TODO return table balance to user
@@ -167,12 +168,13 @@ class Table:
         # try to take a seat
         new_seat_idx, user_info = None, None
         if seat_idx is None and take_seat and self.user_enter_enabled and seats_available:
+            # allocate seat
             new_seat_idx = seats_available.pop(0)
-            self.seats[new_seat_idx] = user
-            await self.on_player_enter(db, user, new_seat_idx)
-            # broadcast
-            user_info = user.get_info()
-            await self.broadcast_PLAYER_ENTER(db, user_info, new_seat_idx)
+            # check user can take seat
+            if await self.on_player_enter(db, user, new_seat_idx):
+                self.seats[new_seat_idx] = user
+                user_info = user.get_info()
+                await self.broadcast_PLAYER_ENTER(db, user_info, new_seat_idx)
         # response
         table_info = self.get_table_info(user_id)
         await self.emit_TABLE_INFO(db, cmd_id=cmd_id, client_id=client_id, table_info=table_info)
@@ -187,8 +189,9 @@ class Table:
         if old_seat_idx is None:
             if not self.user_enter_enabled:
                 return False
+            if not await self.on_player_enter(db, user, seat_idx):
+                return False
             self.seats[seat_idx] = user
-            await self.on_player_enter(db, user, seat_idx)
             user_info = user.get_info()
             await self.broadcast_PLAYER_ENTER(db, user_info, seat_idx)
         else:
@@ -203,10 +206,11 @@ class Table:
         # check seats allocation
         user, seat_idx, _ = self.find_user(user_id)
         if not user or seat_idx is None:
-            return
+            return False
         self.seats[seat_idx] = None
         await self.on_player_exit(db, user, seat_idx)
         await self.broadcast_PLAYER_EXIT(db, user.id)
+        return True
 
     async def handle_client_close(self, db, *, user_id, client_id):
         # check seats allocation
@@ -254,7 +258,9 @@ class Table:
             async with self.lock:
                 async with self.DBI() as db:
                     await self.remove_users(db)
-
+        async with self.lock:
+            async with self.DBI() as db:
+                await self.remove_users(db, force=True)
         # async with self.DBI() as db:
         #    await  db.close_table(self.table_id)
         #    await self.broadcast_TABLE_CLOSED(db)
@@ -302,12 +308,12 @@ class Table:
         async with self.DBI() as db:
             await db.close_game(self.game.game_id, players=users)
 
-    async def remove_users(self, db):
+    async def remove_users(self, db, force=False):
         # remove users based on user_can_stay return
         for seat_idx, user in enumerate(self.seats):
             if not user:
                 continue
-            if self.user_can_stay(user):
+            if not force and self.user_can_stay(user):
                 continue
             self.seats[seat_idx] = None
             await self.on_player_exit(db, user, seat_idx)
