@@ -4,7 +4,7 @@ import pytest_asyncio
 import asyncio
 
 from ravvi_poker.db import DBI
-from ravvi_poker.engine.table.manager import TableManager
+from ravvi_poker.engine.tables import TablesManager
 
 log = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ async def send_cmd_table_join(client, table):
 @pytest_asyncio.fixture()
 async def engine():
     #await DBI.pool_open()
-    manager = TableManager()
+    manager = TablesManager()
     #await manager.start()
     yield manager
     await manager.stop()

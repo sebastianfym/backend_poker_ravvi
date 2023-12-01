@@ -3,7 +3,7 @@ import asyncio
 
 from ravvi_poker.engine.user import User
 from ravvi_poker.engine.events import Command, Message
-from ravvi_poker.engine.table import Table
+from ravvi_poker.engine.tables import Table
 from ravvi_poker.engine.game import Game
 
 from .x_utils import check_func_args

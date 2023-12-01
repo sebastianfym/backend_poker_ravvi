@@ -7,6 +7,7 @@ from ...logging import getLogger, ObjectLoggerAdapter
 from ...db import DBI
 from ..user import User
 from ..events import Command, Message
+from .status import TableStatus
 
 logger = getLogger(__name__)
 
@@ -17,18 +18,21 @@ class Table:
 
     NEW_GAME_DELAY = 3
 
-    def __init__(self, id, *, table_seats, parent_id=None, club_id=None, game_type=None, game_subtype=None, props=None, **kwargs):
-        self.table_id = id
-        self.log = ObjectLoggerAdapter(logger, lambda: self.table_id)
-        self.parent_id = parent_id
+    def __init__(
+        self, id, *, table_seats, parent_id=None, club_id=None, game_type=None, game_subtype=None, props=None, **kwargs
+    ):
+        self.lock = asyncio.Lock()
         self.club_id = club_id
+        self.table_id = id
+        self.parent_id = parent_id
+        self.status = None
+        self.log = ObjectLoggerAdapter(logger, lambda: self.table_id)
         self.table_seats = table_seats
         self.seats: List[User] = [None] * table_seats
         self.dealer_idx = -1
         self.users: Mapping[int, User] = {}
         self.task: asyncio.Task = None
         self.task_stop = False
-        self.lock = asyncio.Lock()
         self.game_type = game_type
         self.game_subtype = game_subtype
         self.game_props = {}
@@ -57,6 +61,7 @@ class Table:
 
     async def game_factory(self, users):
         from ..game import get_game_class
+
         for u in users:
             self.log.info("user(%s, %s)", u.id, u.balance)
         self.log.info("game_factory(%s, %s, %s)", self.game_type, self.game_subtype, self.game_props)
@@ -130,7 +135,7 @@ class Table:
             table_id=self.table_id,
             table_redirect_id=self.table_id,
             table_type=self.table_type,
-            seats=[None if u is None else u.id for u in self.seats]
+            seats=[None if u is None else u.id for u in self.seats],
         )
         if self.game:
             game_info = self.game.get_info(user_id=user_id, users_info=users_info)
@@ -138,7 +143,7 @@ class Table:
         result.update(users=list(users_info.values()))
         return result
 
-    async def handle_cmd(self, db, *, cmd_id:int, cmd_type: int, user_id:int, client_id:int, props: dict):
+    async def handle_cmd(self, db, *, cmd_id: int, cmd_type: int, user_id: int, client_id: int, props: dict):
         cmd_type = Command.Type.decode(cmd_type)
         self.log.info("handle_cmd: %s/%s %s %s", user_id, client_id, cmd_type, props)
         async with self.lock:
@@ -223,47 +228,83 @@ class Table:
             del self.users[user.id]
 
     async def start(self):
-        self.log.debug("start")
+        async with self.lock:
+            self.status = TableStatus.STARTUP
         self.task = asyncio.create_task(self.run_table_wrapper())
-        self.log.info("started")
 
-    async def stop(self):
-        self.log.debug("stop...")
+    async def wait_ready(self, timeout: float = 0):
+        async def _ready():
+            while self.status == TableStatus.STARTUP:
+                asyncio.sleep(0.1)
+
+        if timeout:
+            await asyncio.wait_for(_ready(), timeout=timeout)
+        else:
+            await self.task
+
+    async def shutdown(self):
+        async with self.lock:
+            self.status = TableStatus.SHUTDOWN
+            async with self.DBI() as db:
+                await db.update_table_status(self.table_id, self.status)
+            self.log.info("%s", self.status)
+
+    async def wait_done(self, timeout: float = 0):
         if not self.task:
             return
-        self.task_stop = True
-        with contextlib.suppress(asyncio.exceptions.CancelledError):
+        if timeout:
+            await asyncio.wait_for(self.task, timeout=timeout)
+        else:
             await self.task
-        self.task = None
-        self.log.info("stopped")
+
+    async def stop(self):
+        await self.shutdown()
+        await self.wait_done()
 
     async def run_table_wrapper(self):
         self.log.info("begin")
         try:
+            # запуск основной логики стола
             await self.run_table()
-        except asyncio.CancelledError:
-            pass
         except Exception as ex:
             self.log.exception("%s", ex)
-        finally:
-            self.log.info("end")
+            self.status = TableStatus.SHUTDOWN
+
+        # процедура остановки
+        async with self.lock:
+            if self.status == TableStatus.CLOSING:
+                self.status = TableStatus.CLOSED
+            else:
+                self.status = TableStatus.STOPPED
+            try:
+                async with self.DBI() as db:
+                    await self.broadcast_TABLE_CLOSED(db)
+                    await self.remove_users(db, force=True)
+                    if self.status == TableStatus.CLOSED:
+                        await db.close_table(self.table_id)
+                    else:
+                        await db.update_table_status(self.table_id, status=self.status)
+            except Exception as ex:
+                self.log.exception("%s", ex)
+
+        self.log.info("end")
 
     async def sleep(self, delay: float):
         await asyncio.sleep(delay)
 
     async def run_table(self):
-        while not self.task_stop:
+        async with self.lock:
+            if self.status < TableStatus.OPEN:
+                self.status = TableStatus.OPEN
+                async with self.DBI() as db:
+                    await db.update_table_status(self.table_id, self.status)
+        self.log.info("%s", self.status)
+        while self.status == TableStatus.OPEN:
             await self.sleep(self.NEW_GAME_DELAY)
             await self.run_game()
             async with self.lock:
                 async with self.DBI() as db:
                     await self.remove_users(db)
-        async with self.lock:
-            async with self.DBI() as db:
-                await self.remove_users(db, force=True)
-        # async with self.DBI() as db:
-        #    await  db.close_table(self.table_id)
-        #    await self.broadcast_TABLE_CLOSED(db)
 
     def user_can_play(self, user):
         return isinstance(user.balance, (int, float)) and user.balance > 0

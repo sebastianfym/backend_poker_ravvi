@@ -5,7 +5,7 @@ from ..db import DBI
 
 from .cards import Deck
 from .user import User
-from .table import Table
+from .tables import Table
 from .player import Player
 from .events import Message, Command
 

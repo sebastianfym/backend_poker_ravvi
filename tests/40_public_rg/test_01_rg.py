@@ -4,7 +4,7 @@ import pytest_asyncio
 import asyncio
 
 from ravvi_poker.db import DBI
-from ravvi_poker.engine.table.manager import TableManager
+from ravvi_poker.engine.tables import TablesManager
 from ravvi_poker.engine.clients.manager import ClientsManager
 from ravvi_poker.bots.dummy import DummyBot
 
@@ -54,7 +54,7 @@ async def engine():
     # закрыть все существующие столы (невидимы для engine manager)
     async with DBI() as db:
         await db.dbi.execute('UPDATE table_profile SET closed_ts=now_utc()')
-    t_mgr = TableManager()
+    t_mgr = TablesManager()
     await t_mgr.start()
     c_mgr = ClientsManager()
     await c_mgr.start()

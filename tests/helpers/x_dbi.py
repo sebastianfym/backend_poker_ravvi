@@ -45,6 +45,18 @@ class X_DBI:
         X_DBI._events.append(msg)
 
 
+    async def lock_table_engine_id(self, table_id):
+        pass
+
+    async def release_table_engine_id(self, table_id):
+        pass
+
+    async def update_table_status(self, table_id, status):
+        pass
+
+    async def close_table(self, table_id):
+        pass
+
     @property
     def _event(self):
         return X_DBI._events[-1] if X_DBI._events else None

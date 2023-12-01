@@ -74,7 +74,7 @@ class DBI_Listener:
         pass
 
     async def on_notify(self, db: DBI, msg: Notify):
-        self.log.info("on_notify: %s", msg)
+        self.log.debug("on_notify: %s", msg)
         handler = self.channels.get(msg.channel)
         if callable(handler):
             payload = json.loads(msg.payload) if msg.payload else {}

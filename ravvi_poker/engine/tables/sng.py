@@ -43,7 +43,9 @@ class Table_SNG(Table):
             blind_small, blind_big, ante = self.level_schedule[level_next]
             self.level_next = level_next
             async with self.DBI() as db:
-                self.broadcast_TABLE_NEXT_LEVEL_INFO(db, seconds=self.level_reminder, blind_small=blind_small, blind_big=blind_big)
+                self.broadcast_TABLE_NEXT_LEVEL_INFO(
+                    db, seconds=self.level_reminder, blind_small=blind_small, blind_big=blind_big
+                )
 
     async def run_table(self):
         # wait for players take all seats available
@@ -75,7 +77,7 @@ class Table_SNG(Table):
             users = self.get_players(2, exclude_offile=False)
 
         async with self.DBI() as db:
-            await  db.close_table(self.table_id)
+            await db.close_table(self.table_id)
             await self.broadcast_TABLE_CLOSED(db)
 
 

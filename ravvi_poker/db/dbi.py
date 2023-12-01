@@ -16,10 +16,13 @@ class DBI:
     DB_USER = os.getenv("RAVVI_POKER_DB_USER", "postgres")
     DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
     DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "develop")
+    APPLICATION_NAME = 'CPS'
+    CONNECT_TIMEOUT = 15
 
     pool = None
-    pool_ref = 0
     
+    OperationalError = psycopg.OperationalError
+    PoolTimeout = psycopg_pool.PoolTimeout
     ForeignKeyViolation = psycopg.errors.ForeignKeyViolation
 
     @classmethod
@@ -30,6 +33,8 @@ class DBI:
             dbname=db_name or cls.DB_NAME,
             user=cls.DB_USER,
             password=cls.DB_PASSWORD,
+            connect_timeout = cls.CONNECT_TIMEOUT,
+            application_name=cls.APPLICATION_NAME,
         )
         return conninfo
 
@@ -58,7 +63,7 @@ class DBI:
     async def __aenter__(self):
         if self.pool:
             self.dbi_pool = self.pool
-            self.dbi = await self.dbi_pool.getconn()
+            self.dbi = await self.dbi_pool.getconn(timeout=self.CONNECT_TIMEOUT)
         else:
             self.dbi = await psycopg.AsyncConnection.connect(self.conninfo())
         #logger.info('connection open')
@@ -405,8 +410,25 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def lock_table_engine_id(self, table_id):
+        sql = "UPDATE table_profile SET engine_id=pg_backend_pid(), engine_status=1 WHERE id=%s"
+        await self.dbi.execute(sql,(table_id,))
+
+    async def release_table_engine_id(self, table_id):
+        sql = "UPDATE table_profile SET engine_id=NULL WHERE id=%s"
+        await self.dbi.execute(sql,(table_id,))
+
+    async def update_table_status(self, table_id, status):
+        status = int(status)
+        sql = "UPDATE table_profile SET engine_status=%s WHERE id=%s RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql,(status,table_id,))
+            row = await cursor.fetchone()
+        return row
+
     async def close_table(self, table_id):
-        sql = "UPDATE table_profile SET closed_ts=now_utc() WHERE id=%s RETURNING *"
+        # table closed
+        sql = "UPDATE table_profile SET engine_status=9, closed_ts=now_utc() WHERE id=%s RETURNING *"
         async with self.cursor() as cursor:
             await cursor.execute(sql,(table_id,))
             row = await cursor.fetchone()
@@ -458,6 +480,7 @@ class DBI:
             return await cursor.fetchone()
 
     # EVENTS (TABLE_CMD)
+
     def json_dumps(self, obj):
         def encoder(x):
             if hasattr(x, '__int__'):

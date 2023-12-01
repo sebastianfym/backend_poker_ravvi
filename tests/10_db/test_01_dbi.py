@@ -2,6 +2,32 @@ import pytest
 
 from ravvi_poker.db.dbi import DBI
 
+class X_DBI(DBI):
+    DB_PORT = 10000
+    CONNECT_TIMEOUT = 3
+
+@pytest.mark.asyncio
+async def test_dbi_pool():
+    # проверяем ошибки в случае отсутствия соединения
+    await X_DBI.pool_open()
+    with pytest.raises(X_DBI.PoolTimeout):
+        async with X_DBI() as db:
+            pass
+    await X_DBI.pool_close()
+
+    with pytest.raises(X_DBI.OperationalError):
+        async with X_DBI() as db:
+            pass
+
+@pytest.mark.asyncio
+async def test_dbi_app_name():
+
+    async with DBI() as db:
+        async with db.cursor() as cursor:
+            await cursor.execute("SELECT application_name FROM pg_stat_activity WHERE pid=pg_backend_pid()")
+            row = await cursor.fetchone()
+    assert row.application_name == DBI.APPLICATION_NAME
+
 
 @pytest.mark.asyncio
 async def test_dbi_context():

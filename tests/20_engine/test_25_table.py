@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 from ravvi_poker.db.dbi import DBI
 from ravvi_poker.engine.user import User
 from ravvi_poker.engine.events import Command, Message
-from ravvi_poker.engine.table import Table
+from ravvi_poker.engine.tables import Table
 from ravvi_poker.engine.game import Game
 
 from helpers.x_dbi import X_DBI
