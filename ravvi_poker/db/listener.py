@@ -14,62 +14,50 @@ class DBI_Listener:
         super().__init__()
         self.log = logger
         self.task : asyncio.Task = None
-        self.task_stop = False
         self.ready = asyncio.Event()
         self.channels = {}
 
     async def start(self):
         self.log.debug("start ...")
-        self.task_stop = False
         self.task = asyncio.create_task(self.run())
         await self.ready.wait()
         self.log.info("started")
 
     async def stop(self):
+        if not self.task:
+            return
         self.log.debug("stop ...")
-        self.task_stop = True
-        if self.task:
-            if not self.task.done():
-                self.task.cancel()
-            with contextlib.suppress(asyncio.exceptions.CancelledError):
-                await self.task
+        if not self.task.done():
+            self.task.cancel()
+        with contextlib.suppress(asyncio.exceptions.CancelledError):
+            await self.task
         self.task = None
         self.log.info("stopped")
 
     async def run(self):
         self.log.info("begin")
-        while not self.task_stop:
+        # run until cancelled
+        while True:
             try:
-                await self.process_events()
+                async with DBI() as db:
+                    async with DBI_Txn(db):
+                        for key in self.channels:
+                            self.log.info("listen: %s", key)
+                            await db.listen(key)
+                        await self.on_listen(db)
+                    self.ready.set()
+                    self.log.info('ready, process notifications ...')
+                    async for msg in db.dbi.notifies():
+                        async with DBI_Txn(db):
+                            await self.on_notify(db, msg)
+            except asyncio.CancelledError:
+                self.log.info("cancelled")
+                break
             except Exception as ex:
-                self.log.exception("exception: %s", str(ex))
-        self.ready.clear()
+                self.log.exception("%s", ex)
+            self.ready.clear()
         self.log.info("end")
     
-    async def process_events(self):
-        async with DBI() as db:
-            async with DBI_Txn(db):
-                for key in self.channels:
-                    self.log.info("listen: %s", key)
-                    await db.listen(key)
-                await self.on_listen(db)
-            self.ready.set()
-            self.log.info('ready, process notifications ...')
-            async for msg in db.dbi.notifies():
-                async with DBI_Txn(db):
-                    try:
-                        await self.on_notify(db, msg)
-                    except asyncio.CancelledError:
-                        self.log.info("cancelled")
-                        self.task_stop = True
-                        break
-                    except Exception as e:
-                        self.log.exception("%s", e)
-            async with DBI_Txn(db):
-                for key in self.channels:
-                    self.log.info("unlisten: %s", key)
-                    await db.unlisten(key)
-
     async def on_listen(self, db: DBI):
         pass
 

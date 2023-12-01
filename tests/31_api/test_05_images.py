@@ -4,7 +4,7 @@ from PIL import Image
 from io import BytesIO
 
 
-from starlette.status import HTTP_200_OK, HTTP_422_UNPROCESSABLE_ENTITY
+from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 from fastapi.testclient import TestClient
 from ravvi_poker.api.auth import UserAccessTokens
 from ravvi_poker.api.images import ImageProfile
@@ -40,6 +40,10 @@ def test_upload_image(api_client: TestClient, api_guest: UserAccessTokens):
     image_2 = ImageProfile(**response.json())
     assert image_2.id
     assert image_2.is_owner
+
+    # get image
+    response = api_client.get(f"/v1/images/123456")
+    assert response.status_code == HTTP_404_NOT_FOUND
 
     # get image
     response = api_client.get(f"/v1/images/{image_1.id}")

@@ -30,12 +30,12 @@ class DummyBot(ClientQueue):
         self.log.info("table_id:%s options:%s raise:[%s - %s]", msg.table_id, msg.options, msg.raise_min, msg.raise_max)
         # select option
         sleep_seconds = random.randint(2,4)
-        self.log_debug("thinking %s sec ...", sleep_seconds)
+        self.log.debug("thinking %s sec ...", sleep_seconds)
         await asyncio.sleep(sleep_seconds)
         options = [x for x in msg.options]
         weights = [self.bet_weight(x) for x in options]
         choice = random.choices(options, weights)[0]
         amount = msg.raise_min if choice==Bet.RAISE else None
-        self.log_debug("choice %s %s", choice, amount)
+        self.log.debug("choice %s %s", choice, amount)
         cmd = Command(client_id=None, table_id=msg.table_id, cmd_type=Command.Type.BET, bet = choice, amount = amount)
         await self.send_cmd(cmd)
