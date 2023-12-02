@@ -37,12 +37,12 @@ async def send_cmd_table_join(client, table):
 
 @pytest_asyncio.fixture()
 async def engine():
-    #await DBI.pool_open()
+    await DBI.pool_open()
     manager = TablesManager()
     #await manager.start()
     yield manager
     await manager.stop()
-    #await DBI.pool_close()
+    await DBI.pool_close()
     await asyncio.sleep(1)
 
 @pytest.mark.asyncio

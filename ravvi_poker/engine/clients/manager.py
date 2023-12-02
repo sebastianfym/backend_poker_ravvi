@@ -14,23 +14,35 @@ class ClientsManager:
         self.clients = {}
         self.table_subscribers = {}
         self.last_event_id = None
-        self.listener = DBI_Listener()
-        self.listener.log = self.log
+        self.listener = DBI_Listener(log=self.log)
         self.listener.channels = {
-            "table_msg": self.on_table_msg
+            "table_msg": self.on_table_msg,
+            "user_client_closed": self.on_user_client_closed,
         }
 
     async def start(self):
         await self.listener.start()
 
     async def stop(self):
+        self.log.info("shutdown clients ...")
+        # сигнализируем остановку для всех клиентов
+        for x in list(self.clients.values()):
+            await x.shutdown()
+        # ждем завершения работы всех клиентов
+        await self._wait_client_closed()
+        self.log.info("shutdown clients done")
+        # выключаем прием оповещений
         await self.listener.stop()
 
-    async def on_table_msg(self, db: DBI, *, msg_id, table_id):
-        #self.log.warn("on_table_msg: %s %s", msg_id, table_id)
+    async def _wait_client_closed(self):
+        while self.clients:
+            await asyncio.sleep(0.1)
+
+    async def on_table_msg(self, *, msg_id, table_id):
         if not msg_id or not table_id:
             return
-        msg = await db.get_table_msg(msg_id)
+        async with DBI() as dbi:
+            msg = await dbi.get_table_msg(msg_id)
         if not msg:
             return
         msg = Message(msg.id, msg_type=msg.msg_type, table_id=msg.table_id, game_id=msg.game_id, cmd_id=msg.cmd_id, client_id=msg.client_id, **msg.props)
@@ -54,16 +66,22 @@ class ClientsManager:
             await client.handle_msg(cmsg)
             counter += 1
         #self.log.info("on_table_msg: %s %s", counter, msg)
-        
-    def add_client(self, client: ClientBase):
-        client.manager = self
-        self.clients[client.client_id] = client
 
-    def remove_client(self, client):
+    async def on_user_client_closed(self, *, client_id):
+        self.log.info("on_user_client_closed %s", client_id)
+        client = self.clients.pop(client_id, None)
+        if not client:
+            return
+        # удаление клиента из подписок на столы
         for table_id in list(client.tables):
             self.unsubscribe(client, table_id)
-        if client.client_id in self.clients:
-            del self.clients[client.client_id]
+        # ожидание завершения внтуреннего цикла
+        await client.wait_done()
+        
+    async def start_client(self, client: ClientBase):
+        client.manager = self
+        self.clients[client.client_id] = client
+        await client.start()
 
     def subscribe(self, client, table_id):
         subscribers = self.table_subscribers.get(table_id, None)
@@ -83,16 +101,3 @@ class ClientsManager:
         # cleanup 
         if subscribers is not None and len(subscribers)==0:
             self.table_subscribers.pop(table_id, None)
-
-    RESERVED_CMD_FIELDS = ['id','cmd_id','client_id']
-
-    async def send_cmd(self, client, cmd: dict):
-        if isinstance(cmd, Command):
-            cmd.update(client_id = client.client_id)
-        elif isinstance(cmd, dict):
-            kwargs = {k:v for k,v in cmd if k not in self.RESERVED_CMD_FIELDS}
-            cmd = Command(client_id = client.client_id, **kwargs)
-        self.log.info("send_cmd: %s", str(cmd))
-        async with DBI(log=self.log) as db:
-            await db.create_table_cmd(client_id=client.client_id, table_id=cmd.table_id, cmd_type=cmd.cmd_type, props=cmd.props)
-        

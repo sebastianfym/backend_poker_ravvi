@@ -102,7 +102,6 @@ class Game:
         await self.emit_msg(db, msg)
 
     async def broadcast_PLAYER_MOVE(self, db, player, **kwargs):
-        self.log.warning("broadcast_PLAYER_MOVE %s", player.user_id)
         msg = Message(msg_type=Message.Type.GAME_PLAYER_MOVE, 
             user_id = player.user_id, 
             **kwargs

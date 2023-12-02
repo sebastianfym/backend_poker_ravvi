@@ -7,16 +7,11 @@ class X_DBI_Listener(DBI_Listener):
         super().__init__()
         self.channels = {channel: self.on_expected}
         self.expected = []
-        self.other = []
         self._sleep = sleep
 
-    async def on_expected(self, db: DBI, **payload):
+    async def on_expected(self, **payload):
         # print(payload)
         self.expected.append(payload)
-
-    async def on_notify_default(self, db: DBI, msg: Notify):
-        # print(msg)
-        self.other.append(msg)
 
     async def __aenter__(self):
         self.expected = []

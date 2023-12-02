@@ -1,6 +1,6 @@
 import asyncio
-from contextlib import suppress
 
+from ...db import DBI
 from ...logging import ObjectLoggerAdapter, getLogger
 from ..events import Message, Command
 
@@ -22,7 +22,13 @@ class ClientBase:
     async def start(self):
         pass
 
-    async def stop(self):
+    async def shutdown(self):
+        self.log.info("shutdown ...")
+        async with DBI() as dbi:
+            await dbi.close_client(self.client_id)
+
+    async def wait_done(self):
+        self.log.info("wait_done")
         pass
 
     async def handle_msg(self, msg: Message):
@@ -31,9 +37,17 @@ class ClientBase:
     async def on_msg(self, msg: Message):
         pass
 
+    RESERVED_CMD_FIELDS = ['id','cmd_id','client_id']
+
     async def send_cmd(self, cmd: dict):
-        self.log.info("cmd: %s", cmd)
-        await self.manager.send_cmd(self, cmd)
+        if isinstance(cmd, Command):
+            cmd.update(client_id = self.client_id)
+        elif isinstance(cmd, dict):
+            kwargs = {k:v for k,v in cmd if k not in self.RESERVED_CMD_FIELDS}
+            cmd = Command(client_id = self.client_id, **kwargs)
+        async with DBI(log=self.log) as db:
+            await db.create_table_cmd(client_id=self.client_id, table_id=cmd.table_id, cmd_type=cmd.cmd_type, props=cmd.props)
+        self.log.info("send_cmd: %s", str(cmd))
 
 
 class ClientQueue(ClientBase):
@@ -46,11 +60,11 @@ class ClientQueue(ClientBase):
     async def start(self):
         self.msg_task = asyncio.create_task(self.msg_queue_loop())
 
-    async def stop(self):
-        if not self.msg_task.done():
-            self.msg_task.cancel()
-        with suppress(asyncio.exceptions.CancelledError):
-            await self.msg_task
+    async def shutdown(self):
+        await self.msg_queue.put(None)
+
+    async def wait_done(self):
+        await self.msg_task
 
     async def handle_msg(self, msg: Message):
         await self.msg_queue.put(msg)
@@ -58,19 +72,18 @@ class ClientQueue(ClientBase):
     async def msg_queue_loop(self):
         self.log.debug("msg_queue_loop: begin")
         while self.is_connected:
+            # get next msg from queue
+            msg: Message = await self.msg_queue.get()
             try:
-                # get next msg from queue
-                msg: Message = await self.msg_queue.get()
-                try:
-                    # handle message by client
-                    await self.on_msg(msg)
-                except Exception as e:
-                    self.log.exception("msg: %s: %s", msg, e)
+                if not msg:
+                    await super().shutdown()
                     break
-                finally:
-                    self.msg_queue.task_done()
-            except asyncio.CancelledError:
-                self.log.info("msg_queue_loop: cancelled")
+                # handle message by client
+                await self.on_msg(msg)
+            except Exception as e:
+                self.log.exception("msg: %s: %s", msg, e)
                 break
+            finally:
+                self.msg_queue.task_done()
         self.log.debug("msg_queue_loop: end")
 

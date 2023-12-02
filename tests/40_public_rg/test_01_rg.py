@@ -82,8 +82,7 @@ async def test_engine_manager(engine):
     user_1 = await create_user(2)
     client_1 = await create_client(user_1)
     c1 = DummyBot(client_1.id, user_1.id)
-    c_mgr.add_client(c1)
-    await c1.start()
+    await c_mgr.start_client(c1)
     await c1.join_table(table.id)
 
     await asyncio.sleep(3)
@@ -94,8 +93,7 @@ async def test_engine_manager(engine):
     user_2 = await create_user(10)
     client_2 = await create_client(user_2)
     c2 = DummyBot(client_2.id, user_2.id)
-    c_mgr.add_client(c2)
-    await c2.start()
+    await c_mgr.start_client(c2)
     await c2.join_table(table.id)
     log.info('game should start soon ...')
 
@@ -106,8 +104,8 @@ async def test_engine_manager(engine):
     log.info('wait_for_no_players ...')
     await wait_for_no_players(x_table)
 
-    await c1.stop()
-    await c2.stop()
+    await c1.shutdown()
+    await c2.shutdown()
 
     
 

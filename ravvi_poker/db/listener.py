@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 
 class DBI_Listener:
 
-    def __init__(self) -> None:
+    def __init__(self, *, log=None) -> None:
         super().__init__()
-        self.log = logger
+        self.log = log or logger
         self.task : asyncio.Task = None
         self.ready = asyncio.Event()
         self.channels = {}
@@ -39,38 +39,33 @@ class DBI_Listener:
         # run until cancelled
         while True:
             try:
-                async with DBI(log=self.log, use_pool=False) as db:
-                    async with db.transaction():
-                        self.pg_backend_pid = await db.get_pg_backend_pid()
+                async with DBI(log=self.log, use_pool=False) as dbi:
+                    async with dbi.transaction():
+                        self.pg_backend_pid = await dbi.get_pg_backend_pid()
                         for key in self.channels:
                             self.log.info("listen: %s", key)
-                            await db.listen(key)
-                    async with DBI(log=self.log) as db2:
-                        await self.on_listen(db2)
+                            await dbi.listen(key)
+                    await self.on_listen(self.pg_backend_pid)
                     self.ready.set()
                     self.log.info('ready, process notifications ...')
-                    async for msg in db.dbi.notifies():
-                        async with DBI(log=self.log) as db2:
-                            await self.on_notify(db2, msg)
+                    async for msg in dbi.dbi.notifies():
+                        await dbi.commit()
+                        await self.on_notify(msg)
             except asyncio.CancelledError:
                 self.log.info("cancelled")
                 break
             except Exception as ex:
                 self.log.exception("%s", ex)
-            self.ready.clear()
+            finally:
+                self.ready.clear()
         self.log.info("end")
     
-    async def on_listen(self, db: DBI):
+    async def on_listen(self, backend_id: int):
         pass
 
-    async def on_notify(self, db: DBI, msg: Notify):
+    async def on_notify(self, msg: Notify):
         self.log.debug("on_notify: %s", msg)
         handler = self.channels.get(msg.channel)
         if callable(handler):
             payload = json.loads(msg.payload) if msg.payload else {}
-            await handler(db, **payload)
-        else:
-            await self.on_notify_default(db, msg)
-
-    async def on_notify_default(self, db: DBI, msg: Notify):
-        pass
+            await handler(**payload)

@@ -59,12 +59,12 @@ class X_ClientQueue(ClientQueue):
 
 @pytest_asyncio.fixture()
 async def clients_manager():
-    await DBI.pool_open()
+    #await DBI.pool_open()
     manager = ClientsManager()
     await manager.start()
     yield manager
     await manager.stop()
-    await DBI.pool_close()
+    #await DBI.pool_close()
     await asyncio.sleep(1)
 
 @pytest.mark.asyncio
@@ -77,8 +77,7 @@ async def test_client_base(clients_manager):
     client = await create_client(user)
     # тестовый клиент
     x = X_ClientBase(client.id, user.id)
-    await x.start()
-    clients_manager.add_client(x)
+    await clients_manager.start_client(x)
 
     # TABLE_INFO
     async with DBI() as db:
@@ -97,9 +96,9 @@ async def test_client_base(clients_manager):
     assert subscribers
     assert x.client_id in subscribers
 
-    await x.stop()
-    clients_manager.remove_client(x)
-
+    #await x.shutdown()
+    #await asyncio.sleep(10)
+    
 
 @pytest.mark.asyncio
 async def test_client_queue(clients_manager):
@@ -111,8 +110,7 @@ async def test_client_queue(clients_manager):
     client = await create_client(user)
     # тестовый клиент
     x = X_ClientQueue(client.id, user.id)
-    await x.start()
-    clients_manager.add_client(x)
+    await clients_manager.start_client(x)
     # TABLE_INFO
     async with DBI() as db:
         await db.create_table_msg(client_id=x.client_id, table_id=table.id, game_id=None, msg_type=Message.Type.TABLE_INFO, props=dict(table_redirect_id=table.id))
@@ -129,6 +127,3 @@ async def test_client_queue(clients_manager):
     subscribers = clients_manager.table_subscribers.get(table.id, None)
     assert subscribers
     assert x.client_id in subscribers
-
-    await x.stop()
-    clients_manager.remove_client(x)
