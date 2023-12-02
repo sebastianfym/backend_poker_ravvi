@@ -49,7 +49,7 @@ class DBI_Listener:
                     self.ready.set()
                     self.log.info('ready, process notifications ...')
                     async for msg in dbi.dbi.notifies():
-                        await dbi.commit()
+                        #await dbi.commit()
                         await self.on_notify(msg)
             except asyncio.CancelledError:
                 self.log.info("cancelled")

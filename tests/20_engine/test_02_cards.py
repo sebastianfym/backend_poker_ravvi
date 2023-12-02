@@ -134,3 +134,8 @@ def test_deck_36():
         c = Card(code)
         assert c.rank >= 6
 
+
+def test_deck_X():
+    with pytest.raises(ValueError):
+        deck = Deck(666)
+

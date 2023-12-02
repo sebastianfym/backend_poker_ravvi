@@ -1,7 +1,11 @@
+import logging
 import pytest
 
+from ravvi_poker.engine.cards import Deck
 from ravvi_poker.engine.poker.hands import Hand, HandType
+from ravvi_poker.engine.time import TimeCounter
 
+logger = logging.getLogger(__name__)
 
 def test_hand_mask():
     cards = []
@@ -17,6 +21,16 @@ def test_hand_mask():
     assert hand.mask == 0b1000000000000100000000000010000000000001000000000001
     assert str(hand) == "A♠ A♣ A♦ A♥ 2♠"
 
+
+def test_hand_type():
+    r = HandType.decode(HandType.FLUSH)
+    assert r == HandType.FLUSH
+
+    r = HandType.decode("FLUSH")
+    assert r == HandType.FLUSH
+
+    r = HandType.decode("F")
+    assert r == HandType.FLUSH
 
 def test_samples_HIGH_CARD():
     # "♠", "♣", "♦", "♥"
@@ -192,3 +206,20 @@ def test_samples_STRAIGHT_FLUSH():
     hand = Hand(cards, deck36=True)
     assert hand.type == (HandType.STRAIGHT_FLUSH, 9)
     assert str(hand) == "A♥ 9♥ 8♥ 7♥ 6♥"
+
+def test_hands_perf():
+    from itertools import combinations
+    from collections import defaultdict
+    deck = Deck(52)
+    for n in range(1, 5):
+        counters = defaultdict(int)
+        tc = TimeCounter()
+        tc.start()
+        for i, cards in enumerate(combinations(deck.cards, n)):
+            hand = Hand(cards)
+            counters[hand.type[0]] += 1
+        tc.stop()
+        for k, v in counters.items():
+            logger.info("  %s: %s", k, v)
+        logger.info("h%s: %s sec %s", n, tc.total_seconds, i)
+

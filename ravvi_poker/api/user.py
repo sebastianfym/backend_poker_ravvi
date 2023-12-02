@@ -64,8 +64,7 @@ async def v1_update_user(props: UserProps, session_uuid: SessionUUID, request: R
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         kwargs = props.model_dump(exclude_unset=True)
-        if kwargs:
-            user = await db.update_user(user.id, **kwargs)
+        user = await db.update_user(user.id, **kwargs)
 
     return UserPrivateProfile(
         id=user.id,
@@ -81,8 +80,8 @@ async def v1_get_user_info(user_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         await get_session_and_user(db, session_uuid)
         user = await db.get_user(user_id)
-        if not user:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="User not found")
+    if not user:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="User not found")
 
     return UserPublicInfo(
         id=user.id,

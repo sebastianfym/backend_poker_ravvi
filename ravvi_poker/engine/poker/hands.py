@@ -19,10 +19,9 @@ class HandType(Enum):
     def decode(cls, x):
         if isinstance(x, HandType):
             return x
-        elif isinstance(x, str):
-            r = cls.__members__.get(x, None)
-            if r is not None:
-                return r
+        r = cls.__members__.get(x, None)
+        if r is not None:
+            return r
         return cls._value2member_map_[x]
     
     def __str__(self) -> str:
@@ -126,18 +125,12 @@ class Hand:
                 return HandType.FOUR_OF_KIND, rank, *other_ranks
             elif counter == 3:
                 return HandType.THREE_OF_KIND, rank, *other_ranks
-            elif counter == 2:
-                return HandType.ONE_PAIR, rank, *other_ranks
-            else:
-                raise ValueError("error")
+            return HandType.ONE_PAIR, rank, *other_ranks
         elif len(result) == 2:
             result.sort(reverse=True)
             c1, r1 = result[0]
-            c2, r2 = result[1]
-            if c1 == 3 and c2 == 2:
+            _, r2 = result[1]
+            if c1 == 3:
                 return HandType.FULL_HOUSE, r1, r2, *other_ranks
-            elif c1 == 2 and c2 == 2:
-                return HandType.TWO_PAIRS, r1, r2, *other_ranks
-            else:
-                raise ValueError("error")
+            return HandType.TWO_PAIRS, r1, r2, *other_ranks
         return HandType.HIGH_CARD, *other_ranks

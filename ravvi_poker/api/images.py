@@ -70,9 +70,8 @@ async def v1_get_image(image_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         image = await db.get_image(image_id)
-        if not image:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Image not found")
-
+    if not image:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Image not found")
     headers = {"Cache-Control": "max-age=604800"}
     return Response(
         content=base64.b64decode(image.image_data),
