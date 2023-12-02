@@ -54,6 +54,7 @@ class PokerBase(Game):
         self.count_in_the_game = 0
         self.count_has_options = 0
 
+   
     @property
     def game_props(self):
         return dict(
@@ -140,7 +141,7 @@ class PokerBase(Game):
 
     async def broadcast_PLAYER_MOVE(self, db, player, options, **kwargs):
         await super().broadcast_PLAYER_MOVE(db, player, 
-            options = [x.value for x in options], 
+            options = [int(x) for x in options], 
             **kwargs
         )
 
@@ -161,7 +162,7 @@ class PokerBase(Game):
         self.bet_total = 0
 
         for p in self.players:
-            self.log.info("%s %s %s ", p.id, p.in_the_game, p.has_bet_opions)
+            #self.log.info("%s %s %s ", p.id, p.in_the_game, p.has_bet_opions)
             self.bet_total += p.bet_total
             if not p.in_the_game:
                 continue
@@ -204,11 +205,11 @@ class PokerBase(Game):
         player.bet_type = None
         options, params = self.get_bet_options(player)
         if player.user.connected:
-            async with self.DBI() as db:
+            self.bet_event.clear()
+            async with self.DBI(log=self.log) as db:
                 await self.broadcast_PLAYER_MOVE(db, player, options, **params)
+            self.log.info("wait %ss for player %s ...", self.bet_timeout, player.user_id)
             try:
-                self.bet_event.clear()
-                self.log.info("wait (%ss) for player %s ...", self.bet_timeout, player.user_id)
                 await asyncio.wait_for(self.wait_for_player_bet(), self.bet_timeout)
             except asyncio.exceptions.TimeoutError:
                 self.log.info("player timeout: %s", player.user_id)
@@ -344,7 +345,7 @@ class PokerBase(Game):
         self.setup_players_roles()
         self.setup_cards()
 
-        async with self.DBI() as db:
+        async with self.DBI(log=self.log) as db:
             await self.broadcast_GAME_BEGIN(db)
 
         await self.run_PREFLOP()
@@ -355,15 +356,15 @@ class PokerBase(Game):
 
         # winners
         winners_info = self.get_winners()
-        async with self.DBI() as db:
+        async with self.DBI(log=self.log) as db:
             await self.broadcast_GAME_RESULT(db, winners_info)
 
         await asyncio.sleep(self.SLEEP_GAME_END)
-        async with self.DBI() as db:
+        async with self.DBI(log=self.log) as db:
             await self.broadcast_GAME_END(db)
 
         # end
-        await asyncio.sleep(0.0001)
+        await asyncio.sleep(0.1)
         self.log.info("end")
 
     async def run_players_loop(self):

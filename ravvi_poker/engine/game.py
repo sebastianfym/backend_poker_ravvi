@@ -30,6 +30,10 @@ class Game:
         return Player(user)
 
     @property
+    def lock(self):
+        return self.table.lock
+
+    @property
     def game_type(self):
         return self.GAME_TYPE
 
@@ -98,6 +102,7 @@ class Game:
         await self.emit_msg(db, msg)
 
     async def broadcast_PLAYER_MOVE(self, db, player, **kwargs):
+        self.log.warning("broadcast_PLAYER_MOVE %s", player.user_id)
         msg = Message(msg_type=Message.Type.GAME_PLAYER_MOVE, 
             user_id = player.user_id, 
             **kwargs
@@ -125,8 +130,6 @@ class Game:
 
     async def emit_msg(self, db, msg):
         msg.update(game_id=self.game_id)
-        self.log.info("msg: %s", msg)
-        # TODO
         if self.table:
             await self.table.emit_msg(db, msg)
 

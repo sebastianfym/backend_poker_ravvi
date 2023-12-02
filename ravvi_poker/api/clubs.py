@@ -194,24 +194,6 @@ async def v1_approve_join_request(club_id: int, member_id: int, session_uuid: Se
     )
 
 
-#@router.delete("/{club_id}/members/{member_id}", status_code=204, summary="Close club member")
-#async def v1_close_club_member(club_id: int, member_id: int, session_uuid: SessionUUID):
-#    async with DBI() as db:
-#        _, user = await get_session_and_user(db, session_uuid)
-#        club = await db.get_club(club_id)
-#        if not club:
-#            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-#        user_member = await db.find_club_member(club_id, user.id)
-#        if not user_member or user_member.user_role != "OWNER":
-#            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
-#        member = db.get_club_member(member_id)
-#        if not member:
-#            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member not found")
-#        user_member = await db.get_club_member(club_id, user.id) 
-#        await db.delete_club_member(club.id, member_id)
-#
-#    return {}
-
 @router.post("/{club_id}/tables", status_code=201, summary="Create club table")
 async def v1_create_club_table(club_id: int, params: TableParams, session_uuid: SessionUUID):
     async with DBI() as db:

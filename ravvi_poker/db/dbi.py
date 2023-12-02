@@ -40,50 +40,64 @@ class DBI:
 
     @classmethod
     async def pool_open(cls):
-#        cls.pool_ref += 1
-#        if cls.pool_ref == 1:
         cls.pool = psycopg_pool.AsyncConnectionPool(conninfo=cls.conninfo(), open=False)
         await cls.pool.open()
         logger.debug("pool: ready")
 
     @classmethod
     async def pool_close(cls):
-#        cls.pool_ref -= 1
-#        if cls.pool_ref==0:
         await cls.pool.close()
         cls.pool = None
         logger.debug("pool: closed")
 
-    def __init__(self) -> None:
-        self.dbi_pool = None
+    def __init__(self, *, log=None, use_pool=True) -> None:
+        self.log = log or logger
+        self.dbi_pool = self.pool if use_pool else None
         self.dbi = None
 
-    # CONTEXT
-
-    async def __aenter__(self):
-        if self.pool:
-            self.dbi_pool = self.pool
+    async def connect(self):
+        if self.dbi_pool:
             self.dbi = await self.dbi_pool.getconn(timeout=self.CONNECT_TIMEOUT)
         else:
             self.dbi = await psycopg.AsyncConnection.connect(self.conninfo())
-        #logger.info('connection open')
+
+    async def close(self):
+        if self.dbi_pool:
+            await self.dbi_pool.putconn(self.dbi)
+        else:
+            await self.dbi.close()
+        self.dbi = None
+
+    def transaction(self):
+        return self.dbi.transaction()
+
+    async def commit(self):
+        await self.dbi.commit()
+
+    async def rollback(self):
+        await self.dbi.rollback()
+
+    def cursor(self, *args, row_factory=namedtuple_row, **kwargs):
+        return self.dbi.cursor(*args, row_factory=row_factory, **kwargs)
+    
+    async def get_pg_backend_pid(self):
+        async with self.cursor() as cursor:
+            await cursor.execute("select pg_backend_pid() as pg_backend_pid")
+            row = await cursor.fetchone()
+        return row.pg_backend_pid
+    
+    # CONTEXT
+
+    async def __aenter__(self):
+        await self.connect()
         return self
 
     async def __aexit__(self, exc_type, exc_value, exc_tb):
         if exc_type is None:
-            await self.dbi.commit()
+            await self.commit()
         else:
-            await self.dbi.rollback()
-        if self.dbi_pool:
-            await self.dbi_pool.putconn(self.dbi)
-            self.dbi_pool = None
-        else:
-            await self.dbi.close()
-        #logger.info('connection closed')
-        self.dbi = None
-
-    def cursor(self, *args, row_factory=namedtuple_row, **kwargs):
-        return self.dbi.cursor(*args, row_factory=row_factory, **kwargs)
+            await self.rollback()
+        await self.close()
     
     def use_id_or_uuid(self, id, uuid):
         if id is not None:
@@ -521,7 +535,8 @@ class DBI:
                 "INSERT INTO table_msg (table_id, game_id, msg_type, props, cmd_id, client_id) VALUES (%s,%s,%s,%s,%s,%s) RETURNING id, created_ts",
                 (table_id, game_id, msg_type, props, cmd_id, client_id),
             )
-            return await cursor.fetchone()
+            row  = await cursor.fetchone()
+        return row
 
     async def get_table_msg(self, id):
         async with self.cursor() as cursor:

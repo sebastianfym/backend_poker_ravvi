@@ -21,23 +21,25 @@ class Table:
     def __init__(
         self, id, *, table_seats, parent_id=None, club_id=None, game_type=None, game_subtype=None, props=None, **kwargs
     ):
+        # table async lock
         self.lock = asyncio.Lock()
+        # db connection
+        # self.dbi = self.DBI()
+        # async task
+        self.task: asyncio.Task = None
+        self.status = None
+
         self.club_id = club_id
         self.table_id = id
         self.parent_id = parent_id
-        self.status = None
         self.log = ObjectLoggerAdapter(logger, lambda: self.table_id)
-        self.table_seats = table_seats
+        self.users: Mapping[int, User] = {}
         self.seats: List[User] = [None] * table_seats
         self.dealer_idx = -1
-        self.users: Mapping[int, User] = {}
-        self.task: asyncio.Task = None
-        self.task_stop = False
         self.game_type = game_type
         self.game_subtype = game_subtype
         self.game_props = {}
         self.game = None
-        self.log.info("props: %s", props)
         self.parse_props(**(props or {}))
 
     def parse_props(self, **kwargs):
@@ -46,6 +48,10 @@ class Table:
     @property
     def table_type(self):
         return self.TABLE_TYPE
+
+    @property
+    def table_seats(self):
+        return len(self.seats)
 
     @property
     def user_enter_enabled(self):
@@ -61,9 +67,6 @@ class Table:
 
     async def game_factory(self, users):
         from ..game import get_game_class
-
-        for u in users:
-            self.log.info("user(%s, %s)", u.id, u.balance)
         self.log.info("game_factory(%s, %s, %s)", self.game_type, self.game_subtype, self.game_props)
         game_class = get_game_class(self.game_type, self.game_subtype)
         return game_class(self, users, **self.game_props)
@@ -101,7 +104,7 @@ class Table:
 
     async def emit_msg(self, db: DBI, msg: Message):
         msg.update(table_id=self.table_id)
-        self.log.debug("emit_msg: %s", msg)
+        #self.log.debug("emit_msg: %s", msg)
         await db.create_table_msg(**msg)
 
     async def emit_TABLE_INFO(self, db, *, cmd_id, client_id, table_info):
@@ -156,7 +159,7 @@ class Table:
             elif cmd_type == Command.Type.EXIT:
                 await self.handle_cmd_exit(db, user_id=user_id)
             elif self.game:
-                await self.game.handle_cmd(db, user_id=user_id, cmd_type=cmd_type, props=props)
+                await self.game.handle_cmd(db, client_id=client_id, user_id=user_id, cmd_type=cmd_type, props=props)
             else:
                 self.log.warning("handle_cmd: unknown cmd_type = %s", cmd_type)
 

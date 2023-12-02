@@ -27,13 +27,14 @@ class ClientsManager:
         await self.listener.stop()
 
     async def on_table_msg(self, db: DBI, *, msg_id, table_id):
-        self.log.debug("on_table_msg: %s %s", msg_id, table_id)
+        #self.log.warn("on_table_msg: %s %s", msg_id, table_id)
         if not msg_id or not table_id:
             return
         msg = await db.get_table_msg(msg_id)
         if not msg:
             return
         msg = Message(msg.id, msg_type=msg.msg_type, table_id=msg.table_id, game_id=msg.game_id, cmd_id=msg.cmd_id, client_id=msg.client_id, **msg.props)
+        self.log.debug("on_table_msg: %s %s %s", msg_id, msg.msg_type, msg.props)
         if msg.client_id:
             # send directly to specific client
             client = self.clients.get(msg.client_id, None)
@@ -52,7 +53,7 @@ class ClientsManager:
             cmsg = msg.hide_private_info(client.user_id)
             await client.handle_msg(cmsg)
             counter += 1
-        self.log.info("on_table_msg: %s %s", counter, msg)
+        #self.log.info("on_table_msg: %s %s", counter, msg)
         
     def add_client(self, client: ClientBase):
         client.manager = self
@@ -92,6 +93,6 @@ class ClientsManager:
             kwargs = {k:v for k,v in cmd if k not in self.RESERVED_CMD_FIELDS}
             cmd = Command(client_id = client.client_id, **kwargs)
         self.log.info("send_cmd: %s", str(cmd))
-        async with DBI() as db:
+        async with DBI(log=self.log) as db:
             await db.create_table_cmd(client_id=client.client_id, table_id=cmd.table_id, cmd_type=cmd.cmd_type, props=cmd.props)
         

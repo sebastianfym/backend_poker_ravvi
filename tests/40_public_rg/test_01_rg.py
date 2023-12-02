@@ -11,14 +11,14 @@ from ravvi_poker.bots.dummy import DummyBot
 log = logging.getLogger(__name__)
 
 async def create_user(balance=None):
-    async with DBI() as db:
+    async with DBI(log=log) as db:
         user = await db.create_user()    
         if balance:
             await db.update_user(user.id, balance=balance)
     return user
 
 async def create_client(user):
-    async with DBI() as db:
+    async with DBI(log=log) as db:
         device = await db.create_device()
         login = await db.create_login(device.id, user.id)
         session = await db.create_session(login.id)
@@ -26,12 +26,12 @@ async def create_client(user):
     return client
 
 async def create_table():
-    async with DBI() as db:
+    async with DBI(log=log) as db:
         table = await db.create_table(table_type="RG", table_seats=9, table_name="test_01_rg", 
             game_type="NLH", game_subtype="REGULAR", 
             props=dict(
                 buyin_min = 2,
-                bet_timeout = 1,
+                bet_timeout = 10,
                 blind_small = 5,
             ))
     return table
@@ -52,7 +52,7 @@ async def wait_for_no_players(x_table):
 async def engine():
     await DBI.pool_open()
     # закрыть все существующие столы (невидимы для engine manager)
-    async with DBI() as db:
+    async with DBI(log=log) as db:
         await db.dbi.execute('UPDATE table_profile SET closed_ts=now_utc()')
     t_mgr = TablesManager()
     await t_mgr.start()
@@ -69,7 +69,9 @@ async def test_engine_manager(engine):
     t_mgr, c_mgr = engine
 
     # создадим один стол
+    log.info('create table ...')
     table = await create_table()
+    log.info('create table: done')
     await asyncio.sleep(1)
 
     # проверяем что стол запущен
@@ -95,10 +97,13 @@ async def test_engine_manager(engine):
     c_mgr.add_client(c2)
     await c2.start()
     await c2.join_table(table.id)
+    log.info('game should start soon ...')
+
     await asyncio.sleep(1)
     assert user_2.id in x_table.users
     assert user_2.id in [u.id for u in x_table.seats if u]
 
+    log.info('wait_for_no_players ...')
     await wait_for_no_players(x_table)
 
     await c1.stop()

@@ -31,6 +31,9 @@ MANIFEST
 # tmp
 *.bak
 
+# logs
+*.log
+
 # Unit test / coverage reports
 .cache
 .coverage
@@ -38,4 +41,3 @@ MANIFEST
 coverage.xml
 coverage.html
 tests.xml
-tests/*.log

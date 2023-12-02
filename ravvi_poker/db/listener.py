@@ -4,7 +4,6 @@ import json
 import contextlib
 
 from .dbi import DBI, Notify
-from .txn import DBI_Txn
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +15,7 @@ class DBI_Listener:
         self.task : asyncio.Task = None
         self.ready = asyncio.Event()
         self.channels = {}
+        self.pg_backend_pid = None
 
     async def start(self):
         self.log.debug("start ...")
@@ -39,17 +39,19 @@ class DBI_Listener:
         # run until cancelled
         while True:
             try:
-                async with DBI() as db:
-                    async with DBI_Txn(db):
+                async with DBI(log=self.log, use_pool=False) as db:
+                    async with db.transaction():
+                        self.pg_backend_pid = await db.get_pg_backend_pid()
                         for key in self.channels:
                             self.log.info("listen: %s", key)
                             await db.listen(key)
-                        await self.on_listen(db)
+                    async with DBI(log=self.log) as db2:
+                        await self.on_listen(db2)
                     self.ready.set()
                     self.log.info('ready, process notifications ...')
                     async for msg in db.dbi.notifies():
-                        async with DBI_Txn(db):
-                            await self.on_notify(db, msg)
+                        async with DBI(log=self.log) as db2:
+                            await self.on_notify(db2, msg)
             except asyncio.CancelledError:
                 self.log.info("cancelled")
                 break
