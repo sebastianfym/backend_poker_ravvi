@@ -6,7 +6,11 @@ from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 from pydantic import BaseModel, model_validator, field_validator
 
 from ..db import DBI
+from ..engine.tables import TablesManager
+
 from .utils import SessionUUID, get_session_and_user
+
+manager = TablesManager()
 
 router = APIRouter(prefix="/tables", tags=["tables"])
 

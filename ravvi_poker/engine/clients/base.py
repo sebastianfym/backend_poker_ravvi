@@ -23,9 +23,7 @@ class ClientBase:
         pass
 
     async def shutdown(self):
-        self.log.info("shutdown ...")
-        async with DBI() as dbi:
-            await dbi.close_client(self.client_id)
+        await self.on_shutdown()
 
     async def wait_done(self):
         self.log.info("wait_done")
@@ -37,15 +35,24 @@ class ClientBase:
     async def on_msg(self, msg: Message):
         pass
 
+    async def on_shutdown(self):
+        self.log.info("shutdown ...")
+        async with DBI() as dbi:
+            await dbi.close_client(self.client_id)
+
     RESERVED_CMD_FIELDS = ['id','cmd_id','client_id']
 
     async def send_cmd(self, cmd: dict):
         if isinstance(cmd, Command):
             cmd.update(client_id = self.client_id)
         elif isinstance(cmd, dict):
-            kwargs = {k:v for k,v in cmd if k not in self.RESERVED_CMD_FIELDS}
+            kwargs = {k:v for k,v in cmd.items() if k not in self.RESERVED_CMD_FIELDS}
             cmd = Command(client_id = self.client_id, **kwargs)
         async with DBI(log=self.log) as db:
+            table = await db.get_table(cmd.table_id)
+            if not table or table.engine_status != 5:
+                msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=cmd.table_id)
+                await self.handle_msg(msg)
             await db.create_table_cmd(client_id=self.client_id, table_id=cmd.table_id, cmd_type=cmd.cmd_type, props=cmd.props)
         self.log.info("send_cmd: %s", str(cmd))
 
@@ -76,7 +83,7 @@ class ClientQueue(ClientBase):
             msg: Message = await self.msg_queue.get()
             try:
                 if not msg:
-                    await super().shutdown()
+                    await self.on_shutdown()
                     break
                 # handle message by client
                 await self.on_msg(msg)

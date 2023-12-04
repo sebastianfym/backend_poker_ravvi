@@ -46,7 +46,7 @@ class ClientsManager:
         if not msg:
             return
         msg = Message(msg.id, msg_type=msg.msg_type, table_id=msg.table_id, game_id=msg.game_id, cmd_id=msg.cmd_id, client_id=msg.client_id, **msg.props)
-        self.log.debug("on_table_msg: %s %s %s", msg_id, msg.msg_type, msg.props)
+        #self.log.debug("on_table_msg: %s %s %s", msg_id, msg.msg_type, msg.props)
         if msg.client_id:
             # send directly to specific client
             client = self.clients.get(msg.client_id, None)
@@ -82,6 +82,7 @@ class ClientsManager:
         client.manager = self
         self.clients[client.client_id] = client
         await client.start()
+        self.log.debug('client %s started', client.client_id)
 
     def subscribe(self, client, table_id):
         subscribers = self.table_subscribers.get(table_id, None)

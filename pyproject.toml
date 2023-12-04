@@ -42,8 +42,8 @@ tests = [
 [project.scripts]
 ravvi_poker_db = "ravvi_poker.db.cli:main"
 ravvi_poker_api = "ravvi_poker.api.cli:main"
-ravvi_poker_ws = "ravvi_poker.ws.cli:main"
-ravvi_poker_engine = "ravvi_poker.engine.cli:main"
+#ravvi_poker_ws = "ravvi_poker.ws.cli:main"
+#ravvi_poker_engine = "ravvi_poker.engine.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

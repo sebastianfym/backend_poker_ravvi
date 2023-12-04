@@ -34,23 +34,26 @@ def test_auth_register(api_client: TestClient):
     assert isinstance(result1.get("user_id",None), int)
     assert isinstance(result1.get("username",None), str)
 
-def test_auth_device(api_client: TestClient, api_guest: UserAccessTokens):
-    # headers = {"Authorization": "Bearer " + access_token}
-
+def test_auth_device_verify(api_client: TestClient, api_guest: UserAccessTokens):
+    # проверка токена устройства и обновление информации
     params = dict(device_token=api_guest.device_token, device_info={})
     response = api_client.post("/v1/auth/device", json=params)
     assert response.status_code == 200
 
+    # в ответ получаем токен устройства без login/access
     result = UserAccessTokens(**response.json())
     assert result.device_token == api_guest.device_token
     assert result.login_token is None
     assert result.access_token is None
 
+def test_auth_device_login(api_client: TestClient, api_guest: UserAccessTokens):
+    # авторизация с токенами устройства и логина
     params = dict(device_token=api_guest.device_token, login_token=api_guest.login_token, device_info={})
     response = api_client.post("/v1/auth/device", json=params)
     assert response.status_code == 200
 
+    # в ответ получаем новый access
     result = UserAccessTokens(**response.json())
     assert result.device_token == api_guest.device_token
     assert result.login_token == api_guest.login_token
-    assert result.access_token is not None
+    assert result.access_token

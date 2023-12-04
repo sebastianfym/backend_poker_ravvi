@@ -4,8 +4,12 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 from ravvi_poker.api.app import app
 from ravvi_poker.api.auth import UserAccessTokens
+from ravvi_poker.engine.tables import TablesManager
 
-@pytest.fixture
+import logging
+logger = logging.getLogger(__name__)
+
+@pytest.fixture()
 def api_client():
     client = TestClient(app)
     yield client
