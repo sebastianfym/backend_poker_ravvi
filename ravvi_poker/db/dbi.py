@@ -97,6 +97,7 @@ class DBI:
             await self.commit()
         else:
             await self.rollback()
+            self.dbi_pool = None
         await self.close()
     
     def use_id_or_uuid(self, id, uuid):

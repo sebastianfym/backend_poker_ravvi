@@ -45,7 +45,12 @@ class DBI_Listener:
                         for key in self.channels:
                             self.log.info("listen: %s", key)
                             await dbi.listen(key)
-                    await self.on_listen(self.pg_backend_pid)
+                    try:
+                        await self.on_listen(self.pg_backend_pid)
+                    except Exception as ex:
+                        self.log.error("on_listen: %s", ex)
+                        await asyncio.sleep(3)
+                        continue
                     self.ready.set()
                     self.log.info('ready, process notifications ...')
                     async for msg in dbi.dbi.notifies():
@@ -54,6 +59,9 @@ class DBI_Listener:
             except asyncio.CancelledError:
                 self.log.info("cancelled")
                 break
+            except (DBI.OperationalError, DBI.PoolTimeout) as ex:
+                self.log.error("%s", ex)
+                await asyncio.sleep(1)
             except Exception as ex:
                 self.log.exception("%s", ex)
             finally:

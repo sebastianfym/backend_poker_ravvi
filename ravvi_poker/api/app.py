@@ -20,13 +20,13 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # statup begin
     logger.info("DBI startup")
-    await DBI.pool_open()
+    #await DBI.pool_open()
     await ws.manager.start()
     # statup end
     yield
     # shutdown begin
     await ws.manager.stop()
-    await DBI.pool_close()
+    #await DBI.pool_close()
     logger.info("DBI closed")
     # shutdown end
 

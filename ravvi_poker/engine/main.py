@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 async def start_engine():
-    await DBI.pool_open()
+    #await DBI.pool_open()
     engine = TablesManager()
     await engine.start()
     return engine
@@ -16,7 +16,7 @@ async def start_engine():
 
 async def stop_engine(engine):
     await engine.stop()
-    await DBI.pool_close()
+    #await DBI.pool_close()
 
 
 async def master_task():
