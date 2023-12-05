@@ -17,14 +17,12 @@ log = getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-class RegisterParams(BaseModel):
+class DeviceParams(BaseModel):
     device_token: str | None = None
     device_props: dict | None = None
 
-class DeviceInfo(BaseModel):
-    device_token: str | None = None
+class DeviceLoginParams(DeviceParams):
     login_token: str  | None = None
-    device_props: dict | None = None
 
 
 class UserAccessTokens(BaseModel):
@@ -37,7 +35,7 @@ class UserAccessTokens(BaseModel):
 
 
 @router.post("/register")
-async def v1_register_guest(params: RegisterParams, request: Request) -> UserAccessTokens:
+async def v1_register_guest(params: DeviceParams, request: Request) -> UserAccessTokens:
     """Register user account (guest)"""
 
     client_host = request.client.host
@@ -67,7 +65,7 @@ async def v1_register_guest(params: RegisterParams, request: Request) -> UserAcc
 
 
 @router.post("/device")
-async def v1_device_login(params: DeviceInfo, request: Request) -> UserAccessTokens:
+async def v1_device_login(params: DeviceLoginParams, request: Request) -> UserAccessTokens:
     """Login with device/login token"""
     client_host = request.client.host
     device_uuid = jwt_get(params.device_token, "device_uuid")
