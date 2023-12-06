@@ -3,6 +3,7 @@ ravvi_poker/build.py
 
 *.code-workspace
 .vscode
+dbeaver
 #*.h5
 
 # Byte-compiled / optimized / DLL files
