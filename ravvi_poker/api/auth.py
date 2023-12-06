@@ -11,19 +11,11 @@ from ..engine.passwd import password_hash, password_verify
 from ..db import DBI
 
 from .utils import SessionUUID, get_session_and_user
-from .types import UserPrivateProfile
+from .types import UserPrivateProfile, DeviceProps, DeviceLoginProps, UserLoginProps
 
 log = getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-class DeviceParams(BaseModel):
-    device_token: str | None = None
-    device_props: dict | None = None
-
-class DeviceLoginParams(DeviceParams):
-    login_token: str  | None = None
 
 
 class UserAccessProfile(BaseModel):
@@ -35,7 +27,7 @@ class UserAccessProfile(BaseModel):
 
 
 @router.post("/register")
-async def v1_register_guest(params: DeviceParams, request: Request) -> UserAccessProfile:
+async def v1_register(params: DeviceProps, request: Request) -> UserAccessProfile:
     """Register user account (guest)"""
 
     client_host = request.client.host
@@ -64,7 +56,7 @@ async def v1_register_guest(params: DeviceParams, request: Request) -> UserAcces
 
 
 @router.post("/device")
-async def v1_device_login(params: DeviceLoginParams, request: Request) -> UserAccessProfile:
+async def v1_device(params: DeviceLoginProps, request: Request) -> UserAccessProfile:
     """Login with device/login token"""
     client_host = request.client.host
     device_uuid = jwt_get(params.device_token, "device_uuid")
@@ -101,16 +93,11 @@ async def v1_device_login(params: DeviceLoginParams, request: Request) -> UserAc
         )
     return response
   
-
-@router.post("/login", responses={400: {}, 401: {}})
-async def v1_login_form(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
-    """Login with username / password"""
-    device_uuid = jwt_get(form_data.client_id, "device_uuid") if form_data.client_id else None
-
-    if not form_data.username or not form_data.password:
+async def handle_login(device_uuid, username, password):
+    if not username or not password:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Missing username or password")
     try:
-        user_id = int(form_data.username)
+        user_id = int(username)
     except ValueError:
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
     
@@ -126,7 +113,7 @@ async def v1_login_form(form_data: Annotated[OAuth2PasswordRequestForm, Depends(
             raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
         if user.closed_ts:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="User deactivated")
-        if not password_verify(form_data.password, user.password_hash):
+        if not password_verify(password, user.password_hash):
             raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
         login = await db.create_login(device.id, user.id)
         session = await db.create_session(login.id)
@@ -143,6 +130,17 @@ async def v1_login_form(form_data: Annotated[OAuth2PasswordRequestForm, Depends(
         )
     return response
 
+@router.post("/login", responses={400: {}, 401: {}, 403: {}})
+async def v1_login(params: UserLoginProps,request: Request):
+    """Login API with username / password"""
+    device_uuid = jwt_get(params.device_token, "device_uuid")
+    return await handle_login(device_uuid, params.username, params.password)
+
+@router.post("/login_form", responses={400: {}, 401: {}, 403: {}})
+async def v1_login_form(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    """Login Form with username / password"""
+    device_uuid = jwt_get(form_data.client_id, "device_uuid") if form_data.client_id else None
+    return await handle_login(device_uuid, form_data.username, form_data.password)
 
 
 class UserChangePassword(BaseModel):

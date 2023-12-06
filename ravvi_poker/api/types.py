@@ -1,5 +1,16 @@
 from pydantic import BaseModel, EmailStr
 
+class DeviceProps(BaseModel):
+    device_token: str | None = None
+    device_props: dict | None = None
+
+class DeviceLoginProps(DeviceProps):
+    login_token: str  | None = None
+
+class UserLoginProps(DeviceProps):
+    username: str
+    password: str
+
 class UserPublicProfile(BaseModel):
     id: int
     name: str | None = None

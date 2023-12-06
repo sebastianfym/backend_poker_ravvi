@@ -6,7 +6,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 from ..engine.jwt import jwt_get
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/auth/login_form")
 
 async def get_current_session_uuid(access_token: Annotated[str, Depends(oauth2_scheme)]):
     session_uuid = jwt_get(access_token, "session_uuid")
