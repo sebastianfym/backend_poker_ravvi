@@ -14,6 +14,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "psycopg",
+    "psycopg_pool",
     "fastapi",
     "python-multipart",
     "passlib",
@@ -24,7 +25,8 @@ dependencies = [
     "websockets",
     "pydantic[email]",
     "Pillow",
-    "python-magic"
+    "python-magic",
+    "aiohttp"
 ]
 
 [project.optional-dependencies]
@@ -33,12 +35,15 @@ tests = [
     "pytest",
     "pytest-cov",
     "pytest-asyncio",
+    "pytest-dependency",
     "httpx"
 ]
 
 [project.scripts]
 ravvi_poker_db = "ravvi_poker.db.cli:main"
 ravvi_poker_api = "ravvi_poker.api.cli:main"
+#ravvi_poker_ws = "ravvi_poker.ws.cli:main"
+ravvi_poker_engine = "ravvi_poker.engine.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -51,3 +56,6 @@ namespaces = false
 
 [tool.setuptools.dynamic]
 version = {attr = "ravvi_poker.build.version"}
+
+[tool.black]
+line-length = 120

@@ -55,12 +55,13 @@ test_py:
     - cd tests/
     # init database
     - coverage erase
-    - coverage run --append ~/.local/bin/ravvi_poker_db create ${RAVVI_POKER_DB_NAME}
+    - coverage run --data-file=.coverage.db_create ~/.local/bin/ravvi_poker_db create ${RAVVI_POKER_DB_NAME}
     # deploy db changes
-    - coverage run --append ~/.local/bin/ravvi_poker_db deploy ${RAVVI_POKER_DB_NAME}
+    - coverage run --data-file=.coverage.db_deploy ~/.local/bin/ravvi_poker_db deploy ${RAVVI_POKER_DB_NAME}
     # run tests
-    - coverage run --append -m pytest --junitxml=tests.xml .
+    - coverage run --data-file=.coverage.tests -m pytest --junitxml=tests.xml .
     # coverage info
+    - coverage combine
     - coverage report
     - coverage xml
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'

@@ -2,6 +2,7 @@ import os
 import sys
 import yaml
 import logging
+from logging import getLogger
 from logging.handlers import TimedRotatingFileHandler
 
 
@@ -54,33 +55,14 @@ def logging_configure(args):
             datefmt="%Y-%m-%d %H:%M:%S",
         )
 
+class ObjectLoggerAdapter(logging.LoggerAdapter):
+    def __init__(self, logger, func) -> None:
+        super().__init__(logger, None)
+        self.func = func
 
-class Logger_MixIn:
-    def log_prefix(self):
-        return ""
+    def process(self, msg, kwargs):
+        value = self.func()
+        if value is not None:
+            msg = f"{value}: "+msg
+        return super().process(msg, kwargs)
 
-    def log_debug(self, msg, *args, **kwargs):
-        prefix = self.log_prefix()
-        self.logger.debug(prefix + msg, *args, **kwargs)
-
-    def log_info(self, msg, *args, **kwargs):
-        prefix = self.log_prefix()
-        self.logger.info(prefix + msg, *args, **kwargs)
-
-    def log_warning(self, msg, *args, **kwargs):
-        prefix = self.log_prefix()
-        self.logger.warning(prefix + msg, *args, **kwargs)
-
-    def log_error(self, msg, *args, **kwargs):
-        prefix = self.log_prefix()
-        self.logger.error(prefix + msg, *args, **kwargs)
-
-    def log_exception(self, msg, *args, **kwargs):
-        prefix = self.log_prefix()
-        self.logger.exception(prefix + msg, *args, **kwargs)
-
-
-class ObjectLogger(Logger_MixIn):
-    def __init__(self, logger_name) -> None:
-        super().__init__()
-        self.logger = logging.getLogger(logger_name)

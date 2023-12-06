@@ -1,86 +1,36 @@
 import logging
 import asyncio
-from contextlib import suppress
-from fastapi import APIRouter
-from fastapi import WebSocket, WebSocketDisconnect, WebSocketException, status
-from starlette.websockets import WebSocketState
-
-from .utils import jwt_get
-from ..game.manager import Manager
-from ..game.client import Client
-from ..game.event import Event
-from ..db.dbi import DBI
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect, WebSocketException, status
+from fastapi.middleware.cors import CORSMiddleware
+from ..db import DBI
+from ..engine.jwt import jwt_get
+from ..engine.clients import ClientsManager
+from ..engine.clients.ws import ClientWS
+from .utils import SessionUUID, get_session_and_user
 
 logger = logging.getLogger(__name__)
 
+manager = ClientsManager()
+
 router = APIRouter(tags=["ws"])
 
-manager = Manager()
-
-@router.on_event('startup')
-async def app_startup():
-    await manager.start()
-
-@router.on_event('shutdown')
-async def app_shutdown():
-    await manager.stop()
-
-class WS_Client(Client):
-    
-    def __init__(self, websocket: WebSocket, user_id: int) -> None:
-        super().__init__(manager, user_id)
-        self.ws = websocket
-
-    @property
-    def is_connected(self):
-        return self.ws.client_state == WebSocketState.CONNECTED
-
-    async def handle_event(self, event: Event):
-        if self.is_connected:
-            await self.ws.send_json(event)
-
-    async def process_commands(self):
-        try:
-            while self.is_connected:
-                command = await self.ws.receive_json()
-                command = Event(**command)
-                await self.dispatch_command(command)
-        except asyncio.CancelledError:
-            self.log_debug("CancelledError")
-        except WebSocketDisconnect:
-            self.log_debug("WebSocketDisconnect")
-        except Exception as ex:
-            self.log_exception(" %s: %s", self.user_id, ex)
-
-    async def run(self):
-        self.log_info("begin")
-        try:
-            t1 = asyncio.create_task(self.process_commands())
-            t2 = asyncio.create_task(self.process_queue())
-            await t1
-            t2.cancel()
-            with suppress(asyncio.exceptions.CancelledError):
-                await t2
-        finally:
-            await self.manager.remove_client(self)
-            self.log_info("end")
-
-
 @router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, access_token: str = None):
+async def v1_ws_endpoint(ws: WebSocket, access_token: str = None):
+    # get session uuid from access_token
     session_uuid = jwt_get(access_token, "session_uuid")
     if not session_uuid:
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
-    with DBI() as dbi:
-        session = dbi.get_session_info(uuid=session_uuid)
+    # get session info
+    async with DBI() as db:
+        session = await db.get_session_info(uuid=session_uuid)
         if not session:
             raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
-        user = dbi.get_user(id=session.user_id)
-        if not user:
-            raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
-    await websocket.accept()
-    try:
-        client = WS_Client(websocket, user_id=user.id)
-        await client.run()
-    except Exception as ex:
-        logger.exception("ws: %s", ex)
+        row = await db.create_client(session_id=session.session_id)
+    await ws.accept()
+    # create client object
+    client = ClientWS(ws, user_id=session.user_id, client_id=row.id)
+    # start client with manager
+    await manager.start_client(client)
+    # process incoming commands
+    await client.recv_commands()

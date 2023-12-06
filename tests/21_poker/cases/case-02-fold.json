@@ -1,0 +1,38 @@
+{
+    "blind_small": 1,
+    "blind_big": 2,
+    "users": [
+        {"id": 111, "username": "u1", "balance": 1000},
+        {"id": 333, "username": "u3", "balance": 1000},
+        {"id": 444, "username": "u4", "balance": 1000},
+        {"id": 777, "username": "u5", "balance": 1000}
+    ],
+    "deck": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21],
+    "moves": [
+        {"type": "GAME_BEGIN"}, 
+        {"type": "PLAYER_CARDS"}, 
+        {"type": "PLAYER_CARDS"}, 
+        {"type": "PLAYER_CARDS"}, 
+        {"type": "PLAYER_CARDS"}, 
+        {"type": "PLAYER_BET", "user_id": 333}, 
+        {"type": "PLAYER_BET", "user_id": 444}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 777}, 
+        {"user_id": 777, "type": "CMD_PLAYER_BET", "bet": "FOLD"}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 111}, 
+        null, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_PLAYER_MOVE", "user_id": 333}, 
+        {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "FOLD"}, 
+        {"type": "PLAYER_BET"}, 
+
+        {"type": "GAME_ROUND", "banks": [{"delta":3, "amount": 3}]}, 
+
+        {"type": "GAME_RESULT"},
+        {"type": "GAME_END"}
+    ]
+}
+

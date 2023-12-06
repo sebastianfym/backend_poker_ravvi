@@ -3,6 +3,7 @@ ravvi_poker/build.py
 
 *.code-workspace
 .vscode
+dbeaver
 #*.h5
 
 # Byte-compiled / optimized / DLL files
@@ -28,9 +29,16 @@ wheels/
 *.egg
 MANIFEST
 
+# tmp
+*.bak
+
+# logs
+*.log
+
 # Unit test / coverage reports
 .cache
 .coverage
 .coverage.*
 coverage.xml
+coverage.html
 tests.xml

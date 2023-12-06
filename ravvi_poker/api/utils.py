@@ -1,40 +1,31 @@
-import random
-import string
+from typing import Annotated
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
+from fastapi import Depends
+from fastapi.exceptions import HTTPException
+from fastapi.security import OAuth2PasswordBearer
 
-import jwt
-from passlib.hash import pbkdf2_sha256
+from ..engine.jwt import jwt_get
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/auth/login")
 
-# TODO
-JWT_SECRET = "secret"
-JWT_ALGORITHM = "HS256"
+async def get_current_session_uuid(access_token: Annotated[str, Depends(oauth2_scheme)]):
+    session_uuid = jwt_get(access_token, "session_uuid")
+    if not session_uuid:
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return session_uuid
 
+SessionUUID = Annotated[str, Depends(get_current_session_uuid)]
 
-def jwt_encode(**kwargs):
-    return jwt.encode(kwargs, JWT_SECRET, JWT_ALGORITHM)
+async def get_session_and_user(db, session_uuid):
+    session = await db.get_session_info(uuid=session_uuid)
+    if not session or session.session_closed_ts or session.login_closed_ts:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid session")
+    user = await db.get_user(id=session.user_id)
+    if not user or user.closed_ts:
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Invalid user")
+    return session, user
 
-
-def jwt_decode(token):
-    return jwt.decode(token, JWT_SECRET, JWT_ALGORITHM)
-
-
-def jwt_get(token, *args):
-    try:
-        decoded = jwt.decode(token, JWT_SECRET, JWT_ALGORITHM)
-    except:
-        decoded = {}
-
-    values = [decoded.get(attr, None) for attr in args]
-    return values[0] if len(values) == 1 else values
-
-
-def password_hash(password: str) -> str:
-    return pbkdf2_sha256.hash(password)
-
-
-def password_verify(password: str, hash: str) -> bool:
-    return pbkdf2_sha256.verify(password, hash)
-
-
-def generate_club_name(prefix="Club_", k=10):
-    return prefix + "".join(random.choices(string.ascii_lowercase, k=k))

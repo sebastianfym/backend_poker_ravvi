@@ -3,9 +3,9 @@ from fastapi.exceptions import HTTPException
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 from pydantic import BaseModel
 
-from . import utils
-from ..db.dbi import DBI
-from .auth import RequireSessionUUID, get_session_and_user
+from ..db import DBI
+from .utils import SessionUUID, get_session_and_user
+from .tables import TableParams, TableProfile
 
 router = APIRouter(prefix="/clubs", tags=["clubs"])
 
@@ -34,14 +34,10 @@ class ClubMemberProfile(BaseModel):
 
 
 @router.post("", status_code=201, summary="Create new club")
-async def v1_create_club(params: ClubProps, session_uuid: RequireSessionUUID):
-    with DBI() as dbi:
-        _, user = get_session_and_user(dbi, session_uuid)
-        image = dbi.get_user_images(user.id, id=params.image_id) if params.image_id else None
-        if params.image_id is not None and not image:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Image not found")
-        params.name = utils.generate_club_name() if params.name is None else params.name
-        club = dbi.create_club(founder_id=user.id, **params.model_dump())
+async def v1_create_club(params: ClubProps, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.create_club(user_id=user.id, name=params.name, description=params.description, image_id=params.image_id)
 
     return ClubProfile(
         id=club.id, 
@@ -54,10 +50,10 @@ async def v1_create_club(params: ClubProps, session_uuid: RequireSessionUUID):
 
 
 @router.get("", summary="List clubs for current user")
-async def v1_list_clubs(session_uuid: RequireSessionUUID):
-    with DBI() as dbi:
-        _, user = get_session_and_user(dbi, session_uuid)
-        clubs = dbi.get_clubs_for_user(user_id=user.id)
+async def v1_list_clubs(session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        clubs = await db.get_clubs_for_user(user_id=user.id)
 
     return list([
         ClubProfile(
@@ -72,13 +68,13 @@ async def v1_list_clubs(session_uuid: RequireSessionUUID):
 
 
 @router.get("/{club_id}", summary="Get club by id")
-async def v1_get_club(club_id: int, session_uuid: RequireSessionUUID):
-    with DBI() as dbi:
-        _, user = get_session_and_user(dbi, session_uuid)
-        club = dbi.get_club(club_id)
+async def v1_get_club(club_id: int, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        club_member = dbi.get_club_member(club_id, user.id)
+        club_member = await db.find_club_member(club_id, user.id)
 
     return ClubProfile(
         id=club.id,
@@ -91,129 +87,139 @@ async def v1_get_club(club_id: int, session_uuid: RequireSessionUUID):
 
 
 @router.patch("/{club_id}", summary="Update club")
-async def v1_update_club(club_id: int, params: ClubProps, session_uuid: RequireSessionUUID):
-    with DBI() as dbi:
-        _, user = get_session_and_user(dbi, session_uuid)
-        club = dbi.get_club(club_id)
+async def v1_update_club(club_id: int, params: ClubProps, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        club_member = dbi.get_club_member(club_id, user.id)        
-        if not club_member or club_member.user_role != "OWNER":
+        member = await db.find_club_member(club_id, user.id)        
+        if not member or member.user_role != "OWNER":
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
         club_params = params.model_dump(exclude_unset=True)
         if club_params:
-            image = dbi.get_user_images(user.id, id=params.image_id) if params.image_id else None
-            if params.image_id is not None and not image:
-                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Image not found")
-            club = dbi.update_club(club_id, **club_params)
+            #image = db.get_user_images(user.id, id=params.image_id) if params.image_id else None
+            #if params.image_id is not None and not image:
+            #    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Image not found")
+            club = await db.update_club(club_id, **club_params)
 
     return ClubProfile(
         id=club.id, 
         name=club.name,
         description=club.description,
         image_id=club.image_id,
-        user_role=club_member.user_role,
-        user_approved=club_member.approved_ts is not None
+        user_role=member.user_role,
+        user_approved=member.approved_ts is not None
     )
 
 
-@router.delete("/{club_id}", status_code=204, summary="Delete club")
-async def v1_delete_club(club_id: int, session_uuid: RequireSessionUUID):
-    with DBI() as dbi:
-        _, user = get_session_and_user(dbi, session_uuid)
-        club = dbi.get_club(club_id)
-        if not club:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        club_member = dbi.get_club_member(club_id, user.id)
-        if not club_member or club_member.user_role != "OWNER":
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
-        dbi.delete_club(club.id)
-
-    return {}
+#@router.delete("/{club_id}", status_code=204, summary="Delete club")
+#async def v1_delete_club(club_id: int, session_uuid: SessionUUID):
+#    with DBI() as dbi:
+#        _, user = get_session_and_user(dbi, session_uuid)
+#        club = dbi.get_club(club_id)
+#        if not club:
+#            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+#        club_member = dbi.get_club_member(club_id, user.id)
+#        if not club_member or club_member.user_role != "OWNER":
+#            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
+#        dbi.delete_club(club.id)
+#
+#    return {}
 
 
 @router.get("/{club_id}/members", summary="Get club memebrs")
-async def v1_get_club_members(club_id: int, session_uuid: RequireSessionUUID):
-    with DBI() as dbi:
-        _, user = get_session_and_user(dbi, session_uuid)
-        club = dbi.get_club(club_id)
+async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        club_members = dbi.get_club_members(club_id=club.id)
+        members = await db.get_club_members(club_id=club.id)
 
     return list([
         ClubMemberProfile(
             id=member.id,
-            username=member.username,
-            image_id=member.image_id,
+            #username=member.username,
+            #image_id=member.image_id,
             user_role=member.user_role,
             user_approved=member.approved_ts is not None
-        ) for member in club_members
+        ) for member in members
     ])
 
 
 @router.post("/{club_id}/members", summary="Submit join request")
-async def v1_join_club(club_id: int, session_uuid: RequireSessionUUID):
-    DEFAULT_USER_ROLE = "PLAYER"
-    with DBI() as dbi:
-        _, user = get_session_and_user(dbi, session_uuid)
-        club = dbi.get_club(club_id)
+async def v1_join_club(club_id: int, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        new_member = dbi.get_club_member(club_id, user.id)
-        if not new_member:
-            new_member = dbi.create_join_club_request(
-                club_id=club.id, user_id=user.id, user_role=DEFAULT_USER_ROLE
-            )
+        member = await db.find_club_member(club_id, user.id)
+        if not member:
+            member = await db.create_club_member(club.id, user.id, None)
 
     return ClubProfile(
         id=club.id, 
         name=club.name,
         description=club.description,
-        user_role=new_member.user_role,
-        user_approved=new_member.approved_ts is not None
+        user_role=member.user_role,
+        user_approved=member.approved_ts is not None
     )
 
 
-@router.post("/{club_id}/members/{member_id}", summary="Approve join request")
-async def v1_approve_join_request(club_id: int, member_id: int, session_uuid: RequireSessionUUID):
-    with DBI() as dbi:
-        _, user = get_session_and_user(dbi, session_uuid)
-        club = dbi.get_club(club_id)
+@router.put("/{club_id}/members/{member_id}", summary="Approve join request")
+async def v1_approve_join_request(club_id: int, member_id: int, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        new_member = dbi.get_club_member(club_id, member_id)
-        if not new_member:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member not found")
-        user_member = dbi.get_club_member(club_id, user.id)        
+        user_member = await db.find_club_member(club_id, user.id)
         if not user_member or user_member.user_role != "OWNER":
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
-        if new_member.approved_ts is None:
-            new_member = dbi.approve_club_member(club.id, user.id, member_id)
-        new_member_profile = dbi.get_user(id=new_member.user_id)
+        member = await db.get_club_member(member_id)
+        if not member or member.club_id!=club.id:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member not found")
+        if member.approved_ts is None:
+            member = await db.approve_club_member(member_id, user.id, None)
+        new_member_profile = await db.get_user(member.user_id)
 
     return ClubMemberProfile(
         id=new_member_profile.id,
         username=new_member_profile.username,
         image_id=new_member_profile.image_id,
-        user_role=new_member.user_role,
-        user_approved=new_member.approved_ts is not None
+        user_role=member.user_role,
+        user_approved=member.approved_ts is not None
     )
 
 
-@router.delete("/{club_id}/members/{member_id}", status_code=204, summary="Delete club member")
-async def v1_delete_club_member(club_id: int, member_id: int, session_uuid: RequireSessionUUID):
-    with DBI() as dbi:
-        _, user = get_session_and_user(dbi, session_uuid)
-        club = dbi.get_club(club_id)
+@router.post("/{club_id}/tables", status_code=201, summary="Create club table")
+async def v1_create_club_table(club_id: int, params: TableParams, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        member = dbi.get_club_member(club_id, member_id)
-        if not member:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member not found")
-        user_member = dbi.get_club_member(club_id, user.id) 
-        if not user_member or user_member.user_role != "OWNER":
+        member = await db.find_club_member(club.id, user.id)
+        if not member or member.user_role != 'OWNER':
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
-        dbi.delete_club_member(club.id, member_id)
+        kwargs = params.model_dump(exclude_unset=False)
+        table = await db.create_table(club_id=club_id, **kwargs)
+    
+    return TableProfile(**table._asdict())
 
-    return {}
+@router.get("/{club_id}/tables", status_code=200, summary="Get club tables")
+async def v1_get_club_tables(club_id: int, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+        member = await db.find_club_member(club.id, user.id)
+        if not member:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
+        tables = await db.get_tables_for_club(club_id=club_id)
+
+    return [TableProfile(**row._asdict()) for row in tables]
+
