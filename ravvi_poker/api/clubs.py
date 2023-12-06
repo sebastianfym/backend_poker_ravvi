@@ -187,7 +187,7 @@ async def v1_approve_join_request(club_id: int, member_id: int, session_uuid: Se
 
     return ClubMemberProfile(
         id=new_member_profile.id,
-        username=new_member_profile.username,
+        username=new_member_profile.name,
         image_id=new_member_profile.image_id,
         user_role=member.user_role,
         user_approved=member.approved_ts is not None

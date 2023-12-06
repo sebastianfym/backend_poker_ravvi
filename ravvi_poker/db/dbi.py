@@ -136,7 +136,7 @@ class DBI:
     # USER
 
     async def create_user(self):
-        sql = "INSERT INTO user_profile (username) VALUES (NULL) RETURNING *"
+        sql = "INSERT INTO user_profile (name) VALUES (NULL) RETURNING *"
         async with self.cursor() as cursor:
             await cursor.execute(sql)
             row = await cursor.fetchone()

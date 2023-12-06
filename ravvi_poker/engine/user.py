@@ -2,21 +2,23 @@ from typing import Set
 
 
 class User:
-    def __init__(self, id, username=None, image_id=None) -> None:
+    def __init__(self, id:int, name:str, image_id=int|None) -> None:
         self.id = id
-        self.username = username or f"u{id}"
-        self.image_id = None
+        self.name = name
+        self.image_id = image_id
+        self.club_id = None
+        self.member_id = None
         self.balance = None
         self.clients = set()
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return len(self.clients) > 0
 
     def get_info(self):
         return dict(
-            user_id=self.id,
-            username=self.username,
+            id=self.id,
+            name=self.name,
             image_id=self.image_id,
             balance=self.balance,
         )

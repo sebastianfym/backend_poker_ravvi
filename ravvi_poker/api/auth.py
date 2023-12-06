@@ -11,6 +11,7 @@ from ..engine.passwd import password_hash, password_verify
 from ..db import DBI
 
 from .utils import SessionUUID, get_session_and_user
+from .types import UserPrivateProfile
 
 log = getLogger(__name__)
 
@@ -25,17 +26,16 @@ class DeviceLoginParams(DeviceParams):
     login_token: str  | None = None
 
 
-class UserAccessTokens(BaseModel):
+class UserAccessProfile(BaseModel):
     device_token: str | None = None
     login_token: str | None = None
     access_token: str | None = None
     token_type: str = "bearer"
-    user_id: int | None = None
-    username: str | None = None
+    user: UserPrivateProfile|None
 
 
 @router.post("/register")
-async def v1_register_guest(params: DeviceParams, request: Request) -> UserAccessTokens:
+async def v1_register_guest(params: DeviceParams, request: Request) -> UserAccessProfile:
     """Register user account (guest)"""
 
     client_host = request.client.host
@@ -54,18 +54,17 @@ async def v1_register_guest(params: DeviceParams, request: Request) -> UserAcces
     login_token = jwt_encode(login_uuid=str(login.uuid))
     access_token = jwt_encode(session_uuid=str(session.uuid))
 
-    response = UserAccessTokens(
+    response = UserAccessProfile(
             device_token=device_token, 
             login_token=login_token,
             access_token=access_token,
-            user_id=user.id, 
-            username=user.username or ""
+            user = UserPrivateProfile.from_row(user)
         )
     return response
 
 
 @router.post("/device")
-async def v1_device_login(params: DeviceLoginParams, request: Request) -> UserAccessTokens:
+async def v1_device_login(params: DeviceLoginParams, request: Request) -> UserAccessProfile:
     """Login with device/login token"""
     client_host = request.client.host
     device_uuid = jwt_get(params.device_token, "device_uuid")
@@ -85,8 +84,6 @@ async def v1_device_login(params: DeviceLoginParams, request: Request) -> UserAc
             device_token = jwt_encode(device_uuid=str(device.uuid))
             login_token = jwt_encode(login_uuid=str(login.uuid))
             access_token = jwt_encode(session_uuid=str(session.uuid))
-            user_id = user.id
-            username = user.username
         else:
             if not device:
                 device = await db.create_device(params.device_props)
@@ -95,15 +92,12 @@ async def v1_device_login(params: DeviceLoginParams, request: Request) -> UserAc
                 device_token = params.device_token
             login_token = None
             access_token = None
-            user_id = None
-            username = None
 
-    response = UserAccessTokens(
+    response = UserAccessProfile(
         device_token=device_token, 
         login_token=login_token,
         access_token=access_token, 
-        user_id=user_id,
-        username=username
+        user = UserPrivateProfile.from_row(user) if user else None
         )
     return response
   
@@ -141,12 +135,11 @@ async def v1_login_form(form_data: Annotated[OAuth2PasswordRequestForm, Depends(
     login_token = jwt_encode(login_uuid=str(login.uuid))
     access_token = jwt_encode(session_uuid=str(session.uuid))
 
-    response = UserAccessTokens(
+    response = UserAccessProfile(
             device_token=device_token, 
             access_token=access_token,
             login_token=login_token,
-            user_id=user.id, 
-            username=user.username
+            user=UserPrivateProfile.from_row(user)
         )
     return response
 

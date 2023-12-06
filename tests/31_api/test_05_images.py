@@ -6,7 +6,7 @@ from io import BytesIO
 
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 from fastapi.testclient import TestClient
-from ravvi_poker.api.auth import UserAccessTokens
+from ravvi_poker.api.auth import UserAccessProfile
 from ravvi_poker.api.images import ImageProfile
 
 log = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ def create_dummy_image_data(format, width, height):
     im.save(buf, format=format)
     return buf.getvalue()
 
-def test_upload_image(api_client: TestClient, api_guest: UserAccessTokens):
+def test_upload_image(api_client: TestClient, api_guest: UserAccessProfile):
     # set headers
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
 

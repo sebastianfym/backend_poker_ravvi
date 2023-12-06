@@ -2,9 +2,9 @@
     "blind_small": 1,
     "blind_big": 2,
     "users": [
-        {"id": 333, "username": "u3", "balance": 140},
-        {"id": 111, "username": "u1", "balance": 355},
-        {"id": 222, "username": "u2", "balance": 40}
+        {"id": 333, "name": "u3", "balance": 140},
+        {"id": 111, "name": "u1", "balance": 355},
+        {"id": 222, "name": "u2", "balance": 40}
     ],
     "deck": ["Q♦","8♥","7♣","3♥","5♦","J♠","K♦","Q♣","9♠","7♠","T♦","3♣","4♦","6♣","4♣","K♥","6♦","T♠", 
             0,

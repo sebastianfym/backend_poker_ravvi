@@ -63,7 +63,7 @@ class Table:
 
     async def user_factory(self, db, user_id):
         user = await db.get_user(user_id)
-        return User(id=user.id, username=user.username)
+        return User(id=user.id, name=user.name)
 
     async def game_factory(self, users):
         from ..game import get_game_class

@@ -1,10 +1,10 @@
 from ravvi_poker.engine.user import User
 
 def test_engine_user():
-    user = User(777, 'test')
+    user = User(777, 'test', 999)
     assert user.id == 777
-    #assert user.username == 'test'
-    #assert user.image_id is None
+    assert user.name == 'test'
+    assert user.image_id == 999
     assert user.balance is None
     assert len(user.clients) == 0
     assert user.connected == False
@@ -13,5 +13,6 @@ def test_engine_user():
     assert user.connected == True
 
     info = user.get_info()
-    assert info['user_id'] == 777
-    #assert info['username'] == 'test'
+    assert info['id'] == 777
+    assert info['name'] == 'test'
+    assert info['image_id'] == 999
