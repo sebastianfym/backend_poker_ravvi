@@ -3,7 +3,7 @@ import pytest_asyncio
 
 from fastapi.testclient import TestClient
 from ravvi_poker.api.app import app
-from ravvi_poker.api.auth import UserAccessTokens
+from ravvi_poker.api.auth import UserAccessProfile
 from ravvi_poker.engine.tables import TablesManager
 
 import logging
@@ -18,7 +18,7 @@ def api_client():
 def api_guest(api_client: TestClient):
     response = api_client.post("/v1/auth/register", json={})
     assert response.status_code == 200
-    yield UserAccessTokens(**response.json())
+    yield UserAccessProfile(**response.json())
 
 @pytest.fixture
 def api_client_2():
@@ -29,10 +29,10 @@ def api_client_2():
 def api_guest_2(api_client: TestClient):
     response = api_client.post("/v1/auth/register", json={})
     assert response.status_code == 200
-    yield UserAccessTokens(**response.json())
+    yield UserAccessProfile(**response.json())
 
 @pytest.fixture
 def api_guest_3(api_client: TestClient):
     response = api_client.post("/v1/auth/register", json={})
     assert response.status_code == 200
-    yield UserAccessTokens(**response.json())
+    yield UserAccessProfile(**response.json())

@@ -8,7 +8,7 @@ from httpx import AsyncClient
 
 from ravvi_poker.db import DBI
 from ravvi_poker.engine.tables import TablesManager
-from ravvi_poker.api.auth import UserAccessTokens
+from ravvi_poker.api.auth import UserAccessProfile
 
 import logging
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ def test_ws_no_token(api_client: TestClient):
     assert ex_info.value.code == 1008
 
 @pytest.mark.skip
-def test_ws_valid_token(api_client: TestClient, api_guest: UserAccessTokens):
+def test_ws_valid_token(api_client: TestClient, api_guest: UserAccessProfile):
     params = urlencode(dict(access_token=api_guest.access_token))
     with api_client.websocket_connect(f"/v1/ws?{params}") as ws:
         sleep(3)
@@ -37,7 +37,7 @@ def cmd_TABLE_JOIN(ws, **kwargs):
     ws.send_json(cmd)
 
 #@pytest.mark.asyncio    
-def test_ws_join(api_client: TestClient, api_guest: UserAccessTokens, table):
+def test_ws_join(api_client: TestClient, api_guest: UserAccessProfile, table):
     params = urlencode(dict(access_token=api_guest.access_token))
     with api_client.websocket_connect(f"/v1/ws?{params}") as ws:
         cmd_TABLE_JOIN(ws, table_id=table.id, take_seat=True)

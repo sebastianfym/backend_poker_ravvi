@@ -2,11 +2,11 @@ import pytest
 
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN, HTTP_422_UNPROCESSABLE_ENTITY
 from fastapi.testclient import TestClient
-from ravvi_poker.api.auth import UserAccessTokens
+from ravvi_poker.api.auth import UserAccessProfile
 from ravvi_poker.api.clubs import ClubProfile, ClubMemberProfile
 
 
-def test_create_club(api_client: TestClient, api_guest: UserAccessTokens, api_client_2: TestClient, api_guest_2: UserAccessTokens):
+def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient, api_guest_2: UserAccessProfile):
 
     club_404 = 4040404040
     # set headers
@@ -90,7 +90,7 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessTokens, api_cl
     #assert response.status_code == 204
 
 
-def test_21_club_join(api_client: TestClient, api_guest: UserAccessTokens, api_client_2: TestClient, api_guest_2: UserAccessTokens):
+def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient, api_guest_2: UserAccessProfile):
     # set headers
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
     api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}

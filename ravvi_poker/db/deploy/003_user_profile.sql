@@ -1,10 +1,11 @@
 ALTER TABLE public.user_profile ADD balance numeric(20,0) NOT NULL DEFAULT 1000;
+ALTER TABLE public.user_profile RENAME COLUMN username TO name;
 
 CREATE OR REPLACE FUNCTION user_profile_name_trg_proc() RETURNS TRIGGER 
 AS $$
 BEGIN
-  IF NEW.username IS NULL OR LENGTH(NEW.username)=0 THEN
-    select CONCAT('u',NEW.id) into new.username;
+  IF NEW.name IS NULL OR LENGTH(NEW.name)=0 THEN
+    select CONCAT('u',NEW.id) into new.name;
   END IF;
   RETURN NEW;
 END; $$
@@ -12,9 +13,9 @@ LANGUAGE plpgsql;
 
 CREATE OR REPLACE 
 TRIGGER user_profile_name_trg
-BEFORE INSERT OR UPDATE OF username ON user_profile
+BEFORE INSERT OR UPDATE OF name ON user_profile
 FOR EACH ROW
-WHEN (NEW.username IS NULL OR LENGTH(NEW.username)=0)
+WHEN (NEW.name IS NULL OR LENGTH(NEW.name)=0)
 EXECUTE PROCEDURE user_profile_name_trg_proc();
 
 CREATE OR REPLACE FUNCTION user_profile_closed_trg_proc() RETURNS TRIGGER 

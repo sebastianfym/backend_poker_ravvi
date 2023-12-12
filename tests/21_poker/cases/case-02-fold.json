@@ -2,10 +2,10 @@
     "blind_small": 1,
     "blind_big": 2,
     "users": [
-        {"id": 111, "username": "u1", "balance": 1000},
-        {"id": 333, "username": "u3", "balance": 1000},
-        {"id": 444, "username": "u4", "balance": 1000},
-        {"id": 777, "username": "u5", "balance": 1000}
+        {"id": 111, "name": "u1", "balance": 1000},
+        {"id": 333, "name": "u3", "balance": 1000},
+        {"id": 444, "name": "u4", "balance": 1000},
+        {"id": 777, "name": "u5", "balance": 1000}
     ],
     "deck": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21],
     "moves": [
