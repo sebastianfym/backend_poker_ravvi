@@ -75,7 +75,7 @@ class X_Table(Table):
         logger.info("player exit %s <- %s", user.id, seat_idx)
         user.balance = 0
 
-    async def user_factory(self, db, user_id):
+    async def user_factory(self, db, user_id, club_id):
         user = User(id=user_id, name='u'+str(user_id))
         #logger.info('user created: %s', user.__dict__)
         return user

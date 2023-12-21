@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 class DBI:
     DB_HOST = os.getenv("RAVVI_POKER_DB_HOST", "localhost")
     DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "15432"))
+    DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "develop")
     DB_USER = os.getenv("RAVVI_POKER_DB_USER", "postgres")
     DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
-    DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "develop")
     APPLICATION_NAME = 'CPS'
     CONNECT_TIMEOUT = 15
 
@@ -135,12 +135,22 @@ class DBI:
         
     # USER
 
-    async def create_user(self):
+    async def create_user(self, *, balance=0):
         sql = "INSERT INTO user_profile (name) VALUES (NULL) RETURNING *"
         async with self.cursor() as cursor:
             await cursor.execute(sql)
-            row = await cursor.fetchone()
-        return row
+            user = await cursor.fetchone()
+        # default LOBBY account
+        sql = "INSERT INTO user_account (user_id, balance, approved_ts, approved_by) VALUES (%s,%s,now_utc(),0) RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql,(user.id, balance))
+            account = await cursor.fetchone()        
+        # registration reward
+        sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value) VALUES (%s,'REGISTER',%s) RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql,(account.id, balance))
+            txn = await cursor.fetchone()        
+        return user
 
     async def get_user(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
@@ -329,70 +339,82 @@ class DBI:
     # CLUB
 
     async def create_club(self, *, user_id, name=None, description=None, image_id=None):
-        club_sql = "INSERT INTO club (founder_id, name, description, image_id) VALUES (%s,%s,%s,%s) RETURNING *"
-        member_sql = "INSERT INTO club_member (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,%s,now_utc(),0)"
+        club_sql = "INSERT INTO club_profile (name, description, image_id) VALUES (%s,%s,%s) RETURNING *"
+        member_sql = "INSERT INTO user_account (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,%s,now_utc(),0)"
         async with self.cursor() as cursor:
-            await cursor.execute(club_sql,(user_id, name, description, image_id))
+            await cursor.execute(club_sql,(name, description, image_id))
             club = await cursor.fetchone()
-            await cursor.execute(member_sql,(club.id, user_id,'OWNER'))
+            await cursor.execute(member_sql,(club.id, user_id,'O'))
         return club
 
     async def get_club(self, id):
         async with self.cursor() as cursor:
-            await cursor.execute("SELECT * FROM club WHERE id=%s",(id,))
+            await cursor.execute("SELECT * FROM club_profile WHERE id=%s",(id,))
             row = await cursor.fetchone()
         return row
 
     async def get_club_members(self, club_id):
         async with self.cursor() as cursor:
-            await cursor.execute("SELECT * FROM club_member WHERE club_id=%s", (club_id,))
+            await cursor.execute("SELECT * FROM user_account WHERE club_id=%s", (club_id,))
             rows = await cursor.fetchall()
         return rows
 
     async def update_club(self, id, **kwargs):
         params = ", ".join([f"{key}=%s" for key in kwargs])
         values = list(kwargs.values()) + [id]
-        sql = f"UPDATE club SET {params} WHERE id=%s RETURNING *"
+        sql = f"UPDATE club_profile SET {params} WHERE id=%s RETURNING *"
         async with self.cursor() as cursor:
             await cursor.execute(sql, values)
             row = await cursor.fetchone()
         return row
 
     async def create_club_member(self, club_id, user_id, user_comment):
-        sql = "INSERT INTO club_member (club_id, user_id, user_comment, user_role, approved_ts, approved_by) VALUES (%s,%s,%s,%s,NULL,NULL) RETURNING *"
+        sql = "INSERT INTO user_account (club_id, user_id, user_comment) VALUES (%s,%s,%s) RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql,(club_id, user_id, user_comment,'PLAYER'))
+            await cursor.execute(sql,(club_id, user_id, user_comment))
             row = await cursor.fetchone()
         return row
 
     async def get_club_member(self, member_id):
         async with self.cursor() as cursor:
-            await cursor.execute("SELECT * FROM club_member WHERE id=%s",(member_id,))
+            await cursor.execute("SELECT * FROM user_account WHERE id=%s",(member_id,))
+            row = await cursor.fetchone()
+        return row
+    
+    async def get_player_account_for_update(self, member_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM user_account WHERE id=%s FOR UPDATE",(member_id,))
+            row = await cursor.fetchone()
+        return row
+    
+    async def create_player_account_txn(self, member_id, txntype, amount):
+        async with self.cursor() as cursor:
+            await cursor.execute("UPDATE user_account SET balance=balance+(%s) WHERE id=%s RETURNING balance",(amount, member_id))
             row = await cursor.fetchone()
         return row
 
-    async def find_club_member(self, club_id, user_id):
+    async def find_account(self, *, user_id, club_id):
         async with self.cursor() as cursor:
-            await cursor.execute("SELECT * FROM club_member WHERE club_id=%s AND user_id=%s",(club_id, user_id))
+            await cursor.execute("SELECT * FROM user_account WHERE club_id=%s AND user_id=%s",(club_id, user_id))
             row = await cursor.fetchone()
         return row
 
     async def approve_club_member(self, member_id, approved_by, club_comment):
-        sql = "UPDATE club_member SET approved_ts=now_utc(), approved_by=%s, club_comment=%s WHERE id=%s RETURNING *"
+        sql = "UPDATE user_account SET approved_ts=now_utc(), approved_by=%s, club_comment=%s WHERE id=%s RETURNING *"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (approved_by, club_comment, member_id))
             row = await cursor.fetchone()
         return row
 
     async def close_club_member(self, member_id, closed_by, club_comment):
-        sql = "UPDATE club_member SET closed_ts=now_utc(), closed_by=%s, club_comment=%s WHERE id=%s RETURNING *"
+        sql = "UPDATE user_account SET closed_ts=now_utc(), closed_by=%s, club_comment=%s WHERE id=%s RETURNING *"
         async with self.cursor() as cursor:
             await cursor.execute(sql,(closed_by, club_comment, member_id))
             row = await cursor.fetchone()
         return row
 
     async def get_clubs_for_user(self, user_id):
-        sql = "SELECT c.*, m.user_role, m.approved_ts FROM club_member m JOIN club c ON c.id=m.club_id WHERE m.user_id=%s and m.closed_ts IS NULL"
+        sql = "SELECT c.*, m.user_role, m.approved_ts FROM user_account m JOIN club_profile c ON c.id=m.club_id WHERE c.id!=0 and m.user_id=%s and m.closed_ts IS NULL"
         async with self.cursor() as cursor:
             await cursor.execute(sql,(user_id,))
             rows = await cursor.fetchall()
