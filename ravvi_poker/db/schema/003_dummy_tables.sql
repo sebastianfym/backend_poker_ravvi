@@ -1,4 +1,4 @@
-insert into poker_table 
+insert into table_profile 
 (id, table_type, table_seats, game_type, game_subtype, n_bots) 
 VALUES
 (11, 'RG', 9, 'NLH', 'REGULAR', 3),
