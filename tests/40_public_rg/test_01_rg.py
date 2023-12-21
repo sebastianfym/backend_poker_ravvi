@@ -10,11 +10,9 @@ from ravvi_poker.bots.dummy import DummyBot
 
 log = logging.getLogger(__name__)
 
-async def create_user(balance=None):
+async def create_user(balance=0):
     async with DBI(log=log) as db:
-        user = await db.create_user()    
-        if balance:
-            await db.update_user(user.id, balance=balance)
+        user = await db.create_user(balance=balance)    
     return user
 
 async def create_client(user):

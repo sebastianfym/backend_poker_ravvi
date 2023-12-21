@@ -38,7 +38,6 @@ class Player(PlayerBase):
     
     @property
     def has_bet_opions(self) -> bool:
-#        return self.in_the_game and self.balance
         return self.in_the_game and self.bet_type!=Bet.ALLIN
     
     

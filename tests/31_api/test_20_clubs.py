@@ -59,7 +59,7 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_c
     assert club2.name == "Some new name"
     assert club2.description == "Some new desc"
     assert club2.image_id is None
-    assert club2.user_role == "OWNER"
+    assert club2.user_role == "O"
     assert club2.user_approved is True
 
     # get club2 by new user
@@ -105,7 +105,7 @@ def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_
     club_2 = ClubProfile(**response.json())
     assert club_2.id
     assert club_2.name
-    assert club_2.user_role == 'PLAYER'
+    assert club_2.user_role == 'P'
     assert club_2.user_approved is False
 
     # list clubs

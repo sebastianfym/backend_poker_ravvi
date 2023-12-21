@@ -7,7 +7,7 @@ class User:
         self.name = name
         self.image_id = image_id
         self.club_id = None
-        self.member_id = None
+        self.account_id = None
         self.balance = None
         self.clients = set()
 

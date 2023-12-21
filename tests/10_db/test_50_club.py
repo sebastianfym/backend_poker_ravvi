@@ -25,7 +25,7 @@ async def test_club_create(user):
     club_id = row.id
     async with DBI() as db:
         club = await db.get_club(club_id)
-        owner = await db.find_club_member(club_id, user.id)
+        owner = await db.find_account(user_id=user.id, club_id=club_id)
         members = await db.get_club_members(club_id)
         clubs = await db.get_clubs_for_user(user.id)
 
@@ -36,7 +36,7 @@ async def test_club_create(user):
 
     assert owner
     assert owner.user_id == user.id
-    assert owner.user_role == 'OWNER'
+    assert owner.user_role == 'O'
     assert owner.created_ts
     assert owner.approved_ts
     assert not owner.closed_ts
@@ -44,7 +44,7 @@ async def test_club_create(user):
     assert members and len(members)==1
     member = members[0]
     assert member.user_id == user.id
-    assert member.user_role == 'OWNER'
+    assert member.user_role == 'O'
     assert member.created_ts
     assert member.approved_ts
     assert not member.closed_ts
@@ -72,7 +72,7 @@ async def test_club_member(club_and_owner, user):
     assert member.club_id == club.id
     assert member.user_id == user.id
     assert member.user_comment == 'user comment'
-    assert member.user_role == 'PLAYER'
+    assert member.user_role == 'P'
     assert member.created_ts
     assert member.approved_ts is None
     assert member.approved_by is None
@@ -84,7 +84,7 @@ async def test_club_member(club_and_owner, user):
         member = await db.get_club_member(member.id)
         assert member.club_id == club.id
         assert member.user_id == user.id
-        member = await db.find_club_member(club.id, user.id)
+        member = await db.find_account(user_id=user.id, club_id=club.id)
         assert member.club_id == club.id
         assert member.user_id == user.id
         clubs = await db.get_clubs_for_user(user.id)
@@ -100,7 +100,7 @@ async def test_club_member(club_and_owner, user):
     assert member.club_id == club.id
     assert member.user_id == user.id
     assert member.user_comment == 'user comment'
-    assert member.user_role == 'PLAYER'
+    assert member.user_role == 'P'
     assert member.created_ts
     assert member.approved_ts
     assert member.approved_by == owner.id

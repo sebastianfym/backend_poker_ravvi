@@ -61,9 +61,15 @@ class Table:
     def user_exit_enabled(self):
         return True
 
-    async def user_factory(self, db, user_id):
+    async def user_factory(self, db, user_id, club_id):
         user = await db.get_user(user_id)
-        return User(id=user.id, name=user.name)
+        account = await db.find_account(user_id=user_id, club_id=club_id)
+        if not user or not account:
+            return None
+        table_user = User(id=user.id, name=user.name)
+        table_user.club_id = club_id
+        table_user.account_id = account.id
+        return table_user
 
     async def game_factory(self, users):
         from ..game import get_game_class
@@ -146,13 +152,14 @@ class Table:
         result.update(users=list(users_info.values()))
         return result
 
-    async def handle_cmd(self, db, *, cmd_id: int, cmd_type: int, user_id: int, client_id: int, props: dict):
+    async def handle_cmd(self, db, *, cmd_id: int, cmd_type: int, client_id: int, user_id: int, props: dict):
         cmd_type = Command.Type.decode(cmd_type)
         self.log.info("handle_cmd: %s/%s %s %s", user_id, client_id, cmd_type, props)
         async with self.lock:
             if cmd_type == Command.Type.JOIN:
-                take_seat = props.get("take_seat", None)
-                await self.handle_cmd_join(db, cmd_id=cmd_id, client_id=client_id, user_id=user_id, take_seat=take_seat)
+                club_id = props.get("club_id", 0)
+                take_seat = props.get("take_seat", False)
+                await self.handle_cmd_join(db, cmd_id=cmd_id, client_id=client_id, user_id=user_id, club_id=club_id, take_seat=take_seat)
             elif cmd_type == Command.Type.TAKE_SEAT:
                 seat_idx = props.get("seat_idx", None)
                 await self.handle_cmd_take_seat(db, user_id=user_id, seat_idx=seat_idx)
@@ -163,12 +170,17 @@ class Table:
             else:
                 self.log.warning("handle_cmd: unknown cmd_type = %s", cmd_type)
 
-    async def handle_cmd_join(self, db, *, cmd_id, client_id, user_id, take_seat):
+    async def handle_cmd_join(self, db, *, cmd_id, client_id, user_id, club_id=0, take_seat=False):
+        # TODO:
+        # проверка доступа члена клуба (club_id) на данный стол
+        # решение: стол должен иметь список доступа со всеми клубами которые могут играть на столе
+        
+
         # check seats allocation
         user, seat_idx, seats_available = self.find_user(user_id)
         if not user:
             # init user object
-            user = await self.user_factory(db, user_id)
+            user = await self.user_factory(db, user_id, club_id)
             self.users[user_id] = user
         if not user.clients:
             await self.on_user_join(db, user)
