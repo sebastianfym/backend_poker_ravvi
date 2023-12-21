@@ -238,7 +238,7 @@ CREATE SEQUENCE public.table_profile_id_seq
 ALTER SEQUENCE public.table_profile_id_seq OWNED BY public.table_profile.id;
 
 CREATE TABLE public.table_cmd (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     client_id bigint NOT NULL,
     table_id bigint NOT NULL,
     cmd_type integer NOT NULL,
@@ -248,8 +248,7 @@ CREATE TABLE public.table_cmd (
 );
 
 CREATE SEQUENCE public.table_cmd_id_seq
-    AS integer
-    START WITH 1
+    START WITH 1000
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
@@ -258,7 +257,7 @@ CREATE SEQUENCE public.table_cmd_id_seq
 ALTER SEQUENCE public.table_cmd_id_seq OWNED BY public.table_cmd.id;
 
 CREATE TABLE public.table_msg (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     cmd_id bigint,
     client_id bigint,
     table_id bigint NOT NULL,
@@ -269,8 +268,7 @@ CREATE TABLE public.table_msg (
 );
 
 CREATE SEQUENCE public.table_msg_id_seq
-    AS integer
-    START WITH 1
+    START WITH 1000
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
@@ -304,7 +302,7 @@ CREATE SEQUENCE public.temp_email_id_seq
 ALTER SEQUENCE public.temp_email_id_seq OWNED BY public.temp_email.id;
 
 CREATE TABLE public.user_account_txn (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
     account_id bigint NOT NULL,
     txn_type character varying(30) NOT NULL,
@@ -313,8 +311,7 @@ CREATE TABLE public.user_account_txn (
 );
 
 CREATE SEQUENCE public.user_account_txn_id_seq
-    AS integer
-    START WITH 1
+    START WITH 1000
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
@@ -323,15 +320,14 @@ CREATE SEQUENCE public.user_account_txn_id_seq
 ALTER SEQUENCE public.user_account_txn_id_seq OWNED BY public.user_account_txn.id;
 
 CREATE TABLE public.user_client (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     session_id bigint NOT NULL,
     created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
     closed_ts timestamp without time zone
 );
 
 CREATE SEQUENCE public.user_client_id_seq
-    AS integer
-    START WITH 1
+    START WITH 1000
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
