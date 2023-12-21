@@ -174,7 +174,9 @@ class Table:
         # TODO:
         # проверка доступа члена клуба (club_id) на данный стол
         # решение: стол должен иметь список доступа со всеми клубами которые могут играть на столе
-        
+        if club_id != self.club_id:
+            # no access
+            return
 
         # check seats allocation
         user, seat_idx, seats_available = self.find_user(user_id)

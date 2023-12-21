@@ -8,6 +8,7 @@ class User:
         self.image_id = image_id
         self.club_id = None
         self.account_id = None
+        self.table_session_id = None
         self.balance = None
         self.clients = set()
 

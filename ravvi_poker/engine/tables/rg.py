@@ -22,6 +22,8 @@ class Table_RG(Table):
         account = await db.get_player_account_for_update(user.account_id)
         if not account:
             return False
+        table_session = await db.reuse_table_session(table_id=self.table_id, account_id=account.id)
+        user.table_session_id = table_session.id
         buyin = self.buyin_min
         new_balance = account.balance - buyin
         self.log.info("user %s buyin %s -> balance %s", user.id, buyin, new_balance)
