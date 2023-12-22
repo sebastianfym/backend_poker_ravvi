@@ -23,7 +23,7 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_c
     assert club1.name.startswith("CLUB-")
     assert club1.description is None
     assert club1.image_id is None
-    assert club1.user_role == "OWNER"
+    assert club1.user_role == "O"
     assert club1.user_approved is True
 
     # create club with props
@@ -36,7 +36,7 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_c
     assert club2.name == "New club"
     assert club2.description == "Desc"
     assert club2.image_id is None
-    assert club2.user_role == "OWNER"
+    assert club2.user_role == "O"
     assert club2.user_approved is True
 
     # get my clubs

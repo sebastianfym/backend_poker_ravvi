@@ -1,6 +1,6 @@
 import pytest
 
-from starlette.status import HTTP_200_OK
+from starlette.status import HTTP_200_OK, HTTP_201_CREATED
 from fastapi.testclient import TestClient
 from ravvi_poker.api.auth import UserAccessProfile
 from ravvi_poker.api.clubs import ClubProfile, ClubMemberProfile
@@ -26,7 +26,7 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessProfile):
         "game_subtype": "REGULAR"
     }
     response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
-    assert response.status_code == 201
+    assert response.status_code == HTTP_201_CREATED
     table = TableProfile(**response.json())
     assert table
     assert table.id
@@ -45,7 +45,7 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessProfile):
         "game_subtype": "AOF"
     }
     response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
-    assert response.status_code == 201
+    assert response.status_code == HTTP_201_CREATED
     table = TableProfile(**response.json())
     assert table
     assert table.id
