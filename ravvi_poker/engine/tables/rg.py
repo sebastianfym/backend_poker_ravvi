@@ -19,7 +19,7 @@ class Table_RG(Table):
 
     async def on_player_enter(self, db: DBI, user, seat_idx):
         # lobby: get user_profile balance
-        account = await db.get_player_account_for_update(user.account_id)
+        account = await db.get_account_for_update(user.account_id)
         if not account:
             return False
         table_session = await db.reuse_table_session(table_id=self.table_id, account_id=account.id)
@@ -29,7 +29,7 @@ class Table_RG(Table):
         self.log.info("user %s buyin %s -> balance %s", user.id, buyin, new_balance)
         #if new_balance < 0:
         #    return False
-        await db.create_player_account_txn(user.account_id, "BUYIN", -buyin)
+        await db.create_account_txn(user.account_id, "BUYIN", -buyin)
         user.balance = buyin
         return True
 

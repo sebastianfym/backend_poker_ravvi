@@ -369,6 +369,8 @@ class DBI:
             await cursor.execute(sql, values)
             row = await cursor.fetchone()
         return row
+    
+    # USER ACCOUNT
 
     async def create_club_member(self, club_id, user_id, user_comment):
         sql = "INSERT INTO user_account (club_id, user_id, user_comment) VALUES (%s,%s,%s) RETURNING *"
@@ -383,13 +385,13 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    async def get_player_account_for_update(self, member_id):
+    async def get_account_for_update(self, member_id):
         async with self.cursor() as cursor:
             await cursor.execute("SELECT * FROM user_account WHERE id=%s FOR UPDATE", (member_id,))
             row = await cursor.fetchone()
         return row
 
-    async def create_player_account_txn(self, member_id, txntype, amount):
+    async def create_account_txn(self, member_id, txntype, amount):
         async with self.cursor() as cursor:
             await cursor.execute(
                 "UPDATE user_account SET balance=balance+(%s) WHERE id=%s RETURNING balance", (amount, member_id)
