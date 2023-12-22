@@ -452,6 +452,20 @@ class DBI:
             rows = await cursor.fetchall()
         return rows
 
+    async def get_club_tables(self, club_id):
+        sql = "SELECT * FROM table_profile WHERE club_id=%s AND parent_id IS NULL and closed_ts IS NULL"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (club_id,))
+            rows = await cursor.fetchall()
+        return rows
+
+    async def create_table_user(self, table_id, user_id):
+        sql = "INSERT INTO table_user (table_id, user_id) VALUES (%s,%s) RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (table_id, user_id))
+            row = await cursor.fetchone()
+        return row
+
     async def lock_table_engine_id(self, table_id):
         sql = "UPDATE table_profile SET engine_id=pg_backend_pid(), engine_status=1 WHERE id=%s"
         await self.dbi.execute(sql, (table_id,))

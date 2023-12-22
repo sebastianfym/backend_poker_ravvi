@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from fastapi.exceptions import HTTPException
-from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
+from starlette.status import HTTP_200_OK, HTTP_201_CREATED
+from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 from pydantic import BaseModel
 
 from ..db import DBI
@@ -33,7 +34,7 @@ class ClubMemberProfile(BaseModel):
     user_approved: bool | None = None
 
 
-@router.post("", status_code=201, summary="Create new club")
+@router.post("", status_code=HTTP_201_CREATED, summary="Create new club")
 async def v1_create_club(params: ClubProps, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -44,7 +45,7 @@ async def v1_create_club(params: ClubProps, session_uuid: SessionUUID):
         name=club.name, 
         description=club.description,
         image_id=club.image_id,
-        user_role="OWNER",
+        user_role="O",
         user_approved=True
     )
 
@@ -179,7 +180,7 @@ async def v1_approve_join_request(club_id: int, member_id: int, session_uuid: Se
     )
 
 
-@router.post("/{club_id}/tables", status_code=201, summary="Create club table")
+@router.post("/{club_id}/tables", status_code=HTTP_201_CREATED, summary="Create club table")
 async def v1_create_club_table(club_id: int, params: TableParams, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -189,12 +190,14 @@ async def v1_create_club_table(club_id: int, params: TableParams, session_uuid: 
         account = await db.find_account(user_id=user.id, club_id=club_id)
         if not account or account.user_role != 'O':
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
+        if params.table_type not in ('RG','SNG','MTT'):
+            raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid table type")
         kwargs = params.model_dump(exclude_unset=False)
         table = await db.create_table(club_id=club_id, **kwargs)
     
     return TableProfile(**table._asdict())
 
-@router.get("/{club_id}/tables", status_code=200, summary="Get club tables")
+@router.get("/{club_id}/tables", status_code=HTTP_200_OK, summary="Get club tables")
 async def v1_get_club_tables(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -204,7 +207,13 @@ async def v1_get_club_tables(club_id: int, session_uuid: SessionUUID):
         account = await db.find_account(user_id=user.id, club_id=club_id)
         if not account:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
-        tables = await db.get_tables_for_club(club_id=club_id)
-
-    return [TableProfile(**row._asdict()) for row in tables]
+        tables = await db.get_club_tables(club_id=club_id)
+    result = []
+    for row in tables:
+        try:
+            entry = TableProfile(**row._asdict())
+            result.append(entry)
+        except Exception as ex:
+            pass
+    return result
 
