@@ -65,7 +65,7 @@ class ClientsManager:
             cmsg = msg.hide_private_info(client.user_id)
             await client.handle_msg(cmsg)
             counter += 1
-        #self.log.info("on_table_msg: %s %s", counter, msg)
+        self.log.info("on_table_msg: %s %s", counter, msg)
 
     async def on_user_client_closed(self, *, client_id):
         self.log.info("on_user_client_closed %s", client_id)
