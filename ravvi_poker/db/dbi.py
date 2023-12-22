@@ -428,9 +428,7 @@ class DBI:
 
     # TABLE
 
-    async def create_table(
-        self, *, club_id=None, table_type, table_name, table_seats, game_type, game_subtype, props=None
-    ):
+    async def create_table(self, *, club_id=0, table_type, table_name, table_seats, game_type, game_subtype, props=None):
         props = json.dumps(props or {})
         sql = "INSERT INTO table_profile (club_id, table_type, table_name, table_seats, game_type, game_subtype, props) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING *"
         async with self.cursor() as cursor:

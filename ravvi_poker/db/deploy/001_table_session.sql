@@ -11,3 +11,6 @@ CREATE TABLE public.table_session (
 	CONSTRAINT table_session_fk_table FOREIGN KEY (table_id) REFERENCES public.table_profile(id) ON DELETE CASCADE ON UPDATE CASCADE,
 	CONSTRAINT table_session_fk_account FOREIGN KEY (account_id) REFERENCES public.user_account(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
+
+ALTER TABLE public.table_profile ALTER COLUMN club_id SET NOT NULL;
+ALTER TABLE public.table_profile ALTER COLUMN club_id SET DEFAULT 0;

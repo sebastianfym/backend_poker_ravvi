@@ -33,11 +33,13 @@ class Table_RG(Table):
         user.balance = buyin
         return True
 
-    async def on_player_exit(self, db, user, seat_idx):
+    async def on_player_exit(self, db: DBI, user, seat_idx):
+        account = await db.get_account_for_update(user.account_id)
         if user.balance==0:
-            return
-        account = await db.get_player_account_for_update(user.account_id)
-        new_balance = account.balance + user.balance
-        self.log.info("user %s exit %s -> balance %s", user.id, user.balance, new_balance)
-        await db.create_player_account_txn(user.account_id, "CASHOUT", user.balance)
-        user.balance = None
+            new_balance = account.balance + user.balance
+            self.log.info("user %s exit %s -> balance %s", user.id, user.balance, new_balance)
+            await db.create_account_txn(user.account_id, "CASHOUT", user.balance)
+            user.balance = None
+        if user.table_session_id:
+            db.close_table_session(user.table_session_id)
+            user.table_session_id = None
