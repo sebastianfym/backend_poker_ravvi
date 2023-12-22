@@ -444,6 +444,13 @@ class DBI:
             rows = await cursor.fetchall()
         return rows
 
+    async def get_club_tables(self, club_id):
+        sql = "SELECT * FROM table_profile WHERE club_id=%s AND parent_id IS NULL and closed_ts IS NULL"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (club_id,))
+            rows = await cursor.fetchall()
+        return rows
+
     async def create_table_user(self, table_id, user_id):
         sql = "INSERT INTO table_user (table_id, user_id) VALUES (%s,%s) RETURNING *"
         async with self.cursor() as cursor:

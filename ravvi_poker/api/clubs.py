@@ -207,7 +207,13 @@ async def v1_get_club_tables(club_id: int, session_uuid: SessionUUID):
         account = await db.find_account(user_id=user.id, club_id=club_id)
         if not account:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
-        tables = await db.get_tables_for_club(club_id=club_id)
-
-    return [TableProfile(**row._asdict()) for row in tables]
+        tables = await db.get_club_tables(club_id=club_id)
+    result = []
+    for row in tables:
+        try:
+            entry = TableProfile(**row._asdict())
+            result.append(entry)
+        except Exception as ex:
+            pass
+    return result
 

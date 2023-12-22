@@ -57,4 +57,7 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessProfile):
 
 
     # get tables
-    
+    response = api_client.get(f"/v1/clubs/{club.id}/tables")
+    assert response.status_code == HTTP_200_OK
+    tables = [TableProfile(**x) for x in response.json()]
+    assert tables and len(tables)==2
