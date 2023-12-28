@@ -13,6 +13,7 @@ from . import clubs
 from . import tables
 from . import ws
 from . import engine
+from . import chat
 
 
 logger = logging.getLogger(__name__)
