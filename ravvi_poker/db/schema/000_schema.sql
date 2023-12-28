@@ -610,3 +610,9 @@ ALTER TABLE ONLY public.user_profile
 ALTER TABLE ONLY public.user_session
     ADD CONSTRAINT user_session_fk_login FOREIGN KEY (login_id) REFERENCES public.user_login(id);
 
+CREATE TABLE public.chat_messages (
+    id SERIAL PRIMARY KEY,
+    table_id bigint NOT NULL,
+    sender_id bigint NOT NULL,
+    text TEXT
+);

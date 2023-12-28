@@ -578,3 +578,17 @@ class DBI:
             row = await cursor.fetchone()
         return row
     
+    async def get_table_msgs(self, table_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM chat_messages WHERE table_id=%s", (table_id,))
+            row = await cursor.fetchall()
+        return row
+
+    async def write_message_from_chat_in_db(self, table_id, sender_id, text):
+        async with self.cursor() as cursor:
+            await cursor.execute(
+                "INSERT INTO chat_messages (table_id, sender_id, text) VALUES (%s, %s, %s) RETURNING id, table_id, sender_id, text",
+                (table_id, sender_id, text.text),
+            )
+            row = await cursor.fetchone()
+        return row
