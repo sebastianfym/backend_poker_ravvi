@@ -57,7 +57,6 @@ async def v1_get_all_info_about_blinds(session_uuid: SessionUUID, blinds_structu
         elif blinds_structure.lower() == "гипер турбо":
             for row in sheet.iter_rows(min_row=5, max_row=64, min_col=17, max_col=19):
                 result_list.append([cell.value for cell in row])
-                print(result_list)
 
     return result_list
 
