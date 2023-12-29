@@ -38,6 +38,7 @@ class TableParams(BaseModel):
     game_subtype: str
     props: TableProps | None = None
 
+
 class TableProfile(TableParams):
     id: int|None = None
     club_id: int | None = None

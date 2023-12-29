@@ -1,5 +1,6 @@
 from typing import Optional
 
+import aiohttp
 import jwt
 from fastapi import APIRouter, Request, Depends
 from fastapi.exceptions import HTTPException
@@ -42,5 +43,10 @@ async def v1_send_message_to_table(table_id: int, message_text: ChatMessage, ses
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Table not found")
         else:
             message = await db.write_message_from_chat_in_db(table_id, user.id, message_text)
+
+            async with aiohttp.ClientSession() as session:
+                async with session.ws_connect(f'http://localhost:8000/chat/ws/{table_id}') as ws: #Todo заменить путь к ws
+                    await ws.send_str(str(message_text))
+
             return ChatMessage(id=message.id, table_id=message.table_id, sender_id=message.sender_id, text=message.text)
 

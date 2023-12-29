@@ -14,6 +14,7 @@ from . import tables
 from . import ws
 from . import engine
 from . import chat
+from . import informations
 
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,7 @@ v1.include_router(lobby.router)
 v1.include_router(clubs.router)
 v1.include_router(tables.router)
 v1.include_router(chat.router)
+v1.include_router(informations.router)
 v1.include_router(ws.router)
 
 app.include_router(v1)
