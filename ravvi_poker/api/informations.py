@@ -20,7 +20,7 @@ async def v1_get_all_info_about_blinds(session_uuid: SessionUUID, blinds_structu
 
     Возвращает список вида [[1, "25/50", 0], [2, "50/75", 1], ...].
     """
-    #Todo удалить openpyxl
+
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
 
@@ -141,10 +141,13 @@ async def v1_get_all_info_about_blinds(session_uuid: SessionUUID, blinds_structu
 
 
 @router.get("/payment structure", status_code=200, summary="Get payment structure")
-async def v1_get_payment_structure():
+async def v1_get_payment_structure(session_uuid: SessionUUID):
     """
     Получаем значения из таблицы о выигрышах.
     """
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+
     payment_structure_list = [
         {"players": "1-3", "position": {"first": "100%", "second": "0", "third": "0"}},
         {"players": "4-6", "position": {"first": "70%", "second": "30%", "third": "0"}},
