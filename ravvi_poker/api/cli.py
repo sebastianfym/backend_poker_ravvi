@@ -3,7 +3,8 @@ import logging
 import argparse
 import uvicorn
 from typing import Dict
-from .app import app
+
+from ravvi_poker.api.app import app
 from ..logging import logging_add_parser_args, logging_configure
 
 logger = logging.getLogger(__name__)

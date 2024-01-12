@@ -66,7 +66,7 @@ class Table:
         account = await db.find_account(user_id=user_id, club_id=club_id)
         if not user or not account:
             return None
-        table_user = User(id=user.id, name=user.name)
+        table_user = User(id=user.id, name=user.name, image_id=user.image_id)
         table_user.club_id = club_id
         table_user.account_id = account.id
         return table_user

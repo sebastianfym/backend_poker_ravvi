@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
     logger.info("api startup")
     #await DBI.pool_open()
     await engine.mamager.start()
-    await ws.manager.start()
+    # await ws.manager.start() #Todo Если все упадет, верни это!
     # statup end
     yield
     # shutdown begin

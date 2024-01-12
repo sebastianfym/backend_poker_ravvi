@@ -1,3 +1,5 @@
+import decimal
+
 from .base import Table, DBI
 
 
@@ -23,7 +25,7 @@ class Table_RG(Table):
         if not account:
             return False
         buyin = self.buyin_min
-        new_balance = account.balance - buyin
+        new_balance = account.balance - decimal.Decimal(buyin)
         self.log.info("user %s buyin %s -> balance %s", user.id, buyin, new_balance)
         #if new_balance < 0:
         #    return False
@@ -35,7 +37,7 @@ class Table_RG(Table):
         if user.balance==0:
             return
         account = await db.get_player_account_for_update(user.account_id)
-        new_balance = account.balance + user.balance
+        new_balance = account.balance + decimal.Decimal(user.balance)#user.balance
         self.log.info("user %s exit %s -> balance %s", user.id, user.balance, new_balance)
         await db.create_player_account_txn(user.account_id, "CASHOUT", user.balance)
         user.balance = None
