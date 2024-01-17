@@ -137,7 +137,7 @@ class PokerBase(Game):
         if player.hand:
             hand_type = player.hand.type[0]
             hand_cards = [c.code for c in player.hand.cards]
-        await super().broadcast_PLAYER_CARDS(db, player, hand_type=hand_type, hand_cards=hand_cards)
+        await super().broadcast_PLAYER_CARDS(db, player, hand_type=hand_type.value, hand_cards=hand_cards)
 
     async def broadcast_PLAYER_MOVE(self, db, player, options, **kwargs):
         await super().broadcast_PLAYER_MOVE(db, player, 

@@ -17,6 +17,8 @@ router = APIRouter(tags=["ws"])
 
 @router.websocket("/ws")
 async def v1_ws_endpoint(ws: WebSocket, access_token: str = None):
+    manager1 = ClientsManager() #Todo это я сделал с целью убрать дублирование, что бы веруть все как было можно эту строку заккоментировать, а все manager1 переименовать на manager
+    await manager1.start()
     # get session uuid from access_token
     session_uuid = jwt_get(access_token, "session_uuid")
     if not session_uuid:
@@ -32,5 +34,6 @@ async def v1_ws_endpoint(ws: WebSocket, access_token: str = None):
     client = ClientWS(ws, user_id=session.user_id, client_id=row.id)
     # start client with manager
     await manager.start_client(client)
+    await manager1.start_client(client)
     # process incoming commands
     await client.recv_commands()

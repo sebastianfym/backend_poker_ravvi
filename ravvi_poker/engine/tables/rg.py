@@ -1,3 +1,5 @@
+import decimal
+
 from .base import Table, DBI
 
 
