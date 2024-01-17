@@ -91,7 +91,7 @@ class Table:
         return user, seat_idx, seats_available
 
     async def on_user_join(self, db, user):
-        pass
+        self.log.debug("on_user_join(%s)", user.id if user else None)
 
     async def on_player_enter(self, db, user, seat_idx):
         # TODO buyin
@@ -110,7 +110,7 @@ class Table:
 
     async def emit_msg(self, db: DBI, msg: Message):
         msg.update(table_id=self.table_id)
-        #self.log.debug("emit_msg: %s", msg)
+        self.log.debug("emit_msg: %s", msg)
         await db.create_table_msg(**msg)
 
     async def emit_TABLE_INFO(self, db, *, cmd_id, client_id, table_info):
@@ -171,6 +171,7 @@ class Table:
                 self.log.warning("handle_cmd: unknown cmd_type = %s", cmd_type)
 
     async def handle_cmd_join(self, db, *, cmd_id, client_id, user_id, club_id=0, take_seat=False):
+        self.log.info("handle_cmd_join: %s/%s -> %s/%s", user_id, club_id, self.table_id, self.club_id)
         # TODO:
         # проверка доступа члена клуба (club_id) на данный стол
         # решение: стол должен иметь список доступа со всеми клубами которые могут играть на столе
@@ -180,6 +181,7 @@ class Table:
 
         # check seats allocation
         user, seat_idx, seats_available = self.find_user(user_id)
+        self.log.info("handle_cmd_take_seat: %s, %s", user, seats_available)
         if not user:
             # init user object
             user = await self.user_factory(db, user_id, club_id)
@@ -197,13 +199,16 @@ class Table:
                 self.seats[new_seat_idx] = user
                 user_info = user.get_info()
                 await self.broadcast_PLAYER_ENTER(db, user_info, new_seat_idx)
+                self.log.debug("%s", user_info)
         # response
         table_info = self.get_table_info(user_id)
         await self.emit_TABLE_INFO(db, cmd_id=cmd_id, client_id=client_id, table_info=table_info)
+        self.log.debug("handle_cmd_join: done")
 
     async def handle_cmd_take_seat(self, db, *, user_id: int, seat_idx: int):
         # check seats allocation
         user, old_seat_idx, seats_available = self.find_user(user_id)
+        self.log.info("handle_cmd_take_seat: %s, %s, %s", user, old_seat_idx, seats_available)
         if not user:
             return False
         if seat_idx not in seats_available:
