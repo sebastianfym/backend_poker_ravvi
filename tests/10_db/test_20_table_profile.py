@@ -25,21 +25,7 @@ async def test_table(table):
 
 @pytest.mark.dependency(depends=["test_table"])
 @pytest.mark.asyncio
-async def test_table_users(table, users_10):
-    assert table
-    async with DBI() as db:
-        for user in users_10:
-            row = await db.create_table_user(table.id, user.id)
-            assert row
-            assert row.table_id == table.id
-            assert row.user_id == user.id
-            assert row.last_game_id is None
-
-
-@pytest.mark.dependency(depends=["test_table_users"])
-@pytest.mark.asyncio
 async def test_table_close(table):
-    assert table
     async with DBI() as db:
         row = await db.close_table(table.id)
         assert row

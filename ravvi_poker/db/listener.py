@@ -54,8 +54,10 @@ class DBI_Listener:
                     self.ready.set()
                     self.log.info('ready, process notifications ...')
                     async for msg in dbi.dbi.notifies():
-                        #await dbi.commit()
-                        await self.on_notify(msg)
+                        try:
+                            await self.on_notify(msg)
+                        except Exception as ex:
+                            self.log.exception("on_notify_handles", ex)
             except asyncio.CancelledError:
                 self.log.info("cancelled")
                 break
@@ -76,4 +78,9 @@ class DBI_Listener:
         handler = self.channels.get(msg.channel)
         if callable(handler):
             payload = json.loads(msg.payload) if msg.payload else {}
-            await handler(**payload)
+            try:
+                await handler(**payload)
+            except Exception as ex:
+                self.log.exception("on_notify(%s) handler: %s", msg.channel, ex)
+        self.log.debug("on_notify: done %s", msg)
+           

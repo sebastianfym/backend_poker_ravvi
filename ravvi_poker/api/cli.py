@@ -3,14 +3,15 @@ import logging
 import argparse
 import uvicorn
 from typing import Dict
-from .app import app
+
+from ravvi_poker.api.app import app
 from ..logging import logging_add_parser_args, logging_configure
 
 logger = logging.getLogger(__name__)
 
 def cmd_run(args):
     host = os.getenv("RAVVI_POKER_API_HOST", "127.0.0.1")
-    port = int(os.getenv("RAVVI_POKER_API_PORT", "8001"))
+    port = int(os.getenv("RAVVI_POKER_API_PORT", "5001"))
     uvicorn.run(app, host=host, port=port, log_level="info")
 
 

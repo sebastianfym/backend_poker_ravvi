@@ -32,5 +32,6 @@ async def v1_ws_endpoint(ws: WebSocket, access_token: str = None):
     client = ClientWS(ws, user_id=session.user_id, client_id=row.id)
     # start client with manager
     await manager.start_client(client)
+
     # process incoming commands
     await client.recv_commands()
