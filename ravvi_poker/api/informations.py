@@ -1,4 +1,6 @@
 from fastapi import APIRouter, HTTPException
+from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND
+
 from ..db import DBI
 from ..engine.api_extra_data import blinds_information, payment_structure
 from ..engine.tables import TablesManager
@@ -12,7 +14,7 @@ manager = TablesManager()
 router = APIRouter(prefix="/info", tags=["info"])
 
 
-@router.get("/{blinds_type}/{blinds_structure}/blinds_info", status_code=200, summary="Get table (SNG/MTT) result")
+@router.get("/{blinds_type}/{blinds_structure}/blinds_info", status_code=HTTP_200_OK, summary="Get blind levels (SNG/MTT)")
 async def v1_get_all_info_about_blinds(session_uuid: SessionUUID, blinds_structure: str, blinds_type: str):
     """
     Получаем значения из таблицы о блиндах.
@@ -29,9 +31,9 @@ async def v1_get_all_info_about_blinds(session_uuid: SessionUUID, blinds_structu
     try:
         return blinds_information[blinds_type][blinds_structure]
     except KeyError:
-        return HTTPException(status_code=404, detail="Key not found")
+        return HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Key not found")
 
-@router.get("/payment structure", status_code=200, summary="Get payment structure")
+@router.get("/payment structure", status_code=HTTP_404_NOT_FOUND, summary="Get payment structure")
 async def v1_get_payment_structure(session_uuid: SessionUUID):
     """
     Получаем значения из таблицы о выигрышах.
