@@ -3,7 +3,7 @@ import asyncio
 
 from ...db import DBI, DBI_Listener
 from ..events import Command, Message
-from .base import ClientBase
+from .abs import ClientAbs, ClientsMap
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +11,7 @@ class ClientsManager:
 
     def __init__(self):
         self.log = logger
-        self.clients = {}
+        self.clients : ClientsMap= {}
         self.table_subscribers = {}
         self.last_event_id = None
         self.listener = DBI_Listener(log=self.log)
@@ -37,6 +37,20 @@ class ClientsManager:
     async def _wait_client_closed(self):
         while self.clients:
             await asyncio.sleep(0.1)
+
+    async def send_cmd(self, client: ClientAbs, cmd: Command):
+        # special cases preprocess
+        if cmd.cmd_type == Command.Type.EXIT:
+            # remove client from table subscribers
+            # сообщения от этого стола нам больше не интересны в любом случае
+            self.unsubscribe(client, cmd.table_id)
+        # send cmd to db            
+        async with DBI(log=self.log) as db:
+            table = await db.get_table(cmd.table_id)
+            if not table or table.engine_status != 5:
+                msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=cmd.table_id)
+                await client.handle_msg(msg)
+            await db.create_table_cmd(client_id=cmd.client_id, table_id=cmd.table_id, cmd_type=cmd.cmd_type, props=cmd.props)
 
     async def on_table_msg(self, *, msg_id, table_id):
         if not msg_id or not table_id:
@@ -82,12 +96,6 @@ class ClientsManager:
         await client.shutdown()
         await client.wait_done()
         
-    async def start_client(self, client: ClientBase):
-        client.manager = self
-        self.clients[client.client_id] = client
-        await client.start()
-        self.log.debug('client %s started', client.client_id)
-
     def subscribe(self, client, table_id):
         subscribers = self.table_subscribers.get(table_id, None)
         if subscribers is None:

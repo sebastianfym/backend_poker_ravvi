@@ -2,15 +2,15 @@ import logging
 import asyncio
 import random
 
-from ..engine.clients.base import ClientQueue, Message, Command
+from ..engine.clients.base import ClientQueue, Message, Command, ClientsManager
 from ..engine.poker.bet import Bet
 
 logger = logging.getLogger(__name__)
 
 class DummyBot(ClientQueue):
     
-    def __init__(self, client_id, user_id) -> None:
-        super().__init__(client_id, user_id)
+    def __init__(self, manager: ClientsManager, client_id, user_id) -> None:
+        super().__init__(manager, client_id, user_id)
         self.log.logger = logger
 
     async def join_table(self, table_id):

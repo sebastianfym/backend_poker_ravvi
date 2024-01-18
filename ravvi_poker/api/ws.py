@@ -29,9 +29,8 @@ async def v1_ws_endpoint(ws: WebSocket, access_token: str = None):
         row = await db.create_client(session_id=session.session_id)
     await ws.accept()
     # create client object
-    client = ClientWS(ws, user_id=session.user_id, client_id=row.id)
-    # start client with manager
-    await manager.start_client(client)
-
+    client = ClientWS(manager=manager, user_id=session.user_id, client_id=row.id, ws=ws)
+    # start client
+    await client.start()
     # process incoming commands
     await client.recv_commands()
