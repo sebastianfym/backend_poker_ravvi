@@ -7,7 +7,7 @@ class LevelInfo:
     ante: int = 0
 
 sng_standard = [
-                [LevelInfo( 10, 20)],
+                LevelInfo( 10, 20),
                 [2, [15, 30], 0], 
                 [3, [20, 40], 0], 
                 [4, [30, 60], 0], 
