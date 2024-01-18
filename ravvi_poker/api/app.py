@@ -13,7 +13,7 @@ from . import clubs
 from . import tables
 from . import ws
 from . import engine
-from . import informations
+from . import info
 
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ v1.include_router(images.router)
 v1.include_router(lobby.router)
 v1.include_router(clubs.router)
 v1.include_router(tables.router)
-v1.include_router(informations.router)
+v1.include_router(info.router)
 v1.include_router(ws.router)
 
 

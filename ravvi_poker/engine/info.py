@@ -241,7 +241,7 @@ mtt_turbo = [LevelInfo(level=1, blind_small=25, blind_big=50, ante=0),
              LevelInfo(level=70, blind_small=3000000000, blind_big=6000000000, ante=1000000000)]
 
 
-mtt_hyper_turbo = [LevelInfo(level=1, blind_small=50, blind_big=100, ante=0),
+mtt_hyperturbo = [LevelInfo(level=1, blind_small=50, blind_big=100, ante=0),
                    LevelInfo(level=2, blind_small=100, blind_big=200, ante=0),
                    LevelInfo(level=3, blind_small=150, blind_big=300, ante=50),
                    LevelInfo(level=4, blind_small=200, blind_big=400, ante=50),
@@ -303,7 +303,7 @@ mtt_hyper_turbo = [LevelInfo(level=1, blind_small=50, blind_big=100, ante=0),
                    LevelInfo(level=60, blind_small=2000000000, blind_big=4000000000, ante=500000000)]
 
 
-blinds_information = {
+levels_schedule = {
     'sng':
         {
             'standard': sng_standard,
@@ -312,11 +312,11 @@ blinds_information = {
     'mtt': {
         'standard': mtt_standard,
         'turbo': mtt_turbo,
-        'hyper_turbo': mtt_hyper_turbo
+        'hyperturbo': mtt_hyperturbo
     }
 }
 
-payment_structure = {
+rewards_distribution = {
     "payment":
         [
             {"players": [1, 3], "position": {"first": 1.0, "second": 0.0, "third": 0.0}},
