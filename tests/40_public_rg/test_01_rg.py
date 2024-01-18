@@ -79,8 +79,8 @@ async def test_engine_manager(engine):
     # bot-1
     user_1 = await create_user(2)
     client_1 = await create_client(user_1)
-    c1 = DummyBot(client_1.id, user_1.id)
-    await c_mgr.start_client(c1)
+    c1 = DummyBot(c_mgr, client_1.id, user_1.id)
+    await c1.start()
     await c1.join_table(table.id)
 
     await asyncio.sleep(3)
@@ -89,8 +89,8 @@ async def test_engine_manager(engine):
 
     user_2 = await create_user(10)
     client_2 = await create_client(user_2)
-    c2 = DummyBot(client_2.id, user_2.id)
-    await c_mgr.start_client(c2)
+    c2 = DummyBot(c_mgr, client_2.id, user_2.id)
+    await c2.start()
     await c2.join_table(table.id)
     log.info('game should start soon ...')
 

@@ -50,7 +50,7 @@ class ClientsManager:
             if not table or table.engine_status != 5:
                 msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=cmd.table_id)
                 await client.handle_msg(msg)
-            await db.create_table_cmd(client_id=self.client_id, table_id=cmd.table_id, cmd_type=cmd.cmd_type, props=cmd.props)
+            await db.create_table_cmd(client_id=cmd.client_id, table_id=cmd.table_id, cmd_type=cmd.cmd_type, props=cmd.props)
 
     async def on_table_msg(self, *, msg_id, table_id):
         if not msg_id or not table_id:

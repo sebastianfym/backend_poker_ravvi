@@ -51,7 +51,7 @@ class DBI:
         cls.pool = None
         logger.debug("pool: closed")
 
-    def __init__(self, *, log=None, use_pool=False) -> None:
+    def __init__(self, *, log=None, use_pool=True) -> None:
         self.log = log or logger
         self.dbi_pool = self.pool if use_pool else None
         self.dbi = None

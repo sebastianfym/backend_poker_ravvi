@@ -28,7 +28,7 @@ class ClientBase(ClientAbs):
         elif isinstance(cmd, dict):
             kwargs = {k:v for k,v in cmd.items() if k not in self.RESERVED_CMD_FIELDS}
             cmd = Command(client_id = self.client_id, **kwargs)
-        self.manager.send_cmd(self, cmd)
+        await self.manager.send_cmd(self, cmd)
         self.log.info("send_cmd: %s", str(cmd))
 
 
@@ -41,7 +41,7 @@ class ClientQueue(ClientBase):
 
     async def start(self):
         self.msg_task = asyncio.create_task(self.msg_queue_loop())
-        super().start()
+        await super().start()
 
     async def shutdown(self):
         await self.msg_queue.put(None)

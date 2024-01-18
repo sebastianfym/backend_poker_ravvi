@@ -38,8 +38,8 @@ async def send_cmd_table_join(client, table):
 
 class X_ClientBase(ClientBase):
 
-    def __init__(self, client_id, user_id) -> None:
-        super().__init__(client_id, user_id)
+    def __init__(self, manager, client_id, user_id) -> None:
+        super().__init__(manager, client_id, user_id)
         self.messages : list[Message] = []
 
     async def on_msg(self, msg: Message):
@@ -48,8 +48,8 @@ class X_ClientBase(ClientBase):
 
 class X_ClientQueue(ClientQueue):
 
-    def __init__(self, client_id, user_id) -> None:
-        super().__init__(client_id, user_id)
+    def __init__(self, manager, client_id, user_id) -> None:
+        super().__init__(manager, client_id, user_id)
         self.messages : list[Message] = []
 
     async def on_msg(self, msg: Message):
@@ -68,7 +68,7 @@ async def clients_manager():
     await asyncio.sleep(1)
 
 @pytest.mark.asyncio
-async def test_client_base(clients_manager):
+async def test_client_base(clients_manager: ClientsManager):
     # создадим стол для целостности ссылок
     table = await create_table()
 
@@ -76,8 +76,8 @@ async def test_client_base(clients_manager):
     user = await create_user()
     client = await create_client(user)
     # тестовый клиент
-    x = X_ClientBase(client.id, user.id)
-    await clients_manager.start_client(x)
+    x = X_ClientBase(clients_manager, client.id, user.id)
+    await x.start()
 
     # TABLE_INFO
     async with DBI() as db:
@@ -101,7 +101,7 @@ async def test_client_base(clients_manager):
     
 
 @pytest.mark.asyncio
-async def test_client_queue(clients_manager):
+async def test_client_queue(clients_manager: ClientsManager):
     # создадим стол для целостности ссылок
     table = await create_table()
 
@@ -109,8 +109,8 @@ async def test_client_queue(clients_manager):
     user = await create_user()
     client = await create_client(user)
     # тестовый клиент
-    x = X_ClientQueue(client.id, user.id)
-    await clients_manager.start_client(x)
+    x = X_ClientQueue(clients_manager, client.id, user.id)
+    await x.start()
     # TABLE_INFO
     async with DBI() as db:
         await db.create_table_msg(client_id=x.client_id, table_id=table.id, game_id=None, msg_type=Message.Type.TABLE_INFO, props=dict(table_redirect_id=table.id))

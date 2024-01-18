@@ -13,6 +13,7 @@ class ClientWS(ClientQueue):
         super().__init__(manager, client_id, user_id)
         self.log.logger = logger
         self.ws = ws
+        self.log.debug('new ws client created')
 
     @property
     def is_connected(self):
