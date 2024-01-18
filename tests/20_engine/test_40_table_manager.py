@@ -24,7 +24,7 @@ async def create_client(user):
 async def create_table():
     async with DBI() as db:
         table = await db.create_table(table_type="RG", table_seats=9, table_name="PUBLIC", 
-            game_type="NLH", game_subtype="REGULAR", 
+            game_type="NLH", game_subtype="REGULAR", club_id=0,
             props=dict(
                 bet_timeout = 1,
             ))

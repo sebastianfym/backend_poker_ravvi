@@ -26,7 +26,7 @@ async def create_client(user):
 async def create_table():
     async with DBI(log=log) as db:
         table = await db.create_table(table_type="RG", table_seats=9, table_name="test_01_rg", 
-            game_type="NLH", game_subtype="REGULAR", 
+            game_type="NLH", game_subtype="REGULAR", club_id=0,
             props=dict(
                 buyin_min = 2,
                 bet_timeout = 10,
@@ -86,7 +86,6 @@ async def test_engine_manager(engine):
     await asyncio.sleep(3)
     assert user_1.id in x_table.users
     assert user_1.id in [u.id for u in x_table.seats if u]
-
 
     user_2 = await create_user(10)
     client_2 = await create_client(user_2)

@@ -53,7 +53,7 @@ class X_Table(Table):
         check_func_args(cls.game_factory, Table.game_factory)
 
     def __init__(self, id, buyin_value):
-        super().__init__(id, table_seats=9)
+        super().__init__(id, table_seats=9, club_id=0)
         self._user_enter_enabled = True
         self._user_exit_enabled = True
         self.buyin_value = buyin_value

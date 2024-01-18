@@ -1,5 +1,7 @@
+import asyncio
 from datetime import datetime
 from .base import Table
+from ...db import DBI
 
 
 class Table_SNG(Table):

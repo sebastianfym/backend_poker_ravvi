@@ -30,6 +30,35 @@ class TableProps(BaseModel):
     blind_schedule: str | None = None
     blind_level_time: int | None = None
 
+    jackpot: bool | None = None
+    ante_up: bool | None = None
+    double_board: bool | None = None
+    bomb_pot: bool | None = None
+    every_hand: int | None = None
+    bomb_pot_ante_min: int | None = None
+    bomb_pot_ante_max: int | None = None
+    bomb_pot_triggers_double_board: bool | None = None
+    seven_deuce: bool | None = None
+    each_prize: int | None = None
+    hi_low: bool | None = None
+
+    vpip_level: int | None = None
+    hand_threshold: int | None = None
+    call_time: int | None = None
+    call_time_type: str | None = None
+    online_players: int | None = None
+
+    gps: bool | None = None
+    ip: bool | None = None
+    disable_pc: bool | None = None
+    email_restriction: bool | None = None
+    access_manual: bool | None = None
+    chat_mode: str | None = None
+    access_countries: list[str] | None = []
+    access_clubs: list[str] | None = []
+    access_unions: list[str] | None = []
+
+
 class TableParams(BaseModel):
     table_name: str | None = None
     table_type: str

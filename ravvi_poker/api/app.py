@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
     logger.info("api startup")
     #await DBI.pool_open()
     await engine.mamager.start()
-    await ws.manager.start()
+    await ws.manager.start() #Todo Если все упадет, верни это!
     # statup end
     yield
     # shutdown begin
@@ -54,5 +54,6 @@ v1.include_router(clubs.router)
 v1.include_router(tables.router)
 v1.include_router(informations.router)
 v1.include_router(ws.router)
+
 
 app.include_router(v1)

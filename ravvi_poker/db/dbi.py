@@ -10,17 +10,18 @@ from psycopg.connection import Notify
 
 logger = logging.getLogger(__name__)
 
+
 class DBI:
     DB_HOST = os.getenv("RAVVI_POKER_DB_HOST", "localhost")
     DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "15432"))
     DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "develop")
     DB_USER = os.getenv("RAVVI_POKER_DB_USER", "postgres")
     DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
-    APPLICATION_NAME = 'CPS'
+    APPLICATION_NAME = "CPS"
     CONNECT_TIMEOUT = 15
 
     pool = None
-    
+
     OperationalError = psycopg.OperationalError
     PoolTimeout = psycopg_pool.PoolTimeout
     ForeignKeyViolation = psycopg.errors.ForeignKeyViolation
@@ -33,7 +34,7 @@ class DBI:
             dbname=db_name or cls.DB_NAME,
             user=cls.DB_USER,
             password=cls.DB_PASSWORD,
-            connect_timeout = cls.CONNECT_TIMEOUT,
+            connect_timeout=cls.CONNECT_TIMEOUT,
             application_name=cls.APPLICATION_NAME,
         )
         return conninfo
@@ -79,13 +80,13 @@ class DBI:
 
     def cursor(self, *args, row_factory=namedtuple_row, **kwargs):
         return self.dbi.cursor(*args, row_factory=row_factory, **kwargs)
-    
+
     async def get_pg_backend_pid(self):
         async with self.cursor() as cursor:
             await cursor.execute("select pg_backend_pid() as pg_backend_pid")
             row = await cursor.fetchone()
         return row.pg_backend_pid
-    
+
     # CONTEXT
 
     async def __aenter__(self):
@@ -99,23 +100,23 @@ class DBI:
             await self.rollback()
             self.dbi_pool = None
         await self.close()
-    
+
     def use_id_or_uuid(self, id, uuid):
         if id is not None:
-            key, value = 'id', id
+            key, value = "id", id
         elif uuid is not None:
-            key, value = 'uuid', uuid
+            key, value = "uuid", uuid
         else:
-            raise ValueError('login: id or uuid required')
+            raise ValueError("login: id or uuid required")
         return key, value
 
     async def listen(self, channel):
-        await self.dbi.execute(f'LISTEN {channel}')
+        await self.dbi.execute(f"LISTEN {channel}")
 
     async def unlisten(self, channel):
-        await self.dbi.execute(f'UNLISTEN {channel}')
+        await self.dbi.execute(f"UNLISTEN {channel}")
 
-    # DEVICE 
+    # DEVICE
 
     async def create_device(self, props=None):
         props = json.dumps(props) if props else None
@@ -124,18 +125,18 @@ class DBI:
             await cursor.execute(sql, (props,))
             row = await cursor.fetchone()
         return row
-        
+
     async def get_device(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
-        sql = f"SELECT * FROM user_device WHERE {key}=%s" # nosec
+        sql = f"SELECT * FROM user_device WHERE {key}=%s"  # nosec
         async with self.cursor() as cursor:
             await cursor.execute(sql, (value,))
             row = await cursor.fetchone()
         return row
-        
+
     # USER
 
-    async def create_user(self, *, balance=0):
+    async def create_user(self, *, balance=1000):
         sql = "INSERT INTO user_profile (name) VALUES (NULL) RETURNING *"
         async with self.cursor() as cursor:
             await cursor.execute(sql)
@@ -143,18 +144,18 @@ class DBI:
         # default LOBBY account
         sql = "INSERT INTO user_account (user_id, balance, approved_ts, approved_by) VALUES (%s,%s,now_utc(),0) RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql,(user.id, balance))
-            account = await cursor.fetchone()        
+            await cursor.execute(sql, (user.id, balance))
+            account = await cursor.fetchone()
         # registration reward
         sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value) VALUES (%s,'REGISTER',%s) RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql,(account.id, balance))
-            txn = await cursor.fetchone()        
+            await cursor.execute(sql, (account.id, balance))
+            txn = await cursor.fetchone()
         return user
 
     async def get_user(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
-        sql = f"SELECT * FROM user_profile WHERE {key}=%s" # nosec
+        sql = f"SELECT * FROM user_profile WHERE {key}=%s"  # nosec
         async with self.cursor() as cursor:
             await cursor.execute(sql, (value,))
             row = await cursor.fetchone()
@@ -180,12 +181,12 @@ class DBI:
 
     async def close_user(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
-        sql = f"UPDATE user_profile SET closed_ts=now_utc() WHERE {key}=%s RETURNING *" # nosec
+        sql = f"UPDATE user_profile SET closed_ts=now_utc() WHERE {key}=%s RETURNING *"  # nosec
         async with self.cursor() as cursor:
             await cursor.execute(sql, (value,))
             row = await cursor.fetchone()
         return row
-    
+
     # LOGIN
 
     async def create_login(self, device_id, user_id):
@@ -194,23 +195,23 @@ class DBI:
             await cursor.execute(sql, (device_id, user_id))
             row = await cursor.fetchone()
         return row
-        
+
     async def get_login(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
-        sql = f"SELECT * FROM user_login WHERE {key}=%s" # nosec
+        sql = f"SELECT * FROM user_login WHERE {key}=%s"  # nosec
         async with self.cursor() as cursor:
             await cursor.execute(sql, (value,))
             row = await cursor.fetchone()
         return row
-        
+
     async def close_login(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
-        sql = f"UPDATE user_login SET closed_ts=now_utc() WHERE {key}=%s RETURNING *" # nosec
+        sql = f"UPDATE user_login SET closed_ts=now_utc() WHERE {key}=%s RETURNING *"  # nosec
         async with self.cursor() as cursor:
             await cursor.execute(sql, (value,))
             row = await cursor.fetchone()
         return row
-                    
+
     # SESSION
 
     async def create_session(self, login_id):
@@ -222,12 +223,12 @@ class DBI:
 
     async def get_session(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
-        sql = f"SELECT * FROM user_session WHERE {key}=%s" # nosec
+        sql = f"SELECT * FROM user_session WHERE {key}=%s"  # nosec
         async with self.cursor() as cursor:
             await cursor.execute(sql, (value,))
             row = await cursor.fetchone()
         return row
-        
+
     async def get_session_info(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
         sql = f"""
@@ -240,7 +241,7 @@ class DBI:
             JOIN user_login l ON l.id=s.login_id
             JOIN user_device d ON d.id=l.device_id
             WHERE s.{key}=%s
-            """ # nosec
+            """  # nosec
         async with self.cursor() as cursor:
             await cursor.execute(sql, (value,))
             row = await cursor.fetchone()
@@ -249,11 +250,10 @@ class DBI:
     async def close_session(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
         async with self.cursor() as cursor:
-            sql = f"UPDATE user_session SET closed_ts=now_utc() WHERE {key}=%s RETURNING *" # nosec
-            await cursor.execute( sql, (value,))
+            sql = f"UPDATE user_session SET closed_ts=now_utc() WHERE {key}=%s RETURNING *"  # nosec
+            await cursor.execute(sql, (value,))
             row = await cursor.fetchone()
         return row
-
 
     # CLIENT
 
@@ -265,15 +265,15 @@ class DBI:
             )
             row = await cursor.fetchone()
         return row
-    
+
     async def get_client(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
         async with self.cursor() as cursor:
-            sql = f"SELECT * FROM user_client WHERE {key}=%s" # nosec
+            sql = f"SELECT * FROM user_client WHERE {key}=%s"  # nosec
             await cursor.execute(sql, (value,))
             row = await cursor.fetchone()
         return row
-    
+
     async def get_client_info(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
         sql = f"""
@@ -284,7 +284,7 @@ class DBI:
             join user_session s on s.id = c.session_id 
             join user_login l on l.id = s.login_id
         where c.{key}=%s
-        """ # nosec
+        """  # nosec
         async with self.cursor() as cursor:
             await cursor.execute(sql, (value,))
             row = await cursor.fetchone()
@@ -302,7 +302,9 @@ class DBI:
     async def create_image(self, owner_id, mime_type, image_data):
         if isinstance(image_data, bytes):
             image_data = base64.b64encode(image_data).decode()
-        sql = "INSERT INTO image (owner_id, mime_type, image_data) VALUES (%s, %s, %s) RETURNING id, owner_id, mime_type"
+        sql = (
+            "INSERT INTO image (owner_id, mime_type, image_data) VALUES (%s, %s, %s) RETURNING id, owner_id, mime_type"
+        )
         async with self.cursor() as cursor:
             await cursor.execute(sql, (owner_id, mime_type, image_data))
             row = await cursor.fetchone()
@@ -342,14 +344,14 @@ class DBI:
         club_sql = "INSERT INTO club_profile (name, description, image_id) VALUES (%s,%s,%s) RETURNING *"
         member_sql = "INSERT INTO user_account (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,%s,now_utc(),0)"
         async with self.cursor() as cursor:
-            await cursor.execute(club_sql,(name, description, image_id))
+            await cursor.execute(club_sql, (name, description, image_id))
             club = await cursor.fetchone()
-            await cursor.execute(member_sql,(club.id, user_id,'O'))
+            await cursor.execute(member_sql, (club.id, user_id, "O"))
         return club
 
     async def get_club(self, id):
         async with self.cursor() as cursor:
-            await cursor.execute("SELECT * FROM club_profile WHERE id=%s",(id,))
+            await cursor.execute("SELECT * FROM club_profile WHERE id=%s", (id,))
             row = await cursor.fetchone()
         return row
 
@@ -367,35 +369,41 @@ class DBI:
             await cursor.execute(sql, values)
             row = await cursor.fetchone()
         return row
+    
+    # USER ACCOUNT
 
     async def create_club_member(self, club_id, user_id, user_comment):
         sql = "INSERT INTO user_account (club_id, user_id, user_comment) VALUES (%s,%s,%s) RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql,(club_id, user_id, user_comment))
+            await cursor.execute(sql, (club_id, user_id, user_comment))
             row = await cursor.fetchone()
         return row
 
     async def get_club_member(self, member_id):
         async with self.cursor() as cursor:
-            await cursor.execute("SELECT * FROM user_account WHERE id=%s",(member_id,))
+            await cursor.execute("SELECT * FROM user_account WHERE id=%s", (member_id,))
             row = await cursor.fetchone()
         return row
-    
-    async def get_player_account_for_update(self, member_id):
+
+    async def get_account_for_update(self, member_id):
         async with self.cursor() as cursor:
-            await cursor.execute("SELECT * FROM user_account WHERE id=%s FOR UPDATE",(member_id,))
+            await cursor.execute("SELECT * FROM user_account WHERE id=%s FOR UPDATE", (member_id,))
             row = await cursor.fetchone()
         return row
-    
-    async def create_player_account_txn(self, member_id, txntype, amount):
+
+    async def create_account_txn(self, member_id, txntype, amount):
         async with self.cursor() as cursor:
-            await cursor.execute("UPDATE user_account SET balance=balance+(%s) WHERE id=%s RETURNING balance",(amount, member_id))
+            sql = "UPDATE user_account SET balance=balance+(%s) WHERE id=%s RETURNING balance"
+            await cursor.execute(sql, (amount, member_id))
             row = await cursor.fetchone()
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value) VALUES (%s,%s,%s) RETURNING *"
+            await cursor.execute(sql, (member_id, txntype, amount))
+            txn = await cursor.fetchone()
         return row
 
     async def find_account(self, *, user_id, club_id):
         async with self.cursor() as cursor:
-            await cursor.execute("SELECT * FROM user_account WHERE club_id=%s AND user_id=%s",(club_id, user_id))
+            await cursor.execute("SELECT * FROM user_account WHERE club_id=%s AND user_id=%s", (club_id, user_id))
             row = await cursor.fetchone()
         return row
 
@@ -409,33 +417,33 @@ class DBI:
     async def close_club_member(self, member_id, closed_by, club_comment):
         sql = "UPDATE user_account SET closed_ts=now_utc(), closed_by=%s, club_comment=%s WHERE id=%s RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql,(closed_by, club_comment, member_id))
+            await cursor.execute(sql, (closed_by, club_comment, member_id))
             row = await cursor.fetchone()
         return row
 
     async def get_clubs_for_user(self, user_id):
         sql = "SELECT c.*, m.user_role, m.approved_ts FROM user_account m JOIN club_profile c ON c.id=m.club_id WHERE c.id!=0 and m.user_id=%s and m.closed_ts IS NULL"
         async with self.cursor() as cursor:
-            await cursor.execute(sql,(user_id,))
+            await cursor.execute(sql, (user_id,))
             rows = await cursor.fetchall()
         return rows
 
     # TABLE
 
-    async def create_table(self, *, club_id=None, table_type, table_name, table_seats, game_type, game_subtype, props=None):
+    async def create_table(self, *, club_id=0, table_type, table_name, table_seats, game_type, game_subtype, props=None):
         props = json.dumps(props or {})
         sql = "INSERT INTO table_profile (club_id, table_type, table_name, table_seats, game_type, game_subtype, props) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING *"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (club_id, table_type, table_name, table_seats, game_type, game_subtype, props))
             row = await cursor.fetchone()
         return row
-    
+
     async def get_table(self, table_id):
         sql = "SELECT * FROM table_profile WHERE id=%s"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (table_id,))
             row = await cursor.fetchone()
-        return row    
+        return row
 
     async def get_open_tables(self):
         sql = "SELECT * FROM table_profile WHERE parent_id IS NULL and closed_ts IS NULL"
@@ -460,17 +468,23 @@ class DBI:
 
     async def lock_table_engine_id(self, table_id):
         sql = "UPDATE table_profile SET engine_id=pg_backend_pid(), engine_status=1 WHERE id=%s"
-        await self.dbi.execute(sql,(table_id,))
+        await self.dbi.execute(sql, (table_id,))
 
     async def release_table_engine_id(self, table_id):
         sql = "UPDATE table_profile SET engine_id=NULL WHERE id=%s"
-        await self.dbi.execute(sql,(table_id,))
+        await self.dbi.execute(sql, (table_id,))
 
     async def update_table_status(self, table_id, status):
         status = int(status)
         sql = "UPDATE table_profile SET engine_status=%s WHERE id=%s RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql,(status,table_id,))
+            await cursor.execute(
+                sql,
+                (
+                    status,
+                    table_id,
+                ),
+            )
             row = await cursor.fetchone()
         return row
 
@@ -478,10 +492,64 @@ class DBI:
         # table closed
         sql = "UPDATE table_profile SET engine_status=9, closed_ts=now_utc() WHERE id=%s RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql,(table_id,))
+            await cursor.execute(sql, (table_id,))
             row = await cursor.fetchone()
         return row
-    
+
+    # TABLE SESSION
+
+    async def find_table_session(self, table_id: int, account_id: int, for_update=True):
+        sql = "SELECT s.*, extract(epoch from (now_utc()-closed_ts)) age_seconds FROM table_session s "
+        sql += "WHERE table_id=%s and account_id=%s ORDER BY id DESC LIMIT 1 "
+        if for_update:
+            sql += "FOR UPDATE"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (table_id, account_id))
+            row = await cursor.fetchone()
+        return row
+
+    async def register_table_session(self, table_id: int, account_id: int):
+        row = await self.find_table_session(table_id, account_id, for_update=True)
+        if not row or row.closed_ts:
+            sql = "INSERT INTO table_session (table_id, account_id, opened_ts) VALUES(%s, %s, NULL) RETURNING *"
+            async with self.cursor() as cursor:
+                await cursor.execute(sql, (table_id, account_id))
+                row = await cursor.fetchone()
+        return row
+
+    async def reuse_table_session(self, table_id: int, account_id: int):
+        row = await self.find_table_session(table_id, account_id, for_update=True)
+        if row:
+            if not row.age_seconds:
+                pass
+            elif row.age_seconds < 3600:
+                sql = "UPDATE table_session SET closed_ts=NULL WHERE id=%s RETURNING *"
+                async with self.cursor() as cursor:
+                    await cursor.execute(sql, (row.id,))
+                    row = await cursor.fetchone()
+            else:
+                row = None
+        if not row:
+            sql = "INSERT INTO table_session (table_id, account_id, opened_ts) VALUES(%s, %s, now_utc()) RETURNING *"
+            async with self.cursor() as cursor:
+                await cursor.execute(sql, (table_id, account_id))
+                row = await cursor.fetchone()
+        return row
+
+    async def open_table_session(self, table_session_id):
+        sql = "UPDATE table_session SET opened_ts=now_utc(), closed_ts=NULL WHERE id=%s RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (table_session_id,))
+            row = await cursor.fetchone()
+        return row
+
+    async def close_table_session(self, table_session_id):
+        sql = "UPDATE table_session SET closed_ts=now_utc() WHERE id=%s RETURNING *"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (table_session_id,))
+            row = await cursor.fetchone()
+        return row
+
     async def get_table_result(self, table_id):
         sql = """
         SELECT tu.user_id, u.username, u.image_id, tu.last_game_id, gu.balance_begin, gu.balance_end, g.end_ts
@@ -492,12 +560,12 @@ class DBI:
         WHERE tu.table_id=%s
         """
         async with self.cursor() as cursor:
-            await cursor.execute(sql,(table_id,))
+            await cursor.execute(sql, (table_id,))
             rows = cursor.fetchall()
         return rows
-        
+
     # GAMES
-    
+
     async def create_game(self, *, table_id: int, game_type, game_subtype, props, players):
         props = json.dumps(props or {})
         async with self.cursor() as cursor:
@@ -509,7 +577,7 @@ class DBI:
                 params_seq = [(game.id, u.id, u.balance) for u in players]
                 await cursor.executemany(sql, params_seq)
         return game
-    
+
     async def get_game_and_players(self, id: int):
         async with self.cursor() as cursor:
             await cursor.execute("SELECT * FROM game_profile WHERE id=%s", (id,))
@@ -531,14 +599,15 @@ class DBI:
 
     def json_dumps(self, obj):
         def encoder(x):
-            if hasattr(x, '__int__'):
+            if hasattr(x, "__int__"):
                 return int(x)
-            if hasattr(x, '__str__'):
+            if hasattr(x, "__str__"):
                 return str(x)
             type_name = x.__class__.__name__
             raise TypeError(f"Object of type {type_name} is not serializable")
+
         return json.dumps(obj, default=encoder)
-    
+
     # EVENTS (TABLE_CMD)
 
     async def create_table_cmd(self, *, client_id, table_id, cmd_type, props):
@@ -569,7 +638,7 @@ class DBI:
                 "INSERT INTO table_msg (table_id, game_id, msg_type, props, cmd_id, client_id) VALUES (%s,%s,%s,%s,%s,%s) RETURNING id, created_ts",
                 (table_id, game_id, msg_type, props, cmd_id, client_id),
             )
-            row  = await cursor.fetchone()
+            row = await cursor.fetchone()
         return row
 
     async def get_table_msg(self, id):
@@ -577,4 +646,3 @@ class DBI:
             await cursor.execute("SELECT * FROM table_msg WHERE id=%s", (id,))
             row = await cursor.fetchone()
         return row
-
