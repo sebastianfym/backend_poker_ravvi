@@ -29,8 +29,8 @@ class UserAccessProfile(BaseModel):
 @router.post("/register")
 async def v1_register(params: DeviceProps, request: Request) -> UserAccessProfile:
     """Register user account (guest)"""
-
-    client_host = request.client.host
+    # TODO: ip detection POKER-616
+    client_host = '' #request.client.host
     device_uuid = jwt_get(params.device_token, "device_uuid")
     log.info("%s: auth.register device=%s", client_host, device_uuid)
 
@@ -58,7 +58,8 @@ async def v1_register(params: DeviceProps, request: Request) -> UserAccessProfil
 @router.post("/device")
 async def v1_device(params: DeviceLoginProps, request: Request) -> UserAccessProfile:
     """Login with device/login token"""
-    client_host = request.client.host
+    # TODO: ip detection POKER-616
+    client_host = '' #request.client.host
     device_uuid = jwt_get(params.device_token, "device_uuid")
     login_uuid = jwt_get(params.login_token, "login_uuid")
     log.info("%s: auth.device device=%s login=%s", client_host, device_uuid, login_uuid)
