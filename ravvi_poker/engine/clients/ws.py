@@ -1,12 +1,17 @@
+import logging
 from starlette.websockets import WebSocket, WebSocketState
 from fastapi import WebSocketDisconnect
 
-from .base import ClientQueue, Message
+from .base import ClientQueue, Message, ClientsManager
+
+logger = logging.getLogger(__name__)
+
 
 class ClientWS(ClientQueue):
     
-    def __init__(self, ws: WebSocket, client_id, user_id) -> None:
-        super().__init__(client_id, user_id)
+    def __init__(self, manager: ClientsManager, client_id, user_id, ws: WebSocket) -> None:
+        super().__init__(manager, client_id, user_id)
+        self.log.logger = logger
         self.ws = ws
 
     @property

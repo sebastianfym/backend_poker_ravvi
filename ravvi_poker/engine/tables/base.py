@@ -188,6 +188,7 @@ class Table:
             self.users[user_id] = user
         if not user.clients:
             await self.on_user_join(db, user)
+        # register user's client
         user.clients.add(client_id)
         # try to take a seat
         new_seat_idx, user_info = None, None
