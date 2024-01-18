@@ -1,26 +1,35 @@
 # Poker Backend
 
-## Build & install package
-
 ### Development (editable) setup
 
+инициализация версии на основе информации из git
+```
+./build_version.py
+```
+
+установка editable пакета
 ```
 pip3 install --user -e .[tests]
 ```
 
-### Build & install package
+### Run local doker
 
-Build:
+запуск необходимых контейнеров
 ```
-python3 ./setup.py bdist_wheel
-```
-
-Install
-```
-pip3 install -f ./dist ravvi-poker-backend
+./docker/up.sh
 ```
 
-## Uninstall
+инициализация кода и базы (удаление и создание в начальном состоянии)
 ```
-pip3 uninstall -y ravvi-poker-backend
+./docker/init.sh
+```
+
+запуск poker api
+```
+./docker/run_api.sh
+```
+
+остановка контейнеров
+```
+./docker/down.sh
 ```
