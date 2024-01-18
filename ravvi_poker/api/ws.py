@@ -34,3 +34,23 @@ async def v1_ws_endpoint(ws: WebSocket, access_token: str = None):
     await client.start()
     # process incoming commands
     await client.recv_commands()
+
+
+@router.websocket("/ws/{table_id}") #Todo дописать, если нужен новый ws, если не нужен, то удалить
+async def websocket_endpoint(ws: WebSocket, access_token: str = None, table_id: int = None):
+    session_uuid = jwt_get(access_token, "session_uuid")
+    if not session_uuid:
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
+    # get session info
+    async with DBI() as db:
+        session = await db.get_session_info(uuid=session_uuid)
+        if not session:
+            raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
+        row = await db.create_client(session_id=session.session_id)
+    await ws.accept()
+    # create client object
+    client = ClientWS(ws, user_id=session.user_id, client_id=row.id)
+    # start client with manager
+    await manager.start_client(client)
+    # process incoming commands
+    await client.recv_commands()
