@@ -7,8 +7,6 @@ services:
     volumes:
       - ../:/home/ravvi/code
     network_mode: host
-    ports:
-    - "5001:5001"
     # keep container alive
     command: tail -f /dev/null
     init: true
