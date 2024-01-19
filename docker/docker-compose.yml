@@ -6,7 +6,10 @@ services:
     image: cr.yandex/crpa15giodgbluup12vl/ci_python:latest
     volumes:
       - ../:/home/ravvi/code
-    network_mode: host
+    networks:
+      - ravvi
+    ports:
+    - "5001:5001"
     # keep container alive
     command: tail -f /dev/null
     init: true
@@ -19,6 +22,10 @@ services:
       - POSTGRES_PASSWORD=password
     ports:
     - "15432:5432"
-    network_mode: bridge
+    networks:
+      - ravvi
     healthcheck:
       test: pg_isready -U postgres
+
+networks:
+  ravvi:
