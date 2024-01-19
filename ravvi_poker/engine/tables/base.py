@@ -177,6 +177,9 @@ class Table:
         # решение: стол должен иметь список доступа со всеми клубами которые могут играть на столе
         if club_id != self.club_id:
             # no access
+            msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id,  client_id=client_id,
+                          error_id=403, error_text=f'No access to club #{self.club_id} from club #{club_id}')
+            await self.emit_msg(db, msg)
             return
 
         # check seats allocation
