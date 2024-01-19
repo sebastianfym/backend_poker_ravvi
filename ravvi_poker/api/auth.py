@@ -66,23 +66,27 @@ async def v1_device(params: DeviceLoginProps, request: Request) -> UserAccessPro
 
     async with DBI() as db:
         device = await db.get_device(uuid=device_uuid) if device_uuid else None
-        login  = await db.get_login(uuid=login_uuid) if login_uuid else None
+        # find login only if device found
+        login  = await db.get_login(uuid=login_uuid) if device and login_uuid else None
+        # find user only if login is valid
         user   = await db.get_user(id=login.user_id) if login and not login.closed_ts else None
 
         if user and user.closed_ts:
+            # check user closed
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="User deactivated")
         
-        if device and login and user:
+        if not device:
+            device = await db.create_device(params.device_props)
+            device_token = jwt_encode(device_uuid=str(device.uuid))
+            login_token = None
+            access_token = None
+        elif login and user:
             session = await db.create_session(login.id)
             device_token = jwt_encode(device_uuid=str(device.uuid))
             login_token = jwt_encode(login_uuid=str(login.uuid))
             access_token = jwt_encode(session_uuid=str(session.uuid))
         else:
-            if not device:
-                device = await db.create_device(params.device_props)
-                device_token = jwt_encode(device_uuid=str(device.uuid))
-            else:
-                device_token = params.device_token
+            device_token = params.device_token
             login_token = None
             access_token = None
 
