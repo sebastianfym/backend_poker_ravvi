@@ -3,7 +3,6 @@ from typing import Any, Optional, List
 
 from fastapi import APIRouter
 from fastapi.exceptions import HTTPException
-from pydantic import Field, constr
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 from pydantic import BaseModel, model_validator, field_validator
 
@@ -62,7 +61,7 @@ class TableProps(BaseModel):
     addon_level: int | None = None
     blind_value: float | None = None
     blind_schedule: str | None = None
-    blind_level_time: Optional[int] = Field(default=None, ge=1)#int | None = None
+    blind_level_time: int | None = None
 
     jackpot: bool | None = None
     ante_up: bool | None = None
@@ -87,24 +86,23 @@ class TableProps(BaseModel):
     disable_pc: bool | None = None
     email_restriction: bool | None = None
     access_manual: bool | None = None
-    chat_mode: ChatModeEnum | None = None
-    access_password: Optional[constr(min_length=4, max_length=4)] = None
-    access_countries: Optional[List[str]] | None = []
-    access_clubs: Optional[List[str]] | None = []
-    access_unions: Optional[List[str]] | None = []
+    chat_mode: str | None = None
+    access_countries: list[str] | None = []
+    access_clubs: list[str] | None = []
+    access_unions: list[str] | None = []
 
 
 class TableParams(BaseModel):
     table_name: str | None = None
-    table_type: TableTypeEnum
-    table_seats: int = Field(ge=2, le=9)
-    game_type: GameTypeEnum
-    game_subtype: GameSubtypeEnum
+    table_type: str
+    table_seats: int
+    game_type: str
+    game_subtype: str
     props: TableProps | None = None
 
 
 class TableProfile(TableParams):
-    id: int | None = None
+    id: int|None = None
     club_id: int | None = None
 
 
@@ -115,18 +113,18 @@ async def v1_get_table_result(table_id: int, session_uuid: SessionUUID):
         table = await db.get_table(table_id)
         if not table:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Table not found")
-        if table.table_type not in ('SNG', 'MTT'):
+        if table.table_type not in ('SNG','MTT'):
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Table not found")
         rows = await db.get_table_result(table_id)
-        rows.sort(key=lambda x: x.balance_end or x.balance_begin or 0, reverse=True)
+        rows.sort(key=lambda x: x.balance_end or x.balance_begin or 0, reverse=True) 
         result = []
         for i, r in enumerate(rows, start=1):
             x = dict(
-                user_id=r.user_id,
-                username=r.username,
-                image_id=r.image_id,
-                reward=r.balance_end,
-                rank=i
+                user_id=r.user_id, 
+                username=r.username, 
+                image_id=r.image_id, 
+                reward = r.balance_end,
+                rank = i
             )
             result.append(x)
     return dict(result=result)
