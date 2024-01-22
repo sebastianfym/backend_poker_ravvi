@@ -4,7 +4,7 @@ from typing import Any, Optional, List
 from fastapi import APIRouter
 from fastapi.exceptions import HTTPException
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
-from pydantic import BaseModel, model_validator, field_validator
+from pydantic import BaseModel, model_validator, field_validator, constr, Field
 
 from ..db import DBI
 from ..engine.tables import TablesManager
@@ -14,7 +14,6 @@ from .utils import SessionUUID, get_session_and_user
 manager = TablesManager()
 
 router = APIRouter(prefix="/tables", tags=["tables"])
-
 
 class TableTypeEnum(str, Enum):
     rg = "RG"
@@ -61,7 +60,7 @@ class TableProps(BaseModel):
     addon_level: int | None = None
     blind_value: float | None = None
     blind_schedule: str | None = None
-    blind_level_time: int | None = None
+    blind_level_time: Optional[int] = Field(default=None, ge=1)#int | None = None
 
     jackpot: bool | None = None
     ante_up: bool | None = None
@@ -86,18 +85,19 @@ class TableProps(BaseModel):
     disable_pc: bool | None = None
     email_restriction: bool | None = None
     access_manual: bool | None = None
-    chat_mode: str | None = None
-    access_countries: list[str] | None = []
-    access_clubs: list[str] | None = []
-    access_unions: list[str] | None = []
+    chat_mode: ChatModeEnum | None = None
+    access_password: Optional[constr(min_length=4, max_length=4)] = None
+    access_countries: Optional[List[str]] | None = []
+    access_clubs: Optional[List[str]] | None = []
+    access_unions: Optional[List[str]] | None = []
 
 
 class TableParams(BaseModel):
     table_name: str | None = None
-    table_type: str
-    table_seats: int
-    game_type: str
-    game_subtype: str
+    table_type: TableTypeEnum
+    table_seats: int = Field(ge=2, le=9)
+    game_type: GameTypeEnum
+    game_subtype: GameSubtypeEnum
     props: TableProps | None = None
 
 
