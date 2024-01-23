@@ -3,6 +3,7 @@ import asyncio
 import inspect
 import contextlib
 
+from .configs import configCls
 from ...logging import getLogger, ObjectLoggerAdapter
 from ...db import DBI
 from ..user import User
@@ -19,7 +20,8 @@ class Table:
     NEW_GAME_DELAY = 3
 
     def __init__(
-        self, id, *, table_seats, parent_id=None, club_id=None, game_type=None, game_subtype=None, props=None, **kwargs
+            self, id, table_name, *, table_seats, parent_id=None, club_id=None, game_type=None, game_subtype=None,
+            props=None, **kwargs
     ):
         # table async lock
         self.lock = asyncio.Lock()
@@ -31,6 +33,7 @@ class Table:
 
         self.club_id = club_id
         self.table_id = id
+        self.table_name = table_name
         self.parent_id = parent_id
         self.log = ObjectLoggerAdapter(logger, lambda: self.table_id)
         self.users: Mapping[int, User] = {}
@@ -41,6 +44,10 @@ class Table:
         self.game_props = {}
         self.game = None
         self.parse_props(**(props or {}))
+
+        # инициализируем настройки стола
+        for configCl in configCls:
+            self.__dict__[configCl.cls_as_config_name()] = configCl(**props, game_type=game_type)
 
     def parse_props(self, **kwargs):
         pass
@@ -140,15 +147,29 @@ class Table:
 
     def get_table_info(self, user_id):
         users_info = {u.id: u.get_info() for u in self.seats if u is not None}
+        # table_name
         result = dict(
             table_id=self.table_id,
+            table_name=self.table_name,
             table_redirect_id=self.table_id,
             table_type=self.table_type,
             seats=[None if u is None else u.id for u in self.seats],
         )
-        if self.game:
+
+        game_info: dict = {}
+        try:
+            # game_id
+            # game_type
+            # game_subtype
             game_info = self.game.get_info(user_id=user_id, users_info=users_info)
-            result.update(game_info)
+        except AttributeError:
+            from ..game import Game
+
+            # игра еще не началась
+            game_info = Game.get_info_before_game_start(table=self, users_info=users_info)
+        finally:
+            result["game_props"] = game_info
+
         result.update(users=list(users_info.values()))
         return result
 
@@ -159,7 +180,8 @@ class Table:
             if cmd_type == Command.Type.JOIN:
                 club_id = props.get("club_id", 0)
                 take_seat = props.get("take_seat", False)
-                await self.handle_cmd_join(db, cmd_id=cmd_id, client_id=client_id, user_id=user_id, club_id=club_id, take_seat=take_seat)
+                await self.handle_cmd_join(db, cmd_id=cmd_id, client_id=client_id, user_id=user_id, club_id=club_id,
+                                           take_seat=take_seat)
             elif cmd_type == Command.Type.TAKE_SEAT:
                 seat_idx = props.get("seat_idx", None)
                 await self.handle_cmd_take_seat(db, user_id=user_id, seat_idx=seat_idx)
@@ -177,7 +199,7 @@ class Table:
         # решение: стол должен иметь список доступа со всеми клубами которые могут играть на столе
         if club_id != self.club_id:
             # no access
-            msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id,  client_id=client_id,
+            msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id, client_id=client_id,
                           error_id=403, error_text=f'No access to club #{self.club_id} from club #{club_id}')
             await self.emit_msg(db, msg)
             return

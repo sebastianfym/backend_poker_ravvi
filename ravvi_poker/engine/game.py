@@ -1,5 +1,6 @@
 import logging
 
+from .tables.configs import configCls
 from ..logging import ObjectLoggerAdapter
 from ..db import DBI
 
@@ -53,6 +54,21 @@ class Game:
             players=[x.user_id for x in self.players],
             dealer_id = self.dealer_id,
         )
+        return info
+
+    @staticmethod
+    def get_info_before_game_start(table: Table, users_info: dict) -> dict:
+        info = dict(
+            game_id=None,
+            game_type=table.game_type,
+            game_subtype=table.game_subtype,
+            users=table.users,
+            # dealer_id=self.dealer_id,
+        )
+        # добавляем данные из конфиг классов
+        for configCl in configCls:
+            if len(config_dict_for_add := table.__dict__[configCl.cls_as_config_name()].unpack_for_msg()) != 0:
+                info |= config_dict_for_add
         return info
 
     # CARDS
