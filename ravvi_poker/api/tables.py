@@ -119,6 +119,7 @@ class TableParams(BaseModel):
     jackpot: bool | None = None
     ante: float | None = None
     ante_up: bool | None = None
+    ante: float | None = None
     double_board: bool | None = None
     bomb_pot: bool | None = None
     every_hand: int | None = None
