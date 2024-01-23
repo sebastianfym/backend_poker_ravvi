@@ -94,8 +94,9 @@ class TableParams(BaseModel):
     created: Optional[datetime.datetime] = None
     opened: Optional[datetime.datetime] = None
     closed: Optional[datetime.datetime] = None
-    @field_validator('game_subtype')
+    prize_fund: int | None = None
 
+    @field_validator('game_subtype')
     @classmethod
     def check_game_subtype(cls, game_subtype: str, info: ValidationInfo) -> str:
         try:
