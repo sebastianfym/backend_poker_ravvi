@@ -18,29 +18,29 @@ manager = TablesManager()
 router = APIRouter(prefix="/tables", tags=["tables"])
 
 
-class TableTypeEnum(str, Enum):
-    rg = "RG"
-    sng = "SNG"
-    mtt = "MTT"
+# class TableTypeEnum(str, Enum):
+#     rg = "RG"
+#     sng = "SNG"
+#     mtt = "MTT"
+#
+#
+# class GameTypeEnum(str, Enum):
+#     nlh = "NLH"
+#     plo = "PLO"
+#     ofc = "OFC"
 
 
-class GameTypeEnum(str, Enum):
-    nlh = "NLH"
-    plo = "PLO"
-    ofc = "OFC"
-
-
-class ChatModeEnum(str, Enum):
-    disable = "DISABLE"
-    players = "PLAYERS"
-    all = "ALL"
+# class ChatModeEnum(str, Enum):
+#     disable = "DISABLE"
+#     players = "PLAYERS"
+#     all = "ALL"
 
 
 class TableParams(BaseModel):
     table_name: str | None = None
-    table_type: TableTypeEnum
+    table_type: str | None = None #TableTypeEnum
     table_seats: int = Field(ge=2, le=9)
-    game_type: GameTypeEnum
+    game_type: str | None = None #GameTypeEnum
     game_subtype: str | None = None #GameSubtypeEnum
     # props: TableProps | None = None
     buyin_min: float | None = None
@@ -83,7 +83,7 @@ class TableParams(BaseModel):
     disable_pc: bool | None = None
     email_restriction: bool | None = None
     access_manual: bool | None = None
-    chat_mode: ChatModeEnum | None = None
+    chat_mode: str | None = None
     access_password: Optional[constr(min_length=4, max_length=4)] = None
     access_countries: Optional[List[str]] | None = []
     access_clubs: Optional[List[str]] | None = []
@@ -100,28 +100,28 @@ class TableParams(BaseModel):
     @classmethod
     def check_game_subtype(cls, game_subtype: str, info: ValidationInfo) -> str:
         try:
-            game_type = info.data['game_type'].value
+            game_type = info.data['game_type']
             match game_type:
                 case "NLH":
                     match game_subtype:
                         case "REGULAR" | "AOF" | "3-1" | "6+":
                             return game_subtype
                         case _:
-                            raise ValueError(f'Возможные варианты: REGULAR | AOF | 3-1 | 6+.') #eng | status_code
+                            raise ValueError(f'Possible options: REGULAR | AOF | 3-1 | 6+.') #eng | status_code
                 case "PLO":
                     match game_subtype:
                         case "PLO4" | "PLO5" | "PLO6":
                             return game_subtype
                         case _:
-                            raise ValueError(f'Возможные варианты: PLO4 | PLO5 | PLO6.')
+                            raise ValueError(f'Possible options: PLO4 | PLO5 | PLO6.')
                 case "OFC":
                     match game_subtype:
                         case "DEFAULT":
                             return game_subtype
                         case _:
-                            return ValueError(f'Возможные варианты: DEFAULT.')
+                            return ValueError(f'Possible options: DEFAULT.')
         except KeyError:
-            raise ValueError(f'Отсутствует подходящее значение для game_type')
+            raise ValueError(f'There is no suitable value for game_type')
 
 
 
