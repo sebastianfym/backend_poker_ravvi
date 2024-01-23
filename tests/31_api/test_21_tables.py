@@ -137,9 +137,8 @@ def test_create_table_with_validation(api_client: TestClient, api_guest: UserAcc
         "table_seats": 6,
         "game_type": "NLH",
         "game_subtype": "AOF",
-        "props": {
-            "access_countries": [1, 2, 3]
-        }
+        "access_countries": [1, 2, 3]
+
     }
     error_validate_in_access_countries_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
     assert error_validate_in_access_countries_response.status_code == 422
@@ -150,9 +149,7 @@ def test_create_table_with_validation(api_client: TestClient, api_guest: UserAcc
         "table_seats": 6,
         "game_type": "NLH",
         "game_subtype": "AOF",
-        "props": {
-            "jackpot": 'test'
-        }
+        "jackpot": 'test'
     }
     error_validate_in_boolean_attributes_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
     assert error_validate_in_boolean_attributes_response.status_code == 422
@@ -163,9 +160,7 @@ def test_create_table_with_validation(api_client: TestClient, api_guest: UserAcc
         "table_seats": 6,
         "game_type": "NLH",
         "game_subtype": "AOF",
-        "props": {
-            "blind_level_time": 0
-        }
+        "blind_level_time": 0
     }
     error_validate_in_blind_level_time_attributes_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
     assert error_validate_in_blind_level_time_attributes_response.status_code == 422
@@ -176,9 +171,8 @@ def test_create_table_with_validation(api_client: TestClient, api_guest: UserAcc
         "table_seats": 6,
         "game_type": "NLH",
         "game_subtype": "AOF",
-        "props": {
-            "access_password": "000"
-        }
+        "access_password": "000"
+
     }
     error_validate_in_access_password_attributes_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
     assert error_validate_in_access_password_attributes_response.status_code == 422
