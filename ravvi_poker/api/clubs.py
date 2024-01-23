@@ -190,12 +190,28 @@ async def v1_create_club_table(club_id: int, params: TableParams, session_uuid: 
         account = await db.find_account(user_id=user.id, club_id=club_id)
         if not account or account.user_role != 'O':
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
-        if params.table_type not in ('RG','SNG','MTT'):
+        if params.table_type not in ('RG', 'SNG', 'MTT'):
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid table type")
         kwargs = params.model_dump(exclude_unset=False)
-        table = await db.create_table(club_id=club_id, **kwargs)
-    
-    return TableProfile(**table._asdict())
+        main_parameters = ["club_id", "table_type", "table_name", "table_seats", "game_type", "game_subtype"]
+
+        table_type = kwargs.get('table_type').value
+        table_name = kwargs.get('table_name')
+        table_seats = kwargs.get('table_seats')
+        game_type = kwargs.get('game_type').value
+        game_subtype = kwargs.get('game_subtype')
+
+        kwargs = {key: value for key, value in kwargs.items() if key not in main_parameters}
+
+        table = await db.create_table(club_id=club_id, table_type=table_type, table_name=table_name,
+                                      table_seats=table_seats, game_type=game_type, game_subtype=game_subtype,
+                                      props=kwargs)
+    row_dict = dict(table._asdict())
+    props_dict = row_dict.pop('props', {})
+
+    row_dict.update(props_dict)
+
+    return TableParams(**row_dict)
 
 
 @router.get("/{club_id}/tables", status_code=HTTP_200_OK, summary="Get club tables")
@@ -211,8 +227,12 @@ async def v1_get_club_tables(club_id: int, session_uuid: SessionUUID):
         tables = await db.get_club_tables(club_id=club_id)
     result = []
     for row in tables:
+        row_dict = dict(row._asdict())
+        props_dict = row_dict.pop('props', {})
+
+        row_dict.update(props_dict)
         try:
-            entry = TableProfile(**row._asdict())
+            entry = TableParams(**row_dict)# TableParams(**row_dict)
             result.append(entry)
         except Exception as ex:
             pass
