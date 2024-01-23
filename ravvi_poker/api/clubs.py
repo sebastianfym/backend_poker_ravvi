@@ -211,7 +211,7 @@ async def v1_create_club_table(club_id: int, params: TableParams, session_uuid: 
 
     row_dict.update(props_dict)
 
-    return TableProfile(**row_dict) #TableParams(**row_dict)
+    return TableProfile(**row_dict)
 
 
 @router.get("/{club_id}/tables", status_code=HTTP_200_OK, summary="Get club tables")
@@ -232,7 +232,7 @@ async def v1_get_club_tables(club_id: int, session_uuid: SessionUUID):
 
         row_dict.update(props_dict)
         try:
-            entry = TableProfile(**row_dict)#TableParams(**row_dict) #TableProfile(**row_dict)#
+            entry = TableProfile(**row_dict)
             result.append(entry)
         except Exception as ex:
             pass

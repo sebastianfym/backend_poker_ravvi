@@ -1,3 +1,4 @@
+import datetime
 from enum import Enum
 from typing import Any, Optional, List
 
@@ -147,9 +148,13 @@ class TableParams(BaseModel):
     access_clubs: Optional[List[str]] | None = []
     access_unions: Optional[List[str]] | None = []
 
-
-
+    players_count: int | None = None
+    viewers_count: int | None = None
+    created: Optional[datetime.datetime] = None
+    opened: Optional[datetime.datetime] = None
+    closed: Optional[datetime.datetime] = None
     @field_validator('game_subtype')
+
     @classmethod
     def check_game_subtype(cls, game_subtype: str, info: ValidationInfo) -> str:
 
