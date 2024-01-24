@@ -63,7 +63,7 @@ async def v1_get_countries(session_uuid: SessionUUID, language: str):
 
     try:
 
-        relative_path = f'engine/localization/{file_name}.json'
+        relative_path = f'engine/data/{file_name}.json'
         absolute_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', relative_path))
 
         with open(absolute_path, 'r') as countries_file:
