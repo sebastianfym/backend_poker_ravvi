@@ -23,7 +23,7 @@ class TableParams(BaseModel):
     table_seats: int = Field(ge=2, le=9)
     game_type: str | None = None
     game_subtype: str | None = None
-    # props: TableProps | None = None
+    
     buyin_min: float | None = None
     buyin_max: float | None = None
     buyin_cost: float | None = None
@@ -100,7 +100,6 @@ class TableParams(BaseModel):
     @field_validator('game_type')
     @classmethod
     def check_game_type(cls, game_type: str, info: ValidationInfo) -> str:
-        print(f'game_type: {game_type}')
         try:
             match game_type:
                 case "NLH":
@@ -117,10 +116,8 @@ class TableParams(BaseModel):
     @field_validator('game_subtype')
     @classmethod
     def check_game_subtype(cls, game_subtype: str, info: ValidationInfo) -> str:
-        try: #falsh = rg & spin: rg (exclude AOF)
+        try: 
             game_type = info.data['game_type']
-            # table_type = info.data['table_type']
-            # print(table_type)
             match game_type:
                 case "NLH":
                     match game_subtype:
