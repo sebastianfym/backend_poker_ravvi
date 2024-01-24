@@ -328,7 +328,7 @@ class Table:
         self.log.info("%s", self.status)
         while self.status == TableStatus.OPEN:
             await self.sleep(self.NEW_GAME_DELAY)
-            self.log.info("try start game")
+            #self.log.info("try start game")
             await self.run_game()
             async with self.lock:
                 async with self.DBI() as db:
