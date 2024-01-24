@@ -48,8 +48,7 @@ class TableParams(BaseModel):
     bombpot_min: int | None = None
     bombpot_max: int | None = None
     bombpot_double_board: bool | None = None
-    seven_deuce: bool | None = None
-    each_prize: int | None = None
+    seven_deuce: int | None = None
     hi_low: bool | None = None
 
     vpip_level: int | None = None
