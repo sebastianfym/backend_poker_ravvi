@@ -137,7 +137,7 @@ def test_create_table_with_validation(api_client: TestClient, api_guest: UserAcc
         "table_seats": 6,
         "game_type": "NLH",
         "game_subtype": "AOF",
-        "access_countries": [1, 2, 3]
+        "deny_countries": [1, 2, 3]
 
     }
     error_validate_in_access_countries_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
