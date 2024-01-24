@@ -1,5 +1,4 @@
 import datetime
-from enum import Enum
 from typing import Any, Optional, List
 
 from fastapi import APIRouter
@@ -18,30 +17,12 @@ manager = TablesManager()
 router = APIRouter(prefix="/tables", tags=["tables"])
 
 
-# class TableTypeEnum(str, Enum): falsh = rg & spin: rg (exclude AOF)
-#     rg = "RG"
-#     sng = "SNG"
-#     mtt = "MTT"
-#
-#
-# class GameTypeEnum(str, Enum):
-#     nlh = "NLH"
-#     plo = "PLO"
-#     ofc = "OFC"
-
-
-# class ChatModeEnum(str, Enum):
-#     disable = "DISABLE"
-#     players = "PLAYERS"
-#     all = "ALL"
-
-
 class TableParams(BaseModel):
     table_name: str | None = None
-    table_type: str | None = None #TableTypeEnum
+    table_type: str | None = None
     table_seats: int = Field(ge=2, le=9)
-    game_type: str | None = None #GameTypeEnum
-    game_subtype: str | None = None #GameSubtypeEnum
+    game_type: str | None = None
+    game_subtype: str | None = None
     # props: TableProps | None = None
     buyin_min: float | None = None
     buyin_max: float | None = None
@@ -56,7 +37,7 @@ class TableParams(BaseModel):
     addon_level: int | None = None
     blind_value: float | None = None
     blind_schedule: str | None = None
-    blind_level_time: Optional[int] = Field(default=None, ge=1)#int | None = None
+    blind_level_time: Optional[int] = Field(default=None, ge=1)
 
     jackpot: bool | None = None
     ante: float | None = None
@@ -98,7 +79,7 @@ class TableParams(BaseModel):
 
     @field_validator('table_type')
     @classmethod
-    def check_table_type(cls, table_type: str) -> str:
+    def check_table_type(cls, table_type: str, info: ValidationInfo) -> str:
         try:
             match table_type:
                 case "RG":
@@ -118,7 +99,8 @@ class TableParams(BaseModel):
 
     @field_validator('game_type')
     @classmethod
-    def check_game_subtype(cls, game_type: str) -> str:
+    def check_game_type(cls, game_type: str, info: ValidationInfo) -> str:
+        print(f'game_type: {game_type}')
         try:
             match game_type:
                 case "NLH":
