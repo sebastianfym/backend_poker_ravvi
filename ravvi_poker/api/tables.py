@@ -18,7 +18,7 @@ manager = TablesManager()
 router = APIRouter(prefix="/tables", tags=["tables"])
 
 
-# class TableTypeEnum(str, Enum):
+# class TableTypeEnum(str, Enum): falsh = rg & spin: rg (exclude AOF)
 #     rg = "RG"
 #     sng = "SNG"
 #     mtt = "MTT"
@@ -96,11 +96,49 @@ class TableParams(BaseModel):
     closed: Optional[datetime.datetime] = None
     prize_fund: int | None = None
 
+    @field_validator('table_type')
+    @classmethod
+    def check_table_type(cls, table_type: str) -> str:
+        try:
+            match table_type:
+                case "RG":
+                    return table_type
+                case "SNG":
+                    return table_type
+                case "MTT":
+                    return table_type
+                case "FLASH":
+                    return table_type
+                case "SPIN":
+                    return table_type
+                case _:
+                    raise ValueError(f'Possible options: RG | SNG | MTT')
+        except KeyError:
+            raise ValueError(f'There is no suitable value for table_type')
+
+    @field_validator('game_type')
+    @classmethod
+    def check_game_subtype(cls, game_type: str) -> str:
+        try:
+            match game_type:
+                case "NLH":
+                    return game_type
+                case "PLO":
+                    return game_type
+                case "OFC":
+                    return game_type
+                case _:
+                    raise ValueError(f'Possible options: NLH | PLO | OFC')
+        except KeyError:
+            raise ValueError(f'There is no suitable value for game_type')
+
     @field_validator('game_subtype')
     @classmethod
     def check_game_subtype(cls, game_subtype: str, info: ValidationInfo) -> str:
-        try:
+        try: #falsh = rg & spin: rg (exclude AOF)
             game_type = info.data['game_type']
+            # table_type = info.data['table_type']
+            # print(table_type)
             match game_type:
                 case "NLH":
                     match game_subtype:
@@ -121,7 +159,7 @@ class TableParams(BaseModel):
                         case _:
                             return ValueError(f'Possible options: DEFAULT.')
         except KeyError:
-            raise ValueError(f'There is no suitable value for game_type')
+            raise ValueError(f'There is no suitable value for game_subtype')
 
 
 

@@ -195,10 +195,10 @@ async def v1_create_club_table(club_id: int, params: TableParams, session_uuid: 
         kwargs = params.model_dump(exclude_unset=False)
         main_parameters = ["club_id", "table_type", "table_name", "table_seats", "game_type", "game_subtype"]
 
-        table_type = kwargs.get('table_type').value
+        table_type = kwargs.get('table_type')#.value
         table_name = kwargs.get('table_name')
         table_seats = kwargs.get('table_seats')
-        game_type = kwargs.get('game_type').value
+        game_type = kwargs.get('game_type')#.value
         game_subtype = kwargs.get('game_subtype')
 
         kwargs = {key: value for key, value in kwargs.items() if key not in main_parameters}
