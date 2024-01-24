@@ -6,6 +6,8 @@ from fastapi.testclient import TestClient
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_401_UNAUTHORIZED
 from ravvi_poker.api.auth import UserAccessProfile
 
+from ravvi_poker.engine import data
+
 logger = logging.getLogger(__name__)
 
 
@@ -59,6 +61,9 @@ def test_get_levels_schedule(api_client: TestClient, api_guest: UserAccessProfil
 #     assert response.json() == payment_structure_list
 
 def test_countries_list(api_client: TestClient, api_guest: UserAccessProfile):
+
+    data.getJSONFiles()
+
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
 
     response = api_client.get("/v1/info/countries/ru/")
