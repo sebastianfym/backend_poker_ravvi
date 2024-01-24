@@ -44,11 +44,10 @@ class TableParams(BaseModel):
     ante_up: bool | None = None
     ante: float | None = None
     double_board: bool | None = None
-    bomb_pot: bool | None = None
-    every_hand: int | None = None
-    bomb_pot_ante_min: int | None = None
-    bomb_pot_ante_max: int | None = None
-    bomb_pot_triggers_double_board: bool | None = None
+    bombpot_freq: int | None = None
+    bombpot_min: int | None = None
+    bombpot_max: int | None = None
+    bombpot_double_board: bool | None = None
     seven_deuce: bool | None = None
     each_prize: int | None = None
     hi_low: bool | None = None
@@ -66,9 +65,9 @@ class TableParams(BaseModel):
     access_manual: bool | None = None
     chat_mode: str | None = None
     access_password: Optional[constr(min_length=4, max_length=4)] = None
-    access_countries: Optional[List[str]] | None = []
-    access_clubs: Optional[List[str]] | None = []
-    access_unions: Optional[List[str]] | None = []
+    deny_countries: Optional[List[str]] | None = []
+    deny_clubs: Optional[List[str]] | None = []
+    deny_unions: Optional[List[str]] | None = []
 
     players_count: int | None = None
     viewers_count: int | None = None
