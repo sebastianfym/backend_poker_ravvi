@@ -147,7 +147,6 @@ class Table:
 
     def get_table_info(self, user_id):
         users_info = {u.id: u.get_info() for u in self.seats if u is not None}
-        # table_name
         result = dict(
             table_id=self.table_id,
             table_name=self.table_name,
@@ -158,9 +157,6 @@ class Table:
 
         game_info: dict = {}
         try:
-            # game_id
-            # game_type
-            # game_subtype
             game_info = self.game.get_info(user_id=user_id, users_info=users_info)
         except AttributeError:
             from ..game import Game

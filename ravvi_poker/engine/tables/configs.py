@@ -41,7 +41,7 @@ class TableSafety(TableConfigParams):
         self.disable_pc = disable_pc
         self.email_restriction = email_restriction
         self.captcha = captcha
-        # TODO фактически отсутствует
+        # TODO фактически отсутствует - бекэнд
         self.view_during_move = view_during_move
 
         logger.debug(f"table {self.cls_as_config_name()} initialized with {self.unpack_for_debug()}")
@@ -57,6 +57,7 @@ class TableGameModesConfig(TableConfigParams):
                  bomb_pot: bool | None = None, every_hand: int | None = None, bomb_pot_ante_min: int | None = None,
                  bomb_pot_ante_max: int | None = None, bomb_pot_triggers_double_board: bool | None = None,
                  seven_deuce: bool | None = None, each_prize: int | None = None, hi_low: bool | None = None,
+                 ofc_joker: bool | None = None,
                  **kwargs):
         from ravvi_poker.engine.poker.plo import Poker_PLO_X
 
@@ -80,8 +81,12 @@ class TableGameModesConfig(TableConfigParams):
         self.seven_deuce = seven_deuce
         self.each_prize = each_prize
 
-        if game_type.strip() == Poker_PLO_X.GAME_TYPE:
+        self.hi_low = None
+        if game_type == Poker_PLO_X.GAME_TYPE:
             self.hi_low = hi_low
+
+        self.ofc_joker = ofc_joker
+        if game_type == P
 
         logger.debug(f"table {self.cls_as_config_name()} initialized with {self.unpack_for_debug()}")
 
@@ -109,7 +114,7 @@ class TableRestrictionGameConfig(TableConfigParams):
 class TableRestrictionAccessConfig(TableConfigParams):
     def __init__(self, chat_mode: str | None = None, **kwargs):
         super().__init__()
-        # TODO фактически отсутсвует
+        # TODO ожидается добавление
         self.chat_mode = None
 
     @staticmethod
@@ -121,10 +126,11 @@ class TableAdvancedConfig(TableConfigParams):
     def __init__(self, run_multi_times: int | None = None, ev_chop: bool | None = None, ratholing: int | None = None,
                  withdrawals: bool | None = None, **kwargs):
         super().__init__()
-        # TODO фактически отсутсвуют
+        # TODO фактически отсутсвуют - бекэнд
         self.run_multi_times = run_multi_times
         self.ev_chop = ev_chop
         self.ratholing = ratholing
+        # TODO ожидается добавление
         self.chips_out = withdrawals
 
     @staticmethod
