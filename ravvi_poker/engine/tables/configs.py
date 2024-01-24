@@ -78,10 +78,8 @@ class TableGameModesConfig(TableConfigParams):
             }
 
         self.seven_deuce = seven_deuce
-        # TODO уточнить нужно ли это Максиму
         self.each_prize = each_prize
 
-        # TODO уточнить нужно ли это Максиму
         if game_type.strip() == Poker_PLO_X.GAME_TYPE:
             self.hi_low = hi_low
 
@@ -99,7 +97,6 @@ class TableRestrictionGameConfig(TableConfigParams):
         self.vpip_level = vpip_level
         self.hand_threshold = hand_threshold
         self.call_time = call_time
-        # TODO уточнить нужно ли это Максиму
         self.call_time_type = call_time_type
 
         logger.debug(f"table {self.cls_as_config_name()} initialized with {self.unpack_for_debug()}")
