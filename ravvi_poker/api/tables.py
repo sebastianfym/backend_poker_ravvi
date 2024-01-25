@@ -59,9 +59,9 @@ class TableParams(BaseModel):
     action_time: int | None = None
     club_fee: int | None = None
     club_fee_cap: int | None = None
-    auto_start: int | None  = None
-    run_multi_times: bool | None  = None
-    ratholing: Optional[int] = Field(ge=0, le=12)
+    auto_start: int | None = None
+    run_multi_times: bool | None = None
+    ratholing: int | None = None
     withdrawals: bool | None = None
     auto_clone: bool | None = None
     players_required: int | None = None
@@ -147,6 +147,16 @@ class TableParams(BaseModel):
                             return ValueError(f'Possible options: DEFAULT.')
         except KeyError:
             raise ValueError(f'There is no suitable value for game_subtype')
+
+    @field_validator("ratholing")
+    @classmethod
+    def check_ratholing(cls, ratholing: int) -> int:
+        if ratholing:
+            if 0 < ratholing <= 12:
+                return ratholing
+            else:
+                raise ValueError(f'Invalid ratholing, must be between 0 and 12')
+
 
 
 
