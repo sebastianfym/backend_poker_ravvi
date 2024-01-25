@@ -152,7 +152,7 @@ class TableParams(BaseModel):
     @classmethod
     def check_ratholing(cls, ratholing: int) -> int:
         if ratholing:
-            if 0 < ratholing <= 12:
+            if 0 <= ratholing <= 12:
                 return ratholing
             else:
                 raise ValueError(f'Invalid ratholing, must be between 0 and 12')
