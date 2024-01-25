@@ -81,7 +81,9 @@ class Table_SNG(Table):
             await self.sleep(1)
             total_seconds = self.time_counter.total_seconds
             level_seconds = self.level_time * 60
+            level_passed = total_seconds % level_seconds
             idx = min(int(self.time_counter.total_seconds / level_seconds), len(self.levels) - 1)
+            self.log.info('LEVELS: %s - %s/%s', idx, level_passed, level_seconds)
             if idx == self.level_current_idx:
                 # пока ничего не изменилось
                 continue
@@ -95,6 +97,7 @@ class Table_SNG(Table):
                 now = self.time_counter._now()
                 reminder = level_seconds - total_seconds % level_seconds
                 self.level_end = now + timedelta(seconds=reminder)
+                self.log.info('NEXT LEVEL: %s (%s)', self.level_next, reminder)
             else:
                 # следующего уровня больше нет
                 reminder = None
@@ -102,7 +105,7 @@ class Table_SNG(Table):
                 self.level_end = None
 
             async with self.DBI() as db:
-                self.broadcast_TABLE_NEXT_LEVEL_INFO(
+                await self.broadcast_TABLE_NEXT_LEVEL_INFO(
                     db, 
                     seconds = reminder, 
                     blind_small = self.level_next.blind_small if self.level_next else None, 
