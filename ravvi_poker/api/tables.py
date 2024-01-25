@@ -57,13 +57,15 @@ class TableParams(BaseModel):
     call_time_type: str | None = None
     online_players: int | None = None
     action_time: int | None = None
-    fee: int | None = None
-    cap: int | None = None
+    club_fee: int | None = None
+    club_fee_cap: int | None = None
     auto_start: int | None  = None
     run_multi_times: bool | None  = None
     ratholing: int = Field(ge=0, le=12)
     withdrawals: bool | None = None
     auto_clone: bool | None = None
+    players_required: int | None = None
+    prize_structure: str | None = None
 
     gps: bool | None = None
     ip: bool | None = None
