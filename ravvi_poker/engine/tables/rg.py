@@ -6,10 +6,24 @@ from .base import Table, DBI
 class Table_RG(Table):
     TABLE_TYPE = "RG"
 
-    def parse_props(self, buyin_min=100, buyin_max=None, bet_timeout=15, **kwargs):
+    def parse_props(self, buyin_min=100, buyin_max=None, bet_timeout=15, blind_value: float = 0.01,
+                    ante_up: bool | None = None, **kwargs):
         self.buyin_min = buyin_min
         self.buyin_max = buyin_max
-        self.game_props.update(bet_timeout=bet_timeout)
+        self.game_props.update(bet_timeout=bet_timeout, blind_value=blind_value,
+                               ante_up=ante_up)
+        self.game_props.update(ante_levels=self.calc_rg_ante_levels())
+
+    def calc_rg_ante_levels(self) -> list:
+        if self.game_props["ante_up"]:
+            if self.game_props["blind_value"] == 0.02:
+                return [0.01, 0.02]
+            elif self.game_props["blind_value"] in [0.03, 0.04]:
+                return [0.01, 0.02, 0.03]
+            else:
+                return [round(self.game_props["blind_value"] * 2 * multiplier, 2) for multiplier in [0.2, 0.3, 0.4, 0.5]]
+        else:
+            return []
 
     @property
     def user_enter_enabled(self):
@@ -30,7 +44,7 @@ class Table_RG(Table):
         # TODO: точность и округление
         new_account_balance = float(account.balance) - buyin
         self.log.info("user %s buyin %s -> balance %s", user.id, buyin, new_account_balance)
-        #if new_balance < 0:
+        # if new_balance < 0:
         #    return False
         await db.create_account_txn(user.account_id, "BUYIN", -buyin)
         user.balance = buyin

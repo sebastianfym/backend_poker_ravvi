@@ -52,7 +52,7 @@ class TableSafety(TableConfigParams):
 
 
 class TableGameModesConfig(TableConfigParams):
-    def __init__(self, game_type: str, jackpot: bool | None = None, ante_up: bool | None = None,
+    def __init__(self, game_type: str, game_subtype: str, jackpot: bool | None = None, ante_up: bool | None = None,
                  double_board: bool | None = None,
                  bomb_pot: bool | None = None, every_hand: int | None = None, bomb_pot_ante_min: int | None = None,
                  bomb_pot_ante_max: int | None = None, bomb_pot_triggers_double_board: bool | None = None,
@@ -60,6 +60,7 @@ class TableGameModesConfig(TableConfigParams):
                  ofc_joker: bool | None = None,
                  **kwargs):
         from ravvi_poker.engine.poker.plo import Poker_PLO_X
+        from ravvi_poker.engine.poker.ofc import Poker_OFC_X, Poker_OFC_Limited
 
         super().__init__()
         self.jackpot = jackpot
@@ -85,8 +86,9 @@ class TableGameModesConfig(TableConfigParams):
         if game_type == Poker_PLO_X.GAME_TYPE:
             self.hi_low = hi_low
 
-        self.ofc_joker = ofc_joker
-        if game_type == P
+        self.ofc_joker = None
+        if game_type == Poker_OFC_X.GAME_TYPE and game_subtype == Poker_OFC_Limited.GAME_SUBTYPE:
+            self.ofc_joker = ofc_joker
 
         logger.debug(f"table {self.cls_as_config_name()} initialized with {self.unpack_for_debug()}")
 

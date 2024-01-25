@@ -47,7 +47,8 @@ class Table:
 
         # инициализируем настройки стола
         for configCl in configCls:
-            self.__dict__[configCl.cls_as_config_name()] = configCl(**props, game_type=game_type)
+            self.__dict__[configCl.cls_as_config_name()] = configCl(**props, game_type=game_type,
+                                                                    game_subtype=game_subtype)
 
     def parse_props(self, **kwargs):
         pass
@@ -155,18 +156,16 @@ class Table:
             seats=[None if u is None else u.id for u in self.seats],
         )
 
-        game_info: dict = {}
-        try:
+        if self.game:
             game_info = self.game.get_info(user_id=user_id, users_info=users_info)
-        except AttributeError:
+        else:
             from ..game import Game
 
             # игра еще не началась
             game_info = Game.get_info_before_game_start(table=self, users_info=users_info)
-        finally:
-            result["game_props"] = game_info
 
-        result.update(users=list(users_info.values()))
+        result |= game_info
+
         return result
 
     async def handle_cmd(self, db, *, cmd_id: int, cmd_type: int, client_id: int, user_id: int, props: dict):
