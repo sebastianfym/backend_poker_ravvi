@@ -53,6 +53,7 @@ namespaces = false
 [tool.setuptools.package-data]
 "ravvi_poker.db.schema" = ["*.sql"]
 "ravvi_poker.db.deploy" = ["*.sql"]
+"ravvi_poker.engine.data" = ["*.json"]
 
 [tool.setuptools.dynamic]
 version = {attr = "ravvi_poker.build.version"}
