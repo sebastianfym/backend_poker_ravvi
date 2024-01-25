@@ -47,32 +47,31 @@ class Game:
     def game_props(self):
         return None
 
-    def get_info(self, users_info: dict) -> dict:
-        return self.get_info_before_game_start(self.table, users_info)
+    def get_info(self, users_info: dict, user_id: int = None) -> dict:
+        return self.get_info_before_game_start(users_info, self.game_id, self.game_type, self.game_subtype,
+                                               self.players, self.dealer_id)
 
     @staticmethod
-    def get_info_before_game_start(table: Table, users_info: dict) -> dict:
+    def get_info_before_game_start(users_info: dict, game_id: int | None = None, game_type: str | None = None,
+                                   game_subtype: str | None = None, players: list | None = None,
+                                   dealer_id: int | None = None) -> dict:
         info = dict(
-            game_id=None,
-            game_type=table.game_type,
-            game_subtype=table.game_subtype,
+            game_id=game_id,
+            game_type=game_type,
+            game_subtype=game_subtype,
             users=list(users_info.values()),
-            players=list(users_info.keys()),
-            blinds={
-                "blind_small": table.game_props["blind_value"],
-                "blind_big": table.game_props["blind_value"] * 2,
-            }
+            players=[x.user_id for x in players] if players is not None else [],
+            dealer_id=dealer_id,
         )
+
+        # TODO перенести
         # добавляем анте
-        if table.game_props["ante_up"]:
-            info |= {
-                "ante": table.game_props["ante_levels"],
-                "current_ante": table.game_props["ante_levels"][0]
-            }
-        # добавляем данные из конфиг классов
-        for configCl in configCls:
-            if len(config_dict_for_add := table.__dict__[configCl.cls_as_config_name()].unpack_for_msg()) != 0:
-                info |= config_dict_for_add
+        # if table.game_props["ante_up"]:
+        #     info |= {
+        #         "ante": table.game_props["ante_levels"],
+        #         "current_ante": table.game_props["ante_levels"][0]
+        #     }
+
         return info
 
     # CARDS

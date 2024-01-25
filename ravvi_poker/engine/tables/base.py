@@ -157,14 +157,27 @@ class Table:
         )
 
         if self.game:
-            game_info = self.game.get_info(user_id=user_id, users_info=users_info)
+            game_info = self.game.get_info(users_info=users_info)
         else:
             from ..game import Game
 
             # игра еще не началась
-            game_info = Game.get_info_before_game_start(table=self, users_info=users_info)
+            game_info = Game.get_info_before_game_start(users_info=users_info)
 
         result |= game_info
+
+        # добавляем блайнды
+        result |= {
+            "blinds": {
+                "blind_small": self.game_props["blind_value"],
+                "blind_big": self.game_props["blind_value"] * 2,
+            }
+        }
+
+        # добавляем данные из конфиг классов
+        for configCl in configCls:
+            if len(config_dict_for_add := self.__dict__[configCl.cls_as_config_name()].unpack_for_msg()) != 0:
+                result |= config_dict_for_add
 
         return result
 

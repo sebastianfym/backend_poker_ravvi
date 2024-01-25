@@ -52,11 +52,30 @@ class X_Table(Table):
         check_func_args(cls.user_factory, Table.user_factory)
         check_func_args(cls.game_factory, Table.game_factory)
 
-    def __init__(self, id, buyin_value):
-        super().__init__(id, table_seats=9, club_id=0)
+    def __init__(self, id, table_name, buyin_value, game_props=None, props=None):
+        # если не были переданы свойства - замокаем необходимые
+        if props is None:
+            props = self.mock_necessary_table_props()
+
+        super().__init__(id, table_name, table_seats=9, club_id=0, props=props)
+
+        if game_props is None:
+            self.game_props = self.mock_necessary_game_props()
+
         self._user_enter_enabled = True
         self._user_exit_enabled = True
         self.buyin_value = buyin_value
+
+    def mock_necessary_table_props(self) -> dict:
+        return {
+            "ip": None
+        }
+
+    def mock_necessary_game_props(self) -> dict:
+        return {
+            "blind_value": 10.0,
+            "ante_up": None
+        }
 
     @property
     def user_enter_enabled(self):
