@@ -65,7 +65,7 @@ class TableParams(BaseModel):
     withdrawals: bool | None = None
     auto_clone: bool | None = None
     players_required: int | None = None
-    prize_structure: str | None = None
+    rewards_structure: str | None = None
 
     gps: bool | None = None
     ip: bool | None = None
