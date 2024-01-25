@@ -56,6 +56,13 @@ class TableParams(BaseModel):
     call_time: int | None = None
     call_time_type: str | None = None
     online_players: int | None = None
+    action_time: int | None = None
+    fee: int | None = None
+    cap: int | None = None
+    auto_start: int | None  = None
+    run_multi_times: bool | None  = None
+    ratholing: int = Field(ge=0, le=12)
+    withdrawals: bool | None = None
 
     gps: bool | None = None
     ip: bool | None = None
