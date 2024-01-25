@@ -27,14 +27,6 @@ async def test_case(game_case):
     X_Game.GAME_TYPE = 'TEST'
     X_Game.GAME_SUBTYPE = 'TEST'
 
-    table_mock = AsyncMock()
-    table_mock.game_type = X_Game.GAME_TYPE
-    table_mock.game_subtype = X_Game.GAME_SUBTYPE
-    table_mock.game_props = {"blind_value": 1, "ante": 5, "current_ante": 10, "ante_up": False}
-    user_mock = MagicMock()
-    user_mock.id = 5
-    user_mock.get_info.return_value = {"id": 1, "name": "TestName"}
-    table_mock.seats = [user_mock]
-    game = X_Game(table_mock, **kwargs)
+    game = X_Game(None, **kwargs)
     await game.run()
     assert not game._check_steps

@@ -102,7 +102,7 @@ class Game:
     # MSG
 
     async def broadcast_GAME_BEGIN(self, db):
-        users_info = {u.id: u.get_info() for u in self.table.seats if u is not None}
+        users_info = {u.id: u.user.get_info() for u in self.players}
         game_info = self.get_info(users_info)
         msg = Message(msg_type=Message.Type.GAME_BEGIN, **game_info)
         await self.emit_msg(db, msg)
