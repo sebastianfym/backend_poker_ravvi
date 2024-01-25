@@ -48,13 +48,12 @@ class Game:
         return None
 
     def get_info(self, users_info: dict, user_id: int = None) -> dict:
-        return self.get_info_before_game_start(users_info, self.game_id, self.game_type, self.game_subtype,
+        return self.get_info_before_game_start(users_info, self.game_type, self.game_subtype, self.game_id,
                                                self.players, self.dealer_id)
 
     @staticmethod
-    def get_info_before_game_start(users_info: dict, game_id: int | None = None, game_type: str | None = None,
-                                   game_subtype: str | None = None, players: list | None = None,
-                                   dealer_id: int | None = None) -> dict:
+    def get_info_before_game_start(users_info: dict, game_type: str, game_subtype: str, game_id: int | None = None,
+                                   players: list | None = None, dealer_id: int | None = None) -> dict:
         info = dict(
             game_id=game_id,
             game_type=game_type,

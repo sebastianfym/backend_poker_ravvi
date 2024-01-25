@@ -162,7 +162,8 @@ class Table:
             from ..game import Game
 
             # игра еще не началась
-            game_info = Game.get_info_before_game_start(users_info=users_info)
+            game_info = Game.get_info_before_game_start(users_info=users_info, game_type=self.game_type,
+                                                        game_subtype=self.game_subtype)
 
         result |= game_info
 
