@@ -126,6 +126,7 @@ class TablesManager(DBI_Listener):
         elif row.table_type == "SNG":
             return Table_SNG(**kwargs)
         self.log.error("table %s unknown table_type=%s", row.id, row.table_type)
+        
 
     async def start_table(self, row):
         self.log.info("handle_table_start: %s", row.id)

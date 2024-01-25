@@ -290,6 +290,12 @@ class Table:
     async def run_table_wrapper(self):
         self.log.info("begin")
         try:
+            # обновление статуса стола в базе
+            async with self.lock:
+                if self.status < TableStatus.OPEN:
+                    self.status = TableStatus.OPEN
+                    async with self.DBI() as db:
+                        await db.update_table_status(self.table_id, self.status)
             # запуск основной логики стола
             await self.run_table()
         except Exception as ex:
@@ -305,7 +311,7 @@ class Table:
             try:
                 async with self.DBI() as db:
                     await self.broadcast_TABLE_CLOSED(db)
-                    await self.remove_users(db, force=True)
+                    await self.remove_users(db, force=True, diconnect=True)
                     if self.status == TableStatus.CLOSED:
                         await db.close_table(self.table_id)
                     else:
@@ -319,14 +325,10 @@ class Table:
         await asyncio.sleep(delay)
 
     async def run_table(self):
-        async with self.lock:
-            if self.status < TableStatus.OPEN:
-                self.status = TableStatus.OPEN
-                async with self.DBI() as db:
-                    await db.update_table_status(self.table_id, self.status)
         self.log.info("%s", self.status)
         while self.status == TableStatus.OPEN:
             await self.sleep(self.NEW_GAME_DELAY)
+            #self.log.info("try start game")
             await self.run_game()
             async with self.lock:
                 async with self.DBI() as db:
@@ -375,7 +377,7 @@ class Table:
         async with self.DBI() as db:
             await db.close_game(self.game.game_id, players=users)
 
-    async def remove_users(self, db, force=False):
+    async def remove_users(self, db, *, force=False, diconnect=False, broadcast=True):
         # remove users based on user_can_stay return
         for seat_idx, user in enumerate(self.seats):
             if not user:
@@ -384,8 +386,11 @@ class Table:
                 continue
             self.seats[seat_idx] = None
             await self.on_player_exit(db, user, seat_idx)
-            await self.broadcast_PLAYER_EXIT(db, user.id)
             self.log.info("user %s removed, seat %s available", user.id, seat_idx)
+            if broadcast:
+                await self.broadcast_PLAYER_EXIT(db, user.id)
+            if diconnect:
+                user.clients.clear()
             if not user.connected:
                 await self.on_user_leave(db, user)
                 del self.users[user.id]

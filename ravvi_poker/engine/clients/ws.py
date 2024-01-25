@@ -32,7 +32,7 @@ class ClientWS(ClientQueue):
 
     async def on_shutdown(self):
         if self.is_connected:
-            self.ws.close()
+            await self.ws.close()
 
     async def recv_commands(self):
         self.log.info('recv_commands: ...')
@@ -46,6 +46,4 @@ class ClientWS(ClientQueue):
         except Exception as ex:
             self.log.exception(" %s: %s", self.user_id, ex)
         finally:
-            if self.is_connected:
-                await self.ws.close()
             await super().on_shutdown()
