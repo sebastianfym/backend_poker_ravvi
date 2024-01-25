@@ -89,6 +89,24 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_c
     #response = client.delete(f"/v1/clubs/{club2['id']}", headers=headers)
     #assert response.status_code == 204
 
+    #create and get clubs tables
+
+    params = {
+        "table_name": "TEST",
+        "table_type": "RG",
+        "table_seats": 6,
+        "game_type": "NLH",
+        "game_subtype": "REGULAR"
+    }
+    response = api_client.post(f"/v1/clubs/{club1.id}/tables", json=params)
+    assert response.status_code == 201
+
+    response = api_client.get(f"/v1/clubs/{club1.id}/tables")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list) is True
+    assert response.json() != []
+
+
 
 def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient, api_guest_2: UserAccessProfile):
     # set headers
