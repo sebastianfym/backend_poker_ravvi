@@ -63,6 +63,7 @@ class TableParams(BaseModel):
     run_multi_times: bool | None  = None
     ratholing: int = Field(ge=0, le=12)
     withdrawals: bool | None = None
+    auto_clone: bool | None = None
 
     gps: bool | None = None
     ip: bool | None = None
