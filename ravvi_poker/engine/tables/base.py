@@ -342,7 +342,7 @@ class Table:
             try:
                 async with self.DBI() as db:
                     await self.broadcast_TABLE_CLOSED(db)
-                    await self.remove_users(db, force=True, diconnect=True)
+                    await self.remove_users(db, force=True, disconnect=True)
                     if self.status == TableStatus.CLOSED:
                         await db.close_table(self.table_id)
                     else:
@@ -408,7 +408,7 @@ class Table:
         async with self.DBI() as db:
             await db.close_game(self.game.game_id, players=users)
 
-    async def remove_users(self, db, *, force=False, diconnect=False, broadcast=True):
+    async def remove_users(self, db, *, force=False, disconnect=False, broadcast=True):
         # remove users based on user_can_stay return
         for seat_idx, user in enumerate(self.seats):
             if not user:
@@ -420,7 +420,7 @@ class Table:
             self.log.info("user %s removed, seat %s available", user.id, seat_idx)
             if broadcast:
                 await self.broadcast_PLAYER_EXIT(db, user.id)
-            if diconnect:
+            if disconnect:
                 user.clients.clear()
             if not user.connected:
                 await self.on_user_leave(db, user)
