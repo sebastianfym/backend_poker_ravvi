@@ -9,7 +9,7 @@
     ],
     "deck": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21],
     "moves": [
-        {"type": "GAME_BEGIN"}, 
+        {"type": "GAME_BEGIN", "banks": [], "bank_total": 0}, 
         {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": [1,5]}, 
         {"type": "PLAYER_CARDS", "user_id": 444, "cards_open": false, "cards": [2,6]}, 
         {"type": "PLAYER_CARDS", "user_id": 777, "cards_open": false, "cards": [3,7]}, 
@@ -38,7 +38,7 @@
         {"type": "PLAYER_CARDS", "user_id": 777, "cards_open": true, "cards": [3,7]}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": [4,8]}, 
 
-        {"type": "GAME_ROUND", "banks": [{"delta": 4000, "amount": 4000}]},
+        {"type": "GAME_ROUND", "banks": [4000], "bank_total": 4000},
 
         {"type": "GAME_CARDS", "cards": ["J♠", "Q♠", "K♠"]}, 
         {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": true, "cards": [1,5]}, 
@@ -46,21 +46,21 @@
         {"type": "PLAYER_CARDS", "user_id": 777, "cards_open": true, "cards": [3,7]}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": [4,8]}, 
 
-        {"type": "GAME_ROUND", "banks": [{"delta": 0, "amount": 4000}]},
+        {"type": "GAME_ROUND", "banks": [4000], "bank_total": 4000},
 
         {"type": "GAME_CARDS", "cards": ["J♠", "Q♠", "K♠", "A♠"]}, 
         {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": true, "cards": [1,5]}, 
         {"type": "PLAYER_CARDS", "user_id": 444, "cards_open": true, "cards": [2,6]}, 
         {"type": "PLAYER_CARDS", "user_id": 777, "cards_open": true, "cards": [3,7]}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": [4,8]}, 
-        {"type": "GAME_ROUND", "banks": [{"delta": 0, "amount": 4000}]},
+        {"type": "GAME_ROUND", "banks": [4000], "bank_total": 4000},
 
         {"type": "GAME_CARDS", "cards": ["J♠", "Q♠", "K♠", "A♠", 14]}, 
         {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": true, "cards": [1,5]}, 
         {"type": "PLAYER_CARDS", "user_id": 444, "cards_open": true, "cards": [2,6]}, 
         {"type": "PLAYER_CARDS", "user_id": 777, "cards_open": true, "cards": [3,7]}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": [4,8]}, 
-        {"type": "GAME_ROUND", "banks": [{"delta": 0, "amount": 4000}]},
+        {"type": "GAME_ROUND", "banks": [4000], "bank_total": 4000},
 
         {"type": "GAME_RESULT"},
         {"type": "GAME_END"}

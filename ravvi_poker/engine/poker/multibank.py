@@ -32,4 +32,5 @@ def get_banks(players: List[Player]):
             banks[i-1] = None
             banks[i] = (p_amount+amount, group)
     banks = [b for b in banks if b]
-    return banks
+    total = sum([b[0] for b in banks])
+    return banks, total
