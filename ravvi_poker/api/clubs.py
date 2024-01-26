@@ -238,3 +238,55 @@ async def v1_get_club_tables(club_id: int, session_uuid: SessionUUID):
             pass
     return result
 
+
+@router.get("/{club_id}/relation_tables/", status_code=HTTP_200_OK, summary="Returns all relationships with other clubs for the club with the ID")
+async def v1_get_relations(club_id: int, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+        # relations = await db.get_club_relations(club_id=club_id) #Todo такой функции в dbi.py нету, название примерное
+        relations = [] #Todo после того, как у нас появятся связи в бд вернуть строку выше, которая будет возвращать список состоящий из союзных клубов
+        return [ClubProfile(
+            id=club.id,
+            name=club.name,
+            description=club.description,
+            image_id=club.image_id
+        ) for club in relations]
+
+@router.get("/{club_id}/relation_tables", status_code=HTTP_200_OK, summary="Returns all relation club and table who has relation for the club with the ID")
+async def v1_get_relation_tables(club_id: int, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+        # relation_tables = await db.get_relation_tables(club_id=club_id)  #Todo такой функции в dbi.py нету, название примерное
+        relations_list = [] #Todo после того, как у нас появятся связи в бд вернуть строку выше, которая будет возвращать список состоящий из союзных клубов и столов относящихся к ним
+
+        test_l = [ #Todo примерная реализация того, как должен будет выглядеть возвращаемый список
+            {"id": 1, "name": "name1", "description": "description1", 'tables': [{"id": 1, "club_id": 1, "name": "club.name"}, {"id": 2, "name": "club.name"}]},
+            {"id": 2, "name": "name2", "description": "description2", 'tables': [{"id": 3, "club_id": 2, "name": "club.name"}, {"id": 4, "name": "club.name"}]},
+        ]
+
+        result_list = []
+
+        for clubs_idx in range(len(test_l)):
+            print(test_l[clubs_idx])
+            relation_club = ClubProfile(
+                    id=test_l[clubs_idx]['id'],
+                    name=test_l[clubs_idx]['name'],
+                    description=test_l[clubs_idx]['description'],
+                    # image_id=club.image_id
+                )
+            result_list.append({"club": relation_club, "tables": []})
+
+            for table in test_l[clubs_idx]['tables']:
+                # result_list
+                result_list[clubs_idx]['tables'].append(table)
+
+        return result_list
+    """
+    Сначала выводим клуб , потом столы
+    """
