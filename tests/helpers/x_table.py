@@ -73,7 +73,8 @@ class X_Table(Table):
 
     def mock_necessary_game_props(self) -> dict:
         return {
-            "blind_value": 10.0,
+            "blind_small": 10.0,
+            "blind_big": 20.0,
             "ante_up": None
         }
 
