@@ -35,7 +35,8 @@ class TableParams(BaseModel):
     addon_cost: float | None = None
     addon_value: int | None = None
     addon_level: int | None = None
-    blind_value: float | None = None
+    blind_small: float | None = None
+    blind_big: float | None = None
     blind_schedule: str | None = None
     blind_level_time: Optional[int] = Field(default=None, ge=1)
 
