@@ -148,6 +148,7 @@ class Table:
 
     def get_table_info(self, user_id):
         users_info = {u.id: u.get_info() for u in self.seats if u is not None}
+        print(self.game_props)
         result = dict(
             table_id=self.table_id,
             table_name=self.table_name,
@@ -159,8 +160,8 @@ class Table:
             # значения полученные при создании (при дублировании в game - имеют меньший приоритет)
             game_type=self.game_type,
             game_subtype=self.game_subtype,
-            blind_small=self.game_props["blind_value"],
-            blind_big=self.game_props["blind_value"] * 2,
+            blind_small=self.game_props["blind_small"],
+            blind_big=self.game_props["blind_big"],
         )
 
         if self.game:

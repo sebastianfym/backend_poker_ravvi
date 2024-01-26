@@ -34,7 +34,8 @@ class PokerBase(Game):
     SLEEP_GAME_END = 4
 
     def __init__(self, table, users: List[User],
-                 *, blind_small=1, blind_big=None, ante=None, bet_timeout=15, **kwargs) -> None:
+                 *, blind_small: float = 0.01, blind_big: float | None = None, ante=None, bet_timeout=15,
+                 **kwargs) -> None:
         super().__init__(table=table, users=users)
         self.log.logger = logger
         self.round = None
@@ -69,6 +70,10 @@ class PokerBase(Game):
 
     def get_info(self, users_info: dict = None, user_id: int = None):
         info = super().get_info()
+        info.update(
+            blind_small=self.blind_small,
+            blind_big=self.blind_big,
+        )
         info.update(
             cards=self.cards if self.cards else [],
         )

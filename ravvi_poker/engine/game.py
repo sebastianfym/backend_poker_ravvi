@@ -54,9 +54,6 @@ class Game:
             game_subtype=self.game_subtype,
             players=[x.user_id for x in self.players] if self.players is not None else [],
             dealer_id=self.dealer_id,
-            # TODO временно возьмем из настроек стола
-            blind_small=self.table.game_props["blind_value"],
-            blind_big=self.table.game_props["blind_value"] * 2,
         )
 
         # TODO перенести
