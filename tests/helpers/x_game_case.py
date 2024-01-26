@@ -48,6 +48,7 @@ class X_CaseMixIn:
         assert self._check_steps
         step_num, step = self._check_steps.pop(0)
         step_msg = f"msg {step_num}"
+        print(step_msg, msg)
         if isinstance(step, dict):
             expected = step
         else:

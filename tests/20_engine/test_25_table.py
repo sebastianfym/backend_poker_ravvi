@@ -24,6 +24,7 @@ def test_x_classes():
 @pytest.mark.asyncio
 async def test_user_lifecycle():
     TABLE_ID = 777
+    TABLE_NAME = "test_table"
     USER_ID = 666
     TABLE_INFO_EVENT_TYPE = 101
     PLAYER_ENTER_EVENT_TYPE = 201
@@ -32,7 +33,7 @@ async def test_user_lifecycle():
     BUYIN_VALUE = 1111111111
 
     db = X_DBI()
-    table = X_Table(TABLE_ID, BUYIN_VALUE)
+    table = X_Table(TABLE_ID, TABLE_NAME, BUYIN_VALUE)
     assert not table.users
 
     # ПОЛЬЗОВАТЕЛЬ НЕ СИДИТ ЗА СТОЛОМ
@@ -347,9 +348,10 @@ async def test_user_lifecycle():
 @pytest.mark.asyncio
 async def test_run_all_together():
     TABLE_ID = 777
+    TABLE_NAME = "test_table"
     X_DBI._events_keep = True
     db = X_DBI()
-    table = X_Table(TABLE_ID, 2)
+    table = X_Table(TABLE_ID, TABLE_NAME, 2)
     table.NEW_GAME_DELAY = 1
 
     async def stop_game(timeout=10):
