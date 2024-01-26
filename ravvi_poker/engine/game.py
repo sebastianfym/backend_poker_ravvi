@@ -126,8 +126,8 @@ class Game:
                       )
         await self.emit_msg(db, msg)
 
-    async def broadcast_GAME_ROUND_END(self, db, banks):
-        msg = Message(msg_type=Message.Type.GAME_ROUND, banks=banks)
+    async def broadcast_GAME_ROUND_END(self, db, banks, bank_total):
+        msg = Message(msg_type=Message.Type.GAME_ROUND, banks=banks, bank_total=bank_total)
         await self.emit_msg(db, msg)
 
     async def broadcast_GAME_RESULT(self, db, winners):

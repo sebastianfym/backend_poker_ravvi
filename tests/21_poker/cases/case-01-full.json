@@ -14,8 +14,8 @@
         {"type": "PLAYER_CARDS", "cards_open": false}, 
         {"type": "PLAYER_CARDS", "cards_open": false}, 
         {"type": "PLAYER_CARDS", "cards_open": false}, 
-        {"type": "PLAYER_BET", "user_id": 333}, 
-        {"type": "PLAYER_BET", "user_id": 444}, 
+        {"type": "PLAYER_BET", "user_id": 333, "bank_total": 1}, 
+        {"type": "PLAYER_BET", "user_id": 444, "bank_total": 3},
 
         {"type": "GAME_PLAYER_MOVE"}, 
         {"user_id": 777, "type": "CMD_PLAYER_BET", "bet": "CALL"}, 
@@ -33,7 +33,7 @@
         {"user_id": 444, "type": "CMD_PLAYER_BET", "bet": "CHECK"}, 
         {"type": "PLAYER_BET"}, 
 
-        {"type": "GAME_ROUND", "banks": [{"amount": 8, "delta":8 }]}, 
+        {"type": "GAME_ROUND", "banks": [8], "bank_total": 8}, 
         {"type": "GAME_CARDS"}, 
         {"type": "PLAYER_CARDS", "cards_open": false}, 
         {"type": "PLAYER_CARDS", "cards_open": false}, 
@@ -41,7 +41,7 @@
         {"type": "PLAYER_CARDS", "cards_open": false}, 
 
         {"type": "GAME_PLAYER_MOVE"}, 
-        {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "CHECK"}, 
+        {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "CHECK", "bank_total": 8}, 
         {"type": "PLAYER_BET"}, 
 
         {"type": "GAME_PLAYER_MOVE"}, 
@@ -56,7 +56,7 @@
         {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "CHECK"},
         {"type": "PLAYER_BET"}, 
 
-        {"type": "GAME_ROUND", "banks": [{"amount": 8, "delta":0 }]}, 
+        {"type": "GAME_ROUND", "banks": [8], "bank_total": 8}, 
         {"type": "GAME_CARDS"}, 
         {"type": "PLAYER_CARDS", "cards_open": false}, 
         {"type": "PLAYER_CARDS", "cards_open": false}, 
@@ -79,7 +79,7 @@
         {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "CHECK"},
         {"type": "PLAYER_BET"}, 
         
-        {"type": "GAME_ROUND", "banks": [{"amount": 8, "delta":0 }]}, 
+        {"type": "GAME_ROUND", "banks": [8], "bank_total": 8}, 
         {"type": "GAME_CARDS"}, 
         {"type": "PLAYER_CARDS", "cards_open": false}, 
         {"type": "PLAYER_CARDS", "cards_open": false}, 
@@ -102,7 +102,7 @@
         {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "CHECK"},
         {"type": "PLAYER_BET"},
 
-        {"type": "GAME_ROUND", "banks": [{"amount": 8, "delta":0 }]}, 
+        {"type": "GAME_ROUND", "banks": [8], "bank_total": 8}, 
 
         {"type": "PLAYER_CARDS"}, 
         {"type": "PLAYER_CARDS"}, 

@@ -41,6 +41,7 @@ class PokerBase(Game):
         self.round = None
         self.deck = None
         self.cards = None
+        self.bank_total =None
         self.banks = None
 
         self.blind_small = blind_small
@@ -86,9 +87,8 @@ class PokerBase(Game):
         # banks
         banks_info = []
         for b in (self.banks or []):
-            b_info = dict(amount=b[0])
-            banks_info.append(b_info)
-        info.update(banks=banks_info)
+            banks_info.append(b[0])
+        info.update(banks=banks_info, bank_total=self.bank_total)
         # current player
         player = self.current_player
         if player.bet_type is None:
@@ -155,7 +155,8 @@ class PokerBase(Game):
                                                                                    Bet) else player.bet_type,
                                            delta=player.bet_delta,
                                            amount=player.bet_amount,
-                                           balance=player.balance
+                                           balance=player.balance,
+                                           bank_total = self.bank_total
                                            )
 
     # STATUS
@@ -233,8 +234,11 @@ class PokerBase(Game):
     def handle_cmd_bet(self, db, *, user_id, bet_type, raise_delta):
         self.log.info("handle_bet: %s %s %s", user_id, bet_type, raise_delta)
         p = self.current_player
-        assert p.user_id == user_id
-        assert Bet.verify(bet_type)
+        
+        if p.user_id != user_id:
+            raise ValueError('invalid user')
+        if not Bet.verify(bet_type):
+            raise ValueError('invalid bet type')
 
         b_0, b_a_0, b_t_0 = p.user.balance, p.bet_amount, p.bet_total
 
@@ -255,11 +259,12 @@ class PokerBase(Game):
         elif bet_type == Bet.ALLIN:
             p.bet_delta = player_max
         else:
-            raise ValueError('inalid bet type')
+            raise ValueError('invalid bet type')
 
         p.bet_type = bet_type
         p.bet_amount += p.bet_delta
         p.bet_total += p.bet_delta
+        self.bank_total += p.bet_delta
         p.user.balance -= p.bet_delta
 
         if self.bet_level < p.bet_amount:
@@ -271,13 +276,10 @@ class PokerBase(Game):
         self.bet_event.set()
 
     def update_banks(self):
-        prev_banks = self.banks or []
-        self.banks = get_banks(self.players)
+        self.banks, self.bank_total = get_banks(self.players)
         banks_info = []
-        for pb, nb in zip_longest(prev_banks, self.banks):
-            pb = pb or (0, [])
-            info = dict(amount=nb[0], delta=nb[0] - pb[0])
-            banks_info.append(info)
+        for b in self.banks:
+            banks_info.append(b[0])
         # reset bet status
         for p in self.players:
             p.bet_amount = 0
@@ -348,9 +350,13 @@ class PokerBase(Game):
 
     async def run(self):
         self.log.info("begin players: %s", [p.user_id for p in self.players])
+        # bank(s)
+        self.banks = []
+        self.bank_total = 0
+
         self.setup_players_roles()
         self.setup_cards()
-
+        
         async with self.DBI(log=self.log) as db:
             await self.broadcast_GAME_BEGIN(db)
 
@@ -397,7 +403,7 @@ class PokerBase(Game):
         banks_info = self.update_banks()
         async with self.DBI() as db:
             await self.open_cards(db)
-            await self.broadcast_GAME_ROUND_END(db, banks_info)
+            await self.broadcast_GAME_ROUND_END(db, banks_info, self.bank_total)
         await asyncio.sleep(self.SLEEP_ROUND_END)
 
     async def run_PREFLOP(self):
@@ -428,6 +434,7 @@ class PokerBase(Game):
                 p.bet_delta = self.blind_small
             p.bet_amount += p.bet_delta
             p.bet_total += p.bet_delta
+            self.bank_total += p.bet_delta
             p.user.balance -= p.bet_delta
             await self.broadcast_PLAYER_BET(db, p)
 
@@ -442,6 +449,7 @@ class PokerBase(Game):
                 p.bet_delta = self.blind_big
             p.bet_amount += p.bet_delta
             p.bet_total += p.bet_delta
+            self.bank_total += p.bet_delta
             p.user.balance -= p.bet_delta
             await self.broadcast_PLAYER_BET(db, p)
 

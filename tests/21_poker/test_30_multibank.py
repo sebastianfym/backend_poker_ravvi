@@ -23,10 +23,12 @@ def test_multibank_1():
     players[8].bet_total = 200
     players[8].bet_type = Bet.ALLIN
 
-    banks = get_banks(players)
+    banks, total = get_banks(players)
 
  #   for i, (amount, group) in enumerate(banks, 1):
  #       print(i, amount, [(p.user.id, p.bet_total) for p in group])
+
+    assert total == 1200
 
     assert len(banks) == 3
     amount, group = banks[0]
@@ -58,10 +60,12 @@ def test_multibank_2():
     players[8].bet_total = 900
     players[8].bet_type = Bet.ALLIN
 
-    banks = get_banks(players)
+    banks, total = get_banks(players)
 
 #    for i, (amount, group) in enumerate(banks, 1):
 #        print(i, amount, [(p.user.id, p.bet_total) for p in group])
+
+    assert total == 4500
 
     assert len(banks) == 5
     amount, group = banks[0]
