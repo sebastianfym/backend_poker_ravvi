@@ -169,10 +169,8 @@ class Table:
 
         # добавляем блайнды
         result |= {
-            "blinds": {
-                "blind_small": self.game_props["blind_value"],
-                "blind_big": self.game_props["blind_value"] * 2,
-            }
+            "blind_small": self.game_props["blind_value"],
+            "blind_big": self.game_props["blind_value"] * 2,
         }
 
         # добавляем данные из конфиг классов
