@@ -148,30 +148,29 @@ class Table:
 
     def get_table_info(self, user_id):
         users_info = {u.id: u.get_info() for u in self.seats if u is not None}
+        print(self.game_props)
         result = dict(
             table_id=self.table_id,
             table_name=self.table_name,
             table_redirect_id=self.table_id,
             table_type=self.table_type,
             seats=[None if u is None else u.id for u in self.seats],
+            users=list(users_info.values()),
+
+            # значения полученные при создании (при дублировании в game - имеют меньший приоритет)
+            game_type=self.game_type,
+            game_subtype=self.game_subtype,
+            blind_small=self.game_props["blind_small"],
+            blind_big=self.game_props["blind_big"],
         )
 
         if self.game:
             game_info = self.game.get_info(users_info=users_info)
         else:
-            from ..game import Game
-
             # игра еще не началась
-            game_info = Game.get_info_before_game_start(users_info=users_info, game_type=self.game_type,
-                                                        game_subtype=self.game_subtype)
+            game_info = None
 
-        result |= game_info
-
-        # добавляем блайнды
-        result |= {
-            "blind_small": self.game_props["blind_value"],
-            "blind_big": self.game_props["blind_value"] * 2,
-        }
+        result |= {"game": game_info}
 
         # добавляем данные из конфиг классов
         for configCl in configCls:

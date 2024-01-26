@@ -47,20 +47,13 @@ class Game:
     def game_props(self):
         return None
 
-    def get_info(self, users_info: dict, user_id: int = None) -> dict:
-        return self.get_info_before_game_start(users_info, self.game_type, self.game_subtype, self.game_id,
-                                               self.players, self.dealer_id)
-
-    @staticmethod
-    def get_info_before_game_start(users_info: dict, game_type: str, game_subtype: str, game_id: int | None = None,
-                                   players: list | None = None, dealer_id: int | None = None) -> dict:
+    def get_info(self, users_info: dict = None, user_id: int = None) -> dict:
         info = dict(
-            game_id=game_id,
-            game_type=game_type,
-            game_subtype=game_subtype,
-            users=list(users_info.values()),
-            players=[x.user_id for x in players] if players is not None else [],
-            dealer_id=dealer_id,
+            game_id=self.game_id,
+            game_type=self.game_type,
+            game_subtype=self.game_subtype,
+            players=[x.user_id for x in self.players] if self.players is not None else [],
+            dealer_id=self.dealer_id,
         )
 
         # TODO перенести
@@ -102,8 +95,7 @@ class Game:
     # MSG
 
     async def broadcast_GAME_BEGIN(self, db):
-        users_info = {u.id: u.user.get_info() for u in self.players}
-        game_info = self.get_info(users_info)
+        game_info = self.get_info()
         msg = Message(msg_type=Message.Type.GAME_BEGIN, **game_info)
         await self.emit_msg(db, msg)
 

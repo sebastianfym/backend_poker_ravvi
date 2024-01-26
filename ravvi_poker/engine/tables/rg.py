@@ -6,22 +6,23 @@ from .base import Table, DBI
 class Table_RG(Table):
     TABLE_TYPE = "RG"
 
-    def parse_props(self, buyin_min=100, buyin_max=None, bet_timeout=15, blind_value: float = 0.01,
-                    ante_up: bool | None = None, **kwargs):
+    def parse_props(self, buyin_min=100, buyin_max=None, bet_timeout=15, blind_small: float = 0.01,
+                    blind_big: float | None = None, ante_up: bool | None = None, **kwargs):
         self.buyin_min = buyin_min
         self.buyin_max = buyin_max
-        self.game_props.update(bet_timeout=bet_timeout, blind_value=blind_value,
+        self.game_props.update(bet_timeout=bet_timeout, blind_small=blind_small,
+                               blind_big=blind_big if blind_big is not None else blind_small * 2,
                                ante_up=ante_up)
         self.game_props.update(ante_levels=self.calc_rg_ante_levels())
 
     def calc_rg_ante_levels(self) -> list:
         if self.game_props["ante_up"]:
-            if self.game_props["blind_value"] == 0.02:
+            if self.game_props["blind_small"] == 0.02:
                 return [0.01, 0.02]
-            elif self.game_props["blind_value"] in [0.03, 0.04]:
+            elif self.game_props["blind_small"] in [0.03, 0.04]:
                 return [0.01, 0.02, 0.03]
             else:
-                return [round(self.game_props["blind_value"] * 2 * multiplier, 2) for multiplier in [0.2, 0.3, 0.4, 0.5]]
+                return [round(self.game_props["blind_small"] * 2 * multiplier, 2) for multiplier in [0.2, 0.3, 0.4, 0.5]]
         else:
             return []
 
