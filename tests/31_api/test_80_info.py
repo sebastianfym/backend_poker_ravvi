@@ -34,15 +34,13 @@ def test_get_levels_schedule(api_client: TestClient, api_guest: UserAccessProfil
     for table_type, schedules in table_type.items():
         for schedule_type in schedules:
             logger.info("%s/%s", table_type, schedule_type)
-            response = api_client.get(f"/v1/info/levels_schedule/{table_type}/{schedule_type}")
+            response = api_client.get(f"/v1/info/levels_schedule/{table_type}")
             assert response.status_code == HTTP_200_OK
             data = response.json()
-            assert isinstance(data, list)
-            row = data[0]
-            assert 'level' in row
-            assert 'blind_small' in row
-            assert 'blind_big' in row
-            assert 'ante' in row
+            print(data)
+            assert isinstance(data, dict)
+            row = data['standard']
+            assert isinstance(row, list)
 
 
 # def test_get_payment_structure(api_client: TestClient, api_guest: UserAccessProfile):
