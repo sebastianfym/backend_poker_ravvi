@@ -75,3 +75,14 @@ def test_countries_list(api_client: TestClient, api_guest: UserAccessProfile):
 
     response = api_client.get("/v1/info/countries/en/")
     assert list(response.json().values())[0] == "Abkhazia"
+
+
+def test_rewards_distribution(api_client: TestClient, api_guest: UserAccessProfile):
+
+    response = api_client.get("/v1/info/rewards_distribution")
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated"}
+
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+    response = api_client.get("/v1/info/rewards_distribution")
+    assert response.status_code == 200

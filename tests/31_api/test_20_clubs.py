@@ -142,6 +142,7 @@ def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_
     assert response.status_code == 200
     members = [ClubMemberProfile(**m) for m in response.json()]
     pending = [m for m in members if not m.user_approved]
+    print(f"members: {members[1]}")
     assert members
     assert pending and len(pending) == 1
 
@@ -152,3 +153,18 @@ def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_
     member = ClubMemberProfile(**response.json())
     assert member.user_approved
 
+    response = api_client.post(f"/v1/clubs/{23131232141241212512512125125551525252152151251252151554554765634353534534}/members")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Club not found"}
+
+    response = api_client.post(f"/v1/clubs/{23131232141241212512512125125551525252152151251252151554554765634353534534}/members")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Club not found"}
+
+    response = api_client.put(f"/v1/clubs/{23131232141241212512512125125551525252152151251252151554554765634353534534}/members/{p.id}")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Club not found"}
+
+    response = api_client.put(f"/v1/clubs/{club.id}/members/{1231242521215253634645748567856345235252362346354747544}")
+    assert response.status_code == 404
+    assert response.json() == {'detail': 'Member not found'}
