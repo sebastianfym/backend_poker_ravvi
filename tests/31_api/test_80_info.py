@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 def test_get_levels_schedule_no_access(api_client: TestClient, api_guest: UserAccessProfile):
     # negative (no access)
-    response = api_client.get(f"/v1/info/levels_schedule/unknown/unknown")
+    response = api_client.get(f"/v1/info/levels_schedule/unknown")
     assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
@@ -22,7 +22,7 @@ def test_get_levels_schedule(api_client: TestClient, api_guest: UserAccessProfil
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
 
     # negative (not found)
-    response = api_client.get(f"/v1/info/levels_schedule/unknown/unknown")
+    response = api_client.get(f"/v1/info/levels_schedule/unknown")
     assert response.status_code == HTTP_404_NOT_FOUND
 
     # positive
