@@ -16,23 +16,20 @@ manager = TablesManager()
 router = APIRouter(prefix="/info", tags=["info"])
 
 
-@router.get("/levels_schedule/{table_type}/{schedule_type}", status_code=HTTP_200_OK, summary="Get blind levels schedule (SNG/MTT)")
-async def v1_get_all_info_about_blinds(table_type: str, schedule_type: str, session_uuid: SessionUUID):
+@router.get("/levels_schedule/{table_type}", status_code=HTTP_200_OK, summary="Get blind levels schedule (SNG/MTT)")
+async def v1_get_all_info_about_blinds(table_type: str, session_uuid: SessionUUID):
     """
     Возвращает список уровнией для турниров.
 
     table_type - тип стола: SNG | MTT.
-
-    schedule_type - тип расписания:  STANDARD | TURBO | HYPERTURBO(MTT only)
     """
 
     table_type = table_type.lower()
-    schedule_type = schedule_type.lower()
 
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
     try:
-        return levels_schedule[table_type][schedule_type]
+        return levels_schedule[table_type]
     except KeyError:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Key not found")
     
