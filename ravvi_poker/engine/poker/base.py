@@ -34,7 +34,7 @@ class PokerBase(Game):
     SLEEP_GAME_END = 4
 
     def __init__(self, table, users: List[User],
-                 *, blind_small: float = 0.01, blind_big: float | None = None, ante=None, bet_timeout=15,
+                 *, blind_small: float = 0.01, blind_big: float = 0.02, ante=None, bet_timeout=30,
                  **kwargs) -> None:
         super().__init__(table=table, users=users)
         self.log.logger = logger
@@ -45,7 +45,7 @@ class PokerBase(Game):
         self.banks = None
 
         self.blind_small = blind_small
-        self.blind_big = blind_big or self.blind_small * 2
+        self.blind_big = blind_big
         self.ante = ante
 
         self.bet_id = None
@@ -78,13 +78,6 @@ class PokerBase(Game):
         info.update(
             cards=self.cards if self.cards else [],
         )
-        # blinds
-        if self.game_type in ('NLH', 'PLO'):
-            info.update(
-                blind_small=self.blind_small,
-                blind_big=self.blind_big
-            )
-        # banks
         banks_info = []
         for b in (self.banks or []):
             banks_info.append(b[0])
