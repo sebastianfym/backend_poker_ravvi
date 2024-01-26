@@ -47,8 +47,8 @@ class Table:
 
         # инициализируем настройки стола
         for configCl in configCls:
-            self.__dict__[configCl.cls_as_config_name()] = configCl(**props, game_type=game_type,
-                                                                    game_subtype=game_subtype)
+            setattr(self, configCl.cls_as_config_name(), configCl(**props, game_type=game_type,
+                                                                  game_subtype=game_subtype))
 
     def parse_props(self, **kwargs):
         pass
@@ -177,7 +177,7 @@ class Table:
 
         # добавляем данные из конфиг классов
         for configCl in configCls:
-            if len(config_dict_for_add := self.__dict__[configCl.cls_as_config_name()].unpack_for_msg()) != 0:
+            if len(config_dict_for_add := getattr(self, configCl.cls_as_config_name()).unpack_for_msg()) != 0:
                 result |= config_dict_for_add
 
         return result

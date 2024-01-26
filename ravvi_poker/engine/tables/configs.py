@@ -9,9 +9,9 @@ class TableConfigParams:
 
     def unpack_for_msg(self):
         return self.sanitize_for_msg({
-            f"{attr}": self.__dict__[attr] for attr in dir(self) if not attr.startswith('__') and
+            f"{attr}": getattr(self, attr) for attr in dir(self) if not attr.startswith('__') and
                                                                     not callable(getattr(self, attr)) and
-                                                                    self.__dict__[attr] is not None
+                                                                    getattr(self, attr) is not None
         })
 
     def sanitize_for_msg(self, raw_values: dict) -> dict:
@@ -26,7 +26,7 @@ class TableConfigParams:
 
     def unpack_for_debug(self):
         return {
-            f"{attr}": self.__dict__[attr] for attr in dir(self) if not attr.startswith('__') and
+            f"{attr}": getattr(self, attr) for attr in dir(self) if not attr.startswith('__') and
                                                                     not callable(getattr(self, attr))
         }
 
