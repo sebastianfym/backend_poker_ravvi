@@ -6,11 +6,11 @@ from .base import Table, DBI
 class Table_RG(Table):
     TABLE_TYPE = "RG"
 
-    def parse_props(self, buyin_min=100, buyin_max=None, bet_timeout=15, blind_small: float = 0.01,
-                    blind_big: float | None = None, ante_up: bool | None = None, **kwargs):
+    def parse_props(self, buyin_min=100, buyin_max=None, blind_small: float = 0.01,
+                    blind_big: float | None = None, ante_up: bool | None = None, action_time=30, **kwargs):
         self.buyin_min = buyin_min
         self.buyin_max = buyin_max
-        self.game_props.update(bet_timeout=bet_timeout, blind_small=blind_small,
+        self.game_props.update(bet_timeout=action_time, blind_small=blind_small,
                                blind_big=blind_big if blind_big is not None else blind_small * 2,
                                ante_up=ante_up)
         self.game_props.update(ante_levels=self.calc_rg_ante_levels())
