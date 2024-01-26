@@ -8,6 +8,7 @@ class Table_RG(Table):
 
     def parse_props(self, buyin_min=100, buyin_max=None, bet_timeout=15, blind_value: float = 0.01,
                     ante_up: bool | None = None, **kwargs):
+        print(kwargs)
         self.buyin_min = buyin_min
         self.buyin_max = buyin_max
         self.game_props.update(bet_timeout=bet_timeout, blind_value=blind_value,

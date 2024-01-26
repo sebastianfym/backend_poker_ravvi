@@ -67,8 +67,8 @@ class PokerBase(Game):
     def player_factory(self, user) -> Player:
         return Player(user)
 
-    def get_info(self, users_info: dict, user_id: int = None):
-        info = super().get_info(users_info)
+    def get_info(self, users_info: dict = None, user_id: int = None):
+        info = super().get_info()
         info.update(
             cards=self.cards if self.cards else [],
         )
