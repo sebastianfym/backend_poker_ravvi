@@ -22,8 +22,6 @@ async def v1_get_all_info_about_blinds(table_type: str, session_uuid: SessionUUI
     Возвращает список уровнией для турниров.
 
     table_type - тип стола: SNG | MTT.
-
-    schedule_type - тип расписания:  STANDARD | TURBO | HYPERTURBO(MTT only)
     """
 
     table_type = table_type.lower()
