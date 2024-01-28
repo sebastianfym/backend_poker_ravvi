@@ -24,7 +24,7 @@ class Table_SNG(Table):
 
     def parse_props(self, *, 
                     buyin_value=10000, buyin_cost=0, action_time=30,
-                    level_schedule="STANDARD", level_time=2,
+                    level_schedule="STANDARD", level_time=3,
                     **kwargs):
         self.buyin_value = buyin_value
         self.buyin_cost = buyin_cost
