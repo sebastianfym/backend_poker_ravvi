@@ -253,5 +253,5 @@ def test_create_table_with_validation(api_client: TestClient, api_guest: UserAcc
         "unknown_field": "unknown_value"
     }
     error_validate_in_access_password_attributes_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
-    assert error_validate_in_access_password_attributes_response.status_code == 201
+    assert error_validate_in_access_password_attributes_response.status_code == 400
     assert "unknown_field" not in response.json()
