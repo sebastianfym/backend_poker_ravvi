@@ -41,7 +41,7 @@ class TableParams(BaseModel):
     blind_time: Optional[int] = Field(default=None, ge=1)
     spin_multiplier: float | None = None
     registration_time: int | None = None
-    level_time: int | None = None #Todo написать сюда функцию валидацию в соответствии с вики
+    level_time: int | None = None
 
     jackpot: bool | None = None
     ante: float | None = None
@@ -166,8 +166,36 @@ class TableParams(BaseModel):
             else:
                 raise ValueError(f'Invalid ratholing, must be between 0 and 12')
 
+    @field_validator("level_time")
+    @classmethod
+    def check_level_time(cls, level_time: int, info: ValidationInfo) -> int:
+        table_type = info.data['table_type']
+        try:
+            match table_type:
+                case "SNG" | "MTT":
+                    if 2 <= level_time <= 30:
+                        return level_time
+                    else:
+                        raise ValueError(f'level_time must be between 2 and 30')
+                case "SPIN":
+                    if 2 <= level_time <= 6 or None:
+                        return level_time
+                    else:
+                        raise ValueError(f'level_time must be between 2 and 6')
+                case _:
+                    return None
+        except TypeError:
+            return None
 
 
+    @field_validator("chat_mode")
+    @classmethod
+    def check_chat_mode(cls, chat_mode: str) -> int:
+        match chat_mode:
+            case "DISABLE" | "PLAYERS" | "ALL":
+                return chat_mode
+            case _:
+                return None
 
 class TableProfile(TableParams):
     id: int|None = None
