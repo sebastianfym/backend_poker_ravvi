@@ -13,6 +13,7 @@ class Table_SNG(Table):
     def __init__(self, id, **kwargs):
         super().__init__(id, **kwargs)
         self.time_counter = TimeCounter()
+        self.level_schedule = None
         # текущий уровень
         self.level_current_idx = -1
         self.level_current = None
@@ -21,9 +22,9 @@ class Table_SNG(Table):
         #  время смены уровня
         self.level_end = None
 
-    def parse_props(self, 
-                    buyin_value=10000, buyin_cost=0,
-                    level_schedule="STANDARD", level_time=2,
+    def parse_props(self, *, 
+                    buyin_value=10000, buyin_cost=0, action_time=30,
+                    level_schedule="STANDARD", level_time=3,
                     **kwargs):
         self.buyin_value = buyin_value
         self.buyin_cost = buyin_cost
@@ -36,6 +37,12 @@ class Table_SNG(Table):
             self.level_schedule = "STANDARD"
             self.levels = sng_standard
         self.level_time = level_time
+        
+        self.level_current = self.levels[0]
+        self.game_props.update(bet_timeout=action_time, 
+                               blind_small=self.level_current.blind_small,
+                               blind_big=self.level_current.blind_big,
+                               ante = self.level_current.ante)
 
     @property
     def user_enter_enabled(self):
@@ -83,13 +90,19 @@ class Table_SNG(Table):
             level_seconds = self.level_time * 60
             level_passed = total_seconds % level_seconds
             idx = min(int(self.time_counter.total_seconds / level_seconds), len(self.levels) - 1)
-            self.log.info('LEVELS: %s - %s/%s', idx, level_passed, level_seconds)
+            #self.log.info('LEVELS: %s - %s/%s', idx, level_passed, level_seconds)
             if idx == self.level_current_idx:
                 # пока ничего не изменилось
                 continue
             # смена уровня
             self.level_current_idx = idx
             self.level_current = self.levels[idx]
+            self.game_props.update( 
+                                blind_small=self.level_current.blind_small,
+                                blind_big=self.level_current.blind_big,
+                                ante = self.level_current.ante
+                                )
+            self.log.info('NEW LEVEL: %s', self.level_current)
             next_idx = idx + 1            
             if next_idx < len(self.levels):
                 # обновляем информацию о новом следующем уровне

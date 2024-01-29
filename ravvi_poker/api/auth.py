@@ -67,9 +67,9 @@ async def v1_device(params: DeviceLoginProps, request: Request) -> UserAccessPro
     async with DBI() as db:
         device = await db.get_device(uuid=device_uuid) if device_uuid else None
         # find login only if device found
-        login  = await db.get_login(uuid=login_uuid) if device and login_uuid else None
+        login = await db.get_login(uuid=login_uuid) if device and login_uuid else None
         # find user only if login is valid
-        user   = await db.get_user(id=login.user_id) if login and not login.closed_ts else None
+        user = await db.get_user(id=login.user_id) if login and not login.closed_ts else None
 
         if user and user.closed_ts:
             # check user closed
@@ -135,11 +135,13 @@ async def handle_login(device_uuid, username, password):
         )
     return response
 
+
 @router.post("/login", responses={400: {}, 401: {}, 403: {}})
-async def v1_login(params: UserLoginProps,request: Request):
+async def v1_login(params: UserLoginProps, request: Request):
     """Login API with username / password"""
     device_uuid = jwt_get(params.device_token, "device_uuid")
     return await handle_login(device_uuid, params.username, params.password)
+
 
 @router.post("/login_form", responses={400: {}, 401: {}, 403: {}})
 async def v1_login_form(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):

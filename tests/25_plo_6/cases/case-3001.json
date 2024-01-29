@@ -41,7 +41,7 @@
         {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "CALL"}, 
         {"type": "PLAYER_BET", "user_id": 333, "bet": "CALL", "delta": 5, "amount": 7, "balance": 133}, 
 
-        {"type": "GAME_ROUND", "banks": [{"delta": 21, "amount": 21}]},
+        {"type": "GAME_ROUND", "banks": [21], "bank_total": 21},
 // FLOP        
         {"type": "GAME_CARDS", "cards": ["A♠","2♥","9♥"]}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["Q♦","3♥","K♦","7♠","4♦","K♥"], "hand_type": "ONE_PAIR", "hand_cards": ["A♠","K♦","K♥","9♥","2♥"]}, 
@@ -70,7 +70,7 @@
         {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "CALL"}, 
         {"type": "PLAYER_BET", "user_id": 111, "bet": "CALL", "delta": 25, "amount": 33, "balance": 315}, 
 
-        {"type": "GAME_ROUND", "banks": [{"delta": 99, "amount": 120}]},        
+        {"type": "GAME_ROUND", "banks": [120], "bank_total": 120},        
 // TERN        
         {"type": "GAME_CARDS", "cards": ["A♠","2♥","9♥", "5♠"]}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["Q♦","3♥","K♦","7♠","4♦","K♥"], "hand_type": "STRAIGHT", "hand_cards": ["A♠","5♠","4♦","3♥","2♥"]}, 
@@ -97,14 +97,14 @@
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": true, "cards": ["8♥","5♦","Q♣","T♦","6♣","6♦"]}, 
         {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": true, "cards": ["7♣","J♠","9♠","3♣","4♣","T♠"]},
 
-        {"type": "GAME_ROUND", "banks": [{"delta": 0, "amount": 120}, {"delta": 200, "amount": 200}]},    
+        {"type": "GAME_ROUND", "banks": [120, 200], "bank_total": 320},    
 // RIVER        
         {"type": "GAME_CARDS", "cards": ["A♠","2♥","9♥", "5♠", "9♦"]}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": ["Q♦","3♥","K♦","7♠","4♦","K♥"], "hand_type": "STRAIGHT", "hand_cards": ["A♠","5♠","4♦","3♥","2♥"]}, 
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": true, "cards": ["8♥","5♦","Q♣","T♦","6♣","6♦"], "hand_type": "TWO_PAIRS", "hand_cards": ["A♠","9♦","9♥","6♣","6♦"]}, 
         {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": true, "cards": ["7♣","J♠","9♠","3♣","4♣","T♠"], "hand_type": "STRAIGHT", "hand_cards": ["A♠","5♠","4♣","3♣","2♥"]},
 
-        {"type": "GAME_ROUND", "banks": [{"delta": 0, "amount": 120}, {"delta": 0, "amount": 200}]},    
+        {"type": "GAME_ROUND", "banks": [120, 200], "bank_total": 320},    
 
         {"type": "GAME_RESULT", "winners": [
             {"user_id": 111, "balance": 375, "delta": 20},

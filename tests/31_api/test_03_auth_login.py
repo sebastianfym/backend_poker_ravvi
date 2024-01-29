@@ -39,6 +39,20 @@ def test_auth_login(api_client: TestClient, api_guest: UserAccessProfile):
     response = api_client.post("/v1/auth/logout")
     assert response.status_code == 200
 
+    params = dict(username=str(None), password="test", device_token=api_guest.device_token, device_props={})
+    logging.info("%s", params)
+    response = api_client.post("/v1/auth/login", json=params)
+    assert response.status_code == 401
+    assert response.json() == {'detail': 'Incorrect username or password'}
+
+    params = dict(username=str(None), password="test", device_props={})
+    logging.info("%s", params)
+    response = api_client.post("/v1/auth/login", json=params)
+    assert response.json() == {'detail': 'Incorrect username or password'}
+    assert response.status_code == 401
+
+
+
 def test_auth_login_form(api_client: TestClient, api_guest: UserAccessProfile):
 
     # set headers

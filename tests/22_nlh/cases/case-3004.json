@@ -31,7 +31,7 @@
         {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "CALL"}, 
         {"type": "PLAYER_BET", "user_id": 333, "bet": "CALL", "delta": 4, "amount": 6, "balance": 94},  
 
-        {"type": "GAME_ROUND", "banks": [{"delta": 18, "amount": 18}]},
+        {"type": "GAME_ROUND", "banks": [18], "bank_total": 18},
 // FLOP        
         {"type": "GAME_CARDS", "cards": ["5♠","5♦","6♣"]}, 
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["Q♣","8♦"], "hand_type": "ONE_PAIR", "hand_cards": ["Q♣","8♦","6♣","5♠","5♦"]}, 
@@ -78,7 +78,7 @@
         {"user_id": 333, "type": "CMD_PLAYER_BET", "bet": "CALL"}, 
         {"type": "PLAYER_BET", "user_id": 333, "bet": "CALL", "delta": 2, "amount": 8, "balance": 86},
 
-        {"type": "GAME_ROUND", "banks": [{"delta": 24, "amount": 42}]},
+        {"type": "GAME_ROUND", "banks": [42], "bank_total": 42},
 // TERN
         {"type": "GAME_CARDS", "cards": ["5♠","5♦","6♣",  "T♠"]}, 
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["Q♣","8♦"], "hand_type": "ONE_PAIR", "hand_cards": ["Q♣","T♠","8♦","5♠","5♦"]}, 
@@ -100,7 +100,7 @@
         {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "CHECK"}, 
         {"type": "PLAYER_BET", "user_id": 111, "bet": "CHECK", "delta": 0, "amount": 0, "balance": 192}, 
 
-        {"type": "GAME_ROUND", "banks": [{"delta": 0, "amount": 42}]},
+        {"type": "GAME_ROUND", "banks": [42], "bank_total": 42},
 // RIVER
         {"type": "GAME_CARDS", "cards": ["5♠","5♦","6♣",  "T♠",  "A♠"]}, 
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["Q♣","8♦"], "hand_type": "ONE_PAIR", "hand_cards": ["A♠","Q♣","T♠","5♠","5♦"]}, 
@@ -122,7 +122,7 @@
         {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "CHECK"}, 
         {"type": "PLAYER_BET", "user_id": 111, "bet": "CHECK", "delta": 0, "amount": 0, "balance": 192}, 
 
-        {"type": "GAME_ROUND", "banks": [{"delta": 0, "amount": 42}]},
+        {"type": "GAME_ROUND", "banks": [42], "bank_total": 42},
 // SHOWDOWN
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": true, "cards": ["Q♣", "8♦"]}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": ["A♦", "T♣"]}, 

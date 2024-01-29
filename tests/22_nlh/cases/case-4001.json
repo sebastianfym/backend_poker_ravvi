@@ -89,7 +89,8 @@
         {"user_id": 222, "type": "CMD_PLAYER_BET", "bet": "FOLD"}, 
         {"type": "PLAYER_BET", "user_id": 222, "bet": "FOLD", "delta": 0, "amount": 34, "balance": 12}, 
 
-        {"type": "GAME_ROUND", "banks": [{"delta": 90, "amount": 90}]},
+        {"type": "GAME_ROUND", "banks": [90], "bank_total": 90},
+
 
         {"type": "GAME_RESULT", "winners": [{"user_id": 333, "balance": 90, "delta": 50}]},
         {"type": "GAME_END"}

@@ -3,6 +3,7 @@ import asyncio
 import inspect
 import contextlib
 
+from .configs import configCls
 from ...logging import getLogger, ObjectLoggerAdapter
 from ...db import DBI
 from ..user import User
@@ -19,7 +20,8 @@ class Table:
     NEW_GAME_DELAY = 3
 
     def __init__(
-        self, id, *, table_seats, parent_id=None, club_id=None, game_type=None, game_subtype=None, props=None, **kwargs
+            self, id, table_name, *, table_seats, parent_id=None, club_id=None, game_type=None, game_subtype=None,
+            props=None, **kwargs
     ):
         # table async lock
         self.lock = asyncio.Lock()
@@ -31,6 +33,7 @@ class Table:
 
         self.club_id = club_id
         self.table_id = id
+        self.table_name = table_name
         self.parent_id = parent_id
         self.log = ObjectLoggerAdapter(logger, lambda: self.table_id)
         self.users: Mapping[int, User] = {}
@@ -41,6 +44,11 @@ class Table:
         self.game_props = {}
         self.game = None
         self.parse_props(**(props or {}))
+
+        # инициализируем настройки стола
+        for configCl in configCls:
+            setattr(self, configCl.cls_as_config_name(), configCl(**props, game_type=game_type,
+                                                                  game_subtype=game_subtype))
 
     def parse_props(self, **kwargs):
         pass
@@ -140,16 +148,35 @@ class Table:
 
     def get_table_info(self, user_id):
         users_info = {u.id: u.get_info() for u in self.seats if u is not None}
+        print(self.game_props)
         result = dict(
             table_id=self.table_id,
+            table_name=self.table_name,
             table_redirect_id=self.table_id,
             table_type=self.table_type,
             seats=[None if u is None else u.id for u in self.seats],
+            users=list(users_info.values()),
+
+            # значения полученные при создании (при дублировании в game - имеют меньший приоритет)
+            game_type=self.game_type,
+            game_subtype=self.game_subtype,
+            blind_small=self.game_props["blind_small"],
+            blind_big=self.game_props["blind_big"],
         )
+
         if self.game:
-            game_info = self.game.get_info(user_id=user_id, users_info=users_info)
-            result.update(game_info)
-        result.update(users=list(users_info.values()))
+            game_info = self.game.get_info(users_info=users_info)
+        else:
+            # игра еще не началась
+            game_info = None
+
+        result |= {"game": game_info}
+
+        # добавляем данные из конфиг классов
+        for configCl in configCls:
+            if len(config_dict_for_add := getattr(self, configCl.cls_as_config_name()).unpack_for_msg()) != 0:
+                result |= config_dict_for_add
+
         return result
 
     async def handle_cmd(self, db, *, cmd_id: int, cmd_type: int, client_id: int, user_id: int, props: dict):
@@ -159,7 +186,8 @@ class Table:
             if cmd_type == Command.Type.JOIN:
                 club_id = props.get("club_id", 0)
                 take_seat = props.get("take_seat", False)
-                await self.handle_cmd_join(db, cmd_id=cmd_id, client_id=client_id, user_id=user_id, club_id=club_id, take_seat=take_seat)
+                await self.handle_cmd_join(db, cmd_id=cmd_id, client_id=client_id, user_id=user_id, club_id=club_id,
+                                           take_seat=take_seat)
             elif cmd_type == Command.Type.TAKE_SEAT:
                 seat_idx = props.get("seat_idx", None)
                 await self.handle_cmd_take_seat(db, user_id=user_id, seat_idx=seat_idx)
@@ -177,7 +205,7 @@ class Table:
         # решение: стол должен иметь список доступа со всеми клубами которые могут играть на столе
         if club_id != self.club_id:
             # no access
-            msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id,  client_id=client_id,
+            msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id, client_id=client_id,
                           error_id=403, error_text=f'No access to club #{self.club_id} from club #{club_id}')
             await self.emit_msg(db, msg)
             return
@@ -311,7 +339,7 @@ class Table:
             try:
                 async with self.DBI() as db:
                     await self.broadcast_TABLE_CLOSED(db)
-                    await self.remove_users(db, force=True, diconnect=True)
+                    await self.remove_users(db, force=True, disconnect=True)
                     if self.status == TableStatus.CLOSED:
                         await db.close_table(self.table_id)
                     else:
@@ -377,7 +405,7 @@ class Table:
         async with self.DBI() as db:
             await db.close_game(self.game.game_id, players=users)
 
-    async def remove_users(self, db, *, force=False, diconnect=False, broadcast=True):
+    async def remove_users(self, db, *, force=False, disconnect=False, broadcast=True):
         # remove users based on user_can_stay return
         for seat_idx, user in enumerate(self.seats):
             if not user:
@@ -389,7 +417,7 @@ class Table:
             self.log.info("user %s removed, seat %s available", user.id, seat_idx)
             if broadcast:
                 await self.broadcast_PLAYER_EXIT(db, user.id)
-            if diconnect:
+            if disconnect:
                 user.clients.clear()
             if not user.connected:
                 await self.on_user_leave(db, user)
