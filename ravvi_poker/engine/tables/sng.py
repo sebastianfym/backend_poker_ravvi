@@ -100,7 +100,7 @@ class Table_SNG(Table):
             self.game_props.update( 
                                 blind_small=self.level_current.blind_small,
                                 blind_big=self.level_current.blind_big,
-                                ante = self.level_current.current_ante_value
+                                ante = self.level_current.ante
                                 )
             self.log.info('NEW LEVEL: %s', self.level_current)
             next_idx = idx + 1            
