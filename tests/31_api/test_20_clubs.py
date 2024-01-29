@@ -107,7 +107,6 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_c
     assert response.json() != []
 
 
-
 def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient, api_guest_2: UserAccessProfile):
     # set headers
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
@@ -168,3 +167,22 @@ def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_
     response = api_client.put(f"/v1/clubs/{club.id}/members/{1231242521215253634645748567856345235252362346354747544}")
     assert response.status_code == 404
     assert response.json() == {'detail': 'Member not found'}
+
+
+def test_get_relations(api_client: TestClient, api_guest: UserAccessProfile):
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+
+    params = {}
+    response = api_client.post("/v1/clubs", json=params)
+    assert response.status_code == 201
+
+    club = ClubProfile(**response.json())
+    response = api_client.get(f'/v1/clubs/{club.id}/relation_clubs')
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+    response = api_client.get(f"/v1/clubs/{club.id}/relation_union")
+    assert response.status_code == 404
+    assert response.json() == {'detail': 'Union not found'}
+    
+    
