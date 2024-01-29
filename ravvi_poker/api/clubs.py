@@ -201,7 +201,7 @@ async def v1_create_club_table(club_id: int, params: TableParams, session_uuid: 
         game_type = kwargs.get('game_type')#.value
         game_subtype = kwargs.get('game_subtype')
 
-        for param in ["players_count", "viewers_count", "created", "opened", "closed", "closed"]:
+        for param in ["players_count", "viewers_count", "created", "opened", "closed"]:
             try:
                 del kwargs[param]
             except KeyError:

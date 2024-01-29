@@ -38,7 +38,7 @@ class TableParams(BaseModel):
     blind_small: float | None = None
     blind_big: float | None = None
     blind_schedule: str | None = None
-    blind_level_time: Optional[int] = Field(default=None, ge=1)
+    blind_time: Optional[int] = Field(default=None, ge=1)
 
     jackpot: bool | None = None
     ante: float | None = None
