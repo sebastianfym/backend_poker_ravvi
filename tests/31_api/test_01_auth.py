@@ -60,7 +60,7 @@ def test_auth_device_login(api_client: TestClient, api_guest: UserAccessProfile)
     assert result.login_token == api_guest.login_token
     assert result.access_token
 
-    params1 = dict(device_token=None, device_props={}, email="YA NE")
+    params1 = dict(device_token=None, device_props={})
     response1 = api_client.post("/v1/auth/register", json=params1)
     assert response1.status_code == 200
 
