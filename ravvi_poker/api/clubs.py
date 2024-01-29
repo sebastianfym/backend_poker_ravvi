@@ -34,6 +34,11 @@ class ClubMemberProfile(BaseModel):
     user_approved: bool | None = None
 
 
+class UnionProfile(BaseModel):
+    name: str | None = None
+    """По мере прогресса раширить модель"""
+
+
 @router.post("", status_code=HTTP_201_CREATED, summary="Create new club")
 async def v1_create_club(params: ClubProps, session_uuid: SessionUUID):
     async with DBI() as db:
@@ -239,52 +244,43 @@ async def v1_get_club_tables(club_id: int, session_uuid: SessionUUID):
     return result
 
 
-@router.get("/{club_id}/relation_tables", status_code=HTTP_200_OK, summary="Returns all relationships with other clubs for the club with the ID")
-async def v1_get_relations(club_id: int, session_uuid: SessionUUID):
+@router.get("/{club_id}/relation_clubs", status_code=HTTP_200_OK, summary="Returns all relationships with other clubs for the club with the ID")
+async def v1_get_relation_clubs(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         # relations = await db.get_club_relations(club_id=club_id) #Todo такой функции в dbi.py нету, название примерное
-        relations = [] #Todo после того, как у нас появятся связи в бд вернуть строку выше, которая будет возвращать список состоящий из союзных клубов
+        relations_clubs = [] #Todo после того, как у нас появятся связи в бд вернуть строку выше, которая будет возвращать список состоящий из союзных клубов
         return [ClubProfile(
             id=club.id,
             name=club.name,
             description=club.description,
             image_id=club.image_id
-        ) for club in relations]
+        ) for club in relations_clubs]
 
-@router.get("/{club_id}/relation_tables", status_code=HTTP_200_OK, summary="Returns all relation club and table who has relation for the club with the ID")
-async def v1_get_relation_tables(club_id: int, session_uuid: SessionUUID):
+
+@router.get("/{union_id}/relation_union", status_code=HTTP_200_OK, summary="Get a union by id")
+async def v1_get_relation_union(union_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
-        club = await db.get_club(club_id)
-        if not club:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        # relation_tables = await db.get_relation_tables(club_id=club_id)  #Todo такой функции в dbi.py нету, название примерное
-        relations_list = [] #Todo после того, как у нас появятся связи в бд вернуть строку выше, которая будет возвращать список состоящий из союзных клубов и столов относящихся к ним
+        union = await db.get_unions(union_id)   #Todo такой функции в dbi.py нету, название примерное
+        if not union:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Union not found")
 
-        # test_l = [ #Todo примерная реализация того, как должен будет выглядеть возвращаемый список
-        #     {"id": 1, "name": "name1", "description": "description1", 'tables': [{"id": 1, "club_id": 1, "name": "club.name"}, {"id": 2, "name": "club.name"}]},
-        #     {"id": 2, "name": "name2", "description": "description2", 'tables': [{"id": 3, "club_id": 2, "name": "club.name"}, {"id": 4, "name": "club.name"}]},
-        # ]
+        return UnionProfile(name=union.name)
 
-        result_list = []
 
-        # for clubs_idx in range(len(relations_list)): #Todo вернуть этот алгоритм после того, как у нас будет функция get_relation_tables в БД
-        #     relation_club = ClubProfile(
-        #             id=test_l[clubs_idx]['id'],
-        #             name=test_l[clubs_idx]['name'],
-        #             description=test_l[clubs_idx]['description'],
-        #             # image_id=club.image_id
-        #         )
-        #     result_list.append({"club": relation_club, "tables": []})
-        #
-        #     for table in test_l[clubs_idx]['tables']:
-        #         result_list[clubs_idx]['tables'].append(TableProfile(**table))
+@router.get("/relations/unions", status_code=HTTP_200_OK, summary='Get all unions')
+async def v1_get_all_unions(session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        try:
+            unions = await db.get_unions() #Todo такой функции в dbi.py нету, название примерное
+        except AttributeError:
+            unions = None
+        if not unions:
+            return []
+        return [UnionProfile(id=union.id, name=union.name) for union in unions]
 
-        return result_list
-    """
-    Сначала выводим клуб , потом столы
-    """
