@@ -23,6 +23,7 @@ class Round(IntEnum):
     FLOP = 2
     TERN = 3
     RIVER = 4
+    SHOWDOWN = 5
 
 
 class PokerBase(Game):
@@ -34,19 +35,18 @@ class PokerBase(Game):
     SLEEP_GAME_END = 4
 
     def __init__(self, table, users: List[User],
-                 *, blind_small: float = 0.01, blind_big: float = 0.02, ante=None, bet_timeout=30,
+                 *, blind_small: float = 0.01, blind_big: float = 0.02, bet_timeout=30,
                  **kwargs) -> None:
         super().__init__(table=table, users=users)
         self.log.logger = logger
         self.round = None
         self.deck = None
         self.cards = None
-        self.bank_total =None
+        self.bank_total = None
         self.banks = None
 
         self.blind_small = blind_small
         self.blind_big = blind_big
-        self.ante = ante
 
         self.bet_id = None
         self.bet_level = 0
@@ -62,7 +62,6 @@ class PokerBase(Game):
         return dict(
             blind_small=self.blind_small,
             blind_big=self.blind_big,
-            ante=self.ante,
             bet_timeout=self.bet_timeout
         )
 
@@ -71,10 +70,7 @@ class PokerBase(Game):
 
     def get_info(self, users_info: dict = None, user_id: int = None):
         info = super().get_info()
-        info.update(
-            blind_small=self.blind_small,
-            blind_big=self.blind_big,
-        )
+        info |= self.game_props
         info.update(
             cards=self.cards if self.cards else [],
         )
@@ -149,7 +145,7 @@ class PokerBase(Game):
                                            delta=player.bet_delta,
                                            amount=player.bet_amount,
                                            balance=player.balance,
-                                           bank_total = self.bank_total
+                                           bank_total=self.bank_total
                                            )
 
     # STATUS
@@ -227,7 +223,7 @@ class PokerBase(Game):
     def handle_cmd_bet(self, db, *, user_id, bet_type, raise_delta):
         self.log.info("handle_bet: %s %s %s", user_id, bet_type, raise_delta)
         p = self.current_player
-        
+
         if p.user_id != user_id:
             raise ValueError('invalid user')
         if not Bet.verify(bet_type):
@@ -349,7 +345,7 @@ class PokerBase(Game):
 
         self.setup_players_roles()
         self.setup_cards()
-        
+
         async with self.DBI(log=self.log) as db:
             await self.broadcast_GAME_BEGIN(db)
 
@@ -401,6 +397,7 @@ class PokerBase(Game):
 
     async def run_PREFLOP(self):
         self.log.info("PREFLOP begin")
+        self.round = Round.PREFLOP
 
         self.players_to_role(PlayerRole.DEALER)
         self.players_rotate()
@@ -457,6 +454,7 @@ class PokerBase(Game):
         if self.count_in_the_game <= 1:
             return
         self.log.info("FLOP begin")
+        self.round = Round.FLOP
 
         for _ in range(3):
             self.cards.append(self.deck.get_next())
@@ -475,6 +473,7 @@ class PokerBase(Game):
         if self.count_in_the_game <= 1:
             return
         self.log.info("TERN begin")
+        self.round = Round.TERN
 
         for _ in range(1):
             self.cards.append(self.deck.get_next())
@@ -493,6 +492,7 @@ class PokerBase(Game):
         if self.count_in_the_game <= 1:
             return
         self.log.info("RIVER begin")
+        self.round = Round.RIVER
 
         for _ in range(1):
             self.cards.append(self.deck.get_next())
@@ -511,6 +511,7 @@ class PokerBase(Game):
         if self.count_in_the_game <= 1:
             return
         self.log.info("SHOWDOWN begin")
+        self.round = Round.SHOWDOWN
 
         while self.current_player.user_id != self.bet_id:
             self.players_rotate()

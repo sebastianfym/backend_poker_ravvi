@@ -2,6 +2,7 @@ from typing import List, Tuple
 
 from .hands import HandType
 from .base import PokerBase, Bet
+from ..user import User
 
 
 class Poker_NLH_X(PokerBase):
@@ -27,6 +28,17 @@ class Poker_NLH_REGULAR(Poker_NLH_X):
     GAME_SUBTYPE = "REGULAR"
     GAME_DECK = 52
 
+    def __init__(self, table, users: List[User], current_ante_value: float | None = None, **kwargs):
+        super().__init__(table, users, **kwargs)
+        self.current_ante_value = current_ante_value
+
+    @property
+    def game_props(self):
+        return super().game_props | dict(
+            ante=self.current_ante_value,
+        )
+
+
 
 class Poker_NLH_AOF(Poker_NLH_X):
     GAME_SUBTYPE = "AOF"
@@ -49,6 +61,16 @@ class Poker_NLH_3M1(Poker_NLH_X):
     GAME_DECK = 52
 
     PLAYER_CARDS_FREFLOP = 3
+
+    def __init__(self, table, users: List[User], current_ante_value: float | None = None, **kwargs):
+        super().__init__(table, users, **kwargs)
+        self.current_ante_value = current_ante_value
+
+    @property
+    def game_props(self):
+        return super().game_props | dict(
+            ante=self.current_ante_value,
+        )
 
 
 class Poker_NLH_6P(Poker_NLH_X):

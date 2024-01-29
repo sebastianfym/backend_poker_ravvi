@@ -39,10 +39,10 @@ class Table_SNG(Table):
         self.level_time = level_time
         
         self.level_current = self.levels[0]
-        self.game_props.update(bet_timeout=action_time, 
+        self.game_props.update(bet_timeout=action_time,
                                blind_small=self.level_current.blind_small,
                                blind_big=self.level_current.blind_big,
-                               ante = self.level_current.ante)
+                               ante=self.level_current.ante)
 
     @property
     def user_enter_enabled(self):
@@ -100,7 +100,7 @@ class Table_SNG(Table):
             self.game_props.update( 
                                 blind_small=self.level_current.blind_small,
                                 blind_big=self.level_current.blind_big,
-                                ante = self.level_current.ante
+                                ante = self.level_current.current_ante_value
                                 )
             self.log.info('NEW LEVEL: %s', self.level_current)
             next_idx = idx + 1            
