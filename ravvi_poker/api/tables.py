@@ -39,6 +39,9 @@ class TableParams(BaseModel):
     blind_big: float | None = None
     blind_schedule: str | None = None
     blind_time: Optional[int] = Field(default=None, ge=1)
+    spin_multiplier: float | None = None
+    registration_time: int | None = None
+    level_time: int | None = None #Todo написать сюда функцию валидацию в соответствии с вики
 
     jackpot: bool | None = None
     ante: float | None = None
@@ -65,15 +68,16 @@ class TableParams(BaseModel):
     ratholing: int | None = None
     withdrawals: bool | None = None
     auto_clone: bool | None = None
-    players_required: int | None = None
+    players_required: int | None = 2
     rewards_structure: str | None = None
+    mtt_type: str | None = None
 
     gps: bool | None = None
     ip: bool | None = None
     disable_pc: bool | None = None
     email_restriction: bool | None = None
     access_manual: bool | None = None
-    chat_mode: str | None = None
+    chat_mode: str | None = None #Todo написать сюда функцию валидацию в соответствии с вики
     access_password: Optional[constr(min_length=4, max_length=4)] = None
     deny_countries: Optional[List[str]] | None = []
     deny_clubs: Optional[List[str]] | None = []
@@ -85,6 +89,10 @@ class TableParams(BaseModel):
     opened: Optional[datetime.datetime] = None
     closed: Optional[datetime.datetime] = None
     prize_fund: int | None = None
+
+    captcha: bool | None = False
+    view_during_move: bool | None = False
+    ev_chop: bool | None = False
 
     @field_validator('table_type')
     @classmethod
