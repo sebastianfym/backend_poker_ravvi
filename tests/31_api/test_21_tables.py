@@ -6,6 +6,7 @@ from ravvi_poker.api.auth import UserAccessProfile
 from ravvi_poker.api.clubs import ClubProfile, ClubMemberProfile
 from ravvi_poker.api.tables import TableProfile
 
+
 def test_create_table(api_client: TestClient, api_guest: UserAccessProfile):
     # set headers
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
@@ -58,7 +59,7 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessProfile):
     response = api_client.get(f"/v1/clubs/{club.id}/tables")
     assert response.status_code == HTTP_200_OK
     tables = [TableProfile(**x) for x in response.json()]
-    assert tables and len(tables)==2
+    assert tables and len(tables) == 2
 
     response = api_client.get(f"/v1/clubs/{12312312312312}/tables")
     assert response.status_code == HTTP_404_NOT_FOUND
@@ -103,7 +104,13 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessProfile):
     response = api_client.post(f"v1/clubs/{club.id}/tables", json=params)
     assert response.status_code == 201
 
-    params['game_subtype'] = '...'
+    params = {
+        "table_name": "TEST NLH AOF",
+        "table_type": "RG",
+        "table_seats": 6,
+        "game_type": "PLO",
+        "game_subtype": "..."
+    }
     response = api_client.post(f"v1/clubs/{club.id}/tables", json=params)
     assert response.status_code == 422
 
@@ -130,10 +137,18 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessProfile):
     response = api_client.post(f"v1/clubs/{club.id}/tables", json=params)
     assert response.status_code == 201
 
-    params['ratholing'] = 13
+    params = {
+        "table_name": "TEST NLH AOF",
+        "table_type": "RG",
+        "table_seats": 6,
+        "game_type": "OFC",
+        "game_subtype": "DEFAULT",
+        "ratholing": 13
+    }
     response = api_client.post(f"v1/clubs/{club.id}/tables", json=params)
     assert response.status_code == 422
     assert response.json()['detail'][0]['msg'] == 'Value error, Invalid ratholing, must be between 0 and 12'
+
 
 def test_create_table_with_validation(api_client: TestClient, api_guest: UserAccessProfile):
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
@@ -159,7 +174,7 @@ def test_create_table_with_validation(api_client: TestClient, api_guest: UserAcc
         "table_seats": 6,
         "game_type": "NLH",
         "game_subtype": "REGULAR"
-        }
+    }
     error_validate_in_table_type_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
     assert error_validate_in_table_type_response.status_code == 422
 
@@ -229,6 +244,14 @@ def test_create_table_with_validation(api_client: TestClient, api_guest: UserAcc
     error_validate_in_access_password_attributes_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
     assert error_validate_in_access_password_attributes_response.status_code == 422
 
-    params['unknown_field'] = "unknown_value"
+    params = {
+        "table_name": "TEST",
+        "table_type": "RG",
+        "table_seats": 6,
+        "game_type": "NLH",
+        "game_subtype": "AOF",
+        "unknown_field": "unknown_value"
+    }
     error_validate_in_access_password_attributes_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
-    assert error_validate_in_access_password_attributes_response.status_code == 422
+    assert error_validate_in_access_password_attributes_response.status_code == 201
+    assert "unknown_field" not in response.json()

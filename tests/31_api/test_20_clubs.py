@@ -141,7 +141,6 @@ def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_
     assert response.status_code == 200
     members = [ClubMemberProfile(**m) for m in response.json()]
     pending = [m for m in members if not m.user_approved]
-    print(f"members: {members[1]}")
     assert members
     assert pending and len(pending) == 1
 

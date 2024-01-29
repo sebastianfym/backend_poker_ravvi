@@ -196,7 +196,6 @@ async def v1_get_table_result(table_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         table = await db.get_table(table_id)
-        print(f"table: {table}")
         if not table:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Table not found")
         if table.table_type not in ('SNG', 'MTT'):
