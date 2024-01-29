@@ -1,13 +1,19 @@
 import logging
+import os
+
+import pytest
 from fastapi.testclient import TestClient
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_401_UNAUTHORIZED
 from ravvi_poker.api.auth import UserAccessProfile
 
+from ravvi_poker.engine import data
+
 logger = logging.getLogger(__name__)
+
 
 def test_get_levels_schedule_no_access(api_client: TestClient, api_guest: UserAccessProfile):
     # negative (no access)
-    response = api_client.get(f"/v1/info/levels_schedule/unknown/unknown")
+    response = api_client.get(f"/v1/info/levels_schedule/unknown")
     assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
@@ -16,7 +22,7 @@ def test_get_levels_schedule(api_client: TestClient, api_guest: UserAccessProfil
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
 
     # negative (not found)
-    response = api_client.get(f"/v1/info/levels_schedule/unknown/unknown")
+    response = api_client.get(f"/v1/info/levels_schedule/unknown")
     assert response.status_code == HTTP_404_NOT_FOUND
 
     # positive
@@ -28,15 +34,13 @@ def test_get_levels_schedule(api_client: TestClient, api_guest: UserAccessProfil
     for table_type, schedules in table_type.items():
         for schedule_type in schedules:
             logger.info("%s/%s", table_type, schedule_type)
-            response = api_client.get(f"/v1/info/levels_schedule/{table_type}/{schedule_type}")
+            response = api_client.get(f"/v1/info/levels_schedule/{table_type}")
             assert response.status_code == HTTP_200_OK
             data = response.json()
-            assert isinstance(data, list)
-            row = data[0]
-            assert 'level' in row
-            assert 'blind_small' in row
-            assert 'blind_big' in row
-            assert 'ante' in row
+            print(data)
+            assert isinstance(data, dict)
+            row = data['standard']
+            assert isinstance(row, list)
 
 
 # def test_get_payment_structure(api_client: TestClient, api_guest: UserAccessProfile):
@@ -53,3 +57,32 @@ def test_get_levels_schedule(api_client: TestClient, api_guest: UserAccessProfil
 #     assert response.status_code == 200
 #     assert isinstance(response.json(), list)
 #     assert response.json() == payment_structure_list
+
+def test_countries_list(api_client: TestClient, api_guest: UserAccessProfile):
+
+    data.getJSONFiles()
+
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+
+    response = api_client.get("/v1/info/countries/ru/")
+    assert response.status_code == 200
+
+    response = api_client.get("/v1/info/countries/tg/")
+    assert response.status_code == 400
+
+    response = api_client.get("/v1/info/countries/ru/")
+    assert list(response.json().values())[0] == "Абхазия"
+
+    response = api_client.get("/v1/info/countries/en/")
+    assert list(response.json().values())[0] == "Abkhazia"
+
+
+def test_rewards_distribution(api_client: TestClient, api_guest: UserAccessProfile):
+
+    response = api_client.get("/v1/info/rewards_distribution")
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated"}
+
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+    response = api_client.get("/v1/info/rewards_distribution")
+    assert response.status_code == 200

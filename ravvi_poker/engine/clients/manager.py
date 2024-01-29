@@ -70,9 +70,6 @@ class ClientsManager:
             subscribers = self.table_subscribers.get(msg.table_id, None)
         if not subscribers:
             return
-        # remove system private props
-        for k in ('cmd_id','client_id'):
-            msg.pop('cmd_id',None)
         counter = 0
         for client in subscribers.values():
             if msg.msg_type == Message.Type.TABLE_INFO:

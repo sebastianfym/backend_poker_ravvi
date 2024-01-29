@@ -1,5 +1,6 @@
 import logging
 
+from .tables.configs import configCls
 from ..logging import ObjectLoggerAdapter
 from ..db import DBI
 
@@ -10,6 +11,7 @@ from .player import Player
 from .events import Message, Command
 
 logger = logging.getLogger(__name__)
+
 
 class Game:
     DBI = DBI
@@ -45,14 +47,23 @@ class Game:
     def game_props(self):
         return None
 
-    def get_info(self, user_id=None, users_info=None):
+    def get_info(self, users_info: dict = None, user_id: int = None) -> dict:
         info = dict(
             game_id=self.game_id,
             game_type=self.game_type,
             game_subtype=self.game_subtype,
-            players=[x.user_id for x in self.players],
-            dealer_id = self.dealer_id,
+            players=[x.user_id for x in self.players] if self.players is not None else [],
+            dealer_id=self.dealer_id,
         )
+
+        # TODO перенести
+        # добавляем анте
+        # if table.game_props["ante_up"]:
+        #     info |= {
+        #         "ante": table.game_props["ante_levels"],
+        #         "current_ante": table.game_props["ante_levels"][0]
+        #     }
+
         return info
 
     # CARDS
@@ -65,7 +76,7 @@ class Game:
         for p in self.players:
             p.cards = []
             p.cards_open = False
-            
+
     # PLAYERS
 
     @property
@@ -89,34 +100,34 @@ class Game:
         await self.emit_msg(db, msg)
 
     async def broadcast_GAME_CARDS(self, db):
-        msg = Message(msg_type=Message.Type.GAME_CARDS, cards = self.cards)
+        msg = Message(msg_type=Message.Type.GAME_CARDS, cards=self.cards)
         await self.emit_msg(db, msg)
 
     async def broadcast_PLAYER_CARDS(self, db, player, **kwargs):
         msg = Message(msg_type=Message.Type.PLAYER_CARDS,
-            user_id = player.user_id,
-            cards = player.cards,
-            cards_open = player.cards_open,
-            **kwargs
-        )
+                      user_id=player.user_id,
+                      cards=player.cards,
+                      cards_open=player.cards_open,
+                      **kwargs
+                      )
         await self.emit_msg(db, msg)
 
     async def broadcast_PLAYER_MOVE(self, db, player, **kwargs):
-        msg = Message(msg_type=Message.Type.GAME_PLAYER_MOVE, 
-            user_id = player.user_id, 
-            **kwargs
-        )
+        msg = Message(msg_type=Message.Type.GAME_PLAYER_MOVE,
+                      user_id=player.user_id,
+                      **kwargs
+                      )
         await self.emit_msg(db, msg)
 
     async def broadcast_PLAYER_BET(self, db, player, **kwargs):
         msg = Message(msg_type=Message.Type.PLAYER_BET,
-            user_id = player.user_id,
-            **kwargs
-        )
+                      user_id=player.user_id,
+                      **kwargs
+                      )
         await self.emit_msg(db, msg)
 
-    async def broadcast_GAME_ROUND_END(self, db, banks):
-        msg = Message(msg_type=Message.Type.GAME_ROUND, banks = banks)
+    async def broadcast_GAME_ROUND_END(self, db, banks, bank_total):
+        msg = Message(msg_type=Message.Type.GAME_ROUND, banks=banks, bank_total=bank_total)
         await self.emit_msg(db, msg)
 
     async def broadcast_GAME_RESULT(self, db, winners):
@@ -140,8 +151,8 @@ def get_game_class(game_type, game_subtype):
     from .poker.nlh import NLH_GAMES
     from .poker.plo import PLO_GAMES
 
-    GAME_CLASSES = NLH_GAMES+PLO_GAMES
-    GAME_CLASSES_MAP = {(cls.GAME_TYPE, cls.GAME_SUBTYPE):cls for cls in GAME_CLASSES}
+    GAME_CLASSES = NLH_GAMES + PLO_GAMES
+    GAME_CLASSES_MAP = {(cls.GAME_TYPE, cls.GAME_SUBTYPE): cls for cls in GAME_CLASSES}
 
     key = (game_type, game_subtype)
     return GAME_CLASSES_MAP.get(key, None)
