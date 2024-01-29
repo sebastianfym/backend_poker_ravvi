@@ -160,10 +160,10 @@ def test_create_table_with_validation(api_client: TestClient, api_guest: UserAcc
         "table_seats": 6,
         "game_type": "NLH",
         "game_subtype": "AOF",
-        "blind_level_time": 50
+        "level_time": 50
     }
-    error_validate_in_blind_level_time_attributes_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
-    assert error_validate_in_blind_level_time_attributes_response.status_code == 422
+    error_validate_in_level_time_attributes_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
+    assert error_validate_in_level_time_attributes_response.status_code == 422
 
     params = {
         "table_name": "TEST",

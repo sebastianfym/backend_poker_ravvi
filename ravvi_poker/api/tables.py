@@ -37,11 +37,11 @@ class TableParams(BaseModel):
     addon_level: int | None = None
     blind_small: float | None = None
     blind_big: float | None = None
-    blind_schedule: str | None = None
+    level_schedule: str | None = None
     blind_time: Optional[int] = Field(default=None, ge=1)
     spin_multiplier: float | None = None
     registration_time: int | None = None
-    blind_level_time: int | None = None
+    level_time: int | None = None
 
     jackpot: bool | None = None
     ante: float | None = None
@@ -166,22 +166,22 @@ class TableParams(BaseModel):
             else:
                 raise ValueError(f'Invalid ratholing, must be between 0 and 12')
 
-    @field_validator("blind_level_time")
+    @field_validator("level_time")
     @classmethod
-    def check_blind_level_time(cls, blind_level_time: int, info: ValidationInfo) -> int:
+    def check_level_time(cls, level_time: int, info: ValidationInfo) -> int:
         table_type = info.data['table_type']
         try:
             match table_type:
                 case "SNG" | "MTT":
-                    if 2 <= blind_level_time <= 30:
-                        return blind_level_time
+                    if 2 <= level_time <= 30:
+                        return level_time
                     else:
-                        raise ValueError(f'blind_level_time must be between 2 and 30')
+                        raise ValueError(f'level_time must be between 2 and 30')
                 case "SPIN":
-                    if 2 <= blind_level_time <= 6 or None:
-                        return blind_level_time
+                    if 2 <= level_time <= 6 or None:
+                        return level_time
                     else:
-                        raise ValueError(f'blind_level_time must be between 2 and 6')
+                        raise ValueError(f'level_time must be between 2 and 6')
                 case _:
                     return None
         except TypeError:
