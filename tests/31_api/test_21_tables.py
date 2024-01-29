@@ -91,7 +91,7 @@ def test_create_table_with_validation(api_client: TestClient, api_guest: UserAcc
             "addon_level": 0,
             "blind_value": 0,
             "blind_schedule": "string",
-            "blind_level_time": 1,
+            "blind_time": 1,
             "chat_mode": "ALL",
             "jackpot": False,
             "access_countries": ["1", "2", "3"]
@@ -156,14 +156,14 @@ def test_create_table_with_validation(api_client: TestClient, api_guest: UserAcc
 
     params = {
         "table_name": "TEST",
-        "table_type": "RG",
+        "table_type": "MTT",
         "table_seats": 6,
         "game_type": "NLH",
         "game_subtype": "AOF",
-        "blind_level_time": 0
+        "level_time": 50
     }
-    error_validate_in_blind_level_time_attributes_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
-    assert error_validate_in_blind_level_time_attributes_response.status_code == 422
+    error_validate_in_level_time_attributes_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
+    assert error_validate_in_level_time_attributes_response.status_code == 422
 
     params = {
         "table_name": "TEST",
