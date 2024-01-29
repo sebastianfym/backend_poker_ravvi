@@ -160,10 +160,10 @@ def test_get_relations(api_client: TestClient, api_guest: UserAccessProfile):
     assert response.status_code == 201
 
     club = ClubProfile(**response.json())
-    response = api_client.get(f'/v1/clubs/{club.id}/relation_tables')
+    response = api_client.get(f'/v1/clubs/{club.id}/relation_clubs')
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
-    response = api_client.get(f"/v1/clubs/{club.id}/relation_tables")
-    assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    response = api_client.get(f"/v1/clubs/{club.id}/relation_union")
+    assert response.status_code == 404
+    assert response.json() == {'detail': 'Union not found'}

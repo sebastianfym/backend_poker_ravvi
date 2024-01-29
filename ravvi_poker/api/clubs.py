@@ -265,7 +265,10 @@ async def v1_get_relation_clubs(club_id: int, session_uuid: SessionUUID):
 async def v1_get_relation_union(union_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
-        union = await db.get_unions(union_id)   #Todo такой функции в dbi.py нету, название примерное
+        try:
+            union = await db.get_unions(union_id)   #Todo такой функции в dbi.py нету, название примерное
+        except AttributeError:
+            union = None
         if not union:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Union not found")
 
