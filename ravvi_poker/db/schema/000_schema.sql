@@ -1,3 +1,4 @@
+
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
 
 CREATE TYPE public.user_role_enum AS ENUM (
@@ -128,7 +129,7 @@ CREATE TABLE public.club_profile (
     image_id bigint,
     service_balance numeric(18,2) DEFAULT 0 NOT NULL,
     service_limit numeric(18,2) DEFAULT 0 NOT NULL,
-    created_ts timestamp without time zone DEFAULT now_utc() NOT NULL,
+    created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
     closed_ts timestamp without time zone
 );
 
@@ -140,31 +141,6 @@ CREATE SEQUENCE public.club_profile_id_seq
     CACHE 1;
 
 ALTER SEQUENCE public.club_profile_id_seq OWNED BY public.club_profile.id;
-
-CREATE TABLE public.user_account (
-    id bigint NOT NULL,
-    club_id bigint DEFAULT 0 NOT NULL,
-    user_id bigint NOT NULL,
-    user_role public.user_role_enum DEFAULT 'P'::public.user_role_enum NOT NULL,
-    created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
-    user_comment character varying(255) DEFAULT NULL::character varying,
-    approved_ts timestamp without time zone,
-    approved_by bigint,
-    club_comment character varying(255) DEFAULT NULL::character varying,
-    balance numeric(20,4) DEFAULT 0 NOT NULL,
-    balance_shared numeric(20,4) DEFAULT 0 NOT NULL,
-    closed_ts timestamp without time zone,
-    closed_by bigint
-);
-
-CREATE SEQUENCE public.user_account_id_seq
-    START WITH 1000
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-ALTER SEQUENCE public.user_account_id_seq OWNED BY public.user_account.id;
 
 CREATE TABLE public.game_player (
     game_id bigint NOT NULL,
@@ -183,10 +159,19 @@ CREATE TABLE public.game_profile (
     props jsonb
 );
 
+CREATE SEQUENCE public.game_profile_id_seq
+    START WITH 1000
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.game_profile_id_seq OWNED BY public.game_profile.id;
+
 CREATE TABLE public.image (
     id bigint NOT NULL,
     owner_id bigint,
-    created_ts timestamp without time zone DEFAULT now_utc() NOT NULL,
+    created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
     image_data text,
     mime_type character varying(100) DEFAULT NULL::character varying
 );
@@ -199,42 +184,6 @@ CREATE SEQUENCE public.image_id_seq
     CACHE 1;
 
 ALTER SEQUENCE public.image_id_seq OWNED BY public.image.id;
-
-CREATE SEQUENCE public.game_profile_id_seq
-    START WITH 1000
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-ALTER SEQUENCE public.game_profile_id_seq OWNED BY public.game_profile.id;
-
-CREATE TABLE public.table_profile (
-    id bigint NOT NULL,
-    parent_id bigint,
-    club_id bigint,
-    table_type character varying(100) NOT NULL,
-    game_type character varying(100) NOT NULL,
-    table_name character varying(100) DEFAULT NULL::character varying,
-    game_subtype character varying(100) NOT NULL,
-    table_seats smallint,
-    props jsonb,
-    created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
-    opened_ts timestamp without time zone,
-    closed_ts timestamp without time zone,
-    n_bots smallint DEFAULT 0 NOT NULL,
-    engine_id bigint,
-    engine_status smallint DEFAULT 0 NOT NULL
-);
-
-CREATE SEQUENCE public.table_profile_id_seq
-    START WITH 1000
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-ALTER SEQUENCE public.table_profile_id_seq OWNED BY public.table_profile.id;
 
 CREATE TABLE public.table_cmd (
     id bigint NOT NULL,
@@ -275,19 +224,58 @@ CREATE SEQUENCE public.table_msg_id_seq
 
 ALTER SEQUENCE public.table_msg_id_seq OWNED BY public.table_msg.id;
 
-CREATE TABLE public.table_user (
-    table_id bigint NOT NULL,
-    user_id bigint NOT NULL,
-    last_game_id bigint,
-    props jsonb
+CREATE TABLE public.table_profile (
+    id bigint NOT NULL,
+    parent_id bigint,
+    club_id bigint DEFAULT 0 NOT NULL,
+    table_type character varying(100) NOT NULL,
+    game_type character varying(100) NOT NULL,
+    table_name character varying(100) DEFAULT NULL::character varying,
+    game_subtype character varying(100) NOT NULL,
+    table_seats smallint,
+    props jsonb,
+    created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
+    opened_ts timestamp without time zone,
+    closed_ts timestamp without time zone,
+    n_bots smallint DEFAULT 0 NOT NULL,
+    engine_id bigint,
+    engine_status smallint DEFAULT 0 NOT NULL
 );
+
+CREATE SEQUENCE public.table_profile_id_seq
+    START WITH 1000
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.table_profile_id_seq OWNED BY public.table_profile.id;
+
+CREATE TABLE public.table_session (
+    id integer NOT NULL,
+    table_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
+    opened_ts timestamp without time zone,
+    closed_ts timestamp without time zone
+);
+
+CREATE SEQUENCE public.table_session_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.table_session_id_seq OWNED BY public.table_session.id;
 
 CREATE TABLE public.temp_email (
     id bigint NOT NULL,
     uuid uuid DEFAULT public.uuid_generate_v4(),
     user_id bigint NOT NULL,
     temp_email character varying(100) NOT NULL,
-    created_ts timestamp without time zone DEFAULT now_utc(),
+    created_ts timestamp without time zone DEFAULT public.now_utc(),
     closed_ts timestamp without time zone
 );
 
@@ -299,6 +287,31 @@ CREATE SEQUENCE public.temp_email_id_seq
     CACHE 1;
 
 ALTER SEQUENCE public.temp_email_id_seq OWNED BY public.temp_email.id;
+
+CREATE TABLE public.user_account (
+    id bigint NOT NULL,
+    club_id bigint DEFAULT 0 NOT NULL,
+    user_id bigint NOT NULL,
+    user_role public.user_role_enum DEFAULT 'P'::public.user_role_enum NOT NULL,
+    created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
+    user_comment character varying(255) DEFAULT NULL::character varying,
+    approved_ts timestamp without time zone,
+    approved_by bigint,
+    club_comment character varying(255) DEFAULT NULL::character varying,
+    balance numeric(20,4) DEFAULT 0 NOT NULL,
+    balance_shared numeric(20,4) DEFAULT 0 NOT NULL,
+    closed_ts timestamp without time zone,
+    closed_by bigint
+);
+
+CREATE SEQUENCE public.user_account_id_seq
+    START WITH 1000
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.user_account_id_seq OWNED BY public.user_account.id;
 
 CREATE TABLE public.user_account_txn (
     id bigint NOT NULL,
@@ -338,7 +351,7 @@ CREATE TABLE public.user_device (
     id bigint NOT NULL,
     uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     props jsonb,
-    created_ts timestamp without time zone DEFAULT now_utc() NOT NULL,
+    created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
     closed_ts timestamp without time zone
 );
 
@@ -356,7 +369,7 @@ CREATE TABLE public.user_login (
     uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     user_id bigint NOT NULL,
     device_id bigint NOT NULL,
-    created_ts timestamp without time zone DEFAULT now_utc() NOT NULL,
+    created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
     closed_ts timestamp without time zone
 );
 
@@ -374,7 +387,7 @@ CREATE TABLE public.user_profile (
     uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     name character varying(100) DEFAULT NULL::character varying,
     password_hash character varying(100) DEFAULT NULL::character varying,
-    created_ts timestamp without time zone DEFAULT now_utc() NOT NULL,
+    created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
     closed_ts timestamp without time zone,
     email character varying(100) DEFAULT NULL::character varying,
     image_id bigint
@@ -393,7 +406,7 @@ CREATE TABLE public.user_session (
     id bigint NOT NULL,
     uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     login_id bigint NOT NULL,
-    created_ts timestamp without time zone DEFAULT now_utc() NOT NULL,
+    created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
     used_ts timestamp without time zone,
     closed_ts timestamp without time zone
 );
@@ -419,6 +432,8 @@ ALTER TABLE ONLY public.table_msg ALTER COLUMN id SET DEFAULT nextval('public.ta
 
 ALTER TABLE ONLY public.table_profile ALTER COLUMN id SET DEFAULT nextval('public.table_profile_id_seq'::regclass);
 
+ALTER TABLE ONLY public.table_session ALTER COLUMN id SET DEFAULT nextval('public.table_session_id_seq'::regclass);
+
 ALTER TABLE ONLY public.temp_email ALTER COLUMN id SET DEFAULT nextval('public.temp_email_id_seq'::regclass);
 
 ALTER TABLE ONLY public.user_account ALTER COLUMN id SET DEFAULT nextval('public.user_account_id_seq'::regclass);
@@ -435,26 +450,17 @@ ALTER TABLE ONLY public.user_profile ALTER COLUMN id SET DEFAULT nextval('public
 
 ALTER TABLE ONLY public.user_session ALTER COLUMN id SET DEFAULT nextval('public.user_session_id_seq'::regclass);
 
-ALTER TABLE ONLY public.user_account
-    ADD CONSTRAINT user_account_pkey PRIMARY KEY (id);
-
 ALTER TABLE ONLY public.club_profile
     ADD CONSTRAINT club_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.image
-    ADD CONSTRAINT image_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.game_profile
-    ADD CONSTRAINT game_profile_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.game_player
     ADD CONSTRAINT game_player_pkey PRIMARY KEY (game_id, user_id);
 
-ALTER TABLE ONLY public.table_profile
-    ADD CONSTRAINT table_profile_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.game_profile
+    ADD CONSTRAINT game_profile_pkey PRIMARY KEY (id);
 
-ALTER TABLE ONLY public.table_user
-    ADD CONSTRAINT table_user_pkey PRIMARY KEY (table_id, user_id);
+ALTER TABLE ONLY public.image
+    ADD CONSTRAINT image_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.table_cmd
     ADD CONSTRAINT table_cmd_pkey PRIMARY KEY (id);
@@ -462,11 +468,20 @@ ALTER TABLE ONLY public.table_cmd
 ALTER TABLE ONLY public.table_msg
     ADD CONSTRAINT table_msg_pkey PRIMARY KEY (id);
 
+ALTER TABLE ONLY public.table_profile
+    ADD CONSTRAINT table_profile_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.table_session
+    ADD CONSTRAINT table_session_pkey PRIMARY KEY (id);
+
 ALTER TABLE ONLY public.temp_email
     ADD CONSTRAINT temp_email_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.temp_email
     ADD CONSTRAINT temp_email_unq_uuid UNIQUE (uuid);
+
+ALTER TABLE ONLY public.user_account
+    ADD CONSTRAINT user_account_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.user_account_txn
     ADD CONSTRAINT user_account_txn_pkey PRIMARY KEY (id);
@@ -498,15 +513,13 @@ ALTER TABLE ONLY public.user_session
 ALTER TABLE ONLY public.user_session
     ADD CONSTRAINT user_session_uuid_key UNIQUE (uuid);
 
-CREATE INDEX user_account_idx_user ON public.user_account USING btree (user_id);
-
-CREATE UNIQUE INDEX user_account_unq_clubuser ON public.user_account USING btree (club_id, user_id);
-
 CREATE INDEX game_profile_idx_type ON public.game_profile USING btree (game_type, game_subtype);
 
 CREATE INDEX game_profile_idx_user ON public.game_player USING btree (user_id);
 
-CREATE INDEX table_profile_idx_user ON public.table_user USING btree (user_id);
+CREATE INDEX user_account_idx_user ON public.user_account USING btree (user_id);
+
+CREATE UNIQUE INDEX user_account_unq_clubuser ON public.user_account USING btree (club_id, user_id);
 
 CREATE INDEX user_client_idx_closed ON public.user_client USING btree (session_id, closed_ts);
 
@@ -549,15 +562,6 @@ ALTER TABLE ONLY public.game_profile
 ALTER TABLE ONLY public.image
     ADD CONSTRAINT image_fk_owner FOREIGN KEY (owner_id) REFERENCES public.user_profile(id);
 
-ALTER TABLE ONLY public.user_login
-    ADD CONSTRAINT user_login_fk_device FOREIGN KEY (device_id) REFERENCES public.user_device(id);
-
-ALTER TABLE ONLY public.user_login
-    ADD CONSTRAINT user_login_fk_user FOREIGN KEY (user_id) REFERENCES public.user_profile(id);
-
-ALTER TABLE ONLY public.table_profile
-    ADD CONSTRAINT table_profile_fk_parent FOREIGN KEY (parent_id) REFERENCES public.table_profile(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
 ALTER TABLE ONLY public.table_cmd
     ADD CONSTRAINT table_cmd_fk_client FOREIGN KEY (client_id) REFERENCES public.user_client(id) ON UPDATE RESTRICT ON DELETE RESTRICT;
 
@@ -576,14 +580,14 @@ ALTER TABLE ONLY public.table_msg
 ALTER TABLE ONLY public.table_msg
     ADD CONSTRAINT table_msg_fk_table FOREIGN KEY (table_id) REFERENCES public.table_profile(id) ON UPDATE RESTRICT ON DELETE RESTRICT;
 
-ALTER TABLE ONLY public.table_user
-    ADD CONSTRAINT table_user_fk_last_game FOREIGN KEY (last_game_id) REFERENCES public.game_profile(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE ONLY public.table_profile
+    ADD CONSTRAINT table_profile_fk_parent FOREIGN KEY (parent_id) REFERENCES public.table_profile(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
-ALTER TABLE ONLY public.table_user
-    ADD CONSTRAINT table_user_fk_table FOREIGN KEY (table_id) REFERENCES public.table_profile(id) ON UPDATE CASCADE ON DELETE CASCADE;
+ALTER TABLE ONLY public.table_session
+    ADD CONSTRAINT table_session_fk_account FOREIGN KEY (account_id) REFERENCES public.user_account(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
-ALTER TABLE ONLY public.table_user
-    ADD CONSTRAINT table_user_fk_user FOREIGN KEY (user_id) REFERENCES public.user_profile(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE ONLY public.table_session
+    ADD CONSTRAINT table_session_fk_table FOREIGN KEY (table_id) REFERENCES public.table_profile(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.temp_email
     ADD CONSTRAINT temp_email_fk_user FOREIGN KEY (user_id) REFERENCES public.user_profile(id);
@@ -602,6 +606,12 @@ ALTER TABLE ONLY public.user_account_txn
 
 ALTER TABLE ONLY public.user_client
     ADD CONSTRAINT user_client_fk_session FOREIGN KEY (session_id) REFERENCES public.user_session(id) ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+ALTER TABLE ONLY public.user_login
+    ADD CONSTRAINT user_login_fk_device FOREIGN KEY (device_id) REFERENCES public.user_device(id);
+
+ALTER TABLE ONLY public.user_login
+    ADD CONSTRAINT user_login_fk_user FOREIGN KEY (user_id) REFERENCES public.user_profile(id);
 
 ALTER TABLE ONLY public.user_profile
     ADD CONSTRAINT user_profile_fk_image FOREIGN KEY (image_id) REFERENCES public.image(id);
