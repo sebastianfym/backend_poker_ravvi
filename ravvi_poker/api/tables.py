@@ -56,7 +56,7 @@ class TableParams(BaseModel):
     hi_low: bool | None = None
 
     vpip_level: int | None = None
-    hand_threshold: int | None = None
+    vpip_threshold: int | None = None
     call_time: int | None = None
     call_time_type: str | None = None
     online_players: int | None = None
