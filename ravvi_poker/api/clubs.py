@@ -1,6 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.exceptions import HTTPException
-from starlette.status import HTTP_200_OK, HTTP_201_CREATED
+from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 from pydantic import BaseModel
 
@@ -186,7 +186,7 @@ async def v1_approve_join_request(club_id: int, member_id: int, session_uuid: Se
 
 
 @router.post("/{club_id}/tables", status_code=HTTP_201_CREATED, summary="Create club table")
-async def v1_create_club_table(club_id: int, params: TableParams, session_uuid: SessionUUID):
+async def v1_create_club_table(club_id: int, params: TableParams, session_uuid: SessionUUID, request: Request):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
@@ -200,12 +200,23 @@ async def v1_create_club_table(club_id: int, params: TableParams, session_uuid: 
         kwargs = params.model_dump(exclude_unset=False)
         main_parameters = ["club_id", "table_type", "table_name", "table_seats", "game_type", "game_subtype"]
 
+        json_data = await request.json()
+        invalid_params = set(json_data.keys()) - set(params.__annotations__.keys())
+        if invalid_params:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST,
+                                detail=f"Invalid parameters: : {', '.join(invalid_params)}")
+
         table_type = kwargs.get('table_type')#.value
         table_name = kwargs.get('table_name')
         table_seats = kwargs.get('table_seats')
         game_type = kwargs.get('game_type')#.value
         game_subtype = kwargs.get('game_subtype')
 
+        for param in ["players_count", "viewers_count", "created", "opened", "closed"]:
+            try:
+                del kwargs[param]
+            except KeyError:
+                continue
         kwargs = {key: value for key, value in kwargs.items() if key not in main_parameters}
 
         table = await db.create_table(club_id=club_id, table_type=table_type, table_name=table_name,
