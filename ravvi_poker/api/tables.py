@@ -77,7 +77,7 @@ class TableParams(BaseModel):
     disable_pc: bool | None = None
     email_restriction: bool | None = None
     access_manual: bool | None = None
-    chat_mode: str | None = None #Todo написать сюда функцию валидацию в соответствии с вики
+    chat_mode: str | None = None
     access_password: Optional[constr(min_length=4, max_length=4)] = None
     deny_countries: Optional[List[str]] | None = []
     deny_clubs: Optional[List[str]] | None = []
