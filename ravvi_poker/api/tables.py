@@ -18,35 +18,36 @@ router = APIRouter(prefix="/tables", tags=["tables"])
 
 
 class TableParams(BaseModel):
-    table_name: str | None = None
     table_type: str | None = None
     table_seats: int = Field(ge=2, le=9)
+    table_name: str | None = None
     game_type: str | None = None
     game_subtype: str | None = None
-    
+
+    players_required: int | None = 2
+    mtt_type: str | None = None
     buyin_min: float | None = None
     buyin_max: float | None = None
+    spin_multiplier: float | None = None
     buyin_cost: float | None = None
     buyin_value: int | None = None
-    late_entry_level: int | None = None
+    registration_time: int | None = None
     rebuy_cost: float | None = None
     rebuy_value: int | None = None
     rebuy_count: int | None = None
     addon_cost: float | None = None
     addon_value: int | None = None
-    addon_level: int | None = None
+    rewards_structure: str | None = None
     blind_small: float | None = None
     blind_big: float | None = None
+    ante: float | None = None
     level_schedule: str | None = None
-    blind_time: Optional[int] = Field(default=None, ge=1)
-    spin_multiplier: float | None = None
-    registration_time: int | None = None
     level_time: int | None = None
-
+    action_time: int | None = None
+    club_fee: int | None = None
+    club_fee_cap: int | None = None
     jackpot: bool | None = None
-    ante: float | None = None
     ante_up: bool | None = None
-    ante: float | None = None
     double_board: bool | None = None
     bombpot_freq: int | None = None
     bombpot_min: int | None = None
@@ -54,45 +55,27 @@ class TableParams(BaseModel):
     bombpot_double_board: bool | None = None
     seven_deuce: int | None = None
     hi_low: bool | None = None
-
     vpip_level: int | None = None
     vpip_threshold: int | None = None
     call_time: int | None = None
     call_time_type: str | None = None
-    online_players: int | None = None
-    action_time: int | None = None
-    club_fee: int | None = None
-    club_fee_cap: int | None = None
-    auto_start: int | None = None
-    run_multi_times: bool | None = None
-    ratholing: int | None = None
-    withdrawals: bool | None = None
-    auto_clone: bool | None = None
-    players_required: int | None = 2
-    rewards_structure: str | None = None
-    mtt_type: str | None = None
-
+    chat_mode: str | None = None
+    access_password: Optional[constr(min_length=4, max_length=4)] = None
+    access_manual: bool | None = None
+    deny_countries: Optional[List[str]] | None = []
+    deny_clubs: Optional[List[str]] | None = []
+    deny_unions: Optional[List[str]] | None = []
     gps: bool | None = None
     ip: bool | None = None
     disable_pc: bool | None = None
     email_restriction: bool | None = None
-    access_manual: bool | None = None
-    chat_mode: str | None = None
-    access_password: Optional[constr(min_length=4, max_length=4)] = None
-    deny_countries: Optional[List[str]] | None = []
-    deny_clubs: Optional[List[str]] | None = []
-    deny_unions: Optional[List[str]] | None = []
-
-    players_count: int | None = None
-    viewers_count: int | None = None
-    created: Optional[datetime.datetime] = None
-    opened: Optional[datetime.datetime] = None
-    closed: Optional[datetime.datetime] = None
-    prize_fund: int | None = None
-
     captcha: bool | None = False
     view_during_move: bool | None = False
+    run_multi_times: bool | None = None
     ev_chop: bool | None = False
+    ratholing: int | None = None
+    withdrawals: bool | None = None
+
 
     @field_validator('table_type')
     @classmethod
@@ -133,7 +116,7 @@ class TableParams(BaseModel):
     @field_validator('game_subtype')
     @classmethod
     def check_game_subtype(cls, game_subtype: str, info: ValidationInfo) -> str:
-        try: 
+        try:
             game_type = info.data['game_type']
             match game_type:
                 case "NLH":
@@ -141,7 +124,7 @@ class TableParams(BaseModel):
                         case "REGULAR" | "AOF" | "3-1" | "6+":
                             return game_subtype
                         case _:
-                            raise ValueError(f'Possible options: REGULAR | AOF | 3-1 | 6+.') #eng | status_code
+                            raise ValueError(f'Possible options: REGULAR | AOF | 3-1 | 6+.')  # eng | status_code
                 case "PLO":
                     match game_subtype:
                         case "PLO4" | "PLO5" | "PLO6":
@@ -187,7 +170,6 @@ class TableParams(BaseModel):
         except TypeError:
             return None
 
-
     @field_validator("chat_mode")
     @classmethod
     def check_chat_mode(cls, chat_mode: str) -> int:
@@ -197,9 +179,16 @@ class TableParams(BaseModel):
             case _:
                 return None
 
+
 class TableProfile(TableParams):
-    id: int|None = None
+    id: int | None = None
     club_id: int | None = None
+    players_count: int | None = None
+    viewers_count: int | None = None
+    created: Optional[datetime.datetime] = None
+    opened: Optional[datetime.datetime] = None
+    closed: Optional[datetime.datetime] = None
+    prize_fund: int | None = None
 
 
 @router.get("/{table_id}/result", status_code=200, summary="Get table (SNG/MTT) result")
@@ -207,20 +196,21 @@ async def v1_get_table_result(table_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         table = await db.get_table(table_id)
+        print(f"table: {table}")
         if not table:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Table not found")
-        if table.table_type not in ('SNG','MTT'):
+        if table.table_type not in ('SNG', 'MTT'):
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Table not found")
         rows = await db.get_table_result(table_id)
-        rows.sort(key=lambda x: x.balance_end or x.balance_begin or 0, reverse=True) 
+        rows.sort(key=lambda x: x.balance_end or x.balance_begin or 0, reverse=True)
         result = []
         for i, r in enumerate(rows, start=1):
             x = dict(
-                user_id=r.user_id, 
-                username=r.username, 
-                image_id=r.image_id, 
-                reward = r.balance_end,
-                rank = i
+                user_id=r.user_id,
+                username=r.username,
+                image_id=r.image_id,
+                reward=r.balance_end,
+                rank=i
             )
             result.append(x)
     return dict(result=result)

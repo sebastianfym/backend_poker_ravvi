@@ -147,26 +147,7 @@ def test_create_table_with_validation(api_client: TestClient, api_guest: UserAcc
         "table_type": "RG",
         "table_seats": 6,
         "game_type": "NLH",
-        "game_subtype": "REGULAR",
-        "props": {
-            "buyin_min": 0,
-            "buyin_max": 0,
-            "buyin_cost": 0,
-            "buyin_value": 0,
-            "late_entry_level": 0,
-            "rebuy_cost": 0,
-            "rebuy_value": 0,
-            "rebuy_count": 0,
-            "addon_cost": 0,
-            "addon_value": 0,
-            "addon_level": 0,
-            "blind_value": 0,
-            "blind_schedule": "string",
-            "blind_time": 1,
-            "chat_mode": "ALL",
-            "jackpot": False,
-            "access_countries": ["1", "2", "3"]
-        }
+        "game_subtype": "REGULAR"
     }
 
     successfully_created_table_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
