@@ -34,7 +34,7 @@ async def v1_get_all_info_about_blinds(table_type: str, session_uuid: SessionUUI
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Key not found")
     
 
-@router.get("/rewards_distribution", status_code=HTTP_404_NOT_FOUND, summary="Get rewards distribution structure")
+@router.get("/rewards_distribution", status_code=HTTP_200_OK, summary="Get rewards distribution structure")
 async def v1_get_payment_structure(session_uuid: SessionUUID):
     """
     Получаем структуру распределения выигрыша в турнирах.
