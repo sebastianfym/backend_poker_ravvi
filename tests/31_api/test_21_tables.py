@@ -176,3 +176,7 @@ def test_create_table_with_validation(api_client: TestClient, api_guest: UserAcc
     }
     error_validate_in_access_password_attributes_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
     assert error_validate_in_access_password_attributes_response.status_code == 422
+
+    params['unknown_field'] = "unknown_value"
+    error_validate_in_access_password_attributes_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
+    assert error_validate_in_access_password_attributes_response.status_code == 422
