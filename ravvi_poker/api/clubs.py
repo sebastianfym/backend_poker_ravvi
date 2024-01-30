@@ -327,6 +327,9 @@ async def v1_add_chip_on_club_balance(club_id: int, session_uuid: SessionUUID, r
         club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+        account = await db.find_account(user_id=user.id, club_id=club_id)
+        if account.user_role != "O":
+            return HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You don't have enough rights to perform this action")
         json_data = await request.json()
         try:
             club_point = json_data["point"]
@@ -345,6 +348,10 @@ async def v1_delete_chip_from_club_balance(club_id: int, session_uuid: SessionUU
         club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+        account = await db.find_account(user_id=user.id, club_id=club_id)
+        if account.user_role != "O":
+            return HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You don't have enough rights to perform this action")
+
         json_data = await request.json()
         try:
             club_point = json_data["point"]
