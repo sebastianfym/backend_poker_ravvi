@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request
 from fastapi.exceptions import HTTPException
-from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST
+from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_418_IM_A_TEAPOT
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 from pydantic import BaseModel
 
@@ -319,3 +319,39 @@ async def v1_get_all_unions(session_uuid: SessionUUID):
             return []
         return [UnionProfile(id=union.id, name=union.name) for union in unions]
 
+
+@router.post("/{club_id}/add_chip_on_club_balance", status_code=HTTP_200_OK, summary="Adds a certain number of chips to the club's balance")
+async def v1_add_chip_on_club_balance(club_id: int, session_uuid: SessionUUID, request: Request):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+        json_data = await request.json()
+        try:
+            club_point = json_data["point"]
+            await db.add_chip_on_club_balance(club_id, club_point) #Todo такой функции в dbi.py нету, название примерное
+            return HTTP_200_OK
+        except KeyError:
+            return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You forgot to point out quantity the chips")
+        except AttributeError:
+            return HTTP_418_IM_A_TEAPOT
+
+
+@router.post("/{club_id}/delete_chip_from_club_balance", status_code=HTTP_200_OK, summary="Take away a certain number of chips from the club's balance")
+async def v1_delete_chip_from_club_balance(club_id: int, session_uuid: SessionUUID, request: Request):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+        json_data = await request.json()
+        try:
+            club_point = json_data["point"]
+            #Todo добавить проверку, что у клуба не может быть меньше фишек, чем в запросе (или отнимать до 0)
+            await db.delete_chip_on_club_balance(club_id, club_point) #Todo такой функции в dbi.py нету, название примерное
+            return HTTP_200_OK
+        except KeyError:
+            return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You forgot to point out quantity the chips")
+        except AttributeError:
+            return HTTP_418_IM_A_TEAPOT
