@@ -67,7 +67,6 @@ async def v1_create_club(params: ClubProps, session_uuid: SessionUUID):
     return club_profile
 
 
-
 @router.get("", summary="List clubs for current user")
 async def v1_list_clubs(session_uuid: SessionUUID):
     async with DBI() as db:
@@ -226,7 +225,7 @@ async def v1_create_club_table(club_id: int, params: TableParams, session_uuid: 
         kwargs = params.model_dump(exclude_unset=False)
         main_parameters = ["club_id", "table_type", "table_name", "table_seats", "game_type", "game_subtype"]
 
-        table_type = kwargs.get('table_type')#.value
+        table_type = kwargs.get('table_type')  # .value
         table_name = kwargs.get('table_name')
         table_seats = kwargs.get('table_seats')
         game_type = kwargs.get('game_type')  # .value
@@ -320,7 +319,8 @@ async def v1_get_all_unions(session_uuid: SessionUUID):
         return [UnionProfile(id=union.id, name=union.name) for union in unions]
 
 
-@router.post("/{club_id}/add_chip_on_club_balance", status_code=HTTP_200_OK, summary="Adds a certain number of chips to the club's balance")
+@router.post("/{club_id}/add_chip_on_club_balance", status_code=HTTP_200_OK,
+             summary="Adds a certain number of chips to the club's balance")
 async def v1_add_chip_on_club_balance(club_id: int, session_uuid: SessionUUID, request: Request):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -337,16 +337,17 @@ async def v1_add_chip_on_club_balance(club_id: int, session_uuid: SessionUUID, r
                                  detail="You don't have enough rights to perform this action")
         json_data = await request.json()
         try:
-            club_point = json_data["point"]
-            await db.add_chip_on_club_balance(club_id, club_point) #Todo такой функции в dbi.py нету, название примерное
+            amount = json_data["amount"]
+            await db.add_chip_on_club_balance(club_id, amount)  # Todo такой функции в dbi.py нету, название примерное
             return HTTP_200_OK
         except KeyError:
-            return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You forgot to point out quantity the chips")
+            return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You forgot to amount out quantity the chips")
         except AttributeError:
             return HTTP_418_IM_A_TEAPOT
 
 
-@router.post("/{club_id}/delete_chip_from_club_balance", status_code=HTTP_200_OK, summary="Take away a certain number of chips from the club's balance")
+@router.post("/{club_id}/delete_chip_from_club_balance", status_code=HTTP_200_OK,
+             summary="Take away a certain number of chips from the club's balance")
 async def v1_delete_chip_from_club_balance(club_id: int, session_uuid: SessionUUID, request: Request):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -356,24 +357,26 @@ async def v1_delete_chip_from_club_balance(club_id: int, session_uuid: SessionUU
         account = await db.find_account(user_id=user.id, club_id=club_id)
         try:
             if account.user_role != "O":
-                return HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You don't have enough rights to perform this action")
+                return HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                     detail="You don't have enough rights to perform this action")
         except AttributeError:
             return HTTPException(status_code=HTTP_403_FORBIDDEN,
                                  detail="You don't have enough rights to perform this action")
 
         json_data = await request.json()
         try:
-            club_point = json_data["point"]
-            #Todo добавить проверку, что у клуба не может быть меньше фишек, чем в запросе (или отнимать до 0)
-            await db.delete_chip_on_club_balance(club_id, club_point) #Todo такой функции в dbi.py нету, название примерное
+            amount = json_data["amount"]
+            # Todo добавить проверку, что у клуба не может быть меньше фишек, чем в запросе (или отнимать до 0)
+            await db.delete_chip_on_club_balance(club_id, amount)  # Todo такой функции в dbi.py нету, название примерное
             return HTTP_200_OK
         except KeyError:
-            return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You forgot to point out quantity the chips")
+            return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You forgot to amount out quantity the chips")
         except AttributeError:
             return HTTP_418_IM_A_TEAPOT
 
 
-@router.post("/{club_id}/giving_chips_to_the_user", status_code=HTTP_200_OK, summary="Owner giv chips to the club's user")
+@router.post("/{club_id}/giving_chips_to_the_user", status_code=HTTP_200_OK,
+             summary="Owner giv chips to the club's user")
 async def v1_club_giving_chips_to_the_user(club_id: int, session_uuid: SessionUUID, request: Request):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -392,10 +395,10 @@ async def v1_club_giving_chips_to_the_user(club_id: int, session_uuid: SessionUU
         json_data = await request.json()
 
         try:
-            point = json_data["point"]
+            amount = json_data["amount"]
             user_account_id = json_data["user_id"]
             user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
-            await db.giving_chips_to_the_user(club_id, point, user_account.id) #Todo такой функции в dbi.py нету, название примерное
+            await db.giving_chips_to_the_user(club_id, amount, user_account.id)  # Todo такой функции в dbi.py нету, название примерное
             return HTTP_200_OK
         except KeyError as e:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
@@ -403,7 +406,8 @@ async def v1_club_giving_chips_to_the_user(club_id: int, session_uuid: SessionUU
             return HTTP_418_IM_A_TEAPOT
 
 
-@router.post("/{club_id}/delete_chips_from_the_user", status_code=HTTP_200_OK, summary="Owner take away chips from the club's user")
+@router.post("/{club_id}/delete_chips_from_the_user", status_code=HTTP_200_OK,
+             summary="Owner take away chips from the club's user")
 async def v1_club_delete_chips_from_the_user(club_id: int, session_uuid: SessionUUID, request: Request):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -422,13 +426,46 @@ async def v1_club_delete_chips_from_the_user(club_id: int, session_uuid: Session
         json_data = await request.json()
 
         try:
-            point = json_data["point"]
+            amount = json_data["amount"]
             user_account_id = json_data["user_id"]
             user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
-            #Todo добавить проверку, что у пользователя не может быть меньше фишек, чем в запросе (или отнимать до 0)
-            await db.delete_chips_from_the_user(club_id, point, user_account.id) #Todo такой функции в dbi.py нету, название примерное
+            # Todo добавить проверку, что у пользователя не может быть меньше фишек, чем в запросе (или отнимать до 0)
+            await db.delete_chips_from_the_user(club_id, amount, user_account.id)  # Todo такой функции в dbi.py нету, название примерное
             return HTTP_200_OK
         except KeyError as e:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
+        except AttributeError:
+            return HTTP_418_IM_A_TEAPOT
+
+
+@router.post("/{club_id}/request_chips", status_code=HTTP_200_OK, summary="The user requests chips from the club")
+async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionUUID, request: Request):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+        account = await db.find_account(user_id=user.id, club_id=club_id)
+        try:
+            if account.approved_ts is None:
+                return HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Your account has not been verified")
+        except AttributeError:
+            return HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                 detail="You don't have enough rights to perform this action")
+
+        json_data = await request.json()
+
+        try:
+            amount = json_data["amount"]
+            balance = json_data["balance"]
+        except KeyError as e:
+            return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
+
+        try:
+            if account.user_role == "P":
+                await db.update_account_balance(account_id=account.id, amount=amount, balance="user_balance")   # Todo такой функции в dbi.py нету, название примерное
+            elif account.user_role == "A" or account.user_role == "SA":
+                await db.update_account_balance(account_id=account.id, amount=amount, balance=balance)
+            return HTTP_200_OK
         except AttributeError:
             return HTTP_418_IM_A_TEAPOT
