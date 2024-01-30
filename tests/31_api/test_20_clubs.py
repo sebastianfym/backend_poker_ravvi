@@ -208,5 +208,10 @@ def test_get_club(api_client: TestClient, api_guest: UserAccessProfile, api_clie
 
     response = api_client_2.get("/v1/clubs")
     assert response.status_code == 200
-    print(response.json())
-    assert response.json() == 'asdasdad'
+    assert isinstance(response.json(), list)
+
+    club.user_role = 'P'
+    assert club.club_balance is None
+    assert club.service_balance is None
+    assert club.agent_balance is None
+
