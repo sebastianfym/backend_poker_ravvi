@@ -147,13 +147,3 @@ class TestAnteUpControllerInitialValueForGame:
         game = await table.game_factory([])
 
         assert game.current_ante_value == ante_target_value
-
-
-# class TestAnteInGame:
-#     @pytest.mark.asyncio
-#     async def test_case(self, game_case):
-#         name, kwargs = game_case
-#
-#         game = X_Game(None, **kwargs)
-#         await game.run()
-#         assert not game._check_steps
