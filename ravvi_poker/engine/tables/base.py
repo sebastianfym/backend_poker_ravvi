@@ -81,9 +81,19 @@ class Table:
 
     async def game_factory(self, users):
         from ..game import get_game_class
+        from ..poker.double_board import extend_game_with_double_board
+
         self.log.info("game_factory(%s, %s, %s)", self.game_type, self.game_subtype, self.game_props)
         game_class = get_game_class(self.game_type, self.game_subtype)
-        return game_class(self, users, **self.game_props)
+
+        game = game_class(self, users, **self.game_props)
+        print(getattr(self, "game_modes_config"))
+        print(getattr(getattr(self, "game_modes_config"), "double_board"))
+        # расширяем игру миксином
+        if getattr(getattr(self, "game_modes_config"), "double_board"):
+            game = extend_game_with_double_board(game)
+
+        return game
 
     def find_user(self, user_id):
         user, seat_idx = None, None

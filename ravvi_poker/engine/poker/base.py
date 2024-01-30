@@ -130,6 +130,7 @@ class PokerBase(Game):
     # MSG
 
     async def broadcast_PLAYER_CARDS(self, db, player):
+        print("__________________________________________________________")
         hand_type, hand_cards = None, None
         if player.hand:
             hand_type = player.hand.type[0]
