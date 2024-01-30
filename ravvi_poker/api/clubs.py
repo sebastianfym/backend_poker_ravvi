@@ -1,6 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.exceptions import HTTPException
-from starlette.status import HTTP_200_OK, HTTP_201_CREATED
+from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 from pydantic import BaseModel
 
@@ -60,20 +60,12 @@ async def v1_create_club(params: ClubProps, session_uuid: SessionUUID):
         image_id=club.image_id,
         user_role="O",
         user_approved=True
-    ).dict()
+    ).model_dump()
 
     for param in ["tables_count", "players_count", "user_balance", "agent_balance", "club_balance", "service_balance"]:
         club_profile.pop(param, None)
     return club_profile
 
-    # return ClubProfile(
-    #     id=club.id,
-    #     name=club.name,
-    #     description=club.description,
-    #     image_id=club.image_id,
-    #     user_role="O",
-    #     user_approved=True
-    # )
 
 
 @router.get("", summary="List clubs for current user")
@@ -218,6 +210,14 @@ async def v1_create_club_table(club_id: int, params: TableParams, session_uuid: 
         club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+
+        json_data = await request.json()
+
+        invalid_params = set(json_data.keys()) - set(params.__annotations__.keys())
+        if invalid_params:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST,
+                                detail=f"Invalid parameters: {', '.join(invalid_params)}")
+
         account = await db.find_account(user_id=user.id, club_id=club_id)
         if not account or account.user_role != 'O':
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
