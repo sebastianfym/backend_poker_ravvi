@@ -62,11 +62,17 @@ class PokerBase(Game):
 
     @property
     def game_props(self):
-        return dict(
+        game_props = dict(
             blind_small=self.blind_small,
             blind_big=self.blind_big,
             bet_timeout=self.bet_timeout
         )
+        if self.current_ante_value:
+            game_props |= {
+                'ante': self.current_ante_value
+            }
+
+        return game_props
 
     def player_factory(self, user) -> Player:
         return Player(user)

@@ -92,11 +92,7 @@ class Table:
         self.log.info("game_factory(%s, %s, %s)", self.game_type, self.game_subtype, self.game_props)
         game_class = get_game_class(self.game_type, self.game_subtype)
 
-        current_ante_value = None
-        if self.ante:
-            current_ante_value = self.ante.current_ante_value
-
-        return game_class(self, users, **self.game_props, current_ante_value=current_ante_value)
+        return game_class(self, users, **self.game_props)
 
     def find_user(self, user_id):
         user, seat_idx = None, None

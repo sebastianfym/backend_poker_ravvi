@@ -17,6 +17,7 @@ class Table_RG(Table):
 
         if ante_up:
             self.ante = AnteUpController(blind_small)
+            self.game_props.update(current_ante_value=self.ante.current_ante_value)
 
     @property
     def user_enter_enabled(self):

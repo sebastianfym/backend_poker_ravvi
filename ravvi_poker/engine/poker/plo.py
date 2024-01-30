@@ -8,16 +8,6 @@ from ..user import User
 class Poker_PLO_X(PokerBase):
     GAME_TYPE = "PLO"
 
-    def __init__(self, table, users: List[User], current_ante_value: float | None = None, **kwargs):
-        super().__init__(table, users, **kwargs)
-        self.current_ante_value = current_ante_value
-
-    @property
-    def game_props(self):
-        return super().game_props | dict(
-            ante=self.current_ante_value,
-        )
-
     def get_bet_limits(self, player=None):
         p = player or self.current_player
         call_delta = max(0, self.bet_level - p.bet_amount)
