@@ -375,8 +375,7 @@ async def v1_delete_chip_from_club_balance(club_id: int, session_uuid: SessionUU
             return HTTP_418_IM_A_TEAPOT
 
 
-@router.post("/{club_id}/giving_chips_to_the_user", status_code=HTTP_200_OK,
-             summary="Owner giv chips to the club's user")
+@router.post("/{club_id}/giving_chips_to_the_user", status_code=HTTP_200_OK, summary="Owner giv chips to the club's user")
 async def v1_club_giving_chips_to_the_user(club_id: int, session_uuid: SessionUUID, request: Request):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -397,8 +396,12 @@ async def v1_club_giving_chips_to_the_user(club_id: int, session_uuid: SessionUU
         try:
             amount = json_data["amount"]
             user_account_id = json_data["user_id"]
+            balance = json_data["balance"]
             user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
-            await db.giving_chips_to_the_user(club_id, amount, user_account.id)  # Todo такой функции в dbi.py нету, название примерное
+            if user_account.user_role == "P":
+                balance = "user_balance"
+
+            await db.giving_chips_to_the_user(club_id, amount, user_account.id, balance)  # Todo такой функции в dbi.py нету, название примерное
             return HTTP_200_OK
         except KeyError as e:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
@@ -428,9 +431,13 @@ async def v1_club_delete_chips_from_the_user(club_id: int, session_uuid: Session
         try:
             amount = json_data["amount"]
             user_account_id = json_data["user_id"]
+            balance = json_data["balance"]
             user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
+            if user_account.user_role == "P":
+                balance = "user_balance"
+
             # Todo добавить проверку, что у пользователя не может быть меньше фишек, чем в запросе (или отнимать до 0)
-            await db.delete_chips_from_the_user(club_id, amount, user_account.id)  # Todo такой функции в dbi.py нету, название примерное
+            await db.delete_chips_from_the_user(club_id, amount, user_account.id, balance)  # Todo такой функции в dbi.py нету, название примерное
             return HTTP_200_OK
         except KeyError as e:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
