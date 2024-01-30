@@ -1,7 +1,7 @@
 from ravvi_poker.engine.poker.base import Round
 
 
-class Ante:
+class AnteUpController:
     def __init__(self, blind_small_value: float):
         self.ante_levels = self.get_ante_levels(blind_small_value)
         self.current_ante_value: float = self.ante_levels[0]

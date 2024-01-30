@@ -36,7 +36,7 @@ class PokerBase(Game):
 
     def __init__(self, table, users: List[User],
                  *, blind_small: float = 0.01, blind_big: float = 0.02, bet_timeout=30,
-                 **kwargs) -> None:
+                 current_ante_value: float | None = None, **kwargs) -> None:
         super().__init__(table=table, users=users)
         self.log.logger = logger
         self.round = None
@@ -47,6 +47,9 @@ class PokerBase(Game):
 
         self.blind_small = blind_small
         self.blind_big = blind_big
+
+        # модификаторы
+        self.current_ante_value = current_ante_value
 
         self.bet_id = None
         self.bet_level = 0

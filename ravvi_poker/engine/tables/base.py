@@ -4,7 +4,6 @@ import inspect
 import contextlib
 
 from .configs import configCls
-from ..poker.ante import Ante
 from ...logging import getLogger, ObjectLoggerAdapter
 from ...db import DBI
 from ..user import User
@@ -24,6 +23,8 @@ class Table:
             self, id, table_name, *, table_seats, parent_id=None, club_id=None, game_type=None, game_subtype=None,
             props=None, **kwargs
     ):
+        from ..poker.ante import AnteUpController
+
         # table async lock
         self.lock = asyncio.Lock()
         # db connection
@@ -33,7 +34,7 @@ class Table:
         self.status = None
 
         # инстансы параметров
-        self.ante: Ante | None = None
+        self.ante: AnteUpController | None = None
 
         self.club_id = club_id
         self.table_id = id

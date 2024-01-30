@@ -1,7 +1,6 @@
 import decimal
 
 from .base import Table, DBI
-from ..poker.ante import Ante
 
 
 class Table_RG(Table):
@@ -9,14 +8,15 @@ class Table_RG(Table):
 
     def parse_props(self, buyin_min=100, buyin_max=None, blind_small: float = 0.01,
                     blind_big: float | None = None, ante_up: bool | None = None, action_time=30, **kwargs):
+        from ..poker.ante import AnteUpController
+
         self.buyin_min = buyin_min
         self.buyin_max = buyin_max
         self.game_props.update(bet_timeout=action_time, blind_small=blind_small,
                                blind_big=blind_big if blind_big is not None else blind_small * 2)
 
-        # TODO может убрать этот параметр (как и все остальные) и доставать из конфига? А то у нас параметры стола и в конфигах, и в атрибутах стола
         if ante_up:
-            self.ante = Ante(blind_small)
+            self.ante = AnteUpController(blind_small)
 
     @property
     def user_enter_enabled(self):
