@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN, \
@@ -121,17 +123,11 @@ def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_
 
     response = api_client_2.post(f"/v1/clubs/{club.id}/members")
     assert response.status_code == 200
-    print(response.json())
-    # club_2 = ClubProfile(**response.json())
-    # assert club_2.id
-    # assert club_2.name
-    # assert club_2.user_role == 'P'
-    # assert club_2.user_approved is False
-    assert response.json()["id"]
-    assert response.json()["name"]
-    assert response.json()["user_role"] == 'P'
-    assert response.json()["user_approved"] is False
-
+    club_2 = ClubProfile(**response.json())
+    assert club_2.id
+    assert club_2.name
+    assert club_2.user_role == 'P'
+    assert club_2.user_approved is False
 
     # list clubs
     response = api_client.get("/v1/clubs")
@@ -233,6 +229,8 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
 
     club = ClubProfile(**response.json())
 
+    #Actions with manipulations of the club's balance
+
     response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={})
     assert response.status_code == 200
     assert response.json()['status_code'] == 400
@@ -261,3 +259,35 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
 
     response = api_client_2.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"point": 1})
     assert response.json()['status_code'] == 403
+
+    #Action with manipulations of the club's user balance
+
+    response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user", json={"point": 1, "user_id": 1})
+    assert response.json() == 418
+
+    response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user", json={"point": 1})
+    assert response.json()['status_code'] == 400
+    assert response.json()['detail'] == "You forgot to add a value: 'user_id'"
+
+    response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user", json={"user_id": 1})
+    assert response.json()['status_code'] == 400
+    assert response.json()['detail'] == "You forgot to add a value: 'point'"
+
+    response = api_client_2.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user", json={"point": 1, "user_id": 1})
+    assert response.json()['status_code'] == 403
+    assert response.json()['detail'] == "You don't have enough rights to perform this action"
+
+    response = api_client.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"point": 1, "user_id": 1})
+    assert response.json() == 418
+
+    response = api_client.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"point": 1})
+    assert response.json()['status_code'] == 400
+    assert response.json()['detail'] == "You forgot to add a value: 'user_id'"
+
+    response = api_client.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"user_id": 1})
+    assert response.json()['status_code'] == 400
+    assert response.json()['detail'] == "You forgot to add a value: 'point'"
+
+    response = api_client_2.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"point": 1, "user_id": 1})
+    assert response.json()['status_code'] == 403
+    assert response.json()['detail'] == "You don't have enough rights to perform this action"

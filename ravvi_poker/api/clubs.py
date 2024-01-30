@@ -28,7 +28,7 @@ class ClubProfile(BaseModel):
     tables_count: int | None = None
     players_count: int | None = None
     user_balance: float | None = None
-    agent_balance: float | float = None
+    agent_balance: float | None = None
     club_balance: float | None = None
     service_balance: float | None = None
 
@@ -369,5 +369,66 @@ async def v1_delete_chip_from_club_balance(club_id: int, session_uuid: SessionUU
             return HTTP_200_OK
         except KeyError:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You forgot to point out quantity the chips")
+        except AttributeError:
+            return HTTP_418_IM_A_TEAPOT
+
+
+@router.post("/{club_id}/giving_chips_to_the_user", status_code=HTTP_200_OK, summary="Owner giv chips to the club's user")
+async def v1_club_giving_chips_to_the_user(club_id: int, session_uuid: SessionUUID, request: Request):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+        account = await db.find_account(user_id=user.id, club_id=club_id)
+        try:
+            if account.user_role != "O":
+                return HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                     detail="You don't have enough rights to perform this action")
+        except AttributeError:
+            return HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                 detail="You don't have enough rights to perform this action")
+
+        json_data = await request.json()
+
+        try:
+            point = json_data["point"]
+            user_account_id = json_data["user_id"]
+            user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
+            await db.giving_chips_to_the_user(club_id, point, user_account.id) #Todo такой функции в dbi.py нету, название примерное
+            return HTTP_200_OK
+        except KeyError as e:
+            return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
+        except AttributeError:
+            return HTTP_418_IM_A_TEAPOT
+
+
+@router.post("/{club_id}/delete_chips_from_the_user", status_code=HTTP_200_OK, summary="Owner take away chips from the club's user")
+async def v1_club_delete_chips_from_the_user(club_id: int, session_uuid: SessionUUID, request: Request):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+        account = await db.find_account(user_id=user.id, club_id=club_id)
+        try:
+            if account.user_role != "O":
+                return HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                     detail="You don't have enough rights to perform this action")
+        except AttributeError:
+            return HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                 detail="You don't have enough rights to perform this action")
+
+        json_data = await request.json()
+
+        try:
+            point = json_data["point"]
+            user_account_id = json_data["user_id"]
+            user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
+            #Todo добавить проверку, что у пользователя не может быть меньше фишек, чем в запросе (или отнимать до 0)
+            await db.delete_chips_from_the_user(club_id, point, user_account.id) #Todo такой функции в dbi.py нету, название примерное
+            return HTTP_200_OK
+        except KeyError as e:
+            return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
         except AttributeError:
             return HTTP_418_IM_A_TEAPOT
