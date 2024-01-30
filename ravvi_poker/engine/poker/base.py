@@ -375,7 +375,7 @@ class PokerBase(Game):
 
         # если включен режим ante_up за столом, то передадим тип последнего раунда в игре, чтобы обработать новое
         # значение анте
-        if self.table.ante:
+        if self.current_ante_value:
             self.table.ante.handle_last_round_type(self.round)
 
         # end
