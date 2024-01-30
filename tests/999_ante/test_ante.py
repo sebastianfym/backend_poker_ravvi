@@ -2,7 +2,6 @@ import pytest
 
 from ravvi_poker.engine.poker.ante import AnteUpController
 from ravvi_poker.engine.tables import Table_RG
-from tests.helpers.x_table import X_Game
 
 
 class TestAnteUpControllerInstance:
