@@ -141,7 +141,6 @@ def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_
     assert response.status_code == 200
     members = [ClubMemberProfile(**m) for m in response.json()]
     pending = [m for m in members if not m.user_approved]
-    print(f"members: {members[1]}")
     assert members
     assert pending and len(pending) == 1
 
@@ -184,5 +183,30 @@ def test_get_relations(api_client: TestClient, api_guest: UserAccessProfile):
     response = api_client.get(f"/v1/clubs/{club.id}/relation_union")
     assert response.status_code == 404
     assert response.json() == {'detail': 'Union not found'}
-    
-    
+
+
+def test_get_club(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient, api_guest_2: UserAccessProfile):
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+    api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
+
+    # create club without props (defaults)
+    params = {}
+    response = api_client.post("/v1/clubs", json=params)
+    assert response.status_code == 201
+
+    club = ClubProfile(**response.json())
+    assert club.id
+    assert club.user_role == "O"
+
+    response = api_client.get("/v1/clubs")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+    assert response.json()[0]['user_balance'] == 0.0
+    assert response.json()[0]['agent_balance'] == 0.0
+    assert response.json()[0]['club_balance'] == None
+    assert response.json()[0]['service_balance'] == 0.0
+
+    response = api_client_2.get("/v1/clubs")
+    assert response.status_code == 200
+    print(response.json())
+    assert response.json() == 'asdasdad'

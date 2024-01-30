@@ -25,6 +25,13 @@ class ClubProfile(BaseModel):
     user_role: str | None = None
     user_approved: bool | None = None
 
+    tables_count: int | None = None
+    players_count: int | None = None
+    user_balance: float | None = None
+    agent_balance: float | float = None
+    club_balance: float | None = None
+    service_balance: float | None = None
+
 
 class ClubMemberProfile(BaseModel):
     id: int | None = None
@@ -43,16 +50,30 @@ class UnionProfile(BaseModel):
 async def v1_create_club(params: ClubProps, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
-        club = await db.create_club(user_id=user.id, name=params.name, description=params.description, image_id=params.image_id)
+        club = await db.create_club(user_id=user.id, name=params.name, description=params.description,
+                                    image_id=params.image_id)
 
-    return ClubProfile(
-        id=club.id, 
-        name=club.name, 
+    club_profile = ClubProfile(
+        id=club.id,
+        name=club.name,
         description=club.description,
         image_id=club.image_id,
         user_role="O",
         user_approved=True
-    )
+    ).dict()
+
+    for param in ["tables_count", "players_count", "user_balance", "agent_balance", "club_balance", "service_balance"]:
+        club_profile.pop(param, None)
+    return club_profile
+
+    # return ClubProfile(
+    #     id=club.id,
+    #     name=club.name,
+    #     description=club.description,
+    #     image_id=club.image_id,
+    #     user_role="O",
+    #     user_approved=True
+    # )
 
 
 @router.get("", summary="List clubs for current user")
@@ -60,17 +81,22 @@ async def v1_list_clubs(session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         clubs = await db.get_clubs_for_user(user_id=user.id)
-
-    return list([
-        ClubProfile(
-            id=club.id, 
-            name=club.name, 
-            description=club.description,
-            image_id=club.image_id,
-            user_role=club.user_role,
-            user_approved=club.approved_ts is not None
-        ) for club in clubs
-    ])
+        return list([
+            ClubProfile(
+                id=club.id,
+                name=club.name,
+                description=club.description,
+                image_id=club.image_id,
+                user_role=club.user_role,
+                user_approved=club.approved_ts is not None,
+                tables_count=len(await db.get_club_tables(club_id=club.id)),
+                players_count=len(await db.get_all_members_in_club(club_id=club.id)),
+                user_balance=(await db.get_user_balance_in_club(club_id=club.id, user_id=user.id)).balance,
+                agent_balance=await db.get_balance_shared_in_club(club_id=club.id, user_id=user.id),
+                club_balance=None,
+                service_balance=await db.get_service_balance_in_club(club_id=club.id, user_id=user.id)
+            ) for club in clubs
+        ])
 
 
 @router.get("/{club_id}", summary="Get club by id")
@@ -99,18 +125,18 @@ async def v1_update_club(club_id: int, params: ClubProps, session_uuid: SessionU
         club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        account = await db.find_account(user_id=user.id, club_id=club_id)        
+        account = await db.find_account(user_id=user.id, club_id=club_id)
         if not account or account.user_role != "O":
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
         club_params = params.model_dump(exclude_unset=True)
         if club_params:
-            #image = db.get_user_images(user.id, id=params.image_id) if params.image_id else None
-            #if params.image_id is not None and not image:
+            # image = db.get_user_images(user.id, id=params.image_id) if params.image_id else None
+            # if params.image_id is not None and not image:
             #    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Image not found")
             club = await db.update_club(club_id, **club_params)
 
     return ClubProfile(
-        id=club.id, 
+        id=club.id,
         name=club.name,
         description=club.description,
         image_id=club.image_id,
@@ -131,8 +157,8 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
     return list([
         ClubMemberProfile(
             id=member.id,
-            #username=member.username,
-            #image_id=member.image_id,
+            # username=member.username,
+            # image_id=member.image_id,
             user_role=member.user_role,
             user_approved=member.approved_ts is not None
         ) for member in members
@@ -151,7 +177,7 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID):
             account = await db.create_club_member(club.id, user.id, None)
 
     return ClubProfile(
-        id=club.id, 
+        id=club.id,
         name=club.name,
         description=club.description,
         user_role=account.user_role,
@@ -170,7 +196,7 @@ async def v1_approve_join_request(club_id: int, member_id: int, session_uuid: Se
         if not account or account.user_role != "O":
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
         member = await db.get_club_member(member_id)
-        if not member or member.club_id!=club.id:
+        if not member or member.club_id != club.id:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member not found")
         if member.approved_ts is None:
             member = await db.approve_club_member(member_id, user.id, None)
@@ -200,10 +226,10 @@ async def v1_create_club_table(club_id: int, params: TableParams, session_uuid: 
         kwargs = params.model_dump(exclude_unset=False)
         main_parameters = ["club_id", "table_type", "table_name", "table_seats", "game_type", "game_subtype"]
 
-        table_type = kwargs.get('table_type')#.value
+        table_type = kwargs.get('table_type')  # .value
         table_name = kwargs.get('table_name')
         table_seats = kwargs.get('table_seats')
-        game_type = kwargs.get('game_type')#.value
+        game_type = kwargs.get('game_type')  # .value
         game_subtype = kwargs.get('game_subtype')
 
         kwargs = {key: value for key, value in kwargs.items() if key not in main_parameters}
@@ -244,7 +270,8 @@ async def v1_get_club_tables(club_id: int, session_uuid: SessionUUID):
     return result
 
 
-@router.get("/{club_id}/relation_clubs", status_code=HTTP_200_OK, summary="Returns all relationships with other clubs for the club with the ID")
+@router.get("/{club_id}/relation_clubs", status_code=HTTP_200_OK,
+            summary="Returns all relationships with other clubs for the club with the ID")
 async def v1_get_relation_clubs(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -252,7 +279,7 @@ async def v1_get_relation_clubs(club_id: int, session_uuid: SessionUUID):
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         # relations = await db.get_club_relations(club_id=club_id) #Todo такой функции в dbi.py нету, название примерное
-        relations_clubs = [] #Todo после того, как у нас появятся связи в бд вернуть строку выше, которая будет возвращать список состоящий из союзных клубов
+        relations_clubs = []  # Todo после того, как у нас появятся связи в бд вернуть строку выше, которая будет возвращать список состоящий из союзных клубов
         return [ClubProfile(
             id=club.id,
             name=club.name,
@@ -266,7 +293,7 @@ async def v1_get_relation_union(union_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         try:
-            union = await db.get_unions(union_id)   #Todo такой функции в dbi.py нету, название примерное
+            union = await db.get_unions(union_id)  # Todo такой функции в dbi.py нету, название примерное
         except AttributeError:
             union = None
         if not union:
@@ -280,10 +307,9 @@ async def v1_get_all_unions(session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         try:
-            unions = await db.get_unions() #Todo такой функции в dbi.py нету, название примерное
+            unions = await db.get_unions()  # Todo такой функции в dbi.py нету, название примерное
         except AttributeError:
             unions = None
         if not unions:
             return []
         return [UnionProfile(id=union.id, name=union.name) for union in unions]
-

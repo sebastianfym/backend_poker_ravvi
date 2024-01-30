@@ -369,7 +369,43 @@ class DBI:
             await cursor.execute(sql, values)
             row = await cursor.fetchone()
         return row
-    
+
+    async def get_all_members_in_club(self, club_id):
+        sql = "SELECT * FROM user_account WHERE club_id = %s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (club_id,))
+            rows = await cursor.fetchall()
+        return rows
+
+    async def get_user_balance_in_club(self, club_id, user_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT balance FROM user_account WHERE club_id = %s AND user_id = %s", (club_id, user_id))
+            row = await cursor.fetchone()
+        return row
+
+    async def get_balance_shared_in_club(self, club_id, user_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT user_role FROM user_account WHERE club_id = %s AND user_id = %s", (club_id, user_id))
+            role = await cursor.fetchone()
+            if role.user_role is "A" or role.user_role is "SA" or role.user_role is "O":
+                await cursor.execute("SELECT balance_shared FROM user_account WHERE club_id = %s AND user_id = %s", (club_id, user_id))
+                row = await cursor.fetchone()
+                return row.balance_shared
+            else:
+                return None
+
+    async def get_service_balance_in_club(self, club_id, user_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT user_role FROM user_account WHERE club_id = %s AND user_id = %s",
+                                 (club_id, user_id))
+            role = await cursor.fetchone()
+            if role.user_role is "O":
+                await cursor.execute("SELECT service_balance FROM club_profile WHERE id = %s ", (club_id,))
+                row = await cursor.fetchone()
+                return row.service_balance
+            else:
+                return None
+
     # USER ACCOUNT
 
     async def create_club_member(self, club_id, user_id, user_comment):
