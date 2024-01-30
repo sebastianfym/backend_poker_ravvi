@@ -222,8 +222,10 @@ def test_get_club(api_client: TestClient, api_guest: UserAccessProfile):
     assert club.agent_balance is None
 
 
-def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile):
+def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
+                      api_guest_2: UserAccessProfile):
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+    api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
 
     params = {}
     response = api_client.post("/v1/clubs", json=params)
@@ -237,7 +239,6 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile):
     assert response.json()['detail'] == 'You forgot to point out quantity the chips'
 
     response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"point": 1})
-
     assert response.status_code == 200
     assert response.json() == 418
 
@@ -254,3 +255,9 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile):
     response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"point": 1})
     assert response.status_code == 200
     assert response.json() == 418
+
+    response = api_client_2.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"point": 1})
+    assert response.json()['status_code'] == 403
+
+    response = api_client_2.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"point": 1})
+    assert response.json()['status_code'] == 403
