@@ -373,6 +373,11 @@ class PokerBase(Game):
         async with self.DBI(log=self.log) as db:
             await self.broadcast_GAME_END(db)
 
+        # если включен режим ante_up за столом, то передадим тип последнего раунда в игре, чтобы обработать новое
+        # значение анте
+        if self.table.ante:
+            self.table.ante.handle_last_round_type(self.round)
+
         # end
         await asyncio.sleep(0.1)
         self.log.info("end")

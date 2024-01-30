@@ -34,6 +34,10 @@ class Poker_NLH_AOF(Poker_NLH_X):
     GAME_SUBTYPE = "AOF"
     GAME_DECK = 52
 
+    def __init__(self, table, users: List[User], **kwargs):
+        super().__init__(table, users, **kwargs)
+        self.current_ante_value = None
+
     def get_bet_options(self, player) -> Tuple[List[Bet], dict]:
         _, _, raise_max, _ = self.get_bet_limits(player)
         options = [Bet.FOLD, Bet.ALLIN]
@@ -53,6 +57,7 @@ class Poker_NLH_3M1(Poker_NLH_X):
     PLAYER_CARDS_FREFLOP = 3
 
 
+
 class Poker_NLH_6P(Poker_NLH_X):
     GAME_SUBTYPE = "6+"
     GAME_DECK = 36
@@ -68,6 +73,10 @@ class Poker_NLH_6P(Poker_NLH_X):
         HandType.FOUR_OF_KIND,
         HandType.STRAIGHT_FLUSH
     ]
+
+    def __init__(self, table, users: List[User], **kwargs):
+        super().__init__(table, users, **kwargs)
+        self.current_ante_value = None
 
 NLH_GAMES = [
     Poker_NLH_REGULAR,

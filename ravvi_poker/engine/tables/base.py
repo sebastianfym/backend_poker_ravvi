@@ -92,7 +92,12 @@ class Table:
         self.log.info("game_factory(%s, %s, %s)", self.game_type, self.game_subtype, self.game_props)
         game_class = get_game_class(self.game_type, self.game_subtype)
 
-        return game_class(self, users, **self.game_props)
+        game_props = self.game_props.copy()
+        # обновляем анте
+        if self.ante:
+            game_props.update(current_ante_value=self.ante.current_ante_value)
+
+        return game_class(self, users, **game_props)
 
     def find_user(self, user_id):
         user, seat_idx = None, None
@@ -444,9 +449,5 @@ class Table:
 
         async with self.lock:
             await self.close_game(self.game)
-
-            # если включен режим анте, то передадим тип последнего раунда в игре, чтобы обработать текущее значение анте
-            if self.ante:
-                self.ante.handle_last_round_type(self.game.round)
 
             self.game = None
