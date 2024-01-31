@@ -72,6 +72,7 @@ async def v1_list_clubs(session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         clubs = await db.get_clubs_for_user(user_id=user.id)
+
         return list([
             ClubProfile(
                 id=club.id,
@@ -80,7 +81,7 @@ async def v1_list_clubs(session_uuid: SessionUUID):
                 image_id=club.image_id,
                 user_role=club.user_role,
                 user_approved=club.approved_ts is not None,
-                tables_count=None, #len(await db.get_club_tables(club_id=club.id)),
+                tables_count=(await db.get_tables_count(club_id=club.id)).tables_сount,
                 players_count=None, #len(await db.get_all_members_in_club(club_id=club.id)),
                 user_balance=(await db.get_user_balance_in_club(club_id=club.id, user_id=user.id)).balance,
                 agent_balance=await db.get_balance_shared_in_club(club_id=club.id, user_id=user.id),

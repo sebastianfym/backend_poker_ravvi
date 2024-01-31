@@ -495,6 +495,13 @@ class DBI:
             rows = await cursor.fetchall()
         return rows
 
+    async def get_tables_count(self, club_id):
+        sql = "SELECT club_profile.tables_сount FROM club_profile WHERE id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (club_id,))
+            row = await cursor.fetchone()
+        return row
+
     async def create_table_user(self, table_id, user_id):
         sql = "INSERT INTO table_user (table_id, user_id) VALUES (%s,%s) RETURNING *"
         async with self.cursor() as cursor:
