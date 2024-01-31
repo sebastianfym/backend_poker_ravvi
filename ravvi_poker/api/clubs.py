@@ -339,12 +339,10 @@ async def v1_add_chip_on_club_balance(club_id: int, session_uuid: SessionUUID, r
         json_data = await request.json()
         try:
             amount = json_data["amount"]
-            await db.add_chip_on_club_balance(club_id, amount)  # Todo такой функции в dbi.py нету, название примерное
+            await db.txn_with_chip_on_club_balance(club_id, amount, "add")
             return HTTP_200_OK
         except KeyError:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You forgot to amount out quantity the chips")
-        except AttributeError:
-            return HTTP_418_IM_A_TEAPOT
 
 
 @router.post("/{club_id}/delete_chip_from_club_balance", status_code=HTTP_200_OK,
@@ -367,13 +365,10 @@ async def v1_delete_chip_from_club_balance(club_id: int, session_uuid: SessionUU
         json_data = await request.json()
         try:
             amount = json_data["amount"]
-            # Todo добавить проверку, что у клуба не может быть меньше фишек, чем в запросе (или отнимать до 0)
-            await db.delete_chip_on_club_balance(club_id, amount)  # Todo такой функции в dbi.py нету, название примерное
+            await db.txn_with_chip_on_club_balance(club_id, amount, "del")
             return HTTP_200_OK
         except KeyError:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You forgot to amount out quantity the chips")
-        except AttributeError:
-            return HTTP_418_IM_A_TEAPOT
 
 
 @router.post("/{club_id}/giving_chips_to_the_user", status_code=HTTP_200_OK, summary="Owner giv chips to the club's user")
