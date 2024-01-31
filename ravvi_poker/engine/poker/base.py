@@ -49,7 +49,7 @@ class PokerBase(Game):
         self.blind_big = blind_big
 
         # модификаторы
-        self.current_ante_value = current_ante_value
+        self.ante = current_ante_value
 
         self.bet_id = None
         self.bet_level = 0
@@ -67,9 +67,9 @@ class PokerBase(Game):
             blind_big=self.blind_big,
             bet_timeout=self.bet_timeout
         )
-        if self.current_ante_value:
+        if self.ante:
             game_props |= {
-                'ante': self.current_ante_value
+                'ante': self.ante
             }
 
         return game_props
@@ -375,7 +375,7 @@ class PokerBase(Game):
 
         # если включен режим ante_up за столом, то передадим тип последнего раунда в игре, чтобы обработать новое
         # значение анте
-        if self.current_ante_value:
+        if self.ante:
             self.table.ante.handle_last_round_type(self.round)
 
         # end
@@ -427,17 +427,23 @@ class PokerBase(Game):
 
             self.bet_level = 0
 
+            if self.ante:
+                await self.collect_ante()
+
             # small blind
             p = self.players_to_role(PlayerRole.SMALL_BLIND)
             assert PlayerRole.SMALL_BLIND in p.role
-            if p.user.balance < self.blind_small:
+
+            if p.user.balance <= self.blind_small:
                 p.bet_type = Bet.ALLIN
-                p.bet_delta = p.user.balance
+                p.bet_delta += p.user.balance
+                p.bet_amount = p.user.balance
+                p.bet_total += p.user.balance
             else:
                 p.bet_type = Bet.SMALL_BLIND
-                p.bet_delta = self.blind_small
-            p.bet_amount += p.bet_delta
-            p.bet_total += p.bet_delta
+                p.bet_delta += self.blind_small
+                p.bet_amount = self.blind_small
+                p.bet_total += self.blind_small
             self.bank_total += p.bet_delta
             p.user.balance -= p.bet_delta
             await self.broadcast_PLAYER_BET(db, p)
@@ -447,16 +453,19 @@ class PokerBase(Game):
             assert PlayerRole.BIG_BLIND in p.role
             if p.user.balance < self.blind_big:
                 p.bet_type = Bet.ALLIN
-                p.bet_delta = p.user.balance
+                p.bet_delta += p.user.balance
+                p.bet_amount = p.user.balance
+                p.bet_total += p.user.balance
             else:
                 p.bet_type = Bet.BIG_BLIND
-                p.bet_delta = self.blind_big
-            p.bet_amount += p.bet_delta
-            p.bet_total += p.bet_delta
+                p.bet_delta += self.blind_big
+                p.bet_amount = self.blind_big
+                p.bet_total += self.blind_big
             self.bank_total += p.bet_delta
             p.user.balance -= p.bet_delta
             await self.broadcast_PLAYER_BET(db, p)
 
+        # TODO
         self.bet_raise = p.bet_amount - self.bet_level
         self.update_status()
 
@@ -597,3 +606,15 @@ class PokerBase(Game):
             winners_info.append(info)
 
         return winners_info
+
+    async def collect_ante(self):
+        # если у всех хватает на взнос ante
+        if min([p.balance_0 for p in self.players]) >= self.ante:
+            # вычитаем у каждого игрока анте
+            for p in self.players:
+                p.bet_ante = self.ante
+                p.bet_delta += p.bet_ante
+                p.bet_total += p.bet_delta
+                self.bank_total += p.bet_delta
+                p.user.balance -= p.bet_delta
+
