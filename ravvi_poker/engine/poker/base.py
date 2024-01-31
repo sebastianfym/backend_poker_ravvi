@@ -411,9 +411,10 @@ class PokerBase(Game):
         self.deck.get_next()
 
         async with self.DBI() as db:
-            for p in self.players:
-                p.hand = self.get_best_hand(p.cards, self.cards)
-                await self.broadcast_PLAYER_CARDS(db, p)
+            # TODO на префлопе может не отображать карты? если отображать то надо выбрать что делать с отображением
+            # for p in self.players:
+            #     p.hand = self.get_best_hand(p.cards, self.cards)
+            #     await self.broadcast_PLAYER_CARDS(db, p)
 
             self.bet_level = 0
 

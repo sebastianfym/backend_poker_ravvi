@@ -1,3 +1,15 @@
+class MixinMeta(type):
+    def __call__(cls, *args, **kwargs):
+        try:
+            mixin = kwargs.pop("mixin")
+            name = f"{cls.__name__}With{mixin.__name__}"
+            cls = type(name, (mixin, cls), dict(cls.__dict__))
+        except KeyError:
+            pass
+
+        return type.__call__(cls, *args, **kwargs)
+
+
 class DoubleBoardMixin:
     async def run_FLOP(self):
         from ravvi_poker.engine.poker.player import PlayerRole
@@ -31,7 +43,7 @@ class DoubleBoardMixin:
         pass
 
 
-def extend_game_with_double_board(obj):
-    obj.__class__ = type(obj.__class__.__name__, (DoubleBoardMixin, obj.__class__), {})
-
-    return obj
+# def extend_game_with_double_board(obj):
+#     obj.__class__ = type(obj.__class__.__name__, (DoubleBoardMixin, obj.__class__), {})
+#
+#     return obj

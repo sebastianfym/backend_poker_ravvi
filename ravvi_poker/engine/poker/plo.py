@@ -1,8 +1,10 @@
 from itertools import combinations
 
 from .base import PokerBase
+from .double_board import MixinMeta
 
-class Poker_PLO_X(PokerBase):
+
+class Poker_PLO_X(PokerBase, metaclass=MixinMeta):
     GAME_TYPE = "PLO"
 
     def get_bet_limits(self, player=None):
