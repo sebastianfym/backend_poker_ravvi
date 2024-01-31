@@ -85,7 +85,7 @@ async def v1_list_clubs(session_uuid: SessionUUID):
                 players_count=club.players_online,
                 user_balance=(await db.get_user_balance_in_club(club_id=club.id, user_id=user.id)).balance,
                 agent_balance=await db.get_balance_shared_in_club(club_id=club.id, user_id=user.id),
-                club_balance=None,
+                club_balance=club.club_balance,
                 service_balance=await db.get_service_balance_in_club(club_id=club.id, user_id=user.id)
             ) for club in clubs
         ])
@@ -106,7 +106,8 @@ async def v1_get_club(club_id: int, session_uuid: SessionUUID):
         description=club.description,
         image_id=club.image_id,
         user_role=account.user_role if account else None,
-        user_approved=account.approved_ts is not None if account else None
+        user_approved=account.approved_ts is not None if account else None,
+        club_balance=club.club_balance
     )
 
 

@@ -236,9 +236,11 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
     assert response.json()['status_code'] == 400
     assert response.json()['detail'] == 'You forgot to amount out quantity the chips'
 
-    response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 1})
+    response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 1000})
     assert response.status_code == 200
-    assert response.json() == 418
+    response = api_client.get(f"/v1/clubs/{club.id}")
+    assert response.json()['club_balance'] == 1000
+    assert response.status_code == 200
 
     response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={})
     assert response.status_code == 200
@@ -252,7 +254,9 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
 
     response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 1})
     assert response.status_code == 200
-    assert response.json() == 418
+    response = api_client.get(f"/v1/clubs/{club.id}")
+    assert response.status_code == 200
+    assert response.json()['club_balance'] == 999
 
     response = api_client_2.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 1})
     assert response.json()['status_code'] == 403
