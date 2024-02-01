@@ -250,7 +250,7 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
     response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={})
     assert response.status_code == 200
     assert response.json()['status_code'] == 400
-    assert response.json()['detail'] == 'You forgot to amount out quantity the chips'
+    assert response.json()['detail'] == "You forgot to add a value: 'amount'"
 
     response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 1})
     assert response.status_code == 200
