@@ -435,13 +435,12 @@ async def v1_club_delete_chips_from_the_user(club_id: int, session_uuid: Session
             user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
             if balance == "balance":
                 await db.delete_chips_from_the_account_balance(amount, user_account.id)
-            elif balance == "agents_balance":
+            elif balance == "balance_shared":
                 await db.delete_chips_from_the_agent_balance(amount, user_account.id)
             return HTTP_200_OK
         except KeyError as e:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
-        except AttributeError:
-            return HTTP_418_IM_A_TEAPOT
+
 
 
 @router.post("/{club_id}/request_chips", status_code=HTTP_200_OK, summary="The user requests chips from the club")
