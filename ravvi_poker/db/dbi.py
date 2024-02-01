@@ -370,24 +370,19 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    async def get_all_members_in_club(self, club_id):
-        sql = "SELECT * FROM user_account WHERE club_id = %s"
-        async with self.cursor() as cursor:
-            await cursor.execute(sql, (club_id,))
-            rows = await cursor.fetchall()
-        return rows
-
     async def get_user_balance_in_club(self, club_id, user_id):
         async with self.cursor() as cursor:
             await cursor.execute("SELECT balance FROM user_account WHERE club_id = %s AND user_id = %s", (club_id, user_id))
             row = await cursor.fetchone()
-        return row
+            if row.balance < 0:
+                return 0
+        return row.balance
 
     async def get_balance_shared_in_club(self, club_id, user_id):
         async with self.cursor() as cursor:
             await cursor.execute("SELECT user_role FROM user_account WHERE club_id = %s AND user_id = %s", (club_id, user_id))
             role = await cursor.fetchone()
-            if role.user_role is "A" or role.user_role is "SA" or role.user_role is "O":
+            if role.user_role == "A" or role.user_role == "SA" or role.user_role == "O":
                 await cursor.execute("SELECT balance_shared FROM user_account WHERE club_id = %s AND user_id = %s", (club_id, user_id))
                 row = await cursor.fetchone()
                 return row.balance_shared
@@ -399,7 +394,7 @@ class DBI:
             await cursor.execute("SELECT user_role FROM user_account WHERE club_id = %s AND user_id = %s",
                                  (club_id, user_id))
             role = await cursor.fetchone()
-            if role.user_role is "O":
+            if role.user_role == "O":
                 await cursor.execute("SELECT service_balance FROM club_profile WHERE id = %s ", (club_id,))
                 row = await cursor.fetchone()
                 return row.service_balance
@@ -494,13 +489,6 @@ class DBI:
             await cursor.execute(sql, (club_id,))
             rows = await cursor.fetchall()
         return rows
-
-    async def get_tables_count(self, club_id):
-        sql = "SELECT club_profile.tables_сount FROM club_profile WHERE id=%s"
-        async with self.cursor() as cursor:
-            await cursor.execute(sql, (club_id,))
-            row = await cursor.fetchone()
-        return row
 
     async def create_table_user(self, table_id, user_id):
         sql = "INSERT INTO table_user (table_id, user_id) VALUES (%s,%s) RETURNING *"
@@ -689,3 +677,50 @@ class DBI:
             await cursor.execute("SELECT * FROM table_msg WHERE id=%s", (id,))
             row = await cursor.fetchone()
         return row
+
+    #CHAT
+
+    async def get_table_chat_msgs(self, table_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM table_chat WHERE table_id=%s", (table_id,))
+            await cursor.execute("SELECT * FROM table_chat WHERE table_id=%s ORDER BY id", (table_id,))
+            row = await cursor.fetchall()
+        return row
+
+    async def write_table_chat_message_in_db(self, table_id, user_id, client_id, text):
+        async with self.cursor() as cursor:
+            await cursor.execute(
+                "INSERT INTO table_chat (table_id, user_id, client_id, text) VALUES (%s, %s, %s, %s) RETURNING id, table_id, user_id, client_id,  text",
+                (table_id, user_id, client_id, text),
+            )
+            row = await cursor.fetchone()
+        return row#.id, row.table_id, row.user_id, row.client_id, row.text
+
+    async def get_specific_table_chat_msgs(self, table_id, table_chat_message_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM table_chat WHERE table_id=%s and id=%s",
+                                 (table_id, table_chat_message_id))
+            # await cursor.execute("SELECT * FROM chat_messages WHERE table_id=%s ORDER BY id", (table_id,))
+            row = await cursor.fetchone()
+        return row
+
+    #CLUB'S TXN
+
+    async def txn_with_chip_on_club_balance(self, club_id, amount, mode):
+        if mode == 'add':
+            sql = "UPDATE club_profile SET club_balance = club_balance + %s WHERE id=%s"
+        elif mode == 'del':
+            sql = "UPDATE club_profile SET club_balance = club_balance - %s WHERE id=%s"
+        async with self.cursor() as cursor:
+            if mode == 'del':
+                check_sql = "SELECT club_balance FROM club_profile WHERE id=%s"
+                await cursor.execute(check_sql, (club_id,))
+                club_balance = await cursor.fetchone()
+
+                if (club_balance.club_balance - amount) < 0.0:
+                    reset_balance_sql = "UPDATE club_profile SET club_balance = 0 WHERE id=%s"
+                    await cursor.execute(reset_balance_sql, (club_id,))
+                    return
+
+            await cursor.execute(sql, (amount, club_id))
+

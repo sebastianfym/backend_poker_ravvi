@@ -28,7 +28,7 @@ class ClubProfile(BaseModel):
     tables_count: int | None = None
     players_count: int | None = None
     user_balance: float | None = None
-    agent_balance: float | None = None
+    agents_balance: float | None = None
     club_balance: float | None = None
     service_balance: float | None = None
 
@@ -62,7 +62,7 @@ async def v1_create_club(params: ClubProps, session_uuid: SessionUUID):
         user_approved=True
     ).model_dump()
 
-    for param in ["tables_count", "players_count", "user_balance", "agent_balance", "club_balance", "service_balance"]:
+    for param in ["tables_count", "players_count", "user_balance", "agents_balance", "club_balance", "service_balance"]:
         club_profile.pop(param, None)
     return club_profile
 
@@ -83,8 +83,8 @@ async def v1_list_clubs(session_uuid: SessionUUID):
                 user_approved=club.approved_ts is not None,
                 tables_count=club.tables_сount,
                 players_count=club.players_online,
-                user_balance=(await db.get_user_balance_in_club(club_id=club.id, user_id=user.id)).balance,
-                agent_balance=await db.get_balance_shared_in_club(club_id=club.id, user_id=user.id),
+                user_balance=(await db.get_user_balance_in_club(club_id=club.id, user_id=user.id)),
+                agents_balance=await db.get_balance_shared_in_club(club_id=club.id, user_id=user.id),
                 club_balance=club.club_balance,
                 service_balance=await db.get_service_balance_in_club(club_id=club.id, user_id=user.id)
             ) for club in clubs
@@ -99,16 +99,20 @@ async def v1_get_club(club_id: int, session_uuid: SessionUUID):
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
-
-    return ClubProfile(
-        id=club.id,
-        name=club.name,
-        description=club.description,
-        image_id=club.image_id,
-        user_role=account.user_role if account else None,
-        user_approved=account.approved_ts is not None if account else None,
-        club_balance=club.club_balance
-    )
+        return ClubProfile(
+            id=club.id,
+            name=club.name,
+            description=club.description,
+            image_id=club.image_id,
+            user_role=account.user_role if account else None,
+            user_approved=account.approved_ts is not None if account else None,
+            club_balance=club.club_balance,
+            tables_count=club.tables_сount,
+            players_count=club.players_online,
+            user_balance=(await db.get_user_balance_in_club(club_id=club.id, user_id=user.id)),
+            agents_balance=await db.get_balance_shared_in_club(club_id=club.id, user_id=user.id),
+            service_balance=await db.get_service_balance_in_club(club_id=club.id, user_id=user.id)
+        )
 
 
 @router.patch("/{club_id}", summary="Update club")
