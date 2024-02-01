@@ -208,7 +208,7 @@ def test_get_club(api_client: TestClient, api_guest: UserAccessProfile):
     assert response.status_code == 200
     assert isinstance(response.json(), list)
     assert response.json()[0]['user_balance'] == 0.0
-    assert response.json()[0]['agent_balance'] == 0.0
+    assert response.json()[0]['agents_balance'] == 0.0
     assert response.json()[0]['club_balance'] == 0.0
     assert response.json()[0]['service_balance'] == 0.0
 
