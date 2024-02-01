@@ -453,7 +453,7 @@ async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionU
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
         try:
-            if account.approved_ts is None:
+            if account.approved_ts is None or account.approved_ts is False:
                 return HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Your account has not been verified")
         except AttributeError:
             return HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -467,11 +467,8 @@ async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionU
         except KeyError as e:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
 
-        try:
-            if account.user_role == "P":
-                await db.update_account_balance(account_id=account.id, amount=amount, balance="user_balance")   # Todo такой функции в dbi.py нету, название примерное
-            elif account.user_role == "A":
-                await db.update_account_balance(account_id=account.id, amount=amount, balance=balance)
-            return HTTP_200_OK
-        except AttributeError:
-            return HTTP_418_IM_A_TEAPOT
+        if account.user_role == "P":
+            balance = "balance"
+        await db.send_request_for_replenishment_of_chips(account_id=account.id, amount=amount, balance=balance)
+        return HTTP_200_OK
+
