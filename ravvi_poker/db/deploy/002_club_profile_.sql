@@ -3,8 +3,8 @@ ALTER TABLE ONLY public.club_profile ADD COLUMN tables_сount INT DEFAULT 0, ADD
 CREATE FUNCTION public.table_close_trg_proc() RETURNS trigger
     AS $$
 BEGIN
-  IF NEW.closed_ts IS NOT NULL AND OLD.closed_ts IS DISTINCT FROM NEW.closed_ts THEN
-    UPDATE public.club_profile SET tables_сount = tables_сount - 1 WHERE id = NEW.club_id;
+  IF (SELECT tables_сount FROM public.club_profile WHERE id = NEW.club_id) > 0 THEN
+      UPDATE public.club_profile SET tables_сount = tables_сount - 1 WHERE id = NEW.club_id;
   END IF;
   RETURN NEW;
 END;
