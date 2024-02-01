@@ -371,8 +371,8 @@ async def v1_delete_chip_from_club_balance(club_id: int, session_uuid: SessionUU
             amount = json_data["amount"]
             await db.txn_with_chip_on_club_balance(club_id, amount, "del")
             return HTTP_200_OK
-        except KeyError:
-            return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You forgot to amount out quantity the chips")
+        except KeyError as e:
+            return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
 
 
 @router.post("/{club_id}/giving_chips_to_the_user", status_code=HTTP_200_OK, summary="Owner giv chips to the club's user")
