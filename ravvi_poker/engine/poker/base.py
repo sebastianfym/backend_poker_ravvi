@@ -421,14 +421,16 @@ class PokerBase(Game):
         self.deck.get_next()
 
         async with self.DBI() as db:
+            # ante
+            if self.ante:
+                await self.collect_ante(db)
+                # TODO обновить банк на столе
+
             for p in self.players:
                 p.hand = self.get_best_hand(p.cards, self.cards)
                 await self.broadcast_PLAYER_CARDS(db, p)
 
             self.bet_level = 0
-
-            if self.ante:
-                await self.collect_ante()
 
             # small blind
             p = self.players_to_role(PlayerRole.SMALL_BLIND)
@@ -436,12 +438,12 @@ class PokerBase(Game):
 
             if p.user.balance <= self.blind_small:
                 p.bet_type = Bet.ALLIN
-                p.bet_delta += p.user.balance
+                p.bet_delta = p.user.balance
                 p.bet_amount = p.user.balance
                 p.bet_total += p.user.balance
             else:
                 p.bet_type = Bet.SMALL_BLIND
-                p.bet_delta += self.blind_small
+                p.bet_delta = self.blind_small
                 p.bet_amount = self.blind_small
                 p.bet_total += self.blind_small
             self.bank_total += p.bet_delta
@@ -453,12 +455,12 @@ class PokerBase(Game):
             assert PlayerRole.BIG_BLIND in p.role
             if p.user.balance < self.blind_big:
                 p.bet_type = Bet.ALLIN
-                p.bet_delta += p.user.balance
+                p.bet_delta = p.user.balance
                 p.bet_amount = p.user.balance
                 p.bet_total += p.user.balance
             else:
                 p.bet_type = Bet.BIG_BLIND
-                p.bet_delta += self.blind_big
+                p.bet_delta = self.blind_big
                 p.bet_amount = self.blind_big
                 p.bet_total += self.blind_big
             self.bank_total += p.bet_delta
@@ -607,14 +609,17 @@ class PokerBase(Game):
 
         return winners_info
 
-    async def collect_ante(self):
-        # если у всех хватает на взнос ante
-        if min([p.balance_0 for p in self.players]) >= self.ante:
-            # вычитаем у каждого игрока анте
-            for p in self.players:
+    async def collect_ante(self, db):
+        for p in self.players:
+            if p.balance_0 >= self.ante:
                 p.bet_ante = self.ante
-                p.bet_delta += p.bet_ante
-                p.bet_total += p.bet_delta
-                self.bank_total += p.bet_delta
-                p.user.balance -= p.bet_delta
+            else:
+                p.bet_ante = p.balance_0
 
+            p.bet_delta = p.bet_ante
+            p.bet_total += p.bet_delta
+            self.bank_total += p.bet_delta
+            p.user.balance -= p.bet_delta
+            p.bet_type = Bet.ANTE
+
+            await self.broadcast_PLAYER_BET(db, p)

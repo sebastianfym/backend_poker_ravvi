@@ -1,7 +1,12 @@
+from unittest.mock import MagicMock, AsyncMock
+
 import pytest
 
 from ravvi_poker.engine.poker.ante import AnteUpController
+from ravvi_poker.engine.poker.nlh import Poker_NLH_REGULAR
 from ravvi_poker.engine.tables import Table_RG
+
+from helpers.x_game_case import load_game_cases, create_game_case
 
 
 class TestAnteUpControllerInstance:
@@ -92,14 +97,17 @@ def prepare_test_cases_for_games_without_possible_ante_up() -> list:
 
 
 def pytest_generate_tests(metafunc):
-    try:
-        func_arg_list = metafunc.cls.params[metafunc.function.__name__]
-        arg_names = sorted(func_arg_list[0])
-        metafunc.parametrize(
-            arg_names, [[func_args[name] for name in arg_names] for func_args in func_arg_list]
-        )
-    except AttributeError:
-        pass
+    if "game_case" in metafunc.fixturenames:
+        metafunc.parametrize("game_case", load_game_cases(__file__))
+    else:
+        try:
+            func_arg_list = metafunc.cls.params[metafunc.function.__name__]
+            arg_names = sorted(func_arg_list[0])
+            metafunc.parametrize(
+                arg_names, [[func_args[name] for name in arg_names] for func_args in func_arg_list]
+            )
+        except AttributeError:
+            pass
 
 
 class TestAnteUpControllerInitialValueForGame:
@@ -126,7 +134,7 @@ class TestAnteUpControllerInitialValueForGame:
                          })
         game = await table.game_factory([])
 
-        assert game.current_ante_value == ante_target_value
+        assert game.ante == ante_target_value
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("ante_up", [True, False, None])
@@ -145,4 +153,18 @@ class TestAnteUpControllerInitialValueForGame:
                          })
         game = await table.game_factory([])
 
-        assert game.current_ante_value == ante_target_value
+        assert game.ante == ante_target_value
+
+
+X_Game = create_game_case(Poker_NLH_REGULAR)
+
+class TestAnte_NLH_RG:
+    @pytest.mark.asyncio
+    async def test_case(self, game_case):
+        name, kwargs = game_case
+
+        mocked_table = AsyncMock()
+
+        game = X_Game(mocked_table, **kwargs)
+        await game.run()
+        assert not game._check_steps

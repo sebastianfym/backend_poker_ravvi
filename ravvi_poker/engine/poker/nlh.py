@@ -36,7 +36,7 @@ class Poker_NLH_AOF(Poker_NLH_X):
 
     def __init__(self, table, users: List[User], **kwargs):
         super().__init__(table, users, **kwargs)
-        self.current_ante_value = None
+        self.ante = None
 
     def get_bet_options(self, player) -> Tuple[List[Bet], dict]:
         _, _, raise_max, _ = self.get_bet_limits(player)
@@ -76,7 +76,7 @@ class Poker_NLH_6P(Poker_NLH_X):
 
     def __init__(self, table, users: List[User], **kwargs):
         super().__init__(table, users, **kwargs)
-        self.current_ante_value = None
+        self.ante = None
 
 NLH_GAMES = [
     Poker_NLH_REGULAR,
