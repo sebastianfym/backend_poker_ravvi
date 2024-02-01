@@ -131,7 +131,6 @@ async def v1_update_club(club_id: int, params: ClubProps, session_uuid: SessionU
             # if params.image_id is not None and not image:
             #    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Image not found")
             club = await db.update_club(club_id, **club_params)
-
     return ClubProfile(
         id=club.id,
         name=club.name,
@@ -400,14 +399,15 @@ async def v1_club_giving_chips_to_the_user(club_id: int, session_uuid: SessionUU
             balance = json_data["balance"]
             user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
             if user_account.user_role == "P":
-                balance = "user_balance"
-
-            await db.giving_chips_to_the_user(club_id, amount, user_account.id, balance)  # Todo такой функции в dbi.py нету, название примерное
-            return HTTP_200_OK
+                balance = "balance"
+            try:
+                await db.giving_chips_to_the_user(amount, user_account.id, balance)
+                return HTTP_200_OK
+            except UnboundLocalError:
+                return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Please chose a correct balance: balance or agents_balance")
         except KeyError as e:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
-        except AttributeError:
-            return HTTP_418_IM_A_TEAPOT
+
 
 
 @router.post("/{club_id}/delete_chips_from_the_user", status_code=HTTP_200_OK,
@@ -434,11 +434,10 @@ async def v1_club_delete_chips_from_the_user(club_id: int, session_uuid: Session
             user_account_id = json_data["user_id"]
             balance = json_data["balance"]
             user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
-            if user_account.user_role == "P":
-                balance = "user_balance"
-
-            # Todo добавить проверку, что у пользователя не может быть меньше фишек, чем в запросе (или отнимать до 0)
-            await db.delete_chips_from_the_user(club_id, amount, user_account.id, balance)  # Todo такой функции в dbi.py нету, название примерное
+            if balance == "balance":
+                await db.delete_chips_from_the_account_balance(amount, user_account.id)
+            elif balance == "agents_balance":
+                await db.delete_chips_from_the_agent_balance(amount, user_account.id)
             return HTTP_200_OK
         except KeyError as e:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")

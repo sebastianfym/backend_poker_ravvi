@@ -66,12 +66,14 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_c
     assert club2.user_approved is True
 
     # get club2 by new user
+    response = api_client_2.post(f"/v1/clubs/{club2.id}/members")
+    assert response.status_code == 200
     response = api_client_2.get(f"/v1/clubs/{club2.id}")
     assert response.status_code == 200
     club2_2 = ClubProfile(**response.json())
     assert club2_2.id == club2.id
-    assert club2_2.user_role is None
-    assert club2_2.user_approved is None
+    assert club2_2.user_role == "P"
+    assert club2_2.user_approved is False
 
     response = api_client_2.get(f"/v1/clubs/{club_404}")
     assert response.status_code == 404
