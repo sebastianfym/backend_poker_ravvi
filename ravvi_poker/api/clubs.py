@@ -390,7 +390,6 @@ async def v1_club_giving_chips_to_the_user(club_id: int, session_uuid: SessionUU
         except AttributeError:
             return HTTPException(status_code=HTTP_403_FORBIDDEN,
                                  detail="You don't have enough rights to perform this action")
-
         json_data = await request.json()
 
         try:
@@ -471,7 +470,7 @@ async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionU
         try:
             if account.user_role == "P":
                 await db.update_account_balance(account_id=account.id, amount=amount, balance="user_balance")   # Todo такой функции в dbi.py нету, название примерное
-            elif account.user_role == "A" or account.user_role == "SA":
+            elif account.user_role == "A":
                 await db.update_account_balance(account_id=account.id, amount=amount, balance=balance)
             return HTTP_200_OK
         except AttributeError:

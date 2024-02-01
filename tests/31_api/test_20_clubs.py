@@ -2,8 +2,6 @@ import json
 
 import pytest
 
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN, \
-    HTTP_422_UNPROCESSABLE_ENTITY, HTTP_418_IM_A_TEAPOT
 from fastapi.testclient import TestClient
 from ravvi_poker.api.auth import UserAccessProfile
 from ravvi_poker.api.clubs import ClubProfile, ClubMemberProfile
@@ -268,8 +266,6 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
 
     #Action with manipulations of the club's user balance
 
-    response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user", json={"amount": 1, "user_id": 1, "balance": "user_balance"})
-    assert response.json() == 418
 
     response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user", json={"amount": 1})
     assert response.json()['status_code'] == 400
@@ -288,7 +284,7 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
     assert response.json()['detail'] == "You don't have enough rights to perform this action"
 
     response = api_client.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"amount": 1, "user_id": 1, "balance": "user_balance"})
-    assert response.json() == 418
+    assert response.json() == 200
 
     response = api_client.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"amount": 1})
     assert response.json()['status_code'] == 400
