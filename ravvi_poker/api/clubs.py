@@ -14,6 +14,7 @@ router = APIRouter(prefix="/clubs", tags=["clubs"])
 class ClubProps(BaseModel):
     name: str | None = None
     description: str | None = None
+    # TODO не должно быть None
     image_id: int | None = None
 
 
@@ -21,7 +22,9 @@ class ClubProfile(BaseModel):
     id: int
     name: str
     description: str | None = None
+    # TODO не должно быть None
     image_id: int | None = None
+    # TODO откуда None?
     user_role: str | None = None
     user_approved: bool | None = None
 
@@ -69,6 +72,7 @@ async def v1_create_club(params: ClubProps, session_uuid: SessionUUID):
 
 @router.get("", summary="List clubs for current user")
 async def v1_list_clubs(session_uuid: SessionUUID):
+    # TODO только список клубов в которых он активен
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         clubs = await db.get_clubs_for_user(user_id=user.id)
@@ -83,8 +87,10 @@ async def v1_list_clubs(session_uuid: SessionUUID):
                 user_approved=club.approved_ts is not None,
                 tables_count=club.tables_сount,
                 players_count=club.players_online,
+                # TODO почему тут ()
                 user_balance=(await db.get_user_balance_in_club(club_id=club.id, user_id=user.id)),
                 agents_balance=await db.get_balance_shared_in_club(club_id=club.id, user_id=user.id),
+                # TODO почему пользователь видит баланс клуба в независимости от роли?!?!?
                 club_balance=club.club_balance,
                 service_balance=await db.get_service_balance_in_club(club_id=club.id, user_id=user.id)
             ) for club in clubs
@@ -96,6 +102,7 @@ async def v1_get_club(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
+        # TODO а если клуб закрыт?
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
@@ -109,6 +116,7 @@ async def v1_get_club(club_id: int, session_uuid: SessionUUID):
             club_balance=club.club_balance,
             tables_count=club.tables_сount,
             players_count=club.players_online,
+            # TODO почему тут ()
             user_balance=(await db.get_user_balance_in_club(club_id=club.id, user_id=user.id)),
             agents_balance=await db.get_balance_shared_in_club(club_id=club.id, user_id=user.id),
             service_balance=await db.get_service_balance_in_club(club_id=club.id, user_id=user.id)
@@ -120,6 +128,7 @@ async def v1_update_club(club_id: int, params: ClubProps, session_uuid: SessionU
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
+        # TODO а если клуб закрыт?
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
@@ -146,6 +155,7 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
+        # TODO а если клуб закрыт?
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         members = await db.get_club_members(club_id=club.id)
@@ -156,6 +166,7 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
             # username=member.username,
             # image_id=member.image_id,
             user_role=member.user_role,
+            # TODO наверное исключенных игроков не надо показывать?
             user_approved=member.approved_ts is not None
         ) for member in members
     ])
@@ -177,6 +188,7 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID):
         name=club.name,
         description=club.description,
         user_role=account.user_role,
+        # TODO а зачем? тут всегда True
         user_approved=account.approved_ts is not None
     )
 
@@ -243,6 +255,7 @@ async def v1_create_club_table(club_id: int, params: TableParams, session_uuid: 
                 continue
         kwargs = {key: value for key, value in kwargs.items() if key not in main_parameters}
 
+        # TODO а нельзя params.get_main_params() и params_get_pops()
         table = await db.create_table(club_id=club_id, table_type=table_type, table_name=table_name,
                                       table_seats=table_seats, game_type=game_type, game_subtype=game_subtype,
                                       props=kwargs)
@@ -262,6 +275,7 @@ async def v1_get_club_tables(club_id: int, session_uuid: SessionUUID):
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
+        # TODO исключенному игроку показываем столы?
         if not account:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
         tables = await db.get_club_tables(club_id=club_id)
@@ -275,6 +289,7 @@ async def v1_get_club_tables(club_id: int, session_uuid: SessionUUID):
             entry = TableProfile(**row_dict)
             result.append(entry)
         except Exception as ex:
+            # TODO антипаттерн
             pass
     return result
 
@@ -330,6 +345,7 @@ async def v1_add_chip_on_club_balance(club_id: int, session_uuid: SessionUUID, r
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
+        # TODO закрытому клубу тоже даем фишки?
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
@@ -338,11 +354,15 @@ async def v1_add_chip_on_club_balance(club_id: int, session_uuid: SessionUUID, r
                 return HTTPException(status_code=HTTP_403_FORBIDDEN,
                                      detail="You don't have enough rights to perform this action")
         except AttributeError:
+            # TODO почему вообще AttributeError есть?
             return HTTPException(status_code=HTTP_403_FORBIDDEN,
                                  detail="You don't have enough rights to perform this action")
         json_data = await request.json()
         try:
             amount = json_data["amount"]
+            # TODO максимум 2 разряда после запятой
+            # TODO -10 фишек тоже добавляем?
+            # TODO amount = "много_фишек"
             await db.txn_with_chip_on_club_balance(club_id, amount, "add")
             return HTTP_200_OK
         except KeyError:
@@ -375,7 +395,8 @@ async def v1_delete_chip_from_club_balance(club_id: int, session_uuid: SessionUU
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
 
 
-@router.post("/{club_id}/giving_chips_to_the_user", status_code=HTTP_200_OK, summary="Owner giv chips to the club's user")
+@router.post("/{club_id}/giving_chips_to_the_user", status_code=HTTP_200_OK,
+             summary="Owner giv chips to the club's user")
 async def v1_club_giving_chips_to_the_user(club_id: int, session_uuid: SessionUUID, request: Request):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -400,13 +421,14 @@ async def v1_club_giving_chips_to_the_user(club_id: int, session_uuid: SessionUU
             if user_account.user_role == "P":
                 balance = "balance"
             try:
+                # TODO метод кривой получился -> решишь использовать будешь постоянно таскать error handler
                 await db.giving_chips_to_the_user(amount, user_account.id, balance)
                 return HTTP_200_OK
             except UnboundLocalError:
-                return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Please chose a correct balance: balance or agents_balance")
+                return HTTPException(status_code=HTTP_400_BAD_REQUEST,
+                                     detail="Please chose a correct balance: balance or agents_balance")
         except KeyError as e:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
-
 
 
 @router.post("/{club_id}/delete_chips_from_the_user", status_code=HTTP_200_OK,
@@ -442,7 +464,6 @@ async def v1_club_delete_chips_from_the_user(club_id: int, session_uuid: Session
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
 
 
-
 @router.post("/{club_id}/request_chips", status_code=HTTP_200_OK, summary="The user requests chips from the club")
 async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionUUID, request: Request):
     async with DBI() as db:
@@ -468,6 +489,6 @@ async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionU
 
         if account.user_role == "P":
             balance = "balance"
+
         await db.send_request_for_replenishment_of_chips(account_id=account.id, amount=amount, balance=balance)
         return HTTP_200_OK
-
