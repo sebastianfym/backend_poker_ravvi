@@ -213,9 +213,9 @@ def test_get_club(api_client: TestClient, api_guest: UserAccessProfile):
     assert response.json()[0]['service_balance'] == 0.0
 
     club.user_role = 'P'
-    assert club.club_balance is None
-    assert club.service_balance is None
-    assert club.agents_balance is None
+    assert club.club_balance is 0.00
+    assert club.service_balance is 0.00
+    assert club.agents_balance is 0.00
 
 
 def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
