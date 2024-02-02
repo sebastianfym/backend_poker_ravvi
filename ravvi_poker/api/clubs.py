@@ -87,8 +87,7 @@ async def v1_list_clubs(session_uuid: SessionUUID):
                 user_approved=club.approved_ts is not None,
                 tables_count=club.tables_сount,
                 players_count=club.players_online,
-                # TODO почему тут ()
-                user_balance=(await db.get_user_balance_in_club(club_id=club.id, user_id=user.id)),
+                user_balance=await db.get_user_balance_in_club(club_id=club.id, user_id=user.id),
                 agents_balance=await db.get_balance_shared_in_club(club_id=club.id, user_id=user.id),
                 # TODO почему пользователь видит баланс клуба в независимости от роли?!?!?
                 club_balance=club.club_balance,
@@ -116,8 +115,7 @@ async def v1_get_club(club_id: int, session_uuid: SessionUUID):
             club_balance=club.club_balance,
             tables_count=club.tables_сount,
             players_count=club.players_online,
-            # TODO почему тут ()
-            user_balance=(await db.get_user_balance_in_club(club_id=club.id, user_id=user.id)),
+            user_balance=await db.get_user_balance_in_club(club_id=club.id, user_id=user.id),
             agents_balance=await db.get_balance_shared_in_club(club_id=club.id, user_id=user.id),
             service_balance=await db.get_service_balance_in_club(club_id=club.id, user_id=user.id)
         )
@@ -289,7 +287,6 @@ async def v1_get_club_tables(club_id: int, session_uuid: SessionUUID):
             entry = TableProfile(**row_dict)
             result.append(entry)
         except Exception as ex:
-            # TODO антипаттерн
             pass
     return result
 
@@ -345,24 +342,22 @@ async def v1_add_chip_on_club_balance(club_id: int, session_uuid: SessionUUID, r
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
-        # TODO закрытому клубу тоже даем фишки?
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+        elif club.closed_ts:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
-        try:
-            if account.user_role != "O":
-                return HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                     detail="You don't have enough rights to perform this action")
-        except AttributeError:
-            # TODO почему вообще AttributeError есть?
+
+        if account.user_role != "O":
             return HTTPException(status_code=HTTP_403_FORBIDDEN,
                                  detail="You don't have enough rights to perform this action")
+
         json_data = await request.json()
         try:
             amount = json_data["amount"]
-            # TODO максимум 2 разряда после запятой
-            # TODO -10 фишек тоже добавляем?
-            # TODO amount = "много_фишек"
+            if isinstance(amount, float) is False or amount < 0:
+                return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You entered an incorrect value for amount")
+            amount = round(amount, 2)
             await db.txn_with_chip_on_club_balance(club_id, amount, "add")
             return HTTP_200_OK
         except KeyError:
@@ -415,18 +410,20 @@ async def v1_club_giving_chips_to_the_user(club_id: int, session_uuid: SessionUU
 
         try:
             amount = json_data["amount"]
-            user_account_id = json_data["user_id"]
             balance = json_data["balance"]
+
+            if isinstance(amount, float) is False or amount < 0:
+                return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You entered an incorrect value for amount")
+            if balance != "balance" or balance != "balance_shared":
+                return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You entered an incorrect value for balance")
+            user_account_id = json_data["user_id"]
             user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
             if user_account.user_role == "P":
                 balance = "balance"
-            try:
-                # TODO метод кривой получился -> решишь использовать будешь постоянно таскать error handler
-                await db.giving_chips_to_the_user(amount, user_account.id, balance)
-                return HTTP_200_OK
-            except UnboundLocalError:
-                return HTTPException(status_code=HTTP_400_BAD_REQUEST,
-                                     detail="Please chose a correct balance: balance or agents_balance")
+
+            await db.giving_chips_to_the_user(amount, user_account.id, balance)
+            return HTTP_200_OK
+
         except KeyError as e:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
 

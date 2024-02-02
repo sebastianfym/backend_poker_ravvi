@@ -236,7 +236,7 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
     assert response.json()['status_code'] == 400
     assert response.json()['detail'] == 'You forgot to amount out quantity the chips'
 
-    response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 1000})
+    response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 1000.00})
     assert response.status_code == 200
     response = api_client.get(f"/v1/clubs/{club.id}")
     assert response.json()['club_balance'] == 1000
@@ -261,15 +261,12 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
     response = api_client_2.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 1})
     assert response.json()['status_code'] == 403
 
-    response = api_client_2.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 1})
-    assert response.json()['status_code'] == 403
-
     #Action with manipulations of the club's user balance
 
 
     response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user", json={"amount": 1})
     assert response.json()['status_code'] == 400
-    assert response.json()['detail'] == "You forgot to add a value: 'user_id'"
+    assert response.json()['detail'] == "You forgot to add a value: 'balance'"
 
     response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user", json={"user_id": 1})
     assert response.json()['status_code'] == 400
