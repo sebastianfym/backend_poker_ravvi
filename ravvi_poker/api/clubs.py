@@ -25,12 +25,12 @@ class ClubProfile(BaseModel):
     user_role: str | None = None
     user_approved: bool | None = None
 
-    tables_count: int | None = None
-    players_count: int | None = None
-    user_balance: float | None = None
-    agents_balance: float | None = None
-    club_balance: float | None = None
-    service_balance: float | None = None
+    tables_count: int | None = 0
+    players_count: int | None = 0
+    user_balance: float | None = 0.00
+    agents_balance: float | None = 0.00
+    club_balance: float | None = 0.00
+    service_balance: float | None = 0.00
 
 
 class ClubMemberProfile(BaseModel):
