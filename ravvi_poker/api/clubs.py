@@ -22,7 +22,6 @@ class ClubProfile(BaseModel):
     id: int
     name: str
     description: str | None = None
-    # TODO не должно быть None
     image_id: int | None = None
     # TODO откуда None?
     user_role: str | None = None

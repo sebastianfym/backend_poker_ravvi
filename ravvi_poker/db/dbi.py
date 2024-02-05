@@ -7,7 +7,6 @@ import psycopg_pool
 from psycopg.rows import namedtuple_row, dict_row
 from psycopg.connection import Notify
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -369,7 +368,7 @@ class DBI:
             await cursor.execute(sql, values)
             row = await cursor.fetchone()
         return row
-    
+
     # USER ACCOUNT
 
     async def create_club_member(self, club_id, user_id, user_comment):
@@ -430,7 +429,8 @@ class DBI:
 
     # TABLE
 
-    async def create_table(self, *, club_id=0, table_type, table_name, table_seats, game_type, game_subtype, props=None):
+    async def create_table(self, *, club_id=0, table_type, table_name, table_seats, game_type, game_subtype,
+                           props=None):
         props = json.dumps(props or {})
         sql = "INSERT INTO table_profile (club_id, table_type, table_name, table_seats, game_type, game_subtype, props) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING *"
         async with self.cursor() as cursor:
@@ -717,7 +717,6 @@ class DBI:
             sql = "UPDATE user_account SET balance_shared = balance_shared + %s WHERE id = %s"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (amount, account_id))
-        return
 
     async def delete_chips_from_the_agent_balance(self, amount, account_id):
         get_balance_shared_sql = "SELECT balance_shared FROM user_account WHERE id = %s"
