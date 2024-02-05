@@ -45,7 +45,7 @@ async def v1_get_payment_structure(session_uuid: SessionUUID):
     return rewards_distribution
 
 
-@router.get("/countries/{language}/", status_code=HTTP_200_OK, summary="Get a list of countries in different languages")
+@router.get("/countries/{language}", status_code=HTTP_200_OK, summary="Get a list of countries in different languages")
 async def v1_get_countries(session_uuid: SessionUUID, language: str):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -68,3 +68,11 @@ async def v1_get_countries(session_uuid: SessionUUID, language: str):
             return countries_dict
     except Exception as exception:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=exception)
+
+
+@router.get("/{club_id}/history", status_code=HTTP_200_OK, summary="Get a list of countries in different languages")
+async def v1_get_history_trx(club_id: str, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+
+    return [{'id': 1, "created_ts": "2024-02-05 07:49:03.341505", "account_id": 1, "txn_type": "CASHOUT", "txn_value": 1000}]
