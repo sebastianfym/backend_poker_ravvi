@@ -7,7 +7,6 @@ import psycopg_pool
 from psycopg.rows import namedtuple_row, dict_row
 from psycopg.connection import Notify
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -369,7 +368,7 @@ class DBI:
             await cursor.execute(sql, values)
             row = await cursor.fetchone()
         return row
-    
+
     # USER ACCOUNT
 
     async def create_club_member(self, club_id, user_id, user_comment):
@@ -430,7 +429,8 @@ class DBI:
 
     # TABLE
 
-    async def create_table(self, *, club_id=0, table_type, table_name, table_seats, game_type, game_subtype, props=None):
+    async def create_table(self, *, club_id=0, table_type, table_name, table_seats, game_type, game_subtype,
+                           props=None):
         props = json.dumps(props or {})
         sql = "INSERT INTO table_profile (club_id, table_type, table_name, table_seats, game_type, game_subtype, props) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING *"
         async with self.cursor() as cursor:
@@ -646,3 +646,98 @@ class DBI:
             await cursor.execute("SELECT * FROM table_msg WHERE id=%s", (id,))
             row = await cursor.fetchone()
         return row
+
+        # CLUB'S TXN
+
+    async def txn_with_chip_on_club_balance(self, club_id, amount, mode):
+        if mode == 'add':
+            sql = "UPDATE club_profile SET club_balance = club_balance + %s WHERE id=%s"
+        elif mode == 'del':
+            sql = "UPDATE club_profile SET club_balance = club_balance - %s WHERE id=%s"
+        async with self.cursor() as cursor:
+            if mode == 'del':
+                check_sql = "SELECT club_balance FROM club_profile WHERE id=%s"
+                await cursor.execute(check_sql, (club_id,))
+                club_balance = await cursor.fetchone()
+
+                if (club_balance.club_balance - amount) < 0.0:
+                    reset_balance_sql = "UPDATE club_profile SET club_balance = 0 WHERE id=%s"
+                    await cursor.execute(reset_balance_sql, (club_id,))
+                    return
+
+            await cursor.execute(sql, (amount, club_id))
+
+    async def send_request_for_replenishment_of_chips(self, account_id, amount, balance):
+        sql = "INSERT INTO public.user_account_txn (account_id, txn_type, txn_value, props) VALUES (%s, %s, %s, %s::jsonb)"
+        txn_type = "replenishment"
+        props = {"balance": balance}
+        props_json = json.dumps(props)  # Преобразование словаря в JSON-строку
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (account_id, txn_type, amount, props_json))
+        return
+
+    async def get_user_balance_in_club(self, club_id, user_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT balance FROM user_account WHERE club_id = %s AND user_id = %s",
+                                 (club_id, user_id))
+            row = await cursor.fetchone()
+            if row.balance < 0:
+                return 0
+        return row.balance
+
+    async def get_balance_shared_in_club(self, club_id, user_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT user_role FROM user_account WHERE club_id = %s AND user_id = %s",
+                                 (club_id, user_id))
+            role = await cursor.fetchone()
+            if role.user_role == "A" or role.user_role == "SA" or role.user_role == "O":
+                await cursor.execute("SELECT balance_shared FROM user_account WHERE club_id = %s AND user_id = %s",
+                                     (club_id, user_id))
+                row = await cursor.fetchone()
+                return row.balance_shared
+            else:
+                return None
+
+    async def get_service_balance_in_club(self, club_id, user_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT user_role FROM user_account WHERE club_id = %s AND user_id = %s",
+                                 (club_id, user_id))
+            role = await cursor.fetchone()
+            if role.user_role == "O":
+                await cursor.execute("SELECT service_balance FROM club_profile WHERE id = %s ", (club_id,))
+                row = await cursor.fetchone()
+                return row.service_balance
+            else:
+                return None
+
+    async def giving_chips_to_the_user(self, amount, account_id, balance):
+        if balance == "balance":
+            sql = "UPDATE user_account SET balance = balance + %s WHERE id = %s"
+        elif balance == "balance_shared":
+            sql = "UPDATE user_account SET balance_shared = balance_shared + %s WHERE id = %s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (amount, account_id))
+
+    async def delete_chips_from_the_agent_balance(self, amount, account_id):
+        get_balance_shared_sql = "SELECT balance_shared FROM user_account WHERE id = %s"
+        sql = "UPDATE user_account SET balance_shared = balance_shared - %s WHERE id = %s"
+        async with self.cursor() as cursor:
+            await cursor.execute(get_balance_shared_sql, (account_id,))
+            balance_shared = await cursor.fetchone()
+            if (balance_shared.balance_shared - amount) < 0:
+                sql = "UPDATE user_account SET balance_shared = 0 WHERE id = %s"
+                await cursor.execute(sql, (account_id,))
+            await cursor.execute(sql, (amount, account_id,))
+            return
+
+    async def delete_chips_from_the_account_balance(self, amount, account_id):
+        get_balance_shared_sql = "SELECT balance FROM user_account WHERE id = %s"
+        sql = "UPDATE user_account SET balance = balance - %s WHERE id = %s"
+        async with self.cursor() as cursor:
+            await cursor.execute(get_balance_shared_sql, (account_id,))
+            balance = await cursor.fetchone()
+            if (balance.balance - amount) < 0:
+                sql = "UPDATE user_account SET balance = 0 WHERE id = %s"
+                await cursor.execute(sql, (account_id,))
+            await cursor.execute(sql, (amount, account_id,))
+            return
