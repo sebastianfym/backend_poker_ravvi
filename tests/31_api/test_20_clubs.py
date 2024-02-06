@@ -319,9 +319,14 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
 
     #TXN info
 
-    response = api_client.get(f"/v1/info/{club.id}/balance_history")
+    response = api_client.get(f"/v1/info/{club.id}/history")
     assert response.status_code == 200
     assert response.json()[0]['txn_type'] == 'CLUB_CASHIN'
     assert response.json()[1]['txn_type'] == 'CLUB_REMOVE'
     assert response.json()[2]['txn_type'] == 'replenishment'
     assert isinstance(response.json(), list)
+
+    response = api_client.get(f"/v1/info/{club.id}/balance_history")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+

@@ -82,12 +82,30 @@ async def v1_get_countries(session_uuid: SessionUUID, language: str):
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=exception)
 
 
-@router.get("/{club_id}/balance_history", status_code=HTTP_200_OK,
+@router.get("/{club_id}/history", status_code=HTTP_200_OK,
             summary="Get a list of countries in different languages")
 async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         txn_history = await db.get_use_history_trx_in_club(user.id, club_id)
+    return [
+        TxnHistory(
+                username=user.name,
+                account_id=txn.account_id,
+                txn_time=txn.created_ts.timestamp(),
+                txn_type=txn.txn_type,
+                txn_value=txn.txn_value,
+                balance=txn.total_balance
+            ) for txn in txn_history
+        ]
+
+
+@router.get("/{club_id}/balance_history", status_code=HTTP_200_OK,
+            summary="Get a list of countries in different languages")
+async def v1_get_balance_history_trx(club_id: int, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        txn_history = await db.get_use_balance_history_trx_in_club(user.id, club_id)
     return [
         TxnHistory(
                 username=user.name,
