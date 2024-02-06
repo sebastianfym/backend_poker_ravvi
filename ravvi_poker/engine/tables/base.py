@@ -95,7 +95,7 @@ class Table:
         game_props = self.game_props.copy()
         # обновляем анте
         if self.ante:
-            game_props.update(current_ante_value=self.ante.current_ante_value)
+            game_props.update(ante=self.ante.current_ante_value)
 
         return game_class(self, users, **game_props)
 

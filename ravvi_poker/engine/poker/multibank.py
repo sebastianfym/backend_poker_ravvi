@@ -33,7 +33,8 @@ def get_banks(players: List[Player]):
     banks = []
     level = 0
     for l, group in levels:
-        amount = (l - level) * len(group)
+        # TODO округление
+        amount = round((l - level) * len(group), 2)
         group = [p for p in group if p.in_the_game]
         banks.append((amount, group))
         level = l
@@ -50,6 +51,7 @@ def get_banks(players: List[Player]):
             banks[i] = (p_amount + amount, group)
 
     banks = [b for b in banks if b]
-    total = sum([b[0] for b in banks])
+    # TODO округление
+    total = round(sum([b[0] for b in banks]), 2)
     logger.debug(f"Total: {total}")
     return banks, total

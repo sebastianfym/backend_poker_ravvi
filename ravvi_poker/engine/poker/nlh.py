@@ -13,11 +13,12 @@ class Poker_NLH_X(PokerBase):
 
     def get_bet_limits(self, player=None):
         p = player or self.current_player
-        call_delta = max(0, self.bet_level - p.bet_amount)
+        # TODO округление
+        call_delta = max(0, round(self.bet_level - p.bet_amount, 2))
         if self.bet_raise:
-            raise_min = self.bet_raise + call_delta
+            raise_min = round(self.bet_raise + call_delta, 2)
         elif self.bet_level:
-            raise_min = self.bet_level * 2 - p.bet_amount
+            raise_min = round(self.bet_level * 2 - p.bet_amount, 2)
         else:
             raise_min = self.blind_big
         raise_max = p.balance

@@ -1,7 +1,7 @@
 {
   "blind_small": 100,
   "blind_big": 200,
-  "current_ante_value":50,
+  "ante":50,
   "users": [
     {
       "id": 111,
@@ -36,8 +36,11 @@
       "ante": 50
     },
 
-    {"type": "PLAYER_BET", "user_id": 222, "bet": "ANTE", "delta": 50, "amount": 0, "balance": 1950, "bank_total": 50},
-    {"type": "PLAYER_BET", "user_id": 111, "bet": "ANTE", "delta": 50, "amount": 0, "balance": 950, "bank_total": 100},
+    {"type": "PLAYER_BET", "user_id": 111, "bet": "ANTE", "delta": 50, "amount": 0, "balance": 950, "bank_total": 50},
+    {"type": "PLAYER_BET", "user_id": 222, "bet": "ANTE", "delta": 50, "amount": 0, "balance": 1950, "bank_total": 100},
+
+    {"type": "GAME_ROUND", "banks": [100], "bank_total": 100},
+
 
     {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["7♣", "7♠"], "hand_type": "ONE_PAIR",  "hand_cards": ["7♠","7♣"]},
     {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["8♣", "5♣"], "hand_type": "HIGH_CARD", "hand_cards": ["8♣","5♣"]},
