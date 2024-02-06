@@ -130,7 +130,6 @@ class PokerBase(Game):
     # MSG
 
     async def broadcast_PLAYER_CARDS(self, db, player):
-        print("__________________________________________________________")
         hand_type, hand_cards = None, None
         if player.hand:
             hand_type = player.hand.type[0]
@@ -411,10 +410,9 @@ class PokerBase(Game):
         self.deck.get_next()
 
         async with self.DBI() as db:
-            # TODO на префлопе может не отображать карты? если отображать то надо выбрать что делать с отображением
-            # for p in self.players:
-            #     p.hand = self.get_best_hand(p.cards, self.cards)
-            #     await self.broadcast_PLAYER_CARDS(db, p)
+            for p in self.players:
+                p.hand = self.get_best_hand(p.cards, self.cards)
+                await self.broadcast_PLAYER_CARDS(db, p)
 
             self.bet_level = 0
 
@@ -460,8 +458,7 @@ class PokerBase(Game):
             return
         self.log.info("FLOP begin")
 
-        for _ in range(3):
-            self.cards.append(self.deck.get_next())
+        self.append_cards(3)
         async with self.DBI() as db:
             await self.broadcast_GAME_CARDS(db)
             self.players_to_role(PlayerRole.DEALER)
@@ -478,8 +475,7 @@ class PokerBase(Game):
             return
         self.log.info("TERN begin")
 
-        for _ in range(1):
-            self.cards.append(self.deck.get_next())
+        self.append_cards(1)
         async with self.DBI() as db:
             await self.broadcast_GAME_CARDS(db)
             self.players_to_role(PlayerRole.DEALER)
@@ -496,8 +492,7 @@ class PokerBase(Game):
             return
         self.log.info("RIVER begin")
 
-        for _ in range(1):
-            self.cards.append(self.deck.get_next())
+        self.append_cards(1)
         async with self.DBI() as db:
             await self.broadcast_GAME_CARDS(db)
             self.players_to_role(PlayerRole.DEALER)
@@ -547,6 +542,10 @@ class PokerBase(Game):
 
         await asyncio.sleep(self.SLEEP_ROUND_END)
         self.log.info("SHOWDOWN end")
+
+    def append_cards(self, cards_num):
+        for _ in range(cards_num):
+            self.cards.append(self.deck.get_next())
 
     def get_winners(self):
         winners = {}
