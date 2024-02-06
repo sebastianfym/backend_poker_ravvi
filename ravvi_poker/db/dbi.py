@@ -777,7 +777,7 @@ class DBI:
 
 
     async def get_use_balance_history_trx_in_club(self, user_id, club_id): #Todo тут что-то не то ищется
-        sql_history = "SELECT * FROM user_account_txn WHERE account_id = %s AND txn_type IN ('REMOVE', 'CASHIN', 'BUYIN', 'CASHOUT')"
+        sql_history = "SELECT * FROM user_account_txn WHERE account_id = %s AND txn_type IN ('REMOVE', 'CASHIN')"
         sql_users_accounts = "SELECT id FROM user_account WHERE user_id=%s AND club_id=%s"
         result_list = []
         async with self.cursor() as cursor:
