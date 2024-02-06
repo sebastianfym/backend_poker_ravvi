@@ -316,3 +316,12 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
     response = api_client_2.post(f"/v1/clubs/{club.id}/request_chips", json={"amount": 1, "balance": "balance_shared"})
     assert response.json()['status_code'] == 403
     assert response.json()['detail'] == "You don't have enough rights to perform this action"
+
+    #TXN info
+
+    response = api_client.get(f"/v1/info/{club.id}/balance_history")
+    assert response.status_code == 200
+    assert response.json()[0]['txn_type'] == 'CLUB_CASHIN'
+    assert response.json()[1]['txn_type'] == 'CLUB_REMOVE'
+    assert response.json()[2]['txn_type'] == 'replenishment'
+    assert isinstance(response.json(), list)
