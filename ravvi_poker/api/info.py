@@ -90,7 +90,6 @@ async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         txn_history = await db.get_user_history_trx_in_club(user.id, club_id)
-        print(txn_history)
         return [
             TxnHistory(
                 username=(await db.get_user(txn.sender_id)).name,

@@ -449,7 +449,6 @@ async def v1_club_delete_chips_from_the_user(club_id: int, session_uuid: Session
             user_account_id = json_data["user_id"]
             balance = json_data["balance"]
             user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
-            print(user_account_id, user_account)
             if balance == "balance":
                 await db.delete_chips_from_the_account_balance(amount, user_account.id, user.id)
             elif balance == "balance_shared":
