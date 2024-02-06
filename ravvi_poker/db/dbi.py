@@ -11,12 +11,12 @@ logger = logging.getLogger(__name__)
 
 
 class DBI:
-    DB_HOST = os.getenv("RAVVI_POKER_DB_HOST", "postgres")
-    DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "5432"))
-    DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "develop")
-    DB_USER = os.getenv("RAVVI_POKER_DB_USER", "postgres")
-    DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
-    APPLICATION_NAME = "CPS"
+    DB_HOST = "localhost"  # os.getenv("RAVVI_POKER_DB_HOST", "localhost")
+    DB_PORT = "5432"  # int(os.getenv("RAVVI_POKER_DB_PORT", "15432"))
+    DB_NAME = 'poker_db'  # os.getenv("RAVVI_POKER_DB_NAME", "develop")
+    DB_USER = 'poker_test'  # os.getenv("RAVVI_POKER_DB_USER", "postgres")
+    DB_PASSWORD = 'poker_test'  # os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
+    APPLICATION_NAME = 'CPS'
     CONNECT_TIMEOUT = 15
 
     pool = None
@@ -650,13 +650,13 @@ class DBI:
 
         # CLUB'S TXN
 
-    async def txn_with_chip_on_club_balance(self, club_id, amount, mode):
-        if mode == 'add':
-            sql = "UPDATE club_profile SET club_balance = club_balance + %s WHERE id=%s"
-        elif mode == 'del':
-            sql = "UPDATE club_profile SET club_balance = club_balance - %s WHERE id=%s"
+    async def txn_with_chip_on_club_balance(self, club_id, amount, mode, account_id):
+        if mode == 'CASHIN':
+            sql = "UPDATE club_profile SET club_balance = club_balance + %s WHERE id=%s RETURNING club_balance"
+        elif mode == 'REMOVE':
+            sql = "UPDATE club_profile SET club_balance = club_balance - %s WHERE id=%s  RETURNING club_balance"
         async with self.cursor() as cursor:
-            if mode == 'del':
+            if mode == 'REMOVE':
                 check_sql = "SELECT club_balance FROM club_profile WHERE id=%s"
                 await cursor.execute(check_sql, (club_id,))
                 club_balance = await cursor.fetchone()
@@ -664,9 +664,14 @@ class DBI:
                 if (club_balance.club_balance - amount) < 0.0:
                     reset_balance_sql = "UPDATE club_profile SET club_balance = 0 WHERE id=%s"
                     await cursor.execute(reset_balance_sql, (club_id,))
+                    sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance) VALUES (%s, %s, %s, %s) RETURNING *"
+                    await cursor.execute(sql, (account_id, f"CLUB_{mode}", amount, 0))
                     return
 
             await cursor.execute(sql, (amount, club_id))
+            row = await cursor.fetchone()
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance) VALUES (%s, %s, %s, %s) RETURNING *"
+            await cursor.execute(sql, (account_id, f"CLUB_{mode}", amount, row.club_balance))
 
     async def send_request_for_replenishment_of_chips(self, account_id, amount, balance):
         sql = "INSERT INTO public.user_account_txn (account_id, txn_type, txn_value, props) VALUES (%s, %s, %s, %s::jsonb)"
