@@ -488,3 +488,13 @@ async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionU
 
         await db.send_request_for_replenishment_of_chips(account_id=account.id, amount=amount, balance=balance)
         return HTTP_200_OK
+
+
+@router.post("/{club_id}/leave_from_club", status_code=HTTP_200_OK, summary="Leave from club")
+async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+        account = await db.find_account(user_id=user.id, club_id=club_id)

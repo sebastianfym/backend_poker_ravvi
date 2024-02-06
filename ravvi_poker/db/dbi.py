@@ -741,3 +741,7 @@ class DBI:
                 await cursor.execute(sql, (account_id,))
             await cursor.execute(sql, (amount, account_id,))
             return
+
+    # leave from club
+    async def user_leave_from_club(self, account_id):
+        sql = "UPDATE user_account SET closed_ts= AND closed_by=%s WHERE id = %s"
