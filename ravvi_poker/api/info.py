@@ -21,11 +21,13 @@ router = APIRouter(prefix="/info", tags=["info"])
 
 class TxnHistory(BaseModel):
     username: str | None
-    account_id: int | None
+    sender_id: int | None
     txn_time: str | None
     txn_type: str | None
     txn_value: float | None
     balance: float | None
+    image_id: int | None = None
+    role: str | None
 
 
 @router.get("/levels_schedule/{table_type}", status_code=HTTP_200_OK, summary="Get blind levels schedule (SNG/MTT)")
@@ -87,15 +89,18 @@ async def v1_get_countries(session_uuid: SessionUUID, language: str):
 async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
-        txn_history = await db.get_use_history_trx_in_club(user.id, club_id)
-    return [
-        TxnHistory(
-                username=user.name,
-                account_id=txn.account_id,
+        txn_history = await db.get_user_history_trx_in_club(user.id, club_id)
+        print(txn_history)
+        return [
+            TxnHistory(
+                username=(await db.get_user(txn.sender_id)).name,
+                sender_id=txn.sender_id,
                 txn_time=txn.created_ts.timestamp(),
                 txn_type=txn.txn_type,
                 txn_value=txn.txn_value,
-                balance=txn.total_balance
+                balance=txn.total_balance,
+                role=(await db.find_account(user_id=txn.sender_id, club_id=club_id)).user_role,
+                image_id=(await db.get_user(txn.sender_id)).image_id
             ) for txn in txn_history
         ]
 
@@ -105,14 +110,16 @@ async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
 async def v1_get_balance_history_trx(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
-        txn_history = await db.get_use_balance_history_trx_in_club(user.id, club_id)
-    return [
-        TxnHistory(
-                username=user.name,
-                account_id=txn.account_id,
-                txn_time=txn.created_ts.timestamp(),
-                txn_type=txn.txn_type,
-                txn_value=txn.txn_value,
-                balance=txn.total_balance
-            ) for txn in txn_history
-        ]
+        txn_history = await db.get_user_balance_history_trx_in_club(user.id, club_id)
+        return [
+            TxnHistory(
+                    username=(await db.get_user(txn.sender_id)).name,
+                    sender_id=txn.sender_id,
+                    txn_time=txn.created_ts.timestamp(),
+                    txn_type=txn.txn_type,
+                    txn_value=txn.txn_value,
+                    balance=txn.total_balance,
+                    role=(await db.find_account(user_id=txn.sender_id, club_id=club_id)).user_role,
+                    image_id=(await db.get_user(txn.sender_id)).image_id
+                ) for txn in txn_history
+            ]

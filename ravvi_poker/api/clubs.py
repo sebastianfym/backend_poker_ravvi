@@ -357,7 +357,7 @@ async def v1_add_chip_on_club_balance(club_id: int, session_uuid: SessionUUID, r
             if isinstance(amount, float) is False or amount < 0:
                 return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You entered an incorrect value for amount")
             amount = round(amount, 2)
-            await db.txn_with_chip_on_club_balance(club_id, amount, "CASHIN", account.id)
+            await db.txn_with_chip_on_club_balance(club_id, amount, "CASHIN", account.id, user.id)
             return HTTP_200_OK
         except KeyError:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You forgot to amount out quantity the chips")
@@ -383,7 +383,7 @@ async def v1_delete_chip_from_club_balance(club_id: int, session_uuid: SessionUU
         json_data = await request.json()
         try:
             amount = json_data["amount"]
-            await db.txn_with_chip_on_club_balance(club_id, amount, "REMOVE", account.id)
+            await db.txn_with_chip_on_club_balance(club_id, amount, "REMOVE", account.id, user.id)
             return HTTP_200_OK
         except KeyError as e:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
@@ -412,13 +412,12 @@ async def v1_club_giving_chips_to_the_user(club_id: int, session_uuid: SessionUU
             balance = json_data["balance"]
             user_account_id = json_data["user_id"]
             user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
-
             if isinstance(amount, float) is False or amount < 0:
                 return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You entered an incorrect value for amount")
             if balance not in ["balance", "balance_shared"]:
                 return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You entered an incorrect value for balance")
 
-            await db.giving_chips_to_the_user(amount, user_account.id, balance)
+            await db.giving_chips_to_the_user(amount, user_account.id, balance, user.id)
             return HTTP_200_OK
 
         except KeyError as e:
@@ -450,10 +449,11 @@ async def v1_club_delete_chips_from_the_user(club_id: int, session_uuid: Session
             user_account_id = json_data["user_id"]
             balance = json_data["balance"]
             user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
+            print(user_account_id, user_account)
             if balance == "balance":
-                await db.delete_chips_from_the_account_balance(amount, user_account.id)
+                await db.delete_chips_from_the_account_balance(amount, user_account.id, user.id)
             elif balance == "balance_shared":
-                await db.delete_chips_from_the_agent_balance(amount, user_account.id)
+                await db.delete_chips_from_the_agent_balance(amount, user_account.id, user.id)
             return HTTP_200_OK
         except KeyError as e:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
