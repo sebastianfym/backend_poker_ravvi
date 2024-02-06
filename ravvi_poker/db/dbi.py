@@ -390,14 +390,15 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    async def create_account_txn(self, member_id, txntype, amount):
+    async def create_account_txn(self, member_id, txntype, amount): #Todo тут идет только прибавление значения
         async with self.cursor() as cursor:
             sql = "UPDATE user_account SET balance=balance+(%s) WHERE id=%s RETURNING balance"
             await cursor.execute(sql, (amount, member_id))
             row = await cursor.fetchone()
-            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value) VALUES (%s,%s,%s) RETURNING *"
-            await cursor.execute(sql, (member_id, txntype, amount))
-            txn = await cursor.fetchone()
+
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance) VALUES (%s, %s, %s, %s) RETURNING *"
+            await cursor.execute(sql, (member_id, txntype, amount, row.balance))
+            # txn = await cursor.fetchone()
         return row
 
     async def find_account(self, *, user_id, club_id):
@@ -712,27 +713,37 @@ class DBI:
 
     async def giving_chips_to_the_user(self, amount, account_id, balance):
         if balance == "balance":
-            sql = "UPDATE user_account SET balance = balance + %s WHERE id = %s"
+            sql = "UPDATE user_account SET balance = balance + %s WHERE id = %s RETURNING balance"
         elif balance == "balance_shared":
-            sql = "UPDATE user_account SET balance_shared = balance_shared + %s WHERE id = %s"
+            sql = "UPDATE user_account SET balance_shared = balance_shared + %s WHERE id = %s RETURNING balance"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (amount, account_id))
+            row = await cursor.fetchone()
+
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance) VALUES (%s, %s, %s, %s) RETURNING *"
+            await cursor.execute(sql, (account_id, "CASHIN", amount, row.balance))
 
     async def delete_chips_from_the_agent_balance(self, amount, account_id):
         get_balance_shared_sql = "SELECT balance_shared FROM user_account WHERE id = %s"
-        sql = "UPDATE user_account SET balance_shared = balance_shared - %s WHERE id = %s"
+        sql = "UPDATE user_account SET balance_shared = balance_shared - %s WHERE id = %s RETURNING balance_shared"
         async with self.cursor() as cursor:
             await cursor.execute(get_balance_shared_sql, (account_id,))
             balance_shared = await cursor.fetchone()
+
             if (balance_shared.balance_shared - amount) < 0:
                 sql = "UPDATE user_account SET balance_shared = 0 WHERE id = %s"
                 await cursor.execute(sql, (account_id,))
+                return
+
             await cursor.execute(sql, (amount, account_id,))
+            row = await cursor.fetchone()
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance) VALUES (%s, %s, %s, %s) RETURNING *"
+            await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance_shared))
             return
 
     async def delete_chips_from_the_account_balance(self, amount, account_id):
         get_balance_shared_sql = "SELECT balance FROM user_account WHERE id = %s"
-        sql = "UPDATE user_account SET balance = balance - %s WHERE id = %s"
+        sql = "UPDATE user_account SET balance = balance - %s WHERE id = %s RETURNING balance"
         async with self.cursor() as cursor:
             await cursor.execute(get_balance_shared_sql, (account_id,))
             balance = await cursor.fetchone()
@@ -740,4 +751,22 @@ class DBI:
                 sql = "UPDATE user_account SET balance = 0 WHERE id = %s"
                 await cursor.execute(sql, (account_id,))
             await cursor.execute(sql, (amount, account_id,))
+            row = await cursor.fetchone()
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance) VALUES (%s, %s, %s, %s) RETURNING *"
+            await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance))
             return
+
+    # TXN
+    async def get_use_history_trx_in_club(self, user_id, club_id): #Todo тут что-то не то ищется
+        sql_history = "SELECT * FROM user_account_txn WHERE account_id=%s"
+        sql_users_accounts = "SELECT id FROM user_account WHERE user_id=%s AND club_id=%s"
+        result_list = []
+        async with self.cursor() as cursor:
+            await cursor.execute(sql_users_accounts, (user_id, club_id))
+            rows_ids = await cursor.fetchall()
+            for a_id in rows_ids:
+                await cursor.execute(sql_history, (a_id.id,))
+                row = await cursor.fetchall()
+                result_list.append(row)
+        return row
+

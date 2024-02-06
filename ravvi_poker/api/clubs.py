@@ -410,20 +410,19 @@ async def v1_club_giving_chips_to_the_user(club_id: int, session_uuid: SessionUU
         try:
             amount = json_data["amount"]
             balance = json_data["balance"]
+            user_account_id = json_data["user_id"]
+            user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
 
             if isinstance(amount, float) is False or amount < 0:
                 return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You entered an incorrect value for amount")
-            if balance != "balance" or balance != "balance_shared":
+            if balance not in ["balance", "balance_shared"]:
                 return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You entered an incorrect value for balance")
-            user_account_id = json_data["user_id"]
-            user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
-            if user_account.user_role == "P":
-                balance = "balance"
 
             await db.giving_chips_to_the_user(amount, user_account.id, balance)
             return HTTP_200_OK
 
         except KeyError as e:
+
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
 
 

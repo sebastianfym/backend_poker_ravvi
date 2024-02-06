@@ -1,8 +1,11 @@
+import datetime
 import json
 import os
+import time
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
+from pydantic.v1 import BaseModel
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST
 
 from ..db import DBI
@@ -14,6 +17,15 @@ from .utils import SessionUUID, get_session_and_user
 manager = TablesManager()
 
 router = APIRouter(prefix="/info", tags=["info"])
+
+
+class TxnHistory(BaseModel):
+    username: str | None
+    account_id: int | None
+    txn_time: str | None
+    txn_type: str | None
+    txn_value: float | None
+    balance: float | None
 
 
 @router.get("/levels_schedule/{table_type}", status_code=HTTP_200_OK, summary="Get blind levels schedule (SNG/MTT)")
@@ -32,7 +44,7 @@ async def v1_get_all_info_about_blinds(table_type: str, session_uuid: SessionUUI
         return levels_schedule[table_type]
     except KeyError:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Key not found")
-    
+
 
 @router.get("/rewards_distribution", status_code=HTTP_200_OK, summary="Get rewards distribution structure")
 async def v1_get_payment_structure(session_uuid: SessionUUID):
@@ -70,9 +82,19 @@ async def v1_get_countries(session_uuid: SessionUUID, language: str):
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=exception)
 
 
-@router.get("/{club_id}/history", status_code=HTTP_200_OK, summary="Get a list of countries in different languages")
-async def v1_get_history_trx(club_id: str, session_uuid: SessionUUID):
+@router.get("/{club_id}/balance_history", status_code=HTTP_200_OK,
+            summary="Get a list of countries in different languages")
+async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
-
-    return [{'id': 1, "created_ts": "2024-02-05 07:49:03.341505", "account_id": 1, "txn_type": "CASHOUT", "txn_value": 1000}]
+        txn_history = await db.get_use_history_trx_in_club(user.id, club_id)
+    return [
+        TxnHistory(
+                username=user.name,
+                account_id=txn.account_id,
+                txn_time=txn.created_ts.timestamp(),
+                txn_type=txn.txn_type,
+                txn_value=txn.txn_value,
+                balance=txn.total_balance
+            ) for txn in txn_history
+        ]
