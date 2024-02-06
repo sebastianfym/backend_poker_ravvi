@@ -357,7 +357,7 @@ async def v1_add_chip_on_club_balance(club_id: int, session_uuid: SessionUUID, r
             if isinstance(amount, float) is False or amount < 0:
                 return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You entered an incorrect value for amount")
             amount = round(amount, 2)
-            await db.txn_with_chip_on_club_balance(club_id, amount, "add")
+            await db.txn_with_chip_on_club_balance(club_id, amount, "CASHIN", account.id)
             return HTTP_200_OK
         except KeyError:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You forgot to amount out quantity the chips")
@@ -383,7 +383,7 @@ async def v1_delete_chip_from_club_balance(club_id: int, session_uuid: SessionUU
         json_data = await request.json()
         try:
             amount = json_data["amount"]
-            await db.txn_with_chip_on_club_balance(club_id, amount, "del")
+            await db.txn_with_chip_on_club_balance(club_id, amount, "REMOVE", account.id)
             return HTTP_200_OK
         except KeyError as e:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
