@@ -220,6 +220,7 @@ def test_get_club(api_client: TestClient, api_guest: UserAccessProfile):
 
 def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
                       api_guest_2: UserAccessProfile):
+
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
     api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
 
