@@ -219,8 +219,7 @@ def test_get_club(api_client: TestClient, api_guest: UserAccessProfile):
 
 
 def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
-                      api_guest_2: UserAccessProfile):
-
+                          api_guest_2: UserAccessProfile):
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
     api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
 
@@ -230,100 +229,287 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
 
     club = ClubProfile(**response.json())
 
-    #Actions with manipulations of the club's balance
+    # Actions with manipulations of the club's balance
 
-    response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={})
-    assert response.status_code == 200
-    assert response.json()['status_code'] == 400
-    assert response.json()['detail'] == 'You forgot to amount out quantity the chips'
+    # response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={})
+    # assert response.status_code == 200
+    # assert response.json()['status_code'] == 400
+    # assert response.json()['detail'] == 'You forgot to amount out quantity the chips'
 
-    response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 1000.00})
+    # TODO перенес в test_add_chips_to_club
+    # response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 1000.00})
+    # assert response.status_code == 200
+    # response = api_client.get(f"/v1/clubs/{club.id}")
+    # assert response.json()['club_balance'] == 1000
+    # assert response.status_code == 200
+
+    # TODO перенес в test_add_chips_to_club
+    # response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={})
+    # assert response.status_code == 200
+    # assert response.json()['status_code'] == 400
+    # assert response.json()['detail'] == 'You forgot to amount out quantity the chips'
+
+    # TODO перенес в test_delete_chips_to_club
+    # response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={})
+    # assert response.status_code == 200
+    # assert response.json()['status_code'] == 400
+    # assert response.json()['detail'] == "You forgot to add a value: 'amount'"
+
+    # TODO перенес в test_delete_chips_to_club
+    # response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 1})
+    # assert response.status_code == 200
+    # response = api_client.get(f"/v1/clubs/{club.id}")
+    # assert response.status_code == 200
+    # assert response.json()['club_balance'] == 999
+
+    # TODO перенес в test_delete_chips_to_club
+    # response = api_client_2.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 1})
+    # assert response.json()['status_code'] == 403
+    #
+    # #Action with manipulations of the club's user balance
+    #
+    #
+    # response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user", json={"amount": 1})
+    # assert response.json()['status_code'] == 400
+    # assert response.json()['detail'] == "You forgot to add a value: 'balance'"
+    #
+    # response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user", json={"user_id": 1})
+    # assert response.json()['status_code'] == 400
+    # assert response.json()['detail'] == "You forgot to add a value: 'amount'"
+    #
+    # response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user", json={"amount": 1, "user_id": 1})
+    # assert response.json()['status_code'] == 400
+    # assert response.json()['detail'] == "You forgot to add a value: 'balance'"
+    #
+    # response = api_client_2.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user", json={"amount": 1, "user_id": 1, "balance": "user_balance"})
+    # assert response.json()['status_code'] == 403
+    # assert response.json()['detail'] == "You don't have enough rights to perform this action"
+    #
+    # response = api_client.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"amount": 1, "user_id": 1, "balance": "user_balance"})
+    # assert response.json() == 200
+    #
+    # response = api_client.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"amount": 1})
+    # assert response.json()['status_code'] == 400
+    # assert response.json()['detail'] == "You forgot to add a value: 'user_id'"
+    #
+    # response = api_client.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"user_id": 1})
+    # assert response.json()['status_code'] == 400
+    # assert response.json()['detail'] == "You forgot to add a value: 'amount'"
+    #
+    # response = api_client.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"amount": 1, "user_id": 1})
+    # assert response.json()['status_code'] == 400
+    # assert response.json()['detail'] == "You forgot to add a value: 'balance'"
+    #
+    # response = api_client_2.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"amount": 1, "user_id": 1, "balance": "user_balance"})
+    # assert response.json()['status_code'] == 403
+    # assert response.json()['detail'] == "You don't have enough rights to perform this action"
+    #
+    # #The user requests chips from the club
+    #
+    # response = api_client.post(f"/v1/clubs/{club.id}/request_chips", json={"amount": 1, "balance": "balance_shared"})
+    # assert response.status_code == 200
+    #
+    # response = api_client.post(f"/v1/clubs/{club.id}/request_chips", json={"amount": 1})
+    # assert response.json()['status_code'] == 400
+    # assert response.json()['detail'] == "You forgot to add a value: 'balance'"
+    #
+    # response = api_client.post(f"/v1/clubs/{club.id}/request_chips", json={"balance": "balance_shared"})
+    # assert response.json()['status_code'] == 400
+    # assert response.json()['detail'] == "You forgot to add a value: 'amount'"
+    #
+    # response = api_client_2.post(f"/v1/clubs/{club.id}/request_chips", json={"amount": 1, "balance": "balance_shared"})
+    # assert response.json()['status_code'] == 403
+    # assert response.json()['detail'] == "You don't have enough rights to perform this action"
+    #
+    # #TXN info
+    #
+    # response = api_client.get(f"/v1/info/{club.id}/history")
+    # assert response.status_code == 200
+    # assert response.json()[0]['txn_type'] == 'CLUB_CASHIN'
+    # assert response.json()[1]['txn_type'] == 'CLUB_REMOVE'
+    # assert response.json()[2]['txn_type'] == 'replenishment'
+    # assert isinstance(response.json(), list)
+
+
+@pytest.fixture
+def client(request, api_client: TestClient, api_guest: UserAccessProfile,
+           api_client_2: TestClient, api_guest_2: UserAccessProfile):
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+    if request.__dict__["param"] == "get_authorize_client":
+        api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+        yield api_client
+    elif request.__dict__["param"] == "get_two_clients":
+        api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
+        yield [api_client, api_client_2]
+
+
+def create_club(client: list[TestClient] | TestClient):
+    params = {}
+    if isinstance(client, list):
+        response = client[0].post("/v1/clubs", json=params)
+    elif isinstance(client, TestClient):
+        response = client.post("/v1/clubs", json=params)
+    else:
+        raise ValueError("incorrect client type")
+    club = ClubProfile(**response.json())
+
+    return club
+
+
+@pytest.mark.parametrize("client, request_params, status_code, club_balance",
+                         [
+                             ["get_authorize_client", {"amount": -1000}, 400, None],
+                             ["get_two_clients", {"amount": -1000}, 403, None],
+
+                             ["get_authorize_client", {"amount": "very_bug_value"}, 400, None],
+                             ["get_two_clients", {"amount": "very_bug_value"}, 403, None],
+
+                             ["get_authorize_client", {"amound": 1000}, 400, None],
+                             ["get_two_clients", {"amound": 1000}, 403, None],
+
+                             ["get_authorize_client", {"amount": 10.555555555555555}, 400, None],
+                             ["get_two_clients", {"amount": 10.555555555555555}, 403, None],
+
+                             ["get_authorize_client", {"amount": "1000"}, 400, None],
+                             ["get_two_clients", {"amount": "1000"}, 403, None],
+
+                             ["get_authorize_client", {}, 400, None],
+                             ["get_two_clients", {}, 403, None],
+
+                             ["get_authorize_client", {"amount": 5}, 200, 5],
+                             ["get_two_clients", {"amount": 5}, 403, None],
+
+                             ["get_authorize_client", {"amount": 5.13}, 200, 5.13],
+                             ["get_two_clients", {"amount": 5.13}, 403, None],
+
+                             ["get_authorize_client", {"amount": 5.1547}, 200, 5.1547],
+                             ["get_two_clients", {"amount": 5.1547}, 403, None],
+
+                             ["get_authorize_client", {"amount": 1000.00}, 200, 1000.00],
+                             ["get_two_clients", {"amount": 1000.00}, 403, None],
+                         ],
+                         indirect=["client"])
+def test_add_chips_to_club(client, request_params, status_code, club_balance):
+    club = create_club(client)
+    if isinstance(client, list):
+        # если у нас два клиента, значит второй неавторизованный
+        client = client[1]
+
+    response = client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json=request_params)
+    assert response.status_code == status_code
+
+    if club_balance is not None:
+        response = client.get(f"/v1/clubs/{club.id}")
+        assert response.json()['club_balance'] == club_balance
+
+
+def test_add_chips_rounding(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
+                            api_guest_2: UserAccessProfile):
+    """
+    Проверяем округление
+    """
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+    api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
+
+    params = {}
+    response = api_client.post("/v1/clubs", json=params)
+    club = ClubProfile(**response.json())
+
+    response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 1000})
     assert response.status_code == 200
     response = api_client.get(f"/v1/clubs/{club.id}")
     assert response.json()['club_balance'] == 1000
-    assert response.status_code == 200
 
-    response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={})
-    assert response.status_code == 200
-    assert response.json()['status_code'] == 400
-    assert response.json()['detail'] == 'You forgot to amount out quantity the chips'
-
-    response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={})
-    assert response.status_code == 200
-    assert response.json()['status_code'] == 400
-    assert response.json()['detail'] == "You forgot to add a value: 'amount'"
-
-    response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 1})
+    response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 0.1215})
     assert response.status_code == 200
     response = api_client.get(f"/v1/clubs/{club.id}")
+    assert response.json()['club_balance'] == 1000.1215
+
+    response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 0.0177})
     assert response.status_code == 200
-    assert response.json()['club_balance'] == 999
-
-    response = api_client_2.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 1})
-    assert response.json()['status_code'] == 403
-
-    #Action with manipulations of the club's user balance
+    response = api_client.get(f"/v1/clubs/{club.id}")
+    assert response.json()['club_balance'] == 1000.1392
 
 
-    response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user", json={"amount": 1})
-    assert response.json()['status_code'] == 400
-    assert response.json()['detail'] == "You forgot to add a value: 'balance'"
+@pytest.mark.parametrize("client, initial_club_balance, request_params, status_code, club_balance",
+                         [
+                             ["get_authorize_client", 100, {"amount": -1000}, 400, None],
+                             ["get_two_clients", 100, {"amount": -1000}, 403, None],
 
-    response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user", json={"user_id": 1})
-    assert response.json()['status_code'] == 400
-    assert response.json()['detail'] == "You forgot to add a value: 'amount'"
+                             ["get_authorize_client", 100, {"amount": "very_bug_value"}, 400, None],
+                             ["get_two_clients", 100, {"amount": "very_bug_value"}, 403, None],
 
-    response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user", json={"amount": 1, "user_id": 1})
-    assert response.json()['status_code'] == 400
-    assert response.json()['detail'] == "You forgot to add a value: 'balance'"
+                             ["get_authorize_client", 100, {"amound": 1000}, 400, None],
+                             ["get_two_clients", 100, {"amound": 1000}, 403, None],
 
-    response = api_client_2.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user", json={"amount": 1, "user_id": 1, "balance": "user_balance"})
-    assert response.json()['status_code'] == 403
-    assert response.json()['detail'] == "You don't have enough rights to perform this action"
+                             ["get_authorize_client", 100, {"amount": 10.555555555555555}, 400, None],
+                             ["get_two_clients", 100, {"amount": 10.555555555555555}, 403, None],
 
-    response = api_client.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"amount": 1, "user_id": 1, "balance": "user_balance"})
-    assert response.json() == 200
+                             ["get_authorize_client", 100, {"amount": "1000"}, 400, None],
+                             ["get_two_clients", 100, {"amount": "1000"}, 403, None],
 
-    response = api_client.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"amount": 1})
-    assert response.json()['status_code'] == 400
-    assert response.json()['detail'] == "You forgot to add a value: 'user_id'"
+                             ["get_authorize_client", 100, {}, 400, None],
+                             ["get_two_clients", 100, {}, 403, None],
 
-    response = api_client.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"user_id": 1})
-    assert response.json()['status_code'] == 400
-    assert response.json()['detail'] == "You forgot to add a value: 'amount'"
+                             ["get_authorize_client", 100, {"amount": 5}, 200, 95],
+                             ["get_two_clients", 100, {"amount": 5}, 403, None],
 
-    response = api_client.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"amount": 1, "user_id": 1})
-    assert response.json()['status_code'] == 400
-    assert response.json()['detail'] == "You forgot to add a value: 'balance'"
+                             ["get_authorize_client", 100, {"amount": 5.13}, 200, 94.87],
+                             ["get_two_clients", 100, {"amount": 5.13}, 403, None],
 
-    response = api_client_2.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"amount": 1, "user_id": 1, "balance": "user_balance"})
-    assert response.json()['status_code'] == 403
-    assert response.json()['detail'] == "You don't have enough rights to perform this action"
+                             ["get_authorize_client", 100, {"amount": 5.1547}, 200, 94.8453],
+                             ["get_two_clients", 100, {"amount": 5.1547}, 403, None],
 
-    #The user requests chips from the club
+                             ["get_authorize_client", 100, {"amount": 1000.00}, 200, 0],
+                             ["get_two_clients", 100, {"amount": 1000.00}, 403, None],
+                         ],
+                         indirect=["client"])
+def test_delete_chips_to_club(client, initial_club_balance, request_params, status_code, club_balance):
+    club = create_club(client)
+    if isinstance(client, list):
+        # если у нас два клиента, значит второй неавторизованный
+        authorized_client, client = client[0], client[1]
+    else:
+        authorized_client = client
 
-    response = api_client.post(f"/v1/clubs/{club.id}/request_chips", json={"amount": 1, "balance": "balance_shared"})
+    # зачисляем первоначальные средства
+    response = authorized_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={
+        "amount": initial_club_balance})
     assert response.status_code == 200
 
-    response = api_client.post(f"/v1/clubs/{club.id}/request_chips", json={"amount": 1})
-    assert response.json()['status_code'] == 400
-    assert response.json()['detail'] == "You forgot to add a value: 'balance'"
+    response = client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json=request_params)
+    assert response.status_code == status_code
 
-    response = api_client.post(f"/v1/clubs/{club.id}/request_chips", json={"balance": "balance_shared"})
-    assert response.json()['status_code'] == 400
-    assert response.json()['detail'] == "You forgot to add a value: 'amount'"
+    response = authorized_client.get(f"/v1/clubs/{club.id}")
+    if club_balance is not None:
+        assert response.json()['club_balance'] == club_balance
+    else:
+        assert response.json()['club_balance'] == initial_club_balance
 
-    response = api_client_2.post(f"/v1/clubs/{club.id}/request_chips", json={"amount": 1, "balance": "balance_shared"})
-    assert response.json()['status_code'] == 403
-    assert response.json()['detail'] == "You don't have enough rights to perform this action"
 
-    #TXN info
+def test_delete_chips_rounding(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
+                               api_guest_2: UserAccessProfile):
+    """
+    Проверяем округление
+    """
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+    api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
 
-    response = api_client.get(f"/v1/info/{club.id}/history")
+    params = {}
+    response = api_client.post("/v1/clubs", json=params)
+    club = ClubProfile(**response.json())
+
+    response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 1000})
     assert response.status_code == 200
-    assert response.json()[0]['txn_type'] == 'CLUB_CASHIN'
-    assert response.json()[1]['txn_type'] == 'CLUB_REMOVE'
-    assert response.json()[2]['txn_type'] == 'replenishment'
-    assert isinstance(response.json(), list)
+    response = api_client.get(f"/v1/clubs/{club.id}")
+    assert response.json()['club_balance'] == 1000
 
+    response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 0.1215})
+    assert response.status_code == 200
+    response = api_client.get(f"/v1/clubs/{club.id}")
+    assert response.json()['club_balance'] == 999.8785
 
+    response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 0.0177})
+    assert response.status_code == 200
+    response = api_client.get(f"/v1/clubs/{club.id}")
+    assert response.json()['club_balance'] == 999.8608
