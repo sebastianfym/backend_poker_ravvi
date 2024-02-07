@@ -520,6 +520,9 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
 
         account = await db.find_account(user_id=user.id, club_id=club_id)
+        opportunity_leave = True
+        if account.user_role == "O":
+            opportunity_leave = False
         if not account or account.closed_ts is not None:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Account not found")
 
@@ -550,10 +553,10 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
             "game_types": set(game_types),
             "game_subtype": set(game_subtype),
 
-            "opportunityLeave": True,
+            "opportunity_leave": opportunity_leave,
             "hands": amount_of_games_played,
             "winning": 0,
-            "BB100winning":account.user_role
+            "BB100winning":0
         }
 
         return data_dict
