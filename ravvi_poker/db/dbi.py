@@ -341,12 +341,10 @@ class DBI:
     # CLUB
 
     async def create_club(self, *, user_id, name=None, description=None, image_id=None):
-        time_created = datetime.datetime.now(datetime.timezone.utc)
-        print(time_created)
-        club_sql = "INSERT INTO club_profile (name, description, image_id, created_ts) VALUES (%s,%s,%s,%s) RETURNING *"
+        club_sql = "INSERT INTO club_profile (name, description, image_id) VALUES (%s,%s,%s) RETURNING *"
         member_sql = "INSERT INTO user_account (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,%s,now_utc(),0)"
         async with self.cursor() as cursor:
-            await cursor.execute(club_sql, (name, description, image_id, time_created))
+            await cursor.execute(club_sql, (name, description, image_id))
             club = await cursor.fetchone()
             await cursor.execute(member_sql, (club.id, user_id, "O"))
         return club
