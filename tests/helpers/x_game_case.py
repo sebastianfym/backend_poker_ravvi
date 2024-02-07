@@ -62,7 +62,10 @@ class X_CaseMixIn:
         for k, ev in expected.items():
             rv = getattr(msg, k, None)
             if k in ('cards','hand_cards') and ev:
-                ev = [Card(x).code for x in ev]
+                if isinstance(ev[0], str):
+                    ev = [Card(x).code for x in ev]
+                elif isinstance(ev[0], list):
+                    ev = [[Card(x).code for x in ev_item] for ev_item in ev]
             elif k=='options' and ev:
                 ev = [Bet.decode(x) for x in ev]
                 rv = [Bet.decode(x) for x in rv]
@@ -70,8 +73,12 @@ class X_CaseMixIn:
                 ev = Bet.decode(ev)
                 rv = Bet.decode(rv)
             elif k=='hand_type':
-                ev = HandType.decode(ev)
-                rv = HandType.decode(rv)
+                if isinstance(ev, str):
+                    ev = HandType.decode(ev)
+                    rv = HandType.decode(rv)
+                elif isinstance(ev, list):
+                    ev = [HandType.decode(ev_item) for ev_item in ev]
+                    rv = [HandType.decode(rv_item) for rv_item in rv]
             assert ev == rv, f"{step_msg} - {k}: {ev} / {rv}"
 
 

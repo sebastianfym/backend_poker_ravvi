@@ -41,7 +41,7 @@ class PokerBase(Game):
         self.round = None
         self.deck = None
         self.cards = None
-        self.bank_total =None
+        self.bank_total = None
         self.banks = None
 
         self.blind_small = blind_small
@@ -149,7 +149,7 @@ class PokerBase(Game):
                                            delta=player.bet_delta,
                                            amount=player.bet_amount,
                                            balance=player.balance,
-                                           bank_total = self.bank_total
+                                           bank_total=self.bank_total
                                            )
 
     # STATUS
@@ -227,7 +227,7 @@ class PokerBase(Game):
     def handle_cmd_bet(self, db, *, user_id, bet_type, raise_delta):
         self.log.info("handle_bet: %s %s %s", user_id, bet_type, raise_delta)
         p = self.current_player
-        
+
         if p.user_id != user_id:
             raise ValueError('invalid user')
         if not Bet.verify(bet_type):
@@ -349,7 +349,7 @@ class PokerBase(Game):
 
         self.setup_players_roles()
         self.setup_cards()
-        
+
         async with self.DBI(log=self.log) as db:
             await self.broadcast_GAME_BEGIN(db)
 
@@ -515,16 +515,29 @@ class PokerBase(Game):
         players = [p for p in self.players if p.in_the_game]
         self.log.info("players in the game: %s", len(players))
 
-        # get playes hands
+        # get players hands
         open_all = False
         for p in players:
             p.hand = self.get_best_hand(p.cards, self.cards)
-            self.log.info("player %s hand: %s %s", p.user_id, p.hand, p.hand.type)
+            if isinstance(p.hand, list):
+                self.log.info("player %s hand: %s %s", p.user_id, p.hand, ",".join([str(hand.type) for hand in p.hand]))
+            else:
+                self.log.info("player %s hand: %s %s", p.user_id, p.hand, p.hand.type)
             if p.bet_type == Bet.ALLIN:
                 open_all = True
         self.log.info("open all: %s", open_all)
 
         # open cards
+        await self.open_cards_in_game_end(players, open_all)
+
+        await asyncio.sleep(self.SLEEP_ROUND_END)
+        self.log.info("SHOWDOWN end")
+
+    def append_cards(self, cards_num):
+        for _ in range(cards_num):
+            self.cards.append(self.deck.get_next())
+
+    async def open_cards_in_game_end(self, players, open_all):
         best_hand = None
         async with self.DBI() as db:
             for p in players:
@@ -538,14 +551,11 @@ class PokerBase(Game):
                     continue
                 p.cards_open = True
                 await self.broadcast_PLAYER_CARDS(db, p)
-                self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.type)
-
-        await asyncio.sleep(self.SLEEP_ROUND_END)
-        self.log.info("SHOWDOWN end")
-
-    def append_cards(self, cards_num):
-        for _ in range(cards_num):
-            self.cards.append(self.deck.get_next())
+                if isinstance(p.hand, list):
+                    self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand,
+                                  ",".join([str(hand.type) for hand in p.hand]))
+                else:
+                    self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.type)
 
     def get_winners(self):
         winners = {}
