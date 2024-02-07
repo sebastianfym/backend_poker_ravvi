@@ -1,3 +1,7 @@
+import datetime
+from time import timezone
+import time
+
 from fastapi import APIRouter, Request
 from fastapi.exceptions import HTTPException
 from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_418_IM_A_TEAPOT
@@ -519,8 +523,37 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
         if not account or account.closed_ts is not None:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Account not found")
 
-        joining_date = account.created_ts
-        time_zone = club.created_ts.utcoffset()
-        list_with_games_type = ['nlh', 'sng', 'TbLpbL-JlblPbL']
+        table_id_list = [table.id for table in await db.get_club_tables(club_id)]
+        game_id_list = [game_id.game_id for game_id in await db.all_players_games(user.id)]
+        # table_params_list = [{"id": table.id, "table_type": table.table_type, "game_type": table.game_type, "game_subtype": table.game_subtype}
+        #                      for table in await db.get_club_tables(club_id)]
 
-        return HTTP_200_OK
+        time_obj = datetime.datetime.fromisoformat(str(account.created_ts))
+        unix_time = int(time.mktime(time_obj.timetuple()))
+
+        date_now = str(datetime.datetime.now()).split(" ")[0]
+
+        table_types = []
+        game_types = []
+        game_subtype = []
+        amount_of_games_played = 0
+        for table_id in table_id_list:
+            for game in await db.statistics_of_games_played(table_id, date_now):
+                amount_of_games_played += 1
+                table_types.append((await db.get_table(game.table_id)).table_type)
+                game_types.append(game.game_type)
+                game_subtype.append(game.game_subtype)
+        data_dict = {
+            "joining_date": unix_time,
+            "UTC": 5, #TODO тут нужно убрать статичное значение
+            "table_types": set(table_types),
+            "game_types": set(game_types),
+            "game_subtype": set(game_subtype),
+
+            "opportunityLeave": True,
+            "hands": amount_of_games_played,
+            "winning": 0,
+            "BB100winning":account.user_role
+        }
+
+        return data_dict
