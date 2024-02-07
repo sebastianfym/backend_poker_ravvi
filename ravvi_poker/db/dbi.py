@@ -773,3 +773,17 @@ class DBI:
         sql = "UPDATE user_account SET created_ts=%s, closed_ts=%s, closed_by=%s WHERE id=%s"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (closed_time, None, None, account_id,))
+
+    async def get_user_history_trx_in_club(self, user_id, club_id):
+        sql_history = "SELECT * FROM user_account_txn WHERE account_id=%s"
+        sql_users_accounts = "SELECT id FROM user_account WHERE user_id=%s AND club_id=%s"
+        result_list = []
+        async with self.cursor() as cursor:
+            await cursor.execute(sql_users_accounts, (user_id, club_id))
+            rows_ids = await cursor.fetchall()
+            for a_id in rows_ids:
+                await cursor.execute(sql_history, (a_id.id,))
+                row = await cursor.fetchall()
+                result_list.append(row)
+        return row
+
