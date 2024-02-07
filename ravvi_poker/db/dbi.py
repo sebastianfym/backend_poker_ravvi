@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 import json
@@ -778,6 +779,15 @@ class DBI:
 
     async def get_user_balance_history_trx_in_club(self, user_id, club_id):
         sql_history = "SELECT * FROM user_account_txn WHERE account_id = %s AND txn_type IN ('REMOVE', 'CASHIN')"
+        sql_users_accounts = "SELECT id FROM user_account WHERE user_id=%s AND club_id=%s"
+        result_list = []
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (closed_time, None, None, account_id,))
+
+    # TXN
+
+    async def get_user_history_trx_in_club(self, user_id, club_id):
+        sql_history = "SELECT * FROM user_account_txn WHERE account_id=%s"
         sql_users_accounts = "SELECT id FROM user_account WHERE user_id=%s AND club_id=%s"
         result_list = []
         async with self.cursor() as cursor:
