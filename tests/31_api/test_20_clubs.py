@@ -219,7 +219,7 @@ def test_get_club(api_client: TestClient, api_guest: UserAccessProfile):
 
 
 def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
-                      api_guest_2: UserAccessProfile):
+                          api_guest_2: UserAccessProfile):
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
     api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
 
@@ -229,7 +229,7 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
 
     club = ClubProfile(**response.json())
 
-    #Actions with manipulations of the club's balance
+    # Actions with manipulations of the club's balance
 
     response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={})
     assert response.status_code == 200
@@ -261,8 +261,7 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
     response = api_client_2.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 1})
     assert response.json()['status_code'] == 403
 
-    #Action with manipulations of the club's user balance
-
+    # Action with manipulations of the club's user balance
 
     response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user", json={"amount": 1})
     assert response.json()['status_code'] == 400
@@ -276,11 +275,13 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
     assert response.json()['status_code'] == 400
     assert response.json()['detail'] == "You forgot to add a value: 'balance'"
 
-    response = api_client_2.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user", json={"amount": 1, "user_id": 1, "balance": "user_balance"})
+    response = api_client_2.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user",
+                                 json={"amount": 1, "user_id": 1, "balance": "user_balance"})
     assert response.json()['status_code'] == 403
     assert response.json()['detail'] == "You don't have enough rights to perform this action"
 
-    response = api_client.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"amount": 1, "user_id": 1, "balance": "user_balance"})
+    response = api_client.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user",
+                               json={"amount": 1, "user_id": 1, "balance": "user_balance"})
     assert response.json() == 200
 
     response = api_client.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"amount": 1})
@@ -295,11 +296,12 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
     assert response.json()['status_code'] == 400
     assert response.json()['detail'] == "You forgot to add a value: 'balance'"
 
-    response = api_client_2.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json={"amount": 1, "user_id": 1, "balance": "user_balance"})
+    response = api_client_2.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user",
+                                 json={"amount": 1, "user_id": 1, "balance": "user_balance"})
     assert response.json()['status_code'] == 403
     assert response.json()['detail'] == "You don't have enough rights to perform this action"
 
-    #The user requests chips from the club
+    # The user requests chips from the club
 
     response = api_client.post(f"/v1/clubs/{club.id}/request_chips", json={"amount": 1, "balance": "balance_shared"})
     assert response.status_code == 200
@@ -315,3 +317,23 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
     response = api_client_2.post(f"/v1/clubs/{club.id}/request_chips", json={"amount": 1, "balance": "balance_shared"})
     assert response.json()['status_code'] == 403
     assert response.json()['detail'] == "You don't have enough rights to perform this action"
+
+
+def test_get_detail_account_club(api_client: TestClient, api_guest: UserAccessProfile):
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+
+    params = {}
+    response = api_client.post("/v1/clubs", json=params)
+    assert response.status_code == 201
+
+    club = ClubProfile(**response.json())
+
+    response = api_client.get(f"v1/clubs/{club.id}/user_account")
+    assert response.status_code == 200
+    assert response.json()['table_types'] == []
+    assert response.json()['game_types'] == []
+    assert response.json()['game_subtype'] == []
+    assert response.json()["opportunity_leave"] is False
+    assert response.json()['winning'] == 0
+    assert response.json()['hands'] == 0
+    assert response.json()['BB100winning'] == 0

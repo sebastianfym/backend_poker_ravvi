@@ -527,7 +527,7 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Account not found")
 
         table_id_list = [table.id for table in await db.get_club_tables(club_id)]
-        game_id_list = [game_id.game_id for game_id in await db.all_players_games(user.id)]
+        # game_id_list = [game_id.game_id for game_id in await db.all_players_games(user.id)]
         # table_params_list = [{"id": table.id, "table_type": table.table_type, "game_type": table.game_type, "game_subtype": table.game_subtype}
         #                      for table in await db.get_club_tables(club_id)]
 
@@ -555,8 +555,8 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
 
             "opportunity_leave": opportunity_leave,
             "hands": amount_of_games_played,
-            "winning": 0,
-            "BB100winning": 0
+            "winning": 0, #Todo убрать статичную заглушку
+            "BB100winning": 0 #Todo убрать статичную заглушку
         }
 
         return data_dict
