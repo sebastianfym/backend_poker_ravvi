@@ -51,6 +51,17 @@ class UnionProfile(BaseModel):
     """По мере прогресса раширить модель"""
 
 
+class AccountDetailInfo(BaseModel):
+    join_date: float | None
+    UTC: int | None
+    table_types: set | None
+    game_types: set | None
+    game_subtype: set | None
+    opportunity_leave: bool | None = True
+    hands: float | None
+    winning: float | None
+    BB100winning: float | None
+
 @router.post("", status_code=HTTP_201_CREATED, summary="Create new club")
 async def v1_create_club(params: ClubProps, session_uuid: SessionUUID):
     async with DBI() as db:
@@ -535,17 +546,28 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
         unix_time = int(time.mktime(time_obj.timetuple()))
 
         date_now = str(datetime.datetime.now()).split(" ")[0]
-
+        """ (эти операции должны быть на 1ом столе)
+        buyin - взял фишки на стол
+        -
+        -
+        -
+        -
+        CASHOUT - уход со стола с оставшимися фишками или нулем
+        
+        получить все cashout и все buyin со стола , сложить их между друг другом и отнять от sum_all_cashout - sum_all_buyin
+        """
         table_types = []
         game_types = []
         game_subtype = []
         amount_of_games_played = 0
+
         for table_id in table_id_list:
             for game in await db.statistics_of_games_played(table_id, date_now):
                 amount_of_games_played += 1
                 table_types.append((await db.get_table(game.table_id)).table_type)
                 game_types.append(game.game_type)
                 game_subtype.append(game.game_subtype)
+
         data_dict = {
             "join_date": unix_time,
             "UTC": club.timezone_offset,
@@ -555,8 +577,18 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
 
             "opportunity_leave": opportunity_leave,
             "hands": amount_of_games_played,
-            "winning": 0, #Todo убрать статичную заглушку
-            "BB100winning": 0 #Todo убрать статичную заглушку
+            "winning": 0, #Todo убрать статичную заглушку (ОБСУДИТЬ)
+            "BB100winning": 0 #Todo убрать статичную заглушку (ОБСУДИТЬ)
         }
 
-        return data_dict
+        return AccountDetailInfo(
+            join_date=unix_time,
+            UTC=club.timezone_offset,
+            table_types=set(table_types),
+            game_types=set(game_types),
+            game_subtype=set(game_subtype),
+            opportunity_leave=opportunity_leave,
+            hands=amount_of_games_played,
+            winning=0,
+            BB100winning=0
+        )
