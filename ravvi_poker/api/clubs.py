@@ -23,7 +23,6 @@ class ClubProfile(BaseModel):
     name: str
     description: str | None = None
     image_id: int | None = None
-    # TODO откуда None?
     user_role: str | None = None
     user_approved: bool | None = None
 
@@ -179,6 +178,8 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID):
         account = await db.find_account(user_id=user.id, club_id=club_id)
         if not account:
             account = await db.create_club_member(club.id, user.id, None)
+        elif account.closed_ts is not None and account.club_id == club_id:
+            await db.return_member_in_club(account.id)
 
     return ClubProfile(
         id=club.id,
@@ -497,4 +498,29 @@ async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
         club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+
         account = await db.find_account(user_id=user.id, club_id=club_id)
+        if not account or account.closed_ts is not None:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Account not found")
+        if account.user_role == "O":
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You can't leave your own club")
+        await db.leave_from_club(account.id)
+        return HTTP_200_OK
+
+@router.get("/{club_id}/user_account", status_code=HTTP_200_OK, summary="Page with data about user's account in club")
+async def v1_user_account(club_id: int, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+
+        account = await db.find_account(user_id=user.id, club_id=club_id)
+        if not account or account.closed_ts is not None:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Account not found")
+
+        joining_date = account.created_ts
+        time_zone = club.created_ts.utcoffset()
+        list_with_games_type = ['nlh', 'sng', 'TbLpbL-JlblPbL']
+
+        return HTTP_200_OK
