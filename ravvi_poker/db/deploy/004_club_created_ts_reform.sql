@@ -1,2 +1,3 @@
 ALTER TABLE ONLY club_profile ALTER COLUMN created_ts SET DATA TYPE TIMESTAMP WITH TIME ZONE;
 ALTER TABLE ONLY user_account ALTER COLUMN created_ts SET DATA TYPE TIMESTAMP WITH TIME ZONE;
+ALTER TABLE ONLY club_profile ADD COLUMN timezone_offset INTEGER CHECK (timezone_offset >= -12 AND timezone_offset <= 12);

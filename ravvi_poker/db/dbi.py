@@ -391,14 +391,14 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    async def create_account_txn(self, member_id, txntype, amount): #Todo тут идет только прибавление значения
+    async def create_account_txn(self, member_id, txntype, amount, sender_id):
         async with self.cursor() as cursor:
             sql = "UPDATE user_account SET balance=balance+(%s) WHERE id=%s RETURNING balance"
             await cursor.execute(sql, (amount, member_id))
             row = await cursor.fetchone()
 
-            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance) VALUES (%s, %s, %s, %s) RETURNING *"
-            await cursor.execute(sql, (member_id, txntype, amount, row.balance))
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
+            await cursor.execute(sql, (member_id, txntype, amount, row.balance, sender_id))
             # txn = await cursor.fetchone()
         return row
 

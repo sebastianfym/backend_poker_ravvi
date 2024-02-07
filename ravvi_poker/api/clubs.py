@@ -548,7 +548,7 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
                 game_subtype.append(game.game_subtype)
         data_dict = {
             "join_date": unix_time,
-            "UTC": 5, #TODO тут нужно убрать статичное значение
+            "UTC": club.timezone_offset,
             "table_types": set(table_types),
             "game_types": set(game_types),
             "game_subtype": set(game_subtype),
@@ -556,7 +556,7 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
             "opportunity_leave": opportunity_leave,
             "hands": amount_of_games_played,
             "winning": 0,
-            "BB100winning":0
+            "BB100winning": 0
         }
 
         return data_dict
