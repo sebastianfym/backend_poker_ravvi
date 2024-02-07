@@ -105,15 +105,24 @@ async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
         for txn in txn_history:
             txn = txn._asdict()
             if txn['txn_type'] not in ["BUYIN", "CASHOUT"]:
+                try:
+                    username = (await db.get_user(txn['sender_id'])).name
+                    role = (await db.find_account(user_id=txn['sender_id'], club_id=club_id)).user_role
+                    image_id = (await db.get_user(txn['sender_id'])).image_id
+                except (ValueError, AttributeError):
+                    username = "Undefined username"
+                    role = "Undefined role"
+                    image_id = None
+
                 txn_manual = TxnHistoryManual(
-                    username=(await db.get_user(txn['sender_id'])).name,
+                    username=username,
                     sender_id=txn['sender_id'],
                     txn_time=txn['created_ts'].timestamp(),
                     txn_type=txn['txn_type'],
                     txn_value=txn['txn_value'],
                     balance=txn['total_balance'],
-                    role=(await db.find_account(user_id=txn['sender_id'], club_id=club_id)).user_role,
-                    image_id=(await db.get_user(txn['sender_id'])).image_id
+                    role=role,
+                    image_id=image_id
                 )
                 txn_list.append(txn_manual)
             else:
