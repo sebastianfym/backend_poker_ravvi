@@ -547,7 +547,7 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
                 game_types.append(game.game_type)
                 game_subtype.append(game.game_subtype)
         data_dict = {
-            "joining_date": unix_time,
+            "join_date": unix_time,
             "UTC": 5, #TODO тут нужно убрать статичное значение
             "table_types": set(table_types),
             "game_types": set(game_types),
