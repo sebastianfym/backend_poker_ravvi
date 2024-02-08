@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 from ravvi_poker.api.auth import UserAccessProfile
 from ravvi_poker.api.clubs import ClubProfile, ClubMemberProfile
+from ravvi_poker.db import DBI
 
 
 def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
@@ -382,7 +383,7 @@ def create_club(client: list[TestClient] | TestClient):
                              ["get_authorize_client", {"amount": 5.13}, 200, 5.13],
                              ["get_two_clients", {"amount": 5.13}, 403, None],
 
-                             ["get_authorize_client", {"amount": 5.1547}, 200, 5.1547],
+                             ["get_authorize_client", {"amount": 5.1547}, 400, None],
                              ["get_two_clients", {"amount": 5.1547}, 403, None],
 
                              ["get_authorize_client", {"amount": 1000.00}, 200, 1000.00],
@@ -420,15 +421,15 @@ def test_add_chips_rounding(api_client: TestClient, api_guest: UserAccessProfile
     response = api_client.get(f"/v1/clubs/{club.id}")
     assert response.json()['club_balance'] == 1000
 
-    response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 0.1215})
+    response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 0.12})
     assert response.status_code == 200
     response = api_client.get(f"/v1/clubs/{club.id}")
-    assert response.json()['club_balance'] == 1000.1215
+    assert response.json()['club_balance'] == 1000.12
 
-    response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 0.0177})
+    response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 0.07})
     assert response.status_code == 200
     response = api_client.get(f"/v1/clubs/{club.id}")
-    assert response.json()['club_balance'] == 1000.1392
+    assert response.json()['club_balance'] == 1000.19
 
 
 @pytest.mark.parametrize("client, initial_club_balance, request_params, status_code, club_balance",
@@ -457,7 +458,7 @@ def test_add_chips_rounding(api_client: TestClient, api_guest: UserAccessProfile
                              ["get_authorize_client", 100, {"amount": 5.13}, 200, 94.87],
                              ["get_two_clients", 100, {"amount": 5.13}, 403, None],
 
-                             ["get_authorize_client", 100, {"amount": 5.1547}, 200, 94.8453],
+                             ["get_authorize_client", 100, {"amount": 5.1547}, 400, None],
                              ["get_two_clients", 100, {"amount": 5.1547}, 403, None],
 
                              ["get_authorize_client", 100, {"amount": 1000.00}, 200, 0],
@@ -504,12 +505,50 @@ def test_delete_chips_rounding(api_client: TestClient, api_guest: UserAccessProf
     response = api_client.get(f"/v1/clubs/{club.id}")
     assert response.json()['club_balance'] == 1000
 
-    response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 0.1215})
+    response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 0.12})
     assert response.status_code == 200
     response = api_client.get(f"/v1/clubs/{club.id}")
-    assert response.json()['club_balance'] == 999.8785
+    assert response.json()['club_balance'] == 999.88
 
-    response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 0.0177})
+    response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 0.07})
     assert response.status_code == 200
     response = api_client.get(f"/v1/clubs/{club.id}")
-    assert response.json()['club_balance'] == 999.8608
+    assert response.json()['club_balance'] == 999.81
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("amount, balance_type",
+                         [
+                             [10, "balance"],
+                             [10.05, "balance"],
+
+                             [10, "balance_shared"],
+                             [10.05, "balance_shared"],
+                         ])
+async def test_giving_chips_to_the_user(api_client: TestClient, api_guest: UserAccessProfile, amount, balance_type):
+    # получаем пользователя, который будет владельцем клуба
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+
+    # создаем клуб от его лица
+    club = create_club(api_client)
+
+    # создаем пользователя, которому будет начислять фишки и заводим его в клуб
+    async with DBI() as dbi:
+        user_profile_to_get_chips = await dbi.create_user()
+        user_account_to_get_chips = await dbi.create_club_member(club.id, user_profile_to_get_chips.id, "TEST_MEMBER")
+
+    # начисляем фишки
+    response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user",
+                               json={"amount": amount, "user_id": user_account_to_get_chips.id,
+                                     "balance": balance_type})
+    assert response.status_code == 200
+
+    async with DBI() as dbi:
+        async with dbi.cursor() as cursor:
+            # проверяем баланс
+            await cursor.execute(f"SELECT {balance_type} FROM user_account WHERE id = %s AND club_id = %s",
+                                 (user_account_to_get_chips.id, club.id))
+            balance = await cursor.fetchone()
+            assert balance == amount
+
+            # проверяем транзакцию
+            # cursor.execute("SELECT * FROM user_account_txn WHERE id = %s AND club_id = %s ")

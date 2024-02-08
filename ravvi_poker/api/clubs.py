@@ -393,6 +393,8 @@ async def v1_delete_chip_from_club_balance(club_id: int, session_uuid: SessionUU
              summary="Owner giv chips to the club's user")
 async def v1_club_giving_chips_to_the_user(club_id: int, session_uuid: SessionUUID, request: Request):
     async with DBI() as db:
+        # TODO мы вроде не должны брать sender_id из user (user.id -> user_session,
+        #  а нам нужно account.id -> user_account в истории транзакций)
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
         if not club:
@@ -410,6 +412,7 @@ async def v1_club_giving_chips_to_the_user(club_id: int, session_uuid: SessionUU
         try:
             amount = json_data["amount"]
             balance = json_data["balance"]
+            # TODO user_id это к ID аккаунта в приложении или к ID аккаунта в клубе
             user_account_id = json_data["user_id"]
             user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
             if isinstance(amount, float) is False or amount < 0:
