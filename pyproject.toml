@@ -26,7 +26,8 @@ dependencies = [
     "pydantic[email]",
     "Pillow",
     "python-magic",
-    "aiohttp"
+    "aiohttp",
+    "pytz"
 ]
 
 [project.optional-dependencies]
