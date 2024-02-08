@@ -52,7 +52,7 @@ class UnionProfile(BaseModel):
 
 
 class AccountDetailInfo(BaseModel):
-    join_date: float | None
+    join_datestamp: float | None
     UTC: int | None
     table_types: set | None
     game_types: set | None
@@ -61,6 +61,7 @@ class AccountDetailInfo(BaseModel):
     hands: float | None
     winning: float | None
     BB100winning: float | None
+    now_datestamp: float | None
 
 @router.post("", status_code=HTTP_201_CREATED, summary="Create new club")
 async def v1_create_club(params: ClubProps, session_uuid: SessionUUID):
@@ -545,6 +546,8 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
         time_obj = datetime.datetime.fromisoformat(str(account.created_ts))
         unix_time = int(time.mktime(time_obj.timetuple()))
 
+        now_datestamp = int(time.mktime(datetime.datetime.fromisoformat(str(datetime.datetime.utcnow())).timetuple()))
+
         date_now = str(datetime.datetime.now()).split(" ")[0]
         """ (эти операции должны быть на 1ом столе)
         buyin - взял фишки на стол
@@ -568,21 +571,10 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
                 game_types.append(game.game_type)
                 game_subtype.append(game.game_subtype)
 
-        data_dict = {
-            "join_date": unix_time,
-            "UTC": club.timezone_offset,
-            "table_types": set(table_types),
-            "game_types": set(game_types),
-            "game_subtype": set(game_subtype),
-
-            "opportunity_leave": opportunity_leave,
-            "hands": amount_of_games_played,
-            "winning": 0, #Todo убрать статичную заглушку (ОБСУДИТЬ)
-            "BB100winning": 0 #Todo убрать статичную заглушку (ОБСУДИТЬ)
-        }
 
         return AccountDetailInfo(
-            join_date=unix_time,
+            join_datestamp=unix_time,
+            now_datestamp=now_datestamp,#str(datetime.datetime.utcnow()),
             UTC=club.timezone_offset,
             table_types=set(table_types),
             game_types=set(game_types),
