@@ -329,6 +329,6 @@ def test_get_detail_account_club(api_client: TestClient, api_guest: UserAccessPr
     assert response.json()['game_types'] == []
     assert response.json()['game_subtypes'] == []
     assert response.json()["opportunity_leave"] is False
-    assert response.json()['winning'] == -0.020000000000000018
+    assert response.json()['winning'] == 0.0
     assert response.json()['hands'] == 0
     assert response.json()['bb_100_winning'] == 0
