@@ -537,7 +537,6 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
 
         account = await db.find_account(user_id=user.id, club_id=club_id)
-        # print(account.id) #1005
         opportunity_leave = True
         if account.user_role == "O":
             opportunity_leave = False
@@ -545,9 +544,6 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Account not found")
 
         table_id_list = [table.id for table in await db.get_club_tables(club_id)]
-        # game_id_list = [game_id.game_id for game_id in await db.all_players_games(user.id)]
-        # table_params_list = [{"id": table.id, "table_type": table.table_type, "game_type": table.game_type, "game_subtype": table.game_subtype}
-        #                      for table in await db.get_club_tables(club_id)]
 
         time_obj = datetime.datetime.fromisoformat(str(account.created_ts))
         unix_time = int(time.mktime(time_obj.timetuple()))
@@ -555,21 +551,7 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
         now_datestamp = int(time.mktime(datetime.datetime.fromisoformat(str(datetime.datetime.utcnow())).timetuple()))
 
         date_now = str(datetime.datetime.now()).split(" ")[0]
-        """ (эти операции должны быть на 1ом столе)
-        buyin - взял фишки на стол
-        -
-        -
-        -
-        -
-        CASHOUT - уход со стола с оставшимися фишками или нулем
-        
-        winning =  получить все cashout и все buyin со стола , сложить их между друг другом и отнять от sum_all_cashout - sum_all_buyin
-        
-        бб100 = ((выигрышь разделить на большой блайнд (с профиля игры в пропсах)) // количество игр) и умножить на 100
-        
-        Если игра не имеет значения у end_ts, то ее не считаем
 
-        """
         table_types = []
         game_types = []
         game_subtype = []
@@ -582,32 +564,51 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
                 game_types.append(game.game_type)
                 game_subtype.append(game.game_subtype)
 
-        winning_row = await db.get_statistics_about_winning(1002, date_now) #account.id Todo замени статичный id на account.id
+        winning_row = await db.get_statistics_about_winning(account.id, date_now)
         sum_all_buyin = sum([float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']])
         sum_all_cashout = sum([float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'CASHOUT']])
         winning = sum_all_cashout - abs(sum_all_buyin)
 
-        bb_100_winning = None
-        """
-        Считаю bb_100_winning. 
-        Берем из таблицы: game_player все game_id по определенному user_id (id юзера от которого исходит запрос) [+]
-        Получив список с game_id (id игр в которых участвовал пользователь) мы  проходимся по таблице game_profile и проверяем на соответствие с датой [+]
-        
-        Для получения winning из game_player (balance_end - balance_begin)
-        """
+        bb_100_winning = 0
 
-        all_games_id = [id.game_id for id in await db.all_players_games(1000)] #user.id
+        all_games_id = [id.game_id for id in await db.all_players_games(user.id)]
         access_games = []
         access_game_id = []
+
         for game_id in all_games_id:
             game = await db.check_game_by_date(game_id, date_now)
             if game is not None:
                 access_games.append(game)
                 access_game_id.append(game.id)
 
-        # print(access_games) #"""ПОлучили список только валидных игр"""
-        # for game_id in access_game_id:
-        #     await db.some_funct(game_id, user.id)
+        game_props_list = []
+        for game_id in access_game_id:
+            balance_data = await db.get_balance_begin_and_end_from_game(game_id, user.id) #
+            game_data = await db.get_game_and_players(game_id)
+            game_props_list.append({'game_id': game_id, 'balance_begin': float(balance_data.balance_begin),
+                                    'balance_end':float(balance_data.balance_end),
+                                    'big_blind': game_data[0].props['blind_big']})
+
+        blind_big_dict = {}
+        for item in game_props_list:
+            big_blind = item['big_blind']
+            balance_difference = item['balance_end'] - item['balance_begin']
+            if big_blind in blind_big_dict:
+                blind_big_dict[big_blind]['sum_winning'] += balance_difference
+                blind_big_dict[big_blind]['count'] += 1
+            else:
+                blind_big_dict[big_blind] = {'big_blind': big_blind, 'sum_winning': balance_difference,
+                                             'count': 1}
+
+        result_list = list(blind_big_dict.values())
+
+        quantity_games = 0
+        for winning_100 in result_list:
+            bb_100_winning += winning_100['sum_winning'] / winning_100['big_blind']
+            quantity_games += winning_100['count']
+        bb_100_winning /= quantity_games
+        bb_100_winning *= 100
+        bb_100 = round(bb_100_winning, 2)
         return AccountDetailInfo(
             join_datestamp=unix_time,
             now_datestamp=now_datestamp,
@@ -618,5 +619,5 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
             opportunity_leave=opportunity_leave,
             hands=count_of_games_played, #todo потом добавить триггеры
             winning=winning,
-            bb_100_winning=0 #bb_100_winning
+            bb_100_winning=bb_100
         )
