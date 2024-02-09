@@ -566,6 +566,7 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
         winning =  получить все cashout и все buyin со стола , сложить их между друг другом и отнять от sum_all_cashout - sum_all_buyin
         
         бб100 = ((выигрышь разделить на большой блайнд (с профиля игры в пропсах)) // количество игр) и умножить на 100
+        
         Если игра не имеет значения у end_ts, то ее не считаем
 
         """
@@ -581,13 +582,16 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
                 game_types.append(game.game_type)
                 game_subtype.append(game.game_subtype)
 
-        winning_row = await db.get_statistics_about_winning(account.id, date_now) #account.id Todo замени статичный id на account.id
+        winning_row = await db.get_statistics_about_winning(1002, date_now) #account.id Todo замени статичный id на account.id
         sum_all_buyin = sum([float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']])
         sum_all_cashout = sum([float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'CASHOUT']])
         winning = sum_all_cashout - abs(sum_all_buyin)
 
         bb_100_winning = None
-        #С одним значением buyin и cashout
+        """
+        Считаю bb_100_winning. 
+        Берем из таблицы: game_player все значения  
+        """
 
         return AccountDetailInfo(
             join_datestamp=unix_time,
@@ -599,5 +603,5 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
             opportunity_leave=opportunity_leave,
             hands=count_of_games_played, #todo потом добавить триггеры
             winning=winning,
-            bb_100_winning=bb_100_winning #TODO как это считать ?
+            bb_100_winning=0, #bb_100_winning #TODO как это считать ?
         )
