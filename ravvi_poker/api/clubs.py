@@ -1,12 +1,12 @@
-import datetime
-from time import timezone
-import time
+from decimal import Decimal
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends
 from fastapi.exceptions import HTTPException
+from psycopg.rows import Row
 from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_418_IM_A_TEAPOT
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from ..db import DBI
 from .utils import SessionUUID, get_session_and_user
@@ -353,132 +353,99 @@ async def v1_get_all_unions(session_uuid: SessionUUID):
         return [UnionProfile(id=union.id, name=union.name) for union in unions]
 
 
-@router.post("/{club_id}/add_chip_on_club_balance", status_code=HTTP_200_OK,
-             summary="Adds a certain number of chips to the club's balance")
-async def v1_add_chip_on_club_balance(club_id: int, session_uuid: SessionUUID, request: Request):
+class ClubChipsValue(BaseModel):
+    amount: Decimal = Field(
+        gt=0,
+        lt=10 ** 10,
+        decimal_places=2
+    )
+
+    @field_validator("amount", mode="before")
+    @classmethod
+    def ensure_not_str(cls, v: Any):
+        if isinstance(v, str):
+            raise ValueError
+        return v
+
+
+async def check_rights_user_club_owner(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
         if not club:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
         elif club.closed_ts:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        account = await db.find_account(user_id=user.id, club_id=club_id)
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+        club_owner_account = await db.find_account(user_id=user.id, club_id=club_id)
+        if club_owner_account is None or club_owner_account.user_role != "O":
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
 
-        if account.user_role != "O":
-            return HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                 detail="You don't have enough rights to perform this action")
+    return club_owner_account, user
 
-        json_data = await request.json()
-        try:
-            amount = json_data["amount"]
-            if isinstance(amount, float) is False or amount < 0:
-                return HTTPException(status_code=HTTP_400_BAD_REQUEST,
-                                     detail="You entered an incorrect value for amount")
-            amount = round(amount, 2)
-            await db.txn_with_chip_on_club_balance(club_id, amount, "add")
-            return HTTP_200_OK
-        except KeyError:
-            return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You forgot to amount out quantity the chips")
+
+@router.post("/{club_id}/add_chip_on_club_balance", status_code=HTTP_200_OK,
+             summary="Adds a certain number of chips to the club's balance")
+async def v1_add_chip_on_club_balance(club_id: int, chips_value: ClubChipsValue,
+                                      users=Depends(check_rights_user_club_owner)):
+    club_owner_account, user = users[0], users[1]
+    async with DBI() as db:
+        await db.txn_with_chip_on_club_balance(club_id, chips_value.amount, "CASHIN", club_owner_account.id, user.id)
 
 
 @router.post("/{club_id}/delete_chip_from_club_balance", status_code=HTTP_200_OK,
              summary="Take away a certain number of chips from the club's balance")
-async def v1_delete_chip_from_club_balance(club_id: int, session_uuid: SessionUUID, request: Request):
+async def v1_delete_chip_from_club_balance(club_id: int, chips_value: ClubChipsValue,
+                                           users=Depends(check_rights_user_club_owner)):
+    club_owner_account, user = users[0], users[1]
     async with DBI() as db:
-        _, user = await get_session_and_user(db, session_uuid)
-        club = await db.get_club(club_id)
-        if not club:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        account = await db.find_account(user_id=user.id, club_id=club_id)
-        try:
-            if account.user_role != "O":
-                return HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                     detail="You don't have enough rights to perform this action")
-        except AttributeError:
-            return HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                 detail="You don't have enough rights to perform this action")
+        await db.txn_with_chip_on_club_balance(club_id, chips_value.amount, "REMOVE", club_owner_account.id, user.id)
 
-        json_data = await request.json()
-        try:
-            amount = json_data["amount"]
-            await db.txn_with_chip_on_club_balance(club_id, amount, "del")
-            return HTTP_200_OK
-        except KeyError as e:
-            return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
+
+class UserChipsValue(ClubChipsValue):
+    balance: str
+    # ID аккаунта внутри клуба
+    recipient_user_id: int
+    recipient_user_account: Row | None = Field(default=None)
+
+    @field_validator("balance", mode="before")
+    @classmethod
+    def ensure_correct_type(cls, v: Any):
+        if v not in ["balance", "balance_shared"]:
+            raise ValueError
+        return v
+
+
+async def check_compatibility_recipient_and_balance_type(club_id: int, request: UserChipsValue):
+    async with DBI() as db:
+        user_account = await db.find_account(user_id=request.recipient_user_id, club_id=club_id)
+    if user_account.user_role not in ["A", "S"] and request.balance == "balance_shared":
+        raise ValueError
+    request.recipient_user_account = user_account
+    return request
 
 
 @router.post("/{club_id}/giving_chips_to_the_user", status_code=HTTP_200_OK,
              summary="Owner giv chips to the club's user")
-async def v1_club_giving_chips_to_the_user(club_id: int, session_uuid: SessionUUID, request: Request):
+async def v1_club_giving_chips_to_the_user(club_id: int, request: Annotated[
+    UserChipsValue, Depends(check_compatibility_recipient_and_balance_type)],
+                                           users=Depends(check_rights_user_club_owner)):
     async with DBI() as db:
-        _, user = await get_session_and_user(db, session_uuid)
-        club = await db.get_club(club_id)
-        if not club:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        account = await db.find_account(user_id=user.id, club_id=club_id)
-        try:
-            if account.user_role != "O":
-                return HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                     detail="You don't have enough rights to perform this action")
-        except AttributeError:
-            return HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                 detail="You don't have enough rights to perform this action")
-        json_data = await request.json()
-
-        try:
-            amount = json_data["amount"]
-            balance = json_data["balance"]
-
-            if isinstance(amount, float) is False or amount < 0:
-                return HTTPException(status_code=HTTP_400_BAD_REQUEST,
-                                     detail="You entered an incorrect value for amount")
-            if balance != "balance" or balance != "balance_shared":
-                return HTTPException(status_code=HTTP_400_BAD_REQUEST,
-                                     detail="You entered an incorrect value for balance")
-            user_account_id = json_data["user_id"]
-            user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
-            if user_account.user_role == "P":
-                balance = "balance"
-
-            await db.giving_chips_to_the_user(amount, user_account.id, balance)
-            return HTTP_200_OK
-
-        except KeyError as e:
-            return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
+        await db.giving_chips_to_the_user(request.amount, request.recipient_user_id, request.balance, users[1].id)
 
 
 @router.post("/{club_id}/delete_chips_from_the_user", status_code=HTTP_200_OK,
              summary="Owner take away chips from the club's user")
-async def v1_club_delete_chips_from_the_user(club_id: int, session_uuid: SessionUUID, request: Request):
+async def v1_club_delete_chips_from_the_user(club_id: int, request: Annotated[
+    UserChipsValue, Depends(check_compatibility_recipient_and_balance_type)],
+                                           users=Depends(check_rights_user_club_owner)):
     async with DBI() as db:
-        _, user = await get_session_and_user(db, session_uuid)
-        club = await db.get_club(club_id)
-        if not club:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        account = await db.find_account(user_id=user.id, club_id=club_id)
-        try:
-            if account.user_role != "O":
-                return HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                     detail="You don't have enough rights to perform this action")
-        except AttributeError:
-            return HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                 detail="You don't have enough rights to perform this action")
-
-        json_data = await request.json()
-
-        try:
-            amount = json_data["amount"]
-            user_account_id = json_data["user_id"]
-            balance = json_data["balance"]
-            user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
-            if balance == "balance":
-                await db.delete_chips_from_the_account_balance(amount, user_account.id)
-            elif balance == "balance_shared":
-                await db.delete_chips_from_the_agent_balance(amount, user_account.id)
-            return HTTP_200_OK
-        except KeyError as e:
-            return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
+        if request.balance == "balance":
+            await db.delete_chips_from_the_account_balance(request.amount, users[1].id, request.recipient_user_id)
+        else:
+            await db.delete_chips_from_the_agent_balance(request.amount, users[1].id, request.recipient_user_id)
 
 
 @router.post("/{club_id}/request_chips", status_code=HTTP_200_OK, summary="The user requests chips from the club")

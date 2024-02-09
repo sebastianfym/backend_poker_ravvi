@@ -1,10 +1,12 @@
+import datetime
 import json
 import os
+import time
 from pathlib import Path
 
 import pytz
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST
 
 from ..db import DBI
@@ -19,6 +21,27 @@ router = APIRouter(prefix="/info", tags=["info"])
 
 class TimeZoneInput(BaseModel):
     timezone_user: str | None
+
+
+class TxnHistoryManual(BaseModel):
+    username: str | None
+    sender_id: int | None
+    txn_time: str | None
+    txn_type: str | None
+    txn_value: float | None
+    balance: float | None
+    image_id: int | None = None
+    role: str | None
+
+class TxnHistoryOnTable(BaseModel):
+    table_name: str | None
+    table_id: int | None
+    txn_time: str | None
+    min_blind: float | None
+    max_blind: float | None
+    txn_type: str | None
+    txn_value: float | None
+    balance: float | None
 
 
 @router.get("/levels_schedule/{table_type}", status_code=HTTP_200_OK, summary="Get blind levels schedule (SNG/MTT)")
@@ -37,7 +60,7 @@ async def v1_get_all_info_about_blinds(table_type: str, session_uuid: SessionUUI
         return levels_schedule[table_type]
     except KeyError:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Key not found")
-    
+
 
 @router.get("/rewards_distribution", status_code=HTTP_200_OK, summary="Get rewards distribution structure")
 async def v1_get_payment_structure(session_uuid: SessionUUID):
@@ -74,31 +97,49 @@ async def v1_get_countries(session_uuid: SessionUUID, language: str):
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=exception)
 
 
-@router.get("/timezone", status_code=HTTP_200_OK, summary="Get a list of countries in different languages")
-async def v1_get_timezone_list(session_uuid: SessionUUID):
-    async with DBI() as db:
+@router.get("/{club_id}/history", status_code=HTTP_200_OK,
+            summary="Get a list of countries in different languages")
+async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
+    async with (DBI() as db):
         _, user = await get_session_and_user(db, session_uuid)
+        txn_history = await db.get_user_history_trx_in_club(user.id, club_id)
 
-        timezone_list = pytz.all_timezones
-        return timezone_list
+        txn_list = []
+        for txn in txn_history:
+            txn = txn._asdict()
+            if txn['txn_type'] not in ["BUYIN", "CASHOUT"]:
+                try:
+                    username = (await db.get_user(txn['sender_id'])).name
+                    role = (await db.find_account(user_id=txn['sender_id'], club_id=club_id)).user_role
+                    image_id = (await db.get_user(txn['sender_id'])).image_id
+                except (ValueError, AttributeError):
+                    username = "Undefined username"
+                    role = "Undefined role"
+                    image_id = None
 
+                txn_manual = TxnHistoryManual(
+                    username=username,
+                    sender_id=txn['sender_id'],
+                    txn_time=txn['created_ts'].timestamp(),
+                    txn_type=txn['txn_type'],
+                    txn_value=txn['txn_value'],
+                    balance=txn['total_balance'],
+                    role=role,
+                    image_id=image_id
+                )
+                txn_list.append(txn_manual)
+            else:
+                table_info = await db.get_table(txn['sender_id'])
+                txn_table = TxnHistoryOnTable(
+                    table_name=table_info.table_name,
+                    table_id=table_info.id,
+                    txn_time=txn['created_ts'].timestamp(),
+                    min_blind=table_info.props['blind_small'],
+                    max_blind=table_info.props['blind_big'],
+                    txn_type=txn['txn_type'],
+                    txn_value=txn['txn_value'],
+                    balance=txn['total_balance']
+                )
+                txn_list.append(txn_table)
 
-@router.post("/timezone", status_code=HTTP_200_OK, summary="")
-async def v1_set_timezone_list(params:  TimeZoneInput, session_uuid: SessionUUID):
-    async with DBI() as db:
-        _, user = await get_session_and_user(db, session_uuid)
-        timezone_user = params.timezone_user
-        try:
-            tz_object = pytz.timezone(timezone_user)
-        except:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid timezone")
-
-        utc_offset_seconds = tz_object.utcoffset(pytz.datetime.datetime.now()).total_seconds()
-
-        hours = int(utc_offset_seconds // 3600)
-        minutes = int((utc_offset_seconds % 3600) // 60)
-
-        offset_string = f"{hours}:{minutes}"
-
-        return offset_string
-
+        return txn_list

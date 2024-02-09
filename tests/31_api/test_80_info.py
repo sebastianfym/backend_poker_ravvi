@@ -87,18 +87,18 @@ def test_rewards_distribution(api_client: TestClient, api_guest: UserAccessProfi
     response = api_client.get("/v1/info/rewards_distribution")
     assert response.status_code == 200
 
-def test_timezone(api_client: TestClient, api_guest: UserAccessProfile):
-    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
-
-    response = api_client.get("/v1/info/timezone")
-    assert response.status_code == 200
-    assert isinstance(response.json(), list)
-    assert response.json()[0] == "Africa/Abidjan"
-
-    response_2 = api_client.post("/v1/info/timezone", json={"timezone_user": "America/Atka"})
-    assert response_2.status_code == 200
-    assert response_2.json() == "-10:0"
-
-    response_2 = api_client.post("/v1/info/timezone", json={})
-    assert response_2.status_code == 422
+# def test_timezone(api_client: TestClient, api_guest: UserAccessProfile):
+#     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+#
+#     response = api_client.get("/v1/info/timezone")
+#     assert response.status_code == 200
+#     assert isinstance(response.json(), list)
+#     assert response.json()[0] == "Africa/Abidjan"
+#
+#     response_2 = api_client.post("/v1/info/timezone", json={"timezone_user": "America/Atka"})
+#     assert response_2.status_code == 200
+#     assert response_2.json() == "-10:0"
+#
+#     response_2 = api_client.post("/v1/info/timezone", json={})
+#     assert response_2.status_code == 422
 
