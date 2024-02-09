@@ -804,3 +804,14 @@ class DBI:
             row = await cursor.fetchall()
 
         return row
+
+    async def get_statistics_about_winning(self, account_id, date):
+        sql = "SELECT * FROM user_account_txn WHERE account_id=%s AND created_ts >= %s AND created_ts < %s"
+        date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+        tomorrow = date_now + datetime.timedelta(days=1)
+        print(f'Сегодня: {date_now},  завтра: {tomorrow}, заебался')
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (account_id, date_now, tomorrow))
+            row = await cursor.fetchall()
+
+        return row

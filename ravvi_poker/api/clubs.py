@@ -53,7 +53,7 @@ class UnionProfile(BaseModel):
 
 class AccountDetailInfo(BaseModel):
     join_datestamp: float | None
-    UTC: int | None
+    timezone: str | None
     table_types: set | None
     game_types: set | None
     game_subtype: set | None
@@ -62,6 +62,7 @@ class AccountDetailInfo(BaseModel):
     winning: float | None
     BB100winning: float | None
     now_datestamp: float | None
+
 
 @router.post("", status_code=HTTP_201_CREATED, summary="Create new club")
 async def v1_create_club(params: ClubProps, session_uuid: SessionUUID):
@@ -372,7 +373,8 @@ async def v1_add_chip_on_club_balance(club_id: int, session_uuid: SessionUUID, r
         try:
             amount = json_data["amount"]
             if isinstance(amount, float) is False or amount < 0:
-                return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You entered an incorrect value for amount")
+                return HTTPException(status_code=HTTP_400_BAD_REQUEST,
+                                     detail="You entered an incorrect value for amount")
             amount = round(amount, 2)
             await db.txn_with_chip_on_club_balance(club_id, amount, "add")
             return HTTP_200_OK
@@ -429,9 +431,11 @@ async def v1_club_giving_chips_to_the_user(club_id: int, session_uuid: SessionUU
             balance = json_data["balance"]
 
             if isinstance(amount, float) is False or amount < 0:
-                return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You entered an incorrect value for amount")
+                return HTTPException(status_code=HTTP_400_BAD_REQUEST,
+                                     detail="You entered an incorrect value for amount")
             if balance != "balance" or balance != "balance_shared":
-                return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You entered an incorrect value for balance")
+                return HTTPException(status_code=HTTP_400_BAD_REQUEST,
+                                     detail="You entered an incorrect value for balance")
             user_account_id = json_data["user_id"]
             user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
             if user_account.user_role == "P":
@@ -523,6 +527,7 @@ async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
         await db.leave_from_club(account.id)
         return HTTP_200_OK
 
+
 @router.get("/{club_id}/user_account", status_code=HTTP_200_OK, summary="Page with data about user's account in club")
 async def v1_user_account(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
@@ -532,6 +537,7 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
 
         account = await db.find_account(user_id=user.id, club_id=club_id)
+        # print(account.id) #1005
         opportunity_leave = True
         if account.user_role == "O":
             opportunity_leave = False
@@ -557,30 +563,37 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
         -
         CASHOUT - уход со стола с оставшимися фишками или нулем
         
-        получить все cashout и все buyin со стола , сложить их между друг другом и отнять от sum_all_cashout - sum_all_buyin
+        winning =  получить все cashout и все buyin со стола , сложить их между друг другом и отнять от sum_all_cashout - sum_all_buyin
+        
+        бб100 = (выигрышь разделить на большой блайнд (с профиля игры в пропсах)) // количество игр и умножить на 100 
+        
         """
         table_types = []
         game_types = []
         game_subtype = []
-        amount_of_games_played = 0
+        count_of_games_played = 0
 
         for table_id in table_id_list:
             for game in await db.statistics_of_games_played(table_id, date_now):
-                amount_of_games_played += 1
+                count_of_games_played += 1
                 table_types.append((await db.get_table(game.table_id)).table_type)
                 game_types.append(game.game_type)
                 game_subtype.append(game.game_subtype)
 
+        # winning_row = await db.get_statistics_about_winning(account.id, date_now)
+        # buyin_transactions = [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']]
+        # cashout_transactions = [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'CASHOUT']]
+        # print(buyin_transactions, '\n', cashout_transactions)
 
         return AccountDetailInfo(
             join_datestamp=unix_time,
-            now_datestamp=now_datestamp,#str(datetime.datetime.utcnow()),
-            UTC=club.timezone_offset,
+            now_datestamp=now_datestamp,
+            timezone="Asia/Singapore",
             table_types=set(table_types),
             game_types=set(game_types),
             game_subtype=set(game_subtype),
             opportunity_leave=opportunity_leave,
-            hands=amount_of_games_played,
-            winning=0,
-            BB100winning=0
+            hands=count_of_games_played, #todo потом добавить триггеры
+            winning=0, #TODO сумма всех cashout + сумма всех buyin
+            BB100winning=0 #TODO как это считать ?
         )
