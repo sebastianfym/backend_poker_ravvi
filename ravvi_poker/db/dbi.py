@@ -824,7 +824,7 @@ class DBI:
         return row
 
     async def get_balance_begin_and_end_from_game(self, game_id, user_id):
-        sql = "SELECT balance_begin, balance_end FROM game_player WHERE id=%s AND user_id=%s"
+        sql = "SELECT balance_begin, balance_end, game_id FROM game_player WHERE game_id=%s AND user_id=%s"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (game_id, user_id))
             row = await cursor.fetchone()
