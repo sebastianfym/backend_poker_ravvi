@@ -1,6 +1,9 @@
 from itertools import combinations
+from typing import List
 
 from .base import PokerBase
+from ..user import User
+
 
 class Poker_PLO_X(PokerBase):
     GAME_TYPE = "PLO"

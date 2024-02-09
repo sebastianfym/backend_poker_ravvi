@@ -8,6 +8,7 @@ class Bet(IntEnum):
     CALL = 21
     CHECK = 22
     RAISE = 30
+    ANTE = 40
     ALLIN = 99
 
     @classmethod

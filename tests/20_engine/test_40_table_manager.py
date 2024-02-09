@@ -55,9 +55,9 @@ async def test_table_manager(engine):
     # создадим один стол до старта engine
     table = await create_table()
 
-    # запуск engine       
+    # запуск engine
     await engine.start()
-    
+
     # проверяем что существующий стол подхвачен  запущен
     assert table.id in engine.tables
     x_table = engine.tables[table.id]

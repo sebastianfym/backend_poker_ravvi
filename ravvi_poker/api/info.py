@@ -4,6 +4,7 @@ import os
 import time
 from pathlib import Path
 
+import pytz
 from fastapi import APIRouter, HTTPException
 from pydantic.v1 import BaseModel
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST
@@ -17,6 +18,9 @@ from .utils import SessionUUID, get_session_and_user
 manager = TablesManager()
 
 router = APIRouter(prefix="/info", tags=["info"])
+
+class TimeZoneInput(BaseModel):
+    timezone_user: str | None
 
 
 class TxnHistoryManual(BaseModel):
@@ -73,7 +77,6 @@ async def v1_get_payment_structure(session_uuid: SessionUUID):
 async def v1_get_countries(session_uuid: SessionUUID, language: str):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
-
     match language:
         case "ru":
             file_name = 'countries_ru'

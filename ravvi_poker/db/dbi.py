@@ -597,6 +597,12 @@ class DBI:
             await cursor.execute(profile_sql, (id,))
             return await cursor.fetchone()
 
+    async def all_players_games(self, user_id):
+        sql = "SELECT game_id FROM game_player WHERE user_id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (user_id,))
+            row = await cursor.fetchall()
+        return row
     # EVENTS (TABLE_CMD)
 
     def json_dumps(self, obj):
@@ -787,3 +793,39 @@ class DBI:
                 result_list.append(row)
         return row
 
+    # ACCOUNT STATISTICS
+
+    async def statistics_of_games_played(self, table_id, date):
+        date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+        tomorrow = date_now + datetime.timedelta(days=1)
+        sql = "SELECT * FROM public.game_profile WHERE table_id = %s AND end_ts >= %s AND end_ts < %s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (table_id, date_now, tomorrow,))
+            row = await cursor.fetchall()
+
+        return row
+
+    async def get_statistics_about_winning(self, account_id, date):
+        sql = "SELECT * FROM user_account_txn WHERE account_id=%s AND created_ts >= %s AND created_ts < %s"
+        date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+        tomorrow = date_now + datetime.timedelta(days=1)
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (account_id, date_now, tomorrow))
+            row = await cursor.fetchall()
+
+        return row
+
+    async def check_game_by_date(self, game_id, date):
+        date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+        sql = "SELECT * FROM game_profile WHERE id=%s AND CAST(end_ts AS DATE) = %s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (game_id, date_now))
+            row = await cursor.fetchone()
+        return row
+
+    async def get_balance_begin_and_end_from_game(self, game_id, user_id):
+        sql = "SELECT balance_begin, balance_end FROM game_player WHERE id=%s AND user_id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (game_id, user_id))
+            row = await cursor.fetchone()
+        return row

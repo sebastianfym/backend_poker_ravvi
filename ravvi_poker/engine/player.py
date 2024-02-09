@@ -19,3 +19,11 @@ class Player:
     @property
     def balance(self) -> int:
         return self.user.balance
+
+    def __str__(self):
+        return (f"Player: {self.user_id} - {self.user.name}\n"
+                f"Role: {self.role}\n"
+                f"BetType: {self.bet_type}\n"
+                f"BetAmount: {self.bet_amount}\n"
+                f"BetAnte: {self.bet_ante}\n"
+                f"BetTotal: {self.bet_total}")
