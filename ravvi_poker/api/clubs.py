@@ -56,11 +56,11 @@ class AccountDetailInfo(BaseModel):
     timezone: str | None
     table_types: set | None
     game_types: set | None
-    game_subtype: set | None
+    game_subtypes: set | None
     opportunity_leave: bool | None = True
     hands: float | None
     winning: float | None
-    BB100winning: float | None
+    bb_100_winning: float | None
     now_datestamp: float | None
 
 
@@ -565,8 +565,9 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
         
         winning =  получить все cashout и все buyin со стола , сложить их между друг другом и отнять от sum_all_cashout - sum_all_buyin
         
-        бб100 = (выигрышь разделить на большой блайнд (с профиля игры в пропсах)) // количество игр и умножить на 100 
-        
+        бб100 = ((выигрышь разделить на большой блайнд (с профиля игры в пропсах)) // количество игр) и умножить на 100
+        Если игра не имеет значения у end_ts, то ее не считаем
+
         """
         table_types = []
         game_types = []
@@ -580,10 +581,13 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
                 game_types.append(game.game_type)
                 game_subtype.append(game.game_subtype)
 
-        # winning_row = await db.get_statistics_about_winning(account.id, date_now)
-        # buyin_transactions = [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']]
-        # cashout_transactions = [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'CASHOUT']]
-        # print(buyin_transactions, '\n', cashout_transactions)
+        winning_row = await db.get_statistics_about_winning(1002, date_now) #account.id Todo замени статичный id на account.id
+        sum_all_buyin = sum([float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']])
+        sum_all_cashout = sum([float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'CASHOUT']])
+        winning = sum_all_cashout - abs(sum_all_buyin)
+
+        bb_100_winning = None
+        #С одним значением buyin и cashout
 
         return AccountDetailInfo(
             join_datestamp=unix_time,
@@ -591,9 +595,9 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
             timezone="Asia/Singapore",
             table_types=set(table_types),
             game_types=set(game_types),
-            game_subtype=set(game_subtype),
+            game_subtypes=set(game_subtype),
             opportunity_leave=opportunity_leave,
             hands=count_of_games_played, #todo потом добавить триггеры
-            winning=0, #TODO сумма всех cashout + сумма всех buyin
-            BB100winning=0 #TODO как это считать ?
+            winning=winning,
+            bb_100_winning=bb_100_winning #TODO как это считать ?
         )
