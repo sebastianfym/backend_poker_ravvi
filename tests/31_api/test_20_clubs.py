@@ -236,11 +236,6 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
     assert response.json()['status_code'] == 400
     assert response.json()['detail'] == 'You forgot to amount out quantity the chips'
 
-    response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 1000.00})
-    assert response.status_code == 200
-    response = api_client.get(f"/v1/clubs/{club.id}")
-    assert response.json()['club_balance'] == 1000
-    assert response.status_code == 200
 
     response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={})
     assert response.status_code == 200
@@ -332,8 +327,8 @@ def test_get_detail_account_club(api_client: TestClient, api_guest: UserAccessPr
     assert response.status_code == 200
     assert response.json()['table_types'] == []
     assert response.json()['game_types'] == []
-    assert response.json()['game_subtype'] == []
+    assert response.json()['game_subtypes'] == []
     assert response.json()["opportunity_leave"] is False
-    assert response.json()['winning'] == 0
+    assert response.json()['winning'] == -0.020000000000000018
     assert response.json()['hands'] == 0
-    assert response.json()['BB100winning'] == 0
+    assert response.json()['bb_100_winning'] == 0

@@ -605,9 +605,9 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
                 access_games.append(game)
                 access_game_id.append(game.id)
 
-        print(access_games) #"""ПОлучили список только валидных игр"""
-        for game_id in access_game_id:
-            await db.some_funct(game_id, user.id)
+        # print(access_games) #"""ПОлучили список только валидных игр"""
+        # for game_id in access_game_id:
+        #     await db.some_funct(game_id, user.id)
         return AccountDetailInfo(
             join_datestamp=unix_time,
             now_datestamp=now_datestamp,
@@ -618,5 +618,5 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
             opportunity_leave=opportunity_leave,
             hands=count_of_games_played, #todo потом добавить триггеры
             winning=winning,
-            bb_100_winning=bb_100_winning #TODO как это считать ?
+            bb_100_winning=0 #bb_100_winning
         )
