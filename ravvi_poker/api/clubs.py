@@ -606,9 +606,12 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
         for winning_100 in result_list:
             bb_100_winning += winning_100['sum_winning'] / winning_100['big_blind']
             quantity_games += winning_100['count']
-        bb_100_winning /= quantity_games
-        bb_100_winning *= 100
-        bb_100 = round(bb_100_winning, 2)
+        try:
+            bb_100_winning /= quantity_games
+            bb_100_winning *= 100
+            bb_100 = round(bb_100_winning, 2)
+        except ZeroDivisionError:
+            bb_100 = 0
         return AccountDetailInfo(
             join_datestamp=unix_time,
             now_datestamp=now_datestamp,
