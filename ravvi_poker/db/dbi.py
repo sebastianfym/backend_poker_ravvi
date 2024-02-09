@@ -809,9 +809,23 @@ class DBI:
         sql = "SELECT * FROM user_account_txn WHERE account_id=%s AND created_ts >= %s AND created_ts < %s"
         date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
         tomorrow = date_now + datetime.timedelta(days=1)
-        print(f'Сегодня: {date_now},  завтра: {tomorrow}, заебался')
         async with self.cursor() as cursor:
             await cursor.execute(sql, (account_id, date_now, tomorrow))
             row = await cursor.fetchall()
 
+        return row
+
+    async def check_game_by_date(self, game_id, date):
+        date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+        sql = "SELECT * FROM game_profile WHERE id=%s AND CAST(end_ts AS DATE) = %s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (game_id, date_now))
+            row = await cursor.fetchone()
+        return row
+
+    async def get_balance_begin_and_end_from_game(self, game_id, user_id):
+        sql = "SELECT balance_begin, balance_end FROM game_player WHERE id=%s AND user_id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (game_id, user_id))
+            row = await cursor.fetchone()
         return row
