@@ -590,9 +590,24 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
         bb_100_winning = None
         """
         Считаю bb_100_winning. 
-        Берем из таблицы: game_player все значения  
+        Берем из таблицы: game_player все game_id по определенному user_id (id юзера от которого исходит запрос) [+]
+        Получив список с game_id (id игр в которых участвовал пользователь) мы  проходимся по таблице game_profile и проверяем на соответствие с датой [+]
+        
+        Для получения winning из game_player (balance_end - balance_begin)
         """
 
+        all_games_id = [id.game_id for id in await db.all_players_games(1000)] #user.id
+        access_games = []
+        access_game_id = []
+        for game_id in all_games_id:
+            game = await db.check_game_by_date(game_id, date_now)
+            if game is not None:
+                access_games.append(game)
+                access_game_id.append(game.id)
+
+        print(access_games) #"""ПОлучили список только валидных игр"""
+        for game_id in access_game_id:
+            await db.some_funct(game_id, user.id)
         return AccountDetailInfo(
             join_datestamp=unix_time,
             now_datestamp=now_datestamp,
@@ -603,5 +618,5 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
             opportunity_leave=opportunity_leave,
             hands=count_of_games_played, #todo потом добавить триггеры
             winning=winning,
-            bb_100_winning=0, #bb_100_winning #TODO как это считать ?
+            bb_100_winning=bb_100_winning #TODO как это считать ?
         )
