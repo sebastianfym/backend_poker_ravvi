@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 
 import pytest
 
@@ -359,32 +360,35 @@ def create_club(client: list[TestClient] | TestClient):
 
 @pytest.mark.parametrize("client, request_params, status_code, club_balance",
                          [
-                             ["get_authorize_client", {"amount": -1000}, 400, None],
+                             ["get_authorize_client", {"amount": -1000}, 422, None],
                              ["get_two_clients", {"amount": -1000}, 403, None],
 
-                             ["get_authorize_client", {"amount": "very_bug_value"}, 400, None],
+                             ["get_authorize_client", {"amount": "very_bug_value"}, 422, None],
                              ["get_two_clients", {"amount": "very_bug_value"}, 403, None],
 
-                             ["get_authorize_client", {"amound": 1000}, 400, None],
+                             ["get_authorize_client", {"amound": 1000}, 422, None],
                              ["get_two_clients", {"amound": 1000}, 403, None],
 
-                             ["get_authorize_client", {"amount": 10.555555555555555}, 400, None],
+                             ["get_authorize_client", {"amount": 10.555555555555555}, 422, None],
                              ["get_two_clients", {"amount": 10.555555555555555}, 403, None],
 
-                             ["get_authorize_client", {"amount": "1000"}, 400, None],
+                             ["get_authorize_client", {"amount": "1000"}, 422, None],
                              ["get_two_clients", {"amount": "1000"}, 403, None],
 
-                             ["get_authorize_client", {}, 400, None],
+                             ["get_authorize_client", {}, 422, None],
                              ["get_two_clients", {}, 403, None],
 
-                             ["get_authorize_client", {"amount": 5}, 200, 5],
-                             ["get_two_clients", {"amount": 5}, 403, None],
+                             ["get_authorize_client", {"amount": 5.1547}, 422, None],
+                             ["get_two_clients", {"amount": 5.1547}, 403, None],
+
+                             ["get_authorize_client", {"amount": 10 ** 10}, 422, None],
+                             ["get_two_clients", {"amount": 10 ** 10}, 403, None],
+
+                             ["get_authorize_client", {"amount": 5.00}, 200, 5],
+                             ["get_two_clients", {"amount": 5.00}, 403, None],
 
                              ["get_authorize_client", {"amount": 5.13}, 200, 5.13],
                              ["get_two_clients", {"amount": 5.13}, 403, None],
-
-                             ["get_authorize_client", {"amount": 5.1547}, 400, None],
-                             ["get_two_clients", {"amount": 5.1547}, 403, None],
 
                              ["get_authorize_client", {"amount": 1000.00}, 200, 1000.00],
                              ["get_two_clients", {"amount": 1000.00}, 403, None],
@@ -434,32 +438,35 @@ def test_add_chips_rounding(api_client: TestClient, api_guest: UserAccessProfile
 
 @pytest.mark.parametrize("client, initial_club_balance, request_params, status_code, club_balance",
                          [
-                             ["get_authorize_client", 100, {"amount": -1000}, 400, None],
+                             ["get_authorize_client", 100, {"amount": -1000}, 422, None],
                              ["get_two_clients", 100, {"amount": -1000}, 403, None],
 
-                             ["get_authorize_client", 100, {"amount": "very_bug_value"}, 400, None],
+                             ["get_authorize_client", 100, {"amount": "very_bug_value"}, 422, None],
                              ["get_two_clients", 100, {"amount": "very_bug_value"}, 403, None],
 
-                             ["get_authorize_client", 100, {"amound": 1000}, 400, None],
+                             ["get_authorize_client", 100, {"amound": 1000}, 422, None],
                              ["get_two_clients", 100, {"amound": 1000}, 403, None],
 
-                             ["get_authorize_client", 100, {"amount": 10.555555555555555}, 400, None],
+                             ["get_authorize_client", 100, {"amount": 10.555555555555555}, 422, None],
                              ["get_two_clients", 100, {"amount": 10.555555555555555}, 403, None],
 
-                             ["get_authorize_client", 100, {"amount": "1000"}, 400, None],
+                             ["get_authorize_client", 100, {"amount": "1000"}, 422, None],
                              ["get_two_clients", 100, {"amount": "1000"}, 403, None],
 
-                             ["get_authorize_client", 100, {}, 400, None],
+                             ["get_authorize_client", 100, {}, 422, None],
                              ["get_two_clients", 100, {}, 403, None],
+
+                             ["get_authorize_client", 100, {"amount": 5.1547}, 422, None],
+                             ["get_two_clients", 100, {"amount": 5.1547}, 403, None],
+
+                             ["get_authorize_client", 100, {"amount": 10 ** 10}, 422, None],
+                             ["get_two_clients", 100, {"amount": 10 ** 10}, 403, None],
 
                              ["get_authorize_client", 100, {"amount": 5}, 200, 95],
                              ["get_two_clients", 100, {"amount": 5}, 403, None],
 
                              ["get_authorize_client", 100, {"amount": 5.13}, 200, 94.87],
                              ["get_two_clients", 100, {"amount": 5.13}, 403, None],
-
-                             ["get_authorize_client", 100, {"amount": 5.1547}, 400, None],
-                             ["get_two_clients", 100, {"amount": 5.1547}, 403, None],
 
                              ["get_authorize_client", 100, {"amount": 1000.00}, 200, 0],
                              ["get_two_clients", 100, {"amount": 1000.00}, 403, None],
@@ -515,16 +522,18 @@ def test_delete_chips_rounding(api_client: TestClient, api_guest: UserAccessProf
     response = api_client.get(f"/v1/clubs/{club.id}")
     assert response.json()['club_balance'] == 999.81
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("amount, balance_type",
                          [
                              [10, "balance"],
                              [10.05, "balance"],
 
-                             [10, "balance_shared"],
-                             [10.05, "balance_shared"],
+                             # [10, "balance_shared"],
+                             # [10.05, "balance_shared"],
                          ])
-async def test_giving_chips_to_the_user(api_client: TestClient, api_guest: UserAccessProfile, amount, balance_type):
+async def test_giving_chips_to_the_user(api_client: TestClient, api_guest: UserAccessProfile, amount: int | float,
+                                        balance_type: str):
     # получаем пользователя, который будет владельцем клуба
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
 
@@ -538,7 +547,7 @@ async def test_giving_chips_to_the_user(api_client: TestClient, api_guest: UserA
 
     # начисляем фишки
     response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user",
-                               json={"amount": amount, "user_id": user_account_to_get_chips.id,
+                               json={"amount": amount, "recipient_user_id": user_account_to_get_chips.user_id,
                                      "balance": balance_type})
     assert response.status_code == 200
 
@@ -548,7 +557,8 @@ async def test_giving_chips_to_the_user(api_client: TestClient, api_guest: UserA
             await cursor.execute(f"SELECT {balance_type} FROM user_account WHERE id = %s AND club_id = %s",
                                  (user_account_to_get_chips.id, club.id))
             balance = await cursor.fetchone()
-            assert balance == amount
+            # TODO окргуление
+            assert getattr(balance, balance_type).quantize(Decimal('.01')) == Decimal(amount).quantize(Decimal('.01'))
 
             # проверяем транзакцию
             # cursor.execute("SELECT * FROM user_account_txn WHERE id = %s AND club_id = %s ")

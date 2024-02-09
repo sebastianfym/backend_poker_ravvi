@@ -717,17 +717,17 @@ class DBI:
             else:
                 return None
 
-    async def giving_chips_to_the_user(self, amount, account_id, balance, sender_id):
+    async def giving_chips_to_the_user(self, amount, user_account_id, balance, sender_id):
         if balance == "balance":
-            sql = "UPDATE user_account SET balance = balance + %s WHERE id = %s RETURNING balance"
+            sql = "UPDATE user_account SET balance = balance + %s WHERE user_id = %s RETURNING balance"
         elif balance == "balance_shared":
-            sql = "UPDATE user_account SET balance_shared = balance_shared + %s WHERE id = %s RETURNING balance"
+            sql = "UPDATE user_account SET balance_shared = balance_shared + %s WHERE user_id = %s RETURNING balance"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (amount, account_id))
+            await cursor.execute(sql, (amount, user_account_id))
             row = await cursor.fetchone()
 
             sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
-            await cursor.execute(sql, (account_id, "CASHIN", amount, row.balance, sender_id))
+            await cursor.execute(sql, (user_account_id, "CASHIN", amount, row.balance, sender_id))
 
     async def delete_chips_from_the_agent_balance(self, amount, account_id):
         get_balance_shared_sql = "SELECT balance_shared FROM user_account WHERE id = %s"
