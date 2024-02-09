@@ -6,7 +6,6 @@ from ..db import DBI
 
 from .cards import Deck
 from .user import User
-from .tables import Table
 from .player import Player
 from .events import Message, Command
 
@@ -20,6 +19,8 @@ class Game:
     GAME_DECK = 52
 
     def __init__(self, table, users) -> None:
+        from .tables import Table
+
         self.table: Table = table
         self.game_id = None
         self.log = ObjectLoggerAdapter(logger, lambda: self.game_id)
@@ -55,15 +56,6 @@ class Game:
             players=[x.user_id for x in self.players] if self.players is not None else [],
             dealer_id=self.dealer_id,
         )
-
-        # TODO перенести
-        # добавляем анте
-        # if table.game_props["ante_up"]:
-        #     info |= {
-        #         "ante": table.game_props["ante_levels"],
-        #         "current_ante": table.game_props["ante_levels"][0]
-        #     }
-
         return info
 
     # CARDS
