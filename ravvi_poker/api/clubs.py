@@ -1,3 +1,7 @@
+import datetime
+from time import timezone
+import time
+
 from fastapi import APIRouter, Request
 from fastapi.exceptions import HTTPException
 from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_418_IM_A_TEAPOT
@@ -23,7 +27,6 @@ class ClubProfile(BaseModel):
     name: str
     description: str | None = None
     image_id: int | None = None
-    # TODO откуда None?
     user_role: str | None = None
     user_approved: bool | None = None
 
@@ -46,6 +49,19 @@ class ClubMemberProfile(BaseModel):
 class UnionProfile(BaseModel):
     name: str | None = None
     """По мере прогресса раширить модель"""
+
+
+class AccountDetailInfo(BaseModel):
+    join_datestamp: float | None
+    timezone: str | None
+    table_types: set | None
+    game_types: set | None
+    game_subtypes: set | None
+    opportunity_leave: bool | None = True
+    hands: float | None
+    winning: float | None
+    bb_100_winning: float | None
+    now_datestamp: float | None
 
 
 @router.post("", status_code=HTTP_201_CREATED, summary="Create new club")
@@ -179,6 +195,8 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID):
         account = await db.find_account(user_id=user.id, club_id=club_id)
         if not account:
             account = await db.create_club_member(club.id, user.id, None)
+        elif account.closed_ts is not None and account.club_id == club_id:
+            await db.return_member_in_club(account.id)
 
     return ClubProfile(
         id=club.id,
@@ -355,7 +373,8 @@ async def v1_add_chip_on_club_balance(club_id: int, session_uuid: SessionUUID, r
         try:
             amount = json_data["amount"]
             if isinstance(amount, float) is False or amount < 0:
-                return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You entered an incorrect value for amount")
+                return HTTPException(status_code=HTTP_400_BAD_REQUEST,
+                                     detail="You entered an incorrect value for amount")
             amount = round(amount, 2)
             await db.txn_with_chip_on_club_balance(club_id, amount, "add")
             return HTTP_200_OK
@@ -412,9 +431,11 @@ async def v1_club_giving_chips_to_the_user(club_id: int, session_uuid: SessionUU
             balance = json_data["balance"]
 
             if isinstance(amount, float) is False or amount < 0:
-                return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You entered an incorrect value for amount")
+                return HTTPException(status_code=HTTP_400_BAD_REQUEST,
+                                     detail="You entered an incorrect value for amount")
             if balance != "balance" or balance != "balance_shared":
-                return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You entered an incorrect value for balance")
+                return HTTPException(status_code=HTTP_400_BAD_REQUEST,
+                                     detail="You entered an incorrect value for balance")
             user_account_id = json_data["user_id"]
             user_account = await db.find_account(user_id=user_account_id, club_id=club_id)
             if user_account.user_role == "P":
@@ -488,3 +509,114 @@ async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionU
 
         await db.send_request_for_replenishment_of_chips(account_id=account.id, amount=amount, balance=balance)
         return HTTP_200_OK
+
+
+@router.post("/{club_id}/leave_from_club", status_code=HTTP_200_OK, summary="Leave from club")
+async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+
+        account = await db.find_account(user_id=user.id, club_id=club_id)
+        if not account or account.closed_ts is not None:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Account not found")
+        if account.user_role == "O":
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You can't leave your own club")
+        await db.leave_from_club(account.id)
+        return HTTP_200_OK
+
+
+@router.get("/{club_id}/user_account", status_code=HTTP_200_OK, summary="Page with data about user's account in club")
+async def v1_user_account(club_id: int, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+
+        account = await db.find_account(user_id=user.id, club_id=club_id)
+        # print(account.id) #1005
+        opportunity_leave = True
+        if account.user_role == "O":
+            opportunity_leave = False
+        if not account or account.closed_ts is not None:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Account not found")
+
+        table_id_list = [table.id for table in await db.get_club_tables(club_id)]
+        # game_id_list = [game_id.game_id for game_id in await db.all_players_games(user.id)]
+        # table_params_list = [{"id": table.id, "table_type": table.table_type, "game_type": table.game_type, "game_subtype": table.game_subtype}
+        #                      for table in await db.get_club_tables(club_id)]
+
+        time_obj = datetime.datetime.fromisoformat(str(account.created_ts))
+        unix_time = int(time.mktime(time_obj.timetuple()))
+
+        now_datestamp = int(time.mktime(datetime.datetime.fromisoformat(str(datetime.datetime.utcnow())).timetuple()))
+
+        date_now = str(datetime.datetime.now()).split(" ")[0]
+        """ (эти операции должны быть на 1ом столе)
+        buyin - взял фишки на стол
+        -
+        -
+        -
+        -
+        CASHOUT - уход со стола с оставшимися фишками или нулем
+        
+        winning =  получить все cashout и все buyin со стола , сложить их между друг другом и отнять от sum_all_cashout - sum_all_buyin
+        
+        бб100 = ((выигрышь разделить на большой блайнд (с профиля игры в пропсах)) // количество игр) и умножить на 100
+        
+        Если игра не имеет значения у end_ts, то ее не считаем
+
+        """
+        table_types = []
+        game_types = []
+        game_subtype = []
+        count_of_games_played = 0
+
+        for table_id in table_id_list:
+            for game in await db.statistics_of_games_played(table_id, date_now):
+                count_of_games_played += 1
+                table_types.append((await db.get_table(game.table_id)).table_type)
+                game_types.append(game.game_type)
+                game_subtype.append(game.game_subtype)
+
+        winning_row = await db.get_statistics_about_winning(1002, date_now) #account.id Todo замени статичный id на account.id
+        sum_all_buyin = sum([float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']])
+        sum_all_cashout = sum([float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'CASHOUT']])
+        winning = sum_all_cashout - abs(sum_all_buyin)
+
+        bb_100_winning = None
+        """
+        Считаю bb_100_winning. 
+        Берем из таблицы: game_player все game_id по определенному user_id (id юзера от которого исходит запрос) [+]
+        Получив список с game_id (id игр в которых участвовал пользователь) мы  проходимся по таблице game_profile и проверяем на соответствие с датой [+]
+        
+        Для получения winning из game_player (balance_end - balance_begin)
+        """
+
+        all_games_id = [id.game_id for id in await db.all_players_games(1000)] #user.id
+        access_games = []
+        access_game_id = []
+        for game_id in all_games_id:
+            game = await db.check_game_by_date(game_id, date_now)
+            if game is not None:
+                access_games.append(game)
+                access_game_id.append(game.id)
+
+        # print(access_games) #"""ПОлучили список только валидных игр"""
+        # for game_id in access_game_id:
+        #     await db.some_funct(game_id, user.id)
+        return AccountDetailInfo(
+            join_datestamp=unix_time,
+            now_datestamp=now_datestamp,
+            timezone="Asia/Singapore",
+            table_types=set(table_types),
+            game_types=set(game_types),
+            game_subtypes=set(game_subtype),
+            opportunity_leave=opportunity_leave,
+            hands=count_of_games_played, #todo потом добавить триггеры
+            winning=winning,
+            bb_100_winning=0 #bb_100_winning
+        )

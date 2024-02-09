@@ -103,6 +103,3 @@ async def test_engine_manager(engine):
 
     await c1.shutdown()
     await c2.shutdown()
-
-    
-
