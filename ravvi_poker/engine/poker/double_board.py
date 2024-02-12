@@ -1,3 +1,7 @@
+from decimal import Decimal, ROUND_UP, ROUND_DOWN
+from itertools import groupby
+
+
 class MixinMeta(type):
     def __call__(cls, *args, **kwargs):
         try:
@@ -28,44 +32,81 @@ class DoubleBoardMixin:
 
     def get_winners(self):
         # делим каждый банк на две части
-        banks_len = len(self.banks)
-        for _ in range(banks_len):
-            bank = self.banks.pop(0)
+        banks = [[], []]
+        for num in range(len(self.banks)):
             # TODO округление
-            self.banks.append(
-                (round(bank[0] / 2, 2), bank[1]) * 2
+            banks[0].append(
+                (round(self.banks[num][0] / 2, 2), self.banks[num][1]),
+            )
+            banks[1].append(
+                (round(self.banks[num][0] / 2, 2), self.banks[num][1])
             )
 
-        super().get_winners()
+        winners = [{}, {}]
+        players = [p for p in self.players if p.in_the_game]
+        if len(players) == 1:
+            p = players[0]
+            w_amount = 0
+            # если один игрок, то нам нет необходимости использовать раздвоенные банки
+            for bank_amount, _ in self.banks:
+                w_amount += bank_amount
+            winners[p.user_id] = w_amount
+        else:
+            for num in range(2):
+                rankKey = lambda x: x.hand[num].rank
+                for amount, bank_players in banks[num]:
+                    bank_players.sort(key=rankKey)
+                    bank_winners = []
+                    for _, g in groupby(bank_players, key=rankKey):
+                        bank_winners = list(g)
+                    # TODO округление
+                    w_amount = round(amount / len(bank_winners), 2)
+                    for p in bank_winners:
+                        amount = winners[num].get(p.user_id, 0)
+                        winners[num][p.user_id] = amount + w_amount
 
-    # async def open_cards_in_game_end(self, players, open_all):
-    #     best_hand = None
-    #     async with self.DBI() as db:
-    #         # соберем общий список для открытия карт
-    #         players_to_open_cards = [[], []]
-    #         for num in range(2):
-    #             for p in players:
-    #
-    #
-    #
-    #
-    #
-    #         for p in players:
-    #             if not best_hand or best_hand.rank <= p.hand.rank:
-    #                 best_hand = p.hand
-    #             elif open_all:
-    #                 pass
-    #             else:
-    #                 continue
-    #             if p.cards_open:
-    #                 continue
-    #             p.cards_open = True
-    #             await self.broadcast_PLAYER_CARDS(db, p)
-    #             if isinstance(p.hand, list):
-    #                 self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand,
-    #                               ",".join([str(hand.type) for hand in p.hand]))
-    #             else:
-    #                 self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.type)
+        winners_info = [[], []]
+        for num in range(2):
+            for p in players:
+                amount = winners[num].get(p.user_id, None)
+                if not amount:
+                    continue
+                p.user.balance += amount
+                delta = p.balance - p.balance_0
+                # на первый список победителей не меняем баланс и дельту для фронтенда
+                info = dict(
+                    user_id=p.user_id,
+                    balance=p.balance if num == 1 else p.balance - amount,
+                    delta=delta if num == 1 else 0
+                )
+                self.log.info("winner: %s %s %s", p.user_id, p.balance, delta)
+                winners_info[num].append(info)
+
+        return winners_info
+
+    async def open_cards_in_game_end(self, players, open_all):
+        best_hand = [None, None]
+        async with self.DBI() as db:
+            # соберем общий список для открытия карт
+            players_to_open_cards = []
+            for num in range(2):
+                for p in players:
+                    if not best_hand[num] or best_hand[num].rank <= p.hand[num].rank:
+                        best_hand[num] = p.hand[num]
+                    elif open_all:
+                        pass
+                    else:
+                        continue
+                    if p.cards_open:
+                        continue
+                    p.cards_open = True
+                    if p not in players_to_open_cards:
+                        players_to_open_cards.append(p)
+
+            for p in players_to_open_cards:
+                await self.broadcast_PLAYER_CARDS(db, p)
+                self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand,
+                              ",".join([str(hand.type) for hand in p.hand]))
 
     async def broadcast_PLAYER_CARDS(self, db, player):
         from ravvi_poker.engine.poker.base import PokerBase
@@ -83,6 +124,11 @@ class DoubleBoardMixin:
                                                             if len(hand_types_list) != 0 else None,
                                                             hand_cards=[hand_cards for hand_cards in hand_cards_list]
                                                             if len(hand_cards_list) != 0 else None)
+
+    async def broadcast_GAME_RESULT(self, db, winners):
+        for winner_message in winners:
+            await super().broadcast_GAME_RESULT(db, winner_message)
+
 
 # def extend_game_with_double_board(obj):
 #     obj.__class__ = type(obj.__class__.__name__, (DoubleBoardMixin, obj.__class__), {})

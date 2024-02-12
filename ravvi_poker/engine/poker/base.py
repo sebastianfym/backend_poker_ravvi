@@ -551,11 +551,7 @@ class PokerBase(Game):
                     continue
                 p.cards_open = True
                 await self.broadcast_PLAYER_CARDS(db, p)
-                if isinstance(p.hand, list):
-                    self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand,
-                                  ",".join([str(hand.type) for hand in p.hand]))
-                else:
-                    self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.type)
+                self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.type)
 
     def get_winners(self):
         winners = {}
@@ -573,7 +569,7 @@ class PokerBase(Game):
                 bank_winners = []
                 for _, g in groupby(bank_players, key=rankKey):
                     bank_winners = list(g)
-                w_amount = int(amount / len(bank_winners))
+                w_amount = round(amount / len(bank_winners), 2)
                 for p in bank_winners:
                     amount = winners.get(p.user_id, 0)
                     winners[p.user_id] = amount + w_amount
