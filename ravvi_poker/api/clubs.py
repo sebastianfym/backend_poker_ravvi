@@ -20,7 +20,6 @@ router = APIRouter(prefix="/clubs", tags=["clubs"])
 class ClubProps(BaseModel):
     name: str | None = None
     description: str | None = None
-    # TODO не должно быть None
     image_id: int | None = None
 
 
@@ -46,7 +45,9 @@ class ClubMemberProfile(BaseModel):
     image_id: int | None = None
     user_role: str | None = None
     user_approved: bool | None = None
-
+    nickname: str | None = None
+    balance: float | None = 00.00
+    balance_shared: float | None = 00.00
 
 class UnionProfile(BaseModel):
     name: str | None = None
@@ -65,6 +66,55 @@ class AccountDetailInfo(BaseModel):
     bb_100_winning: float | None
     now_datestamp: float | None
 
+
+class ClubChipsValue(BaseModel):
+    amount: Decimal = Field(
+        gt=0,
+        lt=10 ** 10,
+        decimal_places=2
+    )
+
+    @field_validator("amount", mode="before")
+    @classmethod
+    def ensure_not_str(cls, v: Any):
+        if isinstance(v, str):
+            raise ValueError
+        return v
+
+
+async def check_rights_user_club_owner(club_id: int, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+        elif club.closed_ts:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+        club_owner_account = await db.find_account(user_id=user.id, club_id=club_id)
+        if club_owner_account is None or club_owner_account.user_role != "O":
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+
+    return club_owner_account, user
+
+
+async def check_rights_user_club_owner_or_manager(club_id: int, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+        elif club.closed_ts:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+        club_owner_account = await db.find_account(user_id=user.id, club_id=club_id)
+        if club_owner_account is None or club_owner_account.user_role.lower() not in ['o', 'm']:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action.")
+        return club_owner_account, user
 
 @router.post("", status_code=HTTP_201_CREATED, summary="Create new club")
 async def v1_create_club(params: ClubProps, session_uuid: SessionUUID):
@@ -259,10 +309,10 @@ async def v1_create_club_table(club_id: int, params: TableParams, session_uuid: 
         kwargs = params.model_dump(exclude_unset=False)
         main_parameters = ["club_id", "table_type", "table_name", "table_seats", "game_type", "game_subtype"]
 
-        table_type = kwargs.get('table_type')  # .value
+        table_type = kwargs.get('table_type')
         table_name = kwargs.get('table_name')
         table_seats = kwargs.get('table_seats')
-        game_type = kwargs.get('game_type')  # .value
+        game_type = kwargs.get('game_type')
         game_subtype = kwargs.get('game_subtype')
 
         for param in ["players_count", "viewers_count", "created", "opened", "closed"]:
@@ -353,39 +403,6 @@ async def v1_get_all_unions(session_uuid: SessionUUID):
         if not unions:
             return []
         return [UnionProfile(id=union.id, name=union.name) for union in unions]
-
-
-class ClubChipsValue(BaseModel):
-    amount: Decimal = Field(
-        gt=0,
-        lt=10 ** 10,
-        decimal_places=2
-    )
-
-    @field_validator("amount", mode="before")
-    @classmethod
-    def ensure_not_str(cls, v: Any):
-        if isinstance(v, str):
-            raise ValueError
-        return v
-
-
-async def check_rights_user_club_owner(club_id: int, session_uuid: SessionUUID):
-    async with DBI() as db:
-        _, user = await get_session_and_user(db, session_uuid)
-        club = await db.get_club(club_id)
-        if not club:
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                detail="You don't have enough rights to perform this action")
-        elif club.closed_ts:
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                detail="You don't have enough rights to perform this action")
-        club_owner_account = await db.find_account(user_id=user.id, club_id=club_id)
-        if club_owner_account is None or club_owner_account.user_role != "O":
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                detail="You don't have enough rights to perform this action")
-
-    return club_owner_account, user
 
 
 @router.post("/{club_id}/add_chip_on_club_balance", status_code=HTTP_200_OK,
@@ -540,7 +557,7 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
 
         bb_100_winning = 0
 
-        all_games_id = [id.game_id for id in await db.all_players_games(user.id)]
+        all_games_id = [id.game_id for id in await db.all_players_games(user.id)] #user.id
         access_games = []
         access_game_id = []
 
@@ -568,13 +585,13 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
             else:
                 blind_big_dict[big_blind] = {'big_blind': big_blind, 'sum_winning': balance_difference,
                                              'count': 1}
-
         result_list = list(blind_big_dict.values())
 
         quantity_games = 0
         for winning_100 in result_list:
             bb_100_winning += winning_100['sum_winning'] / winning_100['big_blind']
             quantity_games += winning_100['count']
+
         try:
             bb_100_winning /= quantity_games
             bb_100_winning *= 100
@@ -584,7 +601,7 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
         return AccountDetailInfo(
             join_datestamp=unix_time,
             now_datestamp=now_datestamp,
-            timezone="Asia/Singapore",
+            timezone=club.timezone,
             table_types=set(table_types),
             game_types=set(game_types),
             game_subtypes=set(game_subtype),
@@ -593,3 +610,34 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
             winning=winning,
             bb_100_winning=bb_100
         )
+
+
+@router.get("/{club_id}/operations_at_the_checkout", status_code=HTTP_200_OK, summary="Get all the operations that were carried out at the club's cash desk and detailed information about these operations")
+async def v1_operations_at_the_checkout(club_id: int, users=Depends(check_rights_user_club_owner_or_manager)):
+    async with DBI() as db:
+        club = await db.get_club(club_id)
+        club_balance = club.club_balance
+
+        club_members = [
+                        ClubMemberProfile(
+                            id=member.id,
+                            username=(await db.get_user(id=member.user_id)).name,
+                            nickname=member.nickname,
+                            user_role=member.user_role,
+                            balance=member.balance,
+                            balance_shared=member.balance_shared,
+                            user_img=(await db.get_user_image(member.user_id)).image_id
+                        )
+                        for member in await db.get_club_members(club_id)]
+
+        members_balance = sum(user.balance for user in club_members)
+        shared_balance = sum(user.balance_shared for user in club_members)
+        total_balance = members_balance + shared_balance
+
+    return {
+        "club_balance": club_balance,
+        "members_balance": members_balance,
+        "agents_balance": shared_balance,
+        "total_balance": total_balance,
+        "club_members": club_members
+    }

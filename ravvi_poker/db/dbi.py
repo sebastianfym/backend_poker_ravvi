@@ -187,6 +187,13 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def get_user_image(self, user_id):
+        sql = "SELECT image_id FROM user_profile WHERE id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (user_id,))
+            row = await cursor.fetchone()
+        return row
+
     # LOGIN
 
     async def create_login(self, device_id, user_id):
