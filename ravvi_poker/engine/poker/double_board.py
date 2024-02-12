@@ -1,4 +1,3 @@
-from decimal import Decimal, ROUND_UP, ROUND_DOWN
 from itertools import groupby
 
 
@@ -72,12 +71,12 @@ class DoubleBoardMixin:
                 if not amount:
                     continue
                 p.user.balance += amount
-                delta = p.balance - p.balance_0
+                delta = round(p.balance - p.balance_0, 2)
                 # на первый список победителей не меняем баланс и дельту для фронтенда
                 info = dict(
                     user_id=p.user_id,
-                    balance=p.balance if num == 1 else p.balance - amount,
-                    delta=delta if num == 1 else 0
+                    balance=p.balance,
+                    delta=delta
                 )
                 self.log.info("winner: %s %s %s", p.user_id, p.balance, delta)
                 winners_info[num].append(info)

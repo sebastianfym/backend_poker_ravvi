@@ -166,7 +166,7 @@
       "hand_cards": [["K♦", "T♦", "9♦", "5♣", "5♦"], ["A♥", "K♦", "Q♥", "5♣", "5♥"]]},
 
 
-    {"type": "GAME_RESULT", "winners": [{"user_id": 333, "balance": 11.5, "delta": 0}]},
+    {"type": "GAME_RESULT", "winners": [{"user_id": 333, "balance": 19.0, "delta": 2}]},
     {"type": "GAME_RESULT", "winners": [{"user_id": 333, "balance": 26.5, "delta": 9.5}]},
     {"type": "GAME_END"}
   ]

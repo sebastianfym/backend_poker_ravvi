@@ -258,7 +258,7 @@ class PokerBase(Game):
         p.bet_amount += p.bet_delta
         p.bet_total += p.bet_delta
         self.bank_total += p.bet_delta
-        p.user.balance -= p.bet_delta
+        p.user.balance = round(p.user.balance - p.bet_delta, 2)
 
         if self.bet_level < p.bet_amount:
             self.bet_id = p.user_id
@@ -270,9 +270,12 @@ class PokerBase(Game):
 
     def update_banks(self):
         self.banks, self.bank_total = get_banks(self.players)
+        # TODO окргуление
+        self.bank_total = round(self.bank_total, 2)
         banks_info = []
         for b in self.banks:
-            banks_info.append(b[0])
+            # TODO окргуление
+            banks_info.append(round(b[0], 2))
         # reset bet status
         for p in self.players:
             p.bet_amount = 0
