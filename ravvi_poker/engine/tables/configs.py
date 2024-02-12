@@ -54,8 +54,8 @@ class TableSafety(TableConfigParams):
 class TableGameModesConfig(TableConfigParams):
     def __init__(self, game_type: str, game_subtype: str, jackpot: bool | None = None, ante_up: bool | None = None,
                  double_board: bool | None = None,
-                 bomb_pot: bool | None = None, every_hand: int | None = None, bomb_pot_ante_min: int | None = None,
-                 bomb_pot_ante_max: int | None = None, bomb_pot_triggers_double_board: bool | None = None,
+                 bombpot_freq: int | None = None, bombpot_min: int | None = None, bombpot_max: int | None = None,
+                 bombpot_double_board: bool | None = None,
                  seven_deuce: bool | None = None, each_prize: int | None = None, hi_low: bool | None = None,
                  ofc_joker: bool | None = None,
                  **kwargs):
@@ -69,14 +69,13 @@ class TableGameModesConfig(TableConfigParams):
 
         self.double_board = double_board
 
-        self.bombpot = bomb_pot
-        if self.bombpot:
-            self.bombpot = {
-                "step": 1,
-                "freq": every_hand,
-                "ante_min": bomb_pot_ante_min,
-                "ante_max": bomb_pot_ante_max,
-                "double_board": bomb_pot_triggers_double_board
+        self.bombpot_settings = None
+        if bombpot_freq and bombpot_min and bombpot_max:
+            self.bombpot_settings = {
+                "freq": bombpot_freq,
+                "ante_min": bombpot_min,
+                "ante_max": bombpot_max,
+                "double_board": bombpot_double_board
             }
 
         self.seven_deuce = seven_deuce

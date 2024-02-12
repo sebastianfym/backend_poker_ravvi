@@ -7,8 +7,10 @@ class Table_RG(Table):
     TABLE_TYPE = "RG"
 
     def parse_props(self, buyin_min=100, buyin_max=None, blind_small: float = 0.01,
-                    blind_big: float | None = None, ante_up: bool | None = None, action_time=30, **kwargs):
+                    blind_big: float | None = None, ante_up: bool | None = None,
+                    action_time=30, **kwargs):
         from ..poker.ante import AnteUpController
+        from ..poker.bomb_pot import BombPotController
 
         self.buyin_min = buyin_min
         self.buyin_max = buyin_max
@@ -19,6 +21,9 @@ class Table_RG(Table):
             self.ante = AnteUpController(blind_small)
             if len(self.ante.ante_levels) != 0:
                 self.game_props.update(ante=self.ante.current_ante_value)
+        if bompot_settings := getattr(self, "game_modes_config").bombpot_settings:
+            self.bombpot = BombPotController(bompot_settings)
+            # TODO согласовать что отправлять
 
     @property
     def user_enter_enabled(self):
