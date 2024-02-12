@@ -732,9 +732,9 @@ class DBI:
 
     async def giving_chips_to_the_user(self, amount, user_account_id, balance, sender_id):
         if balance == "balance":
-            sql = "UPDATE user_account SET balance = balance + %s WHERE user_id = %s RETURNING balance"
+            sql = "UPDATE user_account SET balance = balance + %s WHERE id = %s RETURNING balance"
         elif balance == "balance_shared":
-            sql = "UPDATE user_account SET balance_shared = balance_shared + %s WHERE user_id = %s RETURNING balance"
+            sql = "UPDATE user_account SET balance_shared = balance_shared + %s WHERE id = %s RETURNING balance"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (amount, user_account_id))
             row = await cursor.fetchone()

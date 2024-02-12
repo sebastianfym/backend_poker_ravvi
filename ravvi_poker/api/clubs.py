@@ -1,4 +1,5 @@
 import datetime
+import decimal
 import time
 from decimal import Decimal
 from typing import Annotated, Any
@@ -678,3 +679,43 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
             except AttributeError:
                 continue
         return all_users_requests
+
+
+@router.post("/{club_id}/pick_up_or_give_out_chips", status_code=HTTP_200_OK, summary="Pick up or give out chips to members")
+async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Depends(check_rights_user_club_owner)):
+    mode = (await request.json())['mode']
+    members_list = (await request.json())['club_members']
+    club_owner_account = users[0]
+
+    amount = decimal.Decimal((await request.json())['amount'])
+    if amount <= 0 or isinstance(amount, decimal.Decimal) is False:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid mode value')
+    if len(members_list) == 0:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Quantity club members for action is invalid')
+
+    async with DBI() as db:
+        if mode == 'pick_up':
+            for member in members_list:
+                if member['balance'] is True and member['balance_shared'] is True:
+                    await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
+                    await db.delete_chips_from_the_agent_balance(amount, member['id'])#, club_owner_account.id) #Todo дописать в эту функцию добавление sender_d
+                elif member['balance'] is False and member['balance_shared'] is True:
+                    await db.delete_chips_from_the_agent_balance(amount, member['id']) #Todo дописать в эту функцию добавление sender_d
+                elif member['balance'] is True and member['balance_shared'] is False:
+                    await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
+            return HTTP_200_OK
+
+        elif mode == 'give_out':
+            for member in members_list:
+                if member['balance'] is True and member['balance_shared'] is True:
+                    await db.giving_chips_to_the_user(amount, member['id'], "balance", club_owner_account.id)
+                    await db.giving_chips_to_the_user(amount, member['id'], "balance_shared", club_owner_account.id)
+                elif member['balance'] is False and member['balance_shared'] is True:
+                    await db.giving_chips_to_the_user(amount, member['id'], "balance_shared", club_owner_account.id)
+                elif member['balance'] is True and member['balance_shared'] is False:
+                    await db.giving_chips_to_the_user(amount, member['id'], "balance", club_owner_account.id)
+            return HTTP_200_OK
+
+        else:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid mode value')
+
