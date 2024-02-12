@@ -123,12 +123,12 @@
     {"type": "GAME_ROUND", "banks": [39, 14.56, 5.85], "bank_total": 59.41},
 
     {"type": "GAME_RESULT", "winners": [
-      {"user_id": 222, "balance": 2.93, "delta": -23.2},
+      {"user_id": 222, "balance": 2.92, "delta": -23.21},
       {"user_id": 333, "balance": 7.28, "delta": -13.0},
       {"user_id": 111, "balance": 19.5, "delta": 6.5}
     ]},
     {"type": "GAME_RESULT", "winners": [
-      {"user_id": 222, "balance": 5.86, "delta": -20.27},
+      {"user_id": 222, "balance": 5.84, "delta": -20.29},
       {"user_id": 333, "balance": 34.06, "delta": 13.78}
     ]},
     {"type": "GAME_END"}

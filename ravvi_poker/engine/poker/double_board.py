@@ -33,6 +33,8 @@ class DoubleBoardMixin:
         # делим каждый банк на две части
         banks = [[], []]
         for num in range(len(self.banks)):
+            print(self.banks[num][0] / 2)
+            print(round(self.banks[num][0] / 2, 2))
             # TODO округление
             banks[0].append(
                 (round(self.banks[num][0] / 2, 2), self.banks[num][1]),
