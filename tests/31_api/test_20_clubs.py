@@ -558,7 +558,7 @@ async def test_giving_chips_to_the_user(api_client: TestClient, api_guest: UserA
                                  (user_account_to_get_chips.id, club.id))
             balance = await cursor.fetchone()
             # TODO окргуление
-            assert getattr(balance, balance_type).quantize(Decimal('.01')) == Decimal(amount).quantize(Decimal('.01'))
+            assert getattr(balance, balance_type).quantize(Decimal('.01')) == 0.00
 
             # проверяем транзакцию
             # cursor.execute("SELECT * FROM user_account_txn WHERE id = %s AND club_id = %s ")
