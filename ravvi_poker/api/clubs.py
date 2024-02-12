@@ -45,9 +45,20 @@ class ClubMemberProfile(BaseModel):
     image_id: int | None = None
     user_role: str | None = None
     user_approved: bool | None = None
+
     nickname: str | None = None
     balance: float | None = 00.00
     balance_shared: float | None = 00.00
+
+
+class UserRequest(BaseModel):
+    id: int | None
+    username: str | None
+    user_img: int | None
+    user_role: str | None
+    nickname: str | None
+    txn_value: float | None
+
 
 class UnionProfile(BaseModel):
     name: str | None = None
@@ -97,7 +108,7 @@ async def check_rights_user_club_owner(club_id: int, session_uuid: SessionUUID):
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
                                 detail="You don't have enough rights to perform this action")
 
-    return club_owner_account, user
+    return club_owner_account, user, club
 
 
 async def check_rights_user_club_owner_or_manager(club_id: int, session_uuid: SessionUUID):
@@ -114,7 +125,8 @@ async def check_rights_user_club_owner_or_manager(club_id: int, session_uuid: Se
         if club_owner_account is None or club_owner_account.user_role.lower() not in ['o', 'm']:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
                                 detail="You don't have enough rights to perform this action.")
-        return club_owner_account, user
+        return club_owner_account, user, club
+
 
 @router.post("", status_code=HTTP_201_CREATED, summary="Create new club")
 async def v1_create_club(params: ClubProps, session_uuid: SessionUUID):
@@ -459,7 +471,7 @@ async def v1_club_giving_chips_to_the_user(club_id: int, request: Annotated[
              summary="Owner take away chips from the club's user")
 async def v1_club_delete_chips_from_the_user(club_id: int, request: Annotated[
     UserChipsValue, Depends(check_compatibility_recipient_and_balance_type)],
-                                           users=Depends(check_rights_user_club_owner)):
+                                             users=Depends(check_rights_user_club_owner)):
     async with DBI() as db:
         if request.balance == "balance":
             await db.delete_chips_from_the_account_balance(request.amount, users[1].id, request.recipient_user_id)
@@ -551,13 +563,15 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
                 game_subtype.append(game.game_subtype)
 
         winning_row = await db.get_statistics_about_winning(account.id, date_now)
-        sum_all_buyin = sum([float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']])
-        sum_all_cashout = sum([float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'CASHOUT']])
+        sum_all_buyin = sum(
+            [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']])
+        sum_all_cashout = sum(
+            [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'CASHOUT']])
         winning = sum_all_cashout - abs(sum_all_buyin)
 
         bb_100_winning = 0
 
-        all_games_id = [id.game_id for id in await db.all_players_games(user.id)] #user.id
+        all_games_id = [id.game_id for id in await db.all_players_games(user.id)]  # user.id
         access_games = []
         access_game_id = []
 
@@ -569,10 +583,10 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
 
         game_props_list = []
         for game_id in access_game_id:
-            balance_data = await db.get_balance_begin_and_end_from_game(game_id, user.id) #
+            balance_data = await db.get_balance_begin_and_end_from_game(game_id, user.id)  #
             game_data = await db.get_game_and_players(game_id)
             game_props_list.append({'game_id': game_id, 'balance_begin': float(balance_data.balance_begin),
-                                    'balance_end':float(balance_data.balance_end),
+                                    'balance_end': float(balance_data.balance_end),
                                     'big_blind': game_data[0].props['blind_big']})
 
         blind_big_dict = {}
@@ -606,29 +620,30 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
             game_types=set(game_types),
             game_subtypes=set(game_subtype),
             opportunity_leave=opportunity_leave,
-            hands=count_of_games_played, #todo потом добавить триггеры
+            hands=count_of_games_played,  # todo потом добавить триггеры
             winning=winning,
             bb_100_winning=bb_100
         )
 
 
-@router.get("/{club_id}/operations_at_the_checkout", status_code=HTTP_200_OK, summary="Get all the operations that were carried out at the club's cash desk and detailed information about these operations")
+@router.get("/{club_id}/operations_at_the_checkout", status_code=HTTP_200_OK,
+            summary="Get all the operations that were carried out at the club's cash desk and detailed information about these operations")
 async def v1_operations_at_the_checkout(club_id: int, users=Depends(check_rights_user_club_owner_or_manager)):
     async with DBI() as db:
-        club = await db.get_club(club_id)
+        club = users[2]  # await db.get_club(club_id)
         club_balance = club.club_balance
 
         club_members = [
-                        ClubMemberProfile(
-                            id=member.id,
-                            username=(await db.get_user(id=member.user_id)).name,
-                            nickname=member.nickname,
-                            user_role=member.user_role,
-                            balance=member.balance,
-                            balance_shared=member.balance_shared,
-                            user_img=(await db.get_user_image(member.user_id)).image_id
-                        )
-                        for member in await db.get_club_members(club_id)]
+            ClubMemberProfile(
+                id=member.id,
+                username=(await db.get_user(id=member.user_id)).name,
+                nickname=member.nickname,
+                user_role=member.user_role,
+                balance=member.balance,
+                balance_shared=member.balance_shared,
+                user_img=(await db.get_user_image(member.user_id)).image_id
+            )
+            for member in await db.get_club_members(club_id)]
 
         members_balance = sum(user.balance for user in club_members)
         shared_balance = sum(user.balance_shared for user in club_members)
@@ -641,3 +656,25 @@ async def v1_operations_at_the_checkout(club_id: int, users=Depends(check_rights
         "total_balance": total_balance,
         "club_members": club_members
     }
+
+
+@router.get("/{club_id}/get_requests_for_chips", status_code=HTTP_200_OK, summary="Get request for chips")
+async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_user_club_owner)):
+    all_users_requests = []
+    async with DBI() as db:
+        for member in await db.get_club_members(club_id):
+            try:
+                txn_value = (await db.get_user_requests_to_replenishment(member.id)).txn_value
+                all_users_requests.append(
+                    UserRequest(
+                        id=member.id,
+                        username=(await db.get_user(id=member.user_id)).name,
+                        nickname=member.nickname,
+                        user_role=member.user_role,
+                        user_img=(await db.get_user_image(member.user_id)).image_id,
+                        txn_value=txn_value,
+                    )
+                )
+            except AttributeError:
+                continue
+        return all_users_requests

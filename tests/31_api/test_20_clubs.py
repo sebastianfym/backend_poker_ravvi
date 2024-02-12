@@ -579,3 +579,13 @@ def test_operations_at_the_checkout(api_client: TestClient, api_guest: UserAcces
     assert response.json().get('club_members')[0]['user_role'] == "O"
     assert response.json().get('club_members')[0]['balance'] == 0.0
     assert response.json().get('club_members')[0]['balance_shared'] == 0.0
+
+
+def test_get_requests_for_chips(api_client: TestClient, api_guest: UserAccessProfile): #TODO эти тесты перенести в тесты, которые создают запрос на получение фишек
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+
+    club = create_club(api_client)
+
+    response = api_client.get(f"/v1/clubs/{club.id}/get_requests_for_chips")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)

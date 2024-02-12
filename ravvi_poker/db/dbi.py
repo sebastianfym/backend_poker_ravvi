@@ -690,7 +690,7 @@ class DBI:
     async def send_request_for_replenishment_of_chips(self, account_id, amount, balance):
         sql = "INSERT INTO public.user_account_txn (account_id, txn_type, txn_value, props) VALUES (%s, %s, %s, %s::jsonb)"
         txn_type = "replenishment"
-        props = {"balance": balance}
+        props = {"balance": balance, "status": "consider"}
         props_json = json.dumps(props)  # Преобразование словаря в JSON-строку
         async with self.cursor() as cursor:
             await cursor.execute(sql, (account_id, txn_type, amount, props_json))
@@ -800,7 +800,13 @@ class DBI:
                 result_list.append(row)
         return row
 
-    # ACCOUNT STATISTICS
+    async def get_user_requests_to_replenishment(self, account_id):
+        sql = "SELECT txn_value FROM user_account_txn WHERE account_id = %s AND props @> %s::jsonb"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (account_id, json.dumps({"status": "consider"})))
+            row = await cursor.fetchone()
+        return row
+        # ACCOUNT STATISTICS
 
     async def statistics_of_games_played(self, table_id, date):
         date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
