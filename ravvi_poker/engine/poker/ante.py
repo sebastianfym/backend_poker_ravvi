@@ -27,3 +27,7 @@ class AnteUpController:
                 self.current_ante_value = self.ante_levels[0]
             elif self.current_ante_value != self.ante_levels[-1]:
                 self.current_ante_value = self.ante_levels[self.ante_levels.index(self.current_ante_value) + 1]
+
+    async def reset_ante_level(self):
+        if self.current_ante_value != self.ante_levels[0]:
+            self.current_ante_value = self.ante_levels[0] if len(self.ante_levels) != 0 else None

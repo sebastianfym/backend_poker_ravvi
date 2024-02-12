@@ -445,6 +445,9 @@ class Table:
         async with self.lock:
             users = self.get_game_players()
             if not users:
+                # сбрасываем уровень анте
+                if self.ante:
+                    await self.ante.reset_ante_level()
                 return
             self.game = await self.create_game(users)
         try:
