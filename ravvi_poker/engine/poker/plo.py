@@ -1,4 +1,5 @@
 from itertools import combinations
+from typing import List
 
 from .base import PokerBase
 from .double_board import MixinMeta

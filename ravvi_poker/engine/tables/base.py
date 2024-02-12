@@ -23,6 +23,8 @@ class Table:
             self, id, table_name, *, table_seats, parent_id=None, club_id=None, game_type=None, game_subtype=None,
             props=None, **kwargs
     ):
+        from ..poker.ante import AnteUpController
+
         # table async lock
         self.lock = asyncio.Lock()
         # db connection
@@ -30,6 +32,9 @@ class Table:
         # async task
         self.task: asyncio.Task = None
         self.status = None
+
+        # инстансы параметров
+        self.ante: AnteUpController | None = None
 
         self.club_id = club_id
         self.table_id = id
@@ -43,12 +48,14 @@ class Table:
         self.game_subtype = game_subtype
         self.game_props = {}
         self.game = None
-        self.parse_props(**(props or {}))
 
         # инициализируем настройки стола
         for configCl in configCls:
             setattr(self, configCl.cls_as_config_name(), configCl(**props, game_type=game_type,
                                                                   game_subtype=game_subtype))
+
+        # формируем другие параметры
+        self.parse_props(**(props or {}))
 
     def parse_props(self, **kwargs):
         pass
@@ -160,7 +167,6 @@ class Table:
 
     def get_table_info(self, user_id):
         users_info = {u.id: u.get_info() for u in self.seats if u is not None}
-        print(self.game_props)
         result = dict(
             table_id=self.table_id,
             table_name=self.table_name,
@@ -448,4 +454,5 @@ class Table:
 
         async with self.lock:
             await self.close_game(self.game)
+
             self.game = None

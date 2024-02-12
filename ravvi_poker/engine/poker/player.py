@@ -25,6 +25,7 @@ class Player(PlayerBase):
         self.active = True
         self.bet_type = None
         self.bet_amount = 0
+        self.bet_ante = 0
         self.bet_delta = 0
         self.bet_total = 0
 

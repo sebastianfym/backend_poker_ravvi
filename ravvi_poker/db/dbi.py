@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 import json
@@ -7,17 +8,16 @@ import psycopg_pool
 from psycopg.rows import namedtuple_row, dict_row
 from psycopg.connection import Notify
 
-
 logger = logging.getLogger(__name__)
 
 
 class DBI:
-    DB_HOST = os.getenv("RAVVI_POKER_DB_HOST", "postgres")
-    DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "5432"))
+    DB_HOST = os.getenv("RAVVI_POKER_DB_HOST", "localhost")
+    DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "15432"))
     DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "develop")
     DB_USER = os.getenv("RAVVI_POKER_DB_USER", "postgres")
     DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
-    APPLICATION_NAME = "CPS"
+    APPLICATION_NAME = 'CPS'
     CONNECT_TIMEOUT = 15
 
     pool = None
@@ -369,7 +369,7 @@ class DBI:
             await cursor.execute(sql, values)
             row = await cursor.fetchone()
         return row
-    
+
     # USER ACCOUNT
 
     async def create_club_member(self, club_id, user_id, user_comment):
@@ -391,14 +391,15 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    async def create_account_txn(self, member_id, txntype, amount):
+    async def create_account_txn(self, member_id, txntype, amount, sender_id):
         async with self.cursor() as cursor:
             sql = "UPDATE user_account SET balance=balance+(%s) WHERE id=%s RETURNING balance"
             await cursor.execute(sql, (amount, member_id))
             row = await cursor.fetchone()
-            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value) VALUES (%s,%s,%s) RETURNING *"
-            await cursor.execute(sql, (member_id, txntype, amount))
-            txn = await cursor.fetchone()
+
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
+            await cursor.execute(sql, (member_id, txntype, amount, row.balance, sender_id))
+            # txn = await cursor.fetchone()
         return row
 
     async def find_account(self, *, user_id, club_id):
@@ -430,7 +431,8 @@ class DBI:
 
     # TABLE
 
-    async def create_table(self, *, club_id=0, table_type, table_name, table_seats, game_type, game_subtype, props=None):
+    async def create_table(self, *, club_id=0, table_type, table_name, table_seats, game_type, game_subtype,
+                           props=None):
         props = json.dumps(props or {})
         sql = "INSERT INTO table_profile (club_id, table_type, table_name, table_seats, game_type, game_subtype, props) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING *"
         async with self.cursor() as cursor:
@@ -595,6 +597,12 @@ class DBI:
             await cursor.execute(profile_sql, (id,))
             return await cursor.fetchone()
 
+    async def all_players_games(self, user_id):
+        sql = "SELECT game_id FROM game_player WHERE user_id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (user_id,))
+            row = await cursor.fetchall()
+        return row
     # EVENTS (TABLE_CMD)
 
     def json_dumps(self, obj):
@@ -644,5 +652,180 @@ class DBI:
     async def get_table_msg(self, id):
         async with self.cursor() as cursor:
             await cursor.execute("SELECT * FROM table_msg WHERE id=%s", (id,))
+            row = await cursor.fetchone()
+        return row
+
+        # CLUB'S TXN
+
+    async def txn_with_chip_on_club_balance(self, club_id, amount, mode, account_id, sender_id):
+        if mode == 'CASHIN':
+            sql = "UPDATE club_profile SET club_balance = club_balance + %s WHERE id=%s RETURNING club_balance"
+        elif mode == 'REMOVE':
+            sql = "UPDATE club_profile SET club_balance = club_balance - %s WHERE id=%s  RETURNING club_balance"
+        async with self.cursor() as cursor:
+            if mode == 'REMOVE':
+                check_sql = "SELECT club_balance FROM club_profile WHERE id=%s"
+                await cursor.execute(check_sql, (club_id,))
+                club_balance = await cursor.fetchone()
+
+                if (club_balance.club_balance - amount) < 0.0:
+                    reset_balance_sql = "UPDATE club_profile SET club_balance = 0 WHERE id=%s"
+                    await cursor.execute(reset_balance_sql, (club_id,))
+                    sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
+                    await cursor.execute(sql, (account_id, f"CLUB_{mode}", amount, 0, sender_id))
+                    return
+
+            await cursor.execute(sql, (amount, club_id))
+            row = await cursor.fetchone()
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
+            await cursor.execute(sql, (account_id, f"CLUB_{mode}", amount, row.club_balance, sender_id))
+
+    async def send_request_for_replenishment_of_chips(self, account_id, amount, balance):
+        sql = "INSERT INTO public.user_account_txn (account_id, txn_type, txn_value, props) VALUES (%s, %s, %s, %s::jsonb)"
+        txn_type = "replenishment"
+        props = {"balance": balance}
+        props_json = json.dumps(props)  # Преобразование словаря в JSON-строку
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (account_id, txn_type, amount, props_json))
+        return
+
+    async def get_user_balance_in_club(self, club_id, user_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT balance FROM user_account WHERE club_id = %s AND user_id = %s",
+                                 (club_id, user_id))
+            row = await cursor.fetchone()
+            if row.balance < 0:
+                return 0
+        return row.balance
+
+    async def get_balance_shared_in_club(self, club_id, user_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT user_role FROM user_account WHERE club_id = %s AND user_id = %s",
+                                 (club_id, user_id))
+            role = await cursor.fetchone()
+            if role.user_role == "A" or role.user_role == "SA" or role.user_role == "O":
+                await cursor.execute("SELECT balance_shared FROM user_account WHERE club_id = %s AND user_id = %s",
+                                     (club_id, user_id))
+                row = await cursor.fetchone()
+                return row.balance_shared
+            else:
+                return None
+
+    async def get_service_balance_in_club(self, club_id, user_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT user_role FROM user_account WHERE club_id = %s AND user_id = %s",
+                                 (club_id, user_id))
+            role = await cursor.fetchone()
+            if role.user_role == "O":
+                await cursor.execute("SELECT service_balance FROM club_profile WHERE id = %s ", (club_id,))
+                row = await cursor.fetchone()
+                return row.service_balance
+            else:
+                return None
+
+    async def giving_chips_to_the_user(self, amount, user_account_id, balance, sender_id):
+        if balance == "balance":
+            sql = "UPDATE user_account SET balance = balance + %s WHERE user_id = %s RETURNING balance"
+        elif balance == "balance_shared":
+            sql = "UPDATE user_account SET balance_shared = balance_shared + %s WHERE user_id = %s RETURNING balance"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (amount, user_account_id))
+            row = await cursor.fetchone()
+
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
+            await cursor.execute(sql, (user_account_id, "CASHIN", amount, row.balance, sender_id))
+
+    async def delete_chips_from_the_agent_balance(self, amount, account_id):
+        get_balance_shared_sql = "SELECT balance_shared FROM user_account WHERE id = %s"
+        sql = "UPDATE user_account SET balance_shared = balance_shared - %s WHERE id = %s RETURNING balance_shared"
+        async with self.cursor() as cursor:
+            await cursor.execute(get_balance_shared_sql, (account_id,))
+            balance_shared = await cursor.fetchone()
+
+            if (balance_shared.balance_shared - amount) < 0:
+                sql = "UPDATE user_account SET balance_shared = 0 WHERE id = %s"
+                await cursor.execute(sql, (account_id,))
+                return
+
+            await cursor.execute(sql, (amount, account_id,))
+            row = await cursor.fetchone()
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance) VALUES (%s, %s, %s, %s) RETURNING *"
+            await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance_shared))
+            return
+
+    async def delete_chips_from_the_account_balance(self, amount, account_id, sender_id):
+        get_balance_shared_sql = "SELECT balance FROM user_account WHERE id = %s"
+        sql = "UPDATE user_account SET balance = balance - %s WHERE id = %s RETURNING balance"
+        async with self.cursor() as cursor:
+            await cursor.execute(get_balance_shared_sql, (account_id,))
+            balance = await cursor.fetchone()
+            if (balance.balance - amount) < 0:
+                sql = "UPDATE user_account SET balance = 0 WHERE id = %s"
+                await cursor.execute(sql, (account_id,))
+            await cursor.execute(sql, (amount, account_id,))
+            row = await cursor.fetchone()
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
+            await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance, sender_id))
+            return
+
+    async def leave_from_club(self, account_id):
+        closed_time = datetime.datetime.utcnow()
+        sql = "UPDATE user_account SET closed_ts=%s, closed_by=%s WHERE id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (closed_time, account_id, account_id,))
+
+    async def return_member_in_club(self, account_id):
+        closed_time = datetime.datetime.utcnow()
+        sql = "UPDATE user_account SET created_ts=%s, closed_ts=%s, closed_by=%s WHERE id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (closed_time, None, None, account_id,))
+
+    async def get_user_history_trx_in_club(self, user_id, club_id):
+        sql_history = "SELECT * FROM user_account_txn WHERE account_id=%s"
+        sql_users_accounts = "SELECT id FROM user_account WHERE user_id=%s AND club_id=%s"
+        result_list = []
+        async with self.cursor() as cursor:
+            await cursor.execute(sql_users_accounts, (user_id, club_id))
+            rows_ids = await cursor.fetchall()
+            for a_id in rows_ids:
+                await cursor.execute(sql_history, (a_id.id,))
+                row = await cursor.fetchall()
+                result_list.append(row)
+        return row
+
+    # ACCOUNT STATISTICS
+
+    async def statistics_of_games_played(self, table_id, date):
+        date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+        tomorrow = date_now + datetime.timedelta(days=1)
+        sql = "SELECT * FROM public.game_profile WHERE table_id = %s AND end_ts >= %s AND end_ts < %s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (table_id, date_now, tomorrow,))
+            row = await cursor.fetchall()
+
+        return row
+
+    async def get_statistics_about_winning(self, account_id, date):
+        sql = "SELECT * FROM user_account_txn WHERE account_id=%s AND created_ts >= %s AND created_ts < %s"
+        date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+        tomorrow = date_now + datetime.timedelta(days=1)
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (account_id, date_now, tomorrow))
+            row = await cursor.fetchall()
+
+        return row
+
+    async def check_game_by_date(self, game_id, date):
+        date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+        sql = "SELECT * FROM game_profile WHERE id=%s AND CAST(end_ts AS DATE) = %s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (game_id, date_now))
+            row = await cursor.fetchone()
+        return row
+
+    async def get_balance_begin_and_end_from_game(self, game_id, user_id):
+        sql = "SELECT balance_begin, balance_end, game_id FROM game_player WHERE game_id=%s AND user_id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (game_id, user_id))
             row = await cursor.fetchone()
         return row

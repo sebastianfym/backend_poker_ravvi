@@ -23,6 +23,7 @@ class Round(IntEnum):
     FLOP = 2
     TERN = 3
     RIVER = 4
+    SHOWDOWN = 5
 
 
 class PokerBase(Game):
@@ -34,8 +35,8 @@ class PokerBase(Game):
     SLEEP_GAME_END = 4
 
     def __init__(self, table, users: List[User],
-                 *, blind_small: float = 0.01, blind_big: float = 0.02, ante=None, bet_timeout=30,
-                 **kwargs) -> None:
+                 *, blind_small: float = 0.01, blind_big: float = 0.02, bet_timeout=30,
+                 ante: float | None = None, **kwargs) -> None:
         super().__init__(table=table, users=users)
         self.log.logger = logger
         self.round = None
@@ -46,6 +47,8 @@ class PokerBase(Game):
 
         self.blind_small = blind_small
         self.blind_big = blind_big
+
+        # модификаторы
         self.ante = ante
 
         self.bet_id = None
@@ -59,22 +62,24 @@ class PokerBase(Game):
 
     @property
     def game_props(self):
-        return dict(
+        game_props = dict(
             blind_small=self.blind_small,
             blind_big=self.blind_big,
-            ante=self.ante,
             bet_timeout=self.bet_timeout
         )
+        if self.ante:
+            game_props |= {
+                'ante': self.ante
+            }
+
+        return game_props
 
     def player_factory(self, user) -> Player:
         return Player(user)
 
     def get_info(self, users_info: dict = None, user_id: int = None):
         info = super().get_info()
-        info.update(
-            blind_small=self.blind_small,
-            blind_big=self.blind_big,
-        )
+        info |= self.game_props
         info.update(
             cards=self.cards if self.cards else [],
         )
@@ -356,6 +361,8 @@ class PokerBase(Game):
         async with self.DBI(log=self.log) as db:
             await self.broadcast_GAME_BEGIN(db)
 
+        if self.ante:
+            await self.run_ANTE_COLLECT()
         await self.run_PREFLOP()
         await self.run_FLOP()
         await self.run_TERN()
@@ -370,6 +377,11 @@ class PokerBase(Game):
         await asyncio.sleep(self.SLEEP_GAME_END)
         async with self.DBI(log=self.log) as db:
             await self.broadcast_GAME_END(db)
+
+        # если включен режим ante_up за столом, то передадим тип последнего раунда в игре, чтобы обработать новое
+        # значение анте
+        if self.ante:
+            await self.table.ante.handle_last_round_type(self.round)
 
         # end
         await asyncio.sleep(0.1)
@@ -402,8 +414,17 @@ class PokerBase(Game):
             await self.broadcast_GAME_ROUND_END(db, banks_info, self.bank_total)
         await asyncio.sleep(self.SLEEP_ROUND_END)
 
+    async def run_ANTE_COLLECT(self):
+        self.log.info("ANTE COLLECT BEGIN")
+        async with self.DBI() as db:
+            await self.collect_ante(db)
+
+            banks_info = self.update_banks()
+            await self.broadcast_GAME_ROUND_END(db, banks_info, self.bank_total)
+
     async def run_PREFLOP(self):
         self.log.info("PREFLOP begin")
+        self.round = Round.PREFLOP
 
         self.players_to_role(PlayerRole.DEALER)
         self.players_rotate()
@@ -422,15 +443,19 @@ class PokerBase(Game):
             # small blind
             p = self.players_to_role(PlayerRole.SMALL_BLIND)
             assert PlayerRole.SMALL_BLIND in p.role
-            if p.user.balance < self.blind_small:
+
+            if p.user.balance <= self.blind_small:
                 p.bet_type = Bet.ALLIN
                 p.bet_delta = p.user.balance
+                p.bet_amount = p.user.balance
+                p.bet_total += p.user.balance
             else:
                 p.bet_type = Bet.SMALL_BLIND
                 p.bet_delta = self.blind_small
-            p.bet_amount += p.bet_delta
-            p.bet_total += p.bet_delta
-            self.bank_total += p.bet_delta
+                p.bet_amount = self.blind_small
+                p.bet_total += self.blind_small
+            # TODO округление
+            self.bank_total = round(self.bank_total + p.bet_delta, 2)
             p.user.balance -= p.bet_delta
             await self.broadcast_PLAYER_BET(db, p)
 
@@ -440,15 +465,19 @@ class PokerBase(Game):
             if p.user.balance < self.blind_big:
                 p.bet_type = Bet.ALLIN
                 p.bet_delta = p.user.balance
+                p.bet_amount = p.user.balance
+                p.bet_total += p.user.balance
             else:
                 p.bet_type = Bet.BIG_BLIND
                 p.bet_delta = self.blind_big
-            p.bet_amount += p.bet_delta
-            p.bet_total += p.bet_delta
-            self.bank_total += p.bet_delta
+                p.bet_amount = self.blind_big
+                p.bet_total += self.blind_big
+            # TODO округление
+            self.bank_total = round(self.bank_total + p.bet_delta, 2)
             p.user.balance -= p.bet_delta
             await self.broadcast_PLAYER_BET(db, p)
 
+        # TODO
         self.bet_raise = p.bet_amount - self.bet_level
         self.update_status()
 
@@ -460,6 +489,7 @@ class PokerBase(Game):
         if self.count_in_the_game <= 1:
             return
         self.log.info("FLOP begin")
+        self.round = Round.FLOP
 
         self.append_cards(3)
         async with self.DBI() as db:
@@ -477,6 +507,7 @@ class PokerBase(Game):
         if self.count_in_the_game <= 1:
             return
         self.log.info("TERN begin")
+        self.round = Round.TERN
 
         self.append_cards(1)
         async with self.DBI() as db:
@@ -494,6 +525,7 @@ class PokerBase(Game):
         if self.count_in_the_game <= 1:
             return
         self.log.info("RIVER begin")
+        self.round = Round.RIVER
 
         self.append_cards(1)
         async with self.DBI() as db:
@@ -511,6 +543,7 @@ class PokerBase(Game):
         if self.count_in_the_game <= 1:
             return
         self.log.info("SHOWDOWN begin")
+        self.round = Round.SHOWDOWN
 
         while self.current_player.user_id != self.bet_id:
             self.players_rotate()
@@ -572,6 +605,7 @@ class PokerBase(Game):
                 bank_winners = []
                 for _, g in groupby(bank_players, key=rankKey):
                     bank_winners = list(g)
+                # TODO округление
                 w_amount = round(amount / len(bank_winners), 2)
                 for p in bank_winners:
                     amount = winners.get(p.user_id, 0)
@@ -582,7 +616,8 @@ class PokerBase(Game):
             if not amount:
                 continue
             p.user.balance += amount
-            delta = p.balance - p.balance_0
+            # TODO округление
+            delta = round(p.balance - p.balance_0, 2)
             info = dict(
                 user_id=p.user_id,
                 balance=p.balance,
@@ -592,3 +627,20 @@ class PokerBase(Game):
             winners_info.append(info)
 
         return winners_info
+
+    async def collect_ante(self, db):
+        for p in self.players:
+            if p.balance_0 >= self.ante:
+                p.bet_ante = self.ante
+            else:
+                p.bet_ante = p.balance_0
+
+            p.bet_delta = p.bet_ante
+            p.bet_total += p.bet_delta
+            # TODO округление
+            self.bank_total = round(self.bank_total + p.bet_delta, 2)
+            # TODO округление
+            p.user.balance = round(p.user.balance - p.bet_delta, 2)
+            p.bet_type = Bet.ANTE
+
+            await self.broadcast_PLAYER_BET(db, p)

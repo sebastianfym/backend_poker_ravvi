@@ -39,10 +39,10 @@ class Table_SNG(Table):
         self.level_time = level_time
         
         self.level_current = self.levels[0]
-        self.game_props.update(bet_timeout=action_time, 
+        self.game_props.update(bet_timeout=action_time,
                                blind_small=self.level_current.blind_small,
                                blind_big=self.level_current.blind_big,
-                               ante = self.level_current.ante)
+                               ante=self.level_current.ante)
 
     @property
     def user_enter_enabled(self):
@@ -65,7 +65,7 @@ class Table_SNG(Table):
         self.log.info("user %s buyin %s -> balance %s", user.id, buyin, new_account_balance)
         #if new_balance < 0:
         #    return False
-        await db.create_account_txn(user.account_id, "BUYIN", -buyin)
+        await db.create_account_txn(user.account_id, "BUYIN", -buyin, sender_id=self.table_id)
         user.balance = self.buyin_value
         self.log.info("on_player_enter(%s): done", user.id)
         return True
@@ -76,7 +76,7 @@ class Table_SNG(Table):
             # TODO: точность и округление
             new_account_balance = float(account.balance) + user.balance
             self.log.info("user %s exit %s -> balance %s", user.id, user.balance, new_account_balance)
-            await db.create_account_txn(user.account_id, "CASHOUT", user.balance)
+            await db.create_account_txn(user.account_id, "CASHOUT", user.balance, sender_id=self.table_id)
             user.balance = None
         if user.table_session_id:
             await db.close_table_session(user.table_session_id)
