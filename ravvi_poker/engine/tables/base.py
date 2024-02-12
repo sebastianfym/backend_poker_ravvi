@@ -190,6 +190,11 @@ class Table:
             if len(config_dict_for_add := getattr(self, configCl.cls_as_config_name()).unpack_for_msg()) != 0:
                 result |= config_dict_for_add
 
+        # заменяем ante_up из настроек на ante_options
+        if self.ante:
+            result.pop("ante_up")
+            result["ante_options"] = self.ante.ante_levels
+
         return result
 
     async def handle_cmd(self, db, *, cmd_id: int, cmd_type: int, client_id: int, user_id: int, props: dict):
