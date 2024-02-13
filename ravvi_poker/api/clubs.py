@@ -500,8 +500,11 @@ async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionU
 
         check_last_request = await db.check_request_to_replenishment(account.id)
 
-        if check_last_request.props['status'] == 'consider':
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Your request is still under consideration")
+        try:
+            if check_last_request.props['status'] == 'consider':
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Your request is still under consideration")
+        except AttributeError:
+            ...
 
         json_data = await request.json()
 
