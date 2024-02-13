@@ -94,6 +94,20 @@ class ClubChipsValue(BaseModel):
         return v
 
 
+class UserChipsValue(ClubChipsValue):
+    balance: str
+    # ID аккаунта внутри клуба
+    account_id: int
+    user_account: Row | None = Field(default=None)
+
+    @field_validator("balance", mode="before")
+    @classmethod
+    def ensure_correct_type(cls, v: Any):
+        if v not in ["balance", "balance_shared"]:
+            raise ValueError
+        return v
+
+
 async def check_rights_user_club_owner(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -436,20 +450,6 @@ async def v1_delete_chip_from_club_balance(club_id: int, chips_value: ClubChipsV
         await db.txn_with_chip_on_club_balance(club_id, chips_value.amount, "REMOVE", club_owner_account.id, user.id)
 
 
-class UserChipsValue(ClubChipsValue):
-    balance: str
-    # ID аккаунта внутри клуба
-    account_id: int
-    user_account: Row | None = Field(default=None)
-
-    @field_validator("balance", mode="before")
-    @classmethod
-    def ensure_correct_type(cls, v: Any):
-        if v not in ["balance", "balance_shared"]:
-            raise ValueError
-        return v
-
-
 async def check_compatibility_recipient_and_balance_type(club_id: int, request: UserChipsValue):
     async with DBI() as db:
         user_account = await db.find_account(user_id=request.account_id, club_id=club_id)
@@ -460,6 +460,7 @@ async def check_compatibility_recipient_and_balance_type(club_id: int, request: 
         return request
     except AttributeError:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='User account not found in club')
+
 
 @router.post("/{club_id}/giving_chips_to_the_user", status_code=HTTP_200_OK,
              summary="Owner giv chips to the club's user")
@@ -688,7 +689,8 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
         return all_users_requests
 
 
-@router.post("/{club_id}/pick_up_or_give_out_chips", status_code=HTTP_200_OK, summary="Pick up or give out chips to members")
+@router.post("/{club_id}/pick_up_or_give_out_chips", status_code=HTTP_200_OK,
+             summary="Pick up or give out chips to members")
 async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Depends(check_rights_user_club_owner)):
     mode = (await request.json())['mode']
     members_list = (await request.json())['club_members']
@@ -733,3 +735,27 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
         else:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid mode value')
 
+
+@router.post("/{club_id}/set_user_data", status_code=HTTP_200_OK, summary="Set a user nickname and comment")
+async def v1_set_user_data(club_id: int, request: Request, users=Depends(check_rights_user_club_owner_or_manager)):
+    owner = users[0]
+    club = users[2]
+
+    account_id = (await request.json()).get('account_id')
+    nickname = (await request.json()).get('nickname')
+    club_comment = (await request.json()).get('club_comment')
+
+    if account_id is None:
+        raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail='Account id is not specified')
+    if club_comment is None and nickname is None:
+        raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail='You not specified any params')
+
+    async with DBI() as db:
+        if club_comment is not None and nickname is None:
+            await db.club_owner_update_user_account(account_id, club_comment, "club_comment")
+        elif club_comment is None and nickname is not None:
+            await db.club_owner_update_user_account(account_id, nickname, "nickname")
+        elif club_comment is not None and nickname is not None:
+            await db.club_owner_update_user_account(account_id, nickname, "nickname")
+            await db.club_owner_update_user_account(account_id, club_comment, "club_comment")
+    return HTTP_200_OK

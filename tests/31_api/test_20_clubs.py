@@ -106,10 +106,26 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_c
     response = api_client.post(f"/v1/clubs/{club1.id}/tables", json=params)
     assert response.status_code == 201
 
+    response = api_client_2.post(f"/v1/clubs/{club1.id}/tables", json=params)
+    assert response.status_code == 403
+
+    params = {
+        "table_name": "TEST",
+        "table_type": "RJD",
+        "table_seats": 6,
+        "game_type": "NLH",
+        "game_subtype": "REGULAR"
+    }
+    response = api_client.post(f"/v1/clubs/{club1.id}/tables", json=params)
+    assert response.status_code == 422
+
     response = api_client.get(f"/v1/clubs/{club1.id}/tables")
     assert response.status_code == 200
     assert isinstance(response.json(), list) is True
     assert response.json() != []
+
+    response = api_client_2.get(f"/v1/clubs/{club1.id}/tables")
+    assert response.status_code == 403
 
 
 def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
@@ -150,12 +166,18 @@ def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_
     assert members
     assert pending and len(pending) == 1
 
+    response = api_client.get(f"/v1/clubs/{17031778}/members")
+    assert response.status_code == 404
+
     # approve
     p = pending[0]
     response = api_client.put(f"/v1/clubs/{club.id}/members/{p.id}")
     assert response.status_code == 200
     member = ClubMemberProfile(**response.json())
     assert member.user_approved
+
+    response = api_client_2.put(f"/v1/clubs/{club.id}/members/{p.id}")
+    assert response.status_code == 403
 
     response = api_client.post(
         f"/v1/clubs/{23131232141241212512512125125551525252152151251252151554554765634353534534}/members")
@@ -189,9 +211,15 @@ def test_get_relations(api_client: TestClient, api_guest: UserAccessProfile):
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
+    response = api_client.get(f'/v1/clubs/{543210}/relation_clubs')
+    assert response.status_code == 404
+
     response = api_client.get(f"/v1/clubs/{club.id}/relation_union")
     assert response.status_code == 404
     assert response.json() == {'detail': 'Union not found'}
+
+    response = api_client.get('/v1/clubs/relations/unions')
+    assert response.status_code == 200
 
 
 def test_get_club(api_client: TestClient, api_guest: UserAccessProfile):
@@ -230,6 +258,13 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
     assert response.status_code == 201
 
     club = ClubProfile(**response.json())
+
+    response = api_client.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json=params)
+    assert response.status_code == 422
+
+    params = {"balance": "balance", "amount": 1000, "account_id": club.id}
+    response = api_client.post(f"/v1/clubs/{club.id}/delete_chips_from_the_user", json=params)
+    assert response.status_code == 400
 
     # Actions with manipulations of the club's balance
 
@@ -581,7 +616,8 @@ def test_operations_at_the_checkout(api_client: TestClient, api_guest: UserAcces
     assert response.json().get('club_members')[0]['balance_shared'] == 0.0
 
 
-def test_get_requests_for_chips(api_client: TestClient, api_guest: UserAccessProfile): #TODO эти тесты перенести в тесты, которые создают запрос на получение фишек
+def test_get_requests_for_chips(api_client: TestClient,
+                                api_guest: UserAccessProfile):  # TODO эти тесты перенести в тесты, которые создают запрос на получение фишек
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
 
     club = create_club(api_client)
@@ -590,7 +626,9 @@ def test_get_requests_for_chips(api_client: TestClient, api_guest: UserAccessPro
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
-def test_pick_up_or_give_out_chips(api_client: TestClient, api_guest: UserAccessProfile): #TODO эти тесты перенести в тесты, которые создают запрос на получение фишек
+
+def test_pick_up_or_give_out_chips(api_client: TestClient,
+                                   api_guest: UserAccessProfile):  # TODO эти тесты перенести в тесты, которые создают запрос на получение фишек
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
 
     club = create_club(api_client)
@@ -625,3 +663,33 @@ def test_pick_up_or_give_out_chips(api_client: TestClient, api_guest: UserAccess
 
     response = api_client.post(f"/v1/clubs/{club.id}/pick_up_or_give_out_chips", json=data)
     assert response.status_code == 400
+
+
+def test_owner_set_user_data(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
+                             api_guest_2: UserAccessProfile):
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+    api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
+
+    club = create_club(api_client)
+
+    request = api_client_2.post(f"/v1/clubs/{club.id}/members")
+    assert request.status_code == 200
+    request = api_client.get(f"/v1/clubs/{club.id}/members")
+    assert request.status_code == 200
+    data = {
+            "account_id": request.json()[1].get("id"),
+            "nickname": "nickname",
+            "club_comment": "club_comment"
+            }
+    request = api_client.post(f"/v1/clubs/{club.id}/set_user_data", json=data)
+    assert request.status_code == 200
+
+    request = api_client.get(f"/v1/clubs/{club.id}/members")
+    assert request.status_code == 200
+
+    data = {
+        "nickname": "nickname",
+        "club_comment": "club_comment"
+    }
+    request = api_client.post(f"/v1/clubs/{club.id}/set_user_data", json=data)
+    assert request.status_code == 422

@@ -436,6 +436,16 @@ class DBI:
             rows = await cursor.fetchall()
         return rows
 
+    async def club_owner_update_user_account(self, account_id, data, row):
+        if row == "nickname":
+            sql = "UPDATE user_account SET nickname=%s WHERE id=%s"
+        elif row == "club_comment":
+            sql = "UPDATE user_account SET club_comment=%s WHERE id=%s"
+
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (data, account_id,))
+
+
     # TABLE
 
     async def create_table(self, *, club_id=0, table_type, table_name, table_seats, game_type, game_subtype,
