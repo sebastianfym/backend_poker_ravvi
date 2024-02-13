@@ -1,5 +1,7 @@
 import logging
 import asyncio
+from unittest.mock import AsyncMock
+
 import pytest
 from ravvi_poker.engine.poker.nlh import Poker_NLH_REGULAR
 
@@ -17,6 +19,7 @@ def pytest_generate_tests(metafunc):
 async def test_case(game_case):
     name, kwargs = game_case
 
-    game = X_Game(None, **kwargs)
+    mocked_table = AsyncMock()
+    game = X_Game(mocked_table, **kwargs)
     await game.run()
     assert not game._check_steps

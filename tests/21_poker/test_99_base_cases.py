@@ -27,6 +27,7 @@ async def test_case(game_case):
     X_Game.GAME_TYPE = 'TEST'
     X_Game.GAME_SUBTYPE = 'TEST'
 
-    game = X_Game(None, **kwargs)
+    mocked_table = AsyncMock()
+    game = X_Game(mocked_table, **kwargs)
     await game.run()
     assert not game._check_steps
