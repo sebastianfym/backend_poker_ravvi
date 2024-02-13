@@ -1,0 +1,67 @@
+{
+  "_comment": "Адаптированный кейс ante|case-1",
+  "blind_small": 100,
+  "blind_big": 200,
+  "bombpot_blind_multiplier": 3,
+  "users": [
+    {
+      "id": 111,
+      "name": "u1",
+      "balance": 1000
+    },
+    {
+      "id": 222,
+      "name": "u2",
+      "balance": 2000
+    }
+  ],
+  "deck": [
+    "7♣",
+    "8♣",
+    "7♠",
+    "5♣",
+    0,
+    "2♦",
+    "J♠",
+    "3♣",
+    "J♦",
+    "5♥"
+  ],
+  "moves": [
+    {
+      "type": "GAME_BEGIN",
+      "game_type": "NLH",
+      "game_subtype": "REGULAR",
+      "blind_small": 100,
+      "blind_big": 200
+    },
+
+    {"type": "PLAYER_BET", "user_id": 222, "bet": "BOMBPOT_ANTE", "delta": 600, "amount": 600, "balance": 1400, "bank_total": 600},
+    {"type": "PLAYER_BET", "user_id": 111, "bet": "BOMBPOT_ANTE", "delta": 600, "amount": 600, "balance": 400, "bank_total": 1200},
+
+    {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["7♣", "7♠"], "hand_type": "ONE_PAIR",  "hand_cards": ["7♠","7♣"]},
+    {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["8♣", "5♣"], "hand_type": "HIGH_CARD", "hand_cards": ["8♣","5♣"]},
+
+    {"type": "GAME_ROUND", "banks": [1200], "bank_total": 1200},
+
+    {"type": "GAME_CARDS", "cards": ["2♦", "J♠", "3♣"]},
+    {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "hand_type": "ONE_PAIR", "hand_cards": ["J♠", "7♠", "7♣", "3♣", "2♦"]},
+    {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "hand_type": "HIGH_CARD", "hand_cards": ["J♠", "8♣", "5♣", "3♣", "2♦"]},
+
+    {"type": "GAME_PLAYER_MOVE", "user_id": 222, "options": ["FOLD", "CHECK", "RAISE", "ALLIN"],
+            "call": null, "raise_min": 200, "raise_max": 1400},
+    {"user_id": 222, "type": "CMD_PLAYER_BET", "bet": "RAISE", "delta": 300, "amount": 300, "balance": 1100},
+    {"type": "PLAYER_BET"},
+
+    {"type": "GAME_PLAYER_MOVE", "user_id": 111, "options": ["FOLD", "CALL", "ALLIN"],
+            "call": 300, "raise_max": 400},
+    {"user_id": 111, "type": "CMD_PLAYER_BET", "bet": "FOLD"},
+    {"type": "PLAYER_BET", "user_id": 111, "bet": "FOLD", "delta": 0, "amount": 0, "balance": 400},
+
+    {"type": "GAME_ROUND", "banks": [1500], "bank_total": 1500},
+
+
+    {"type": "GAME_RESULT", "winners": [{"user_id": 222, "balance": 2600, "delta": 600}]},
+    {"type": "GAME_END"}
+  ]
+}

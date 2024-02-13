@@ -1,3 +1,4 @@
+import asyncio
 from random import randint
 
 from ravvi_poker.engine.poker.bet import Bet
@@ -68,5 +69,11 @@ class BombPotMixin:
                 await self.broadcast_PLAYER_CARDS(db, p)
 
         self.update_status()
+
+        banks_info = self.update_banks()
+        async with self.DBI() as db:
+            await self.open_cards(db)
+            await self.broadcast_GAME_ROUND_END(db, banks_info, self.bank_total)
+        await asyncio.sleep(self.SLEEP_ROUND_END)
 
         self.log.info("PREFLOP with BombPot end")
