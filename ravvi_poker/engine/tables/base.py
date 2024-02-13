@@ -99,8 +99,12 @@ class Table:
         # расширяем игру миксином
         if getattr(getattr(self, "game_modes_config"), "double_board"):
             game = game_class(self, users, **self.game_props, mixin=DoubleBoardMixin)
-        elif getattr(getattr(self, "game_modes_config"), "bombpot_settings"):
-            game = game_class(self, users, **self.game_props, mixin=BombPotMixin)
+        elif getattr(getattr(self, "game_modes_config"), "bombpot_settings") and self.bombpot.is_bobmpot_active:
+            self.game_props |= {"bombpot_blind_multiplier": self.bombpot.bombpot_multiplier}
+            if self.bombpot.double_board_mode:
+                game = game_class(self, users, **self.game_props, mixin=[BombPotMixin, DoubleBoardMixin])
+            else:
+                game = game_class(self, users, **self.game_props, mixin=BombPotMixin)
         else:
             game = game_class(self, users, **self.game_props)
 
@@ -447,6 +451,9 @@ class Table:
         async with self.lock:
             users = self.get_game_players()
             if not users:
+                # сбрасываем уровень бомпота
+                if self.bombpot:
+                    await self.bombpot.reset_step()
                 return
             self.game = await self.create_game(users)
         try:

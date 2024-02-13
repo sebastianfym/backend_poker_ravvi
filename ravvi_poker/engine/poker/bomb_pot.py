@@ -1,22 +1,36 @@
+from random import randint
+
 from ravvi_poker.engine.poker.bet import Bet
 
 
 class BombPotController:
     def __init__(self, bombpot_settings: dict):
         self.double_board_mode: bool = bombpot_settings['double_board']
-        self.freq = bombpot_settings["freq"]
-        self.ante_min = bombpot_settings["ante_min"]
-        self.ante_max = bombpot_settings["ante_max"]
+        self.freq: int = bombpot_settings["freq"]
+        self.ante_min: int = bombpot_settings["ante_min"]
+        self.ante_max: int = bombpot_settings["ante_max"]
 
-        self.current_step = 1
+        self.current_step: int = 1
+
+    @property
+    def is_bobmpot_active(self):
+        return self.current_step == self.freq
+
+    @property
+    def bombpot_multiplier(self):
+        return randint(self.ante_min, self.ante_max)
 
     async def handle_last_round(self):
-        self.current_step += 1
+        if self.current_step == self.freq:
+            self.current_step = 1
+        else:
+            self.current_step += 1
+
+    async def reset_step(self):
+        self.current_step = 1
 
 
 class BombPotMixin:
-    bombpot_blind_multiplier = 5
-
     async def run_PREFLOP(self):
         from ravvi_poker.engine.poker.base import Round
         from ravvi_poker.engine.poker.player import PlayerRole
