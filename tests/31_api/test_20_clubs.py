@@ -681,7 +681,7 @@ def test_owner_set_user_data(api_client: TestClient, api_guest: UserAccessProfil
             "nickname": "nickname",
             "club_comment": "club_comment"
             }
-    request = api_client.post(f"/v1/clubs/{club.id}/set_user_data", json=data)
+    request = api_client.patch(f"/v1/clubs/{club.id}/set_user_data", json=data)
     assert request.status_code == 200
 
     request = api_client.get(f"/v1/clubs/{club.id}/members")
@@ -691,5 +691,5 @@ def test_owner_set_user_data(api_client: TestClient, api_guest: UserAccessProfil
         "nickname": "nickname",
         "club_comment": "club_comment"
     }
-    request = api_client.post(f"/v1/clubs/{club.id}/set_user_data", json=data)
+    request = api_client.patch(f"/v1/clubs/{club.id}/set_user_data", json=data)
     assert request.status_code == 422

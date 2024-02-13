@@ -736,7 +736,7 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid mode value')
 
 
-@router.post("/{club_id}/set_user_data", status_code=HTTP_200_OK, summary="Set a user nickname and comment")
+@router.patch("/{club_id}/set_user_data", status_code=HTTP_200_OK, summary="Set a user nickname and comment")
 async def v1_set_user_data(club_id: int, request: Request, users=Depends(check_rights_user_club_owner_or_manager)):
     owner = users[0]
     club = users[2]
