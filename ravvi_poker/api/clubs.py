@@ -439,8 +439,8 @@ async def v1_delete_chip_from_club_balance(club_id: int, chips_value: ClubChipsV
 class UserChipsValue(ClubChipsValue):
     balance: str
     # ID аккаунта внутри клуба
-    recipient_user_id: int
-    recipient_user_account: Row | None = Field(default=None)
+    account_id: int
+    user_account: Row | None = Field(default=None)
 
     @field_validator("balance", mode="before")
     @classmethod
@@ -452,12 +452,14 @@ class UserChipsValue(ClubChipsValue):
 
 async def check_compatibility_recipient_and_balance_type(club_id: int, request: UserChipsValue):
     async with DBI() as db:
-        user_account = await db.find_account(user_id=request.recipient_user_id, club_id=club_id)
-    if user_account.user_role not in ["A", "S"] and request.balance == "balance_shared":
-        raise ValueError
-    request.recipient_user_account = user_account
-    return request
-
+        user_account = await db.find_account(user_id=request.account_id, club_id=club_id)
+    try:
+        if user_account.user_role not in ["A", "S", "O"] and request.balance == "balance_shared":
+            raise ValueError
+        request.user_account = user_account
+        return request
+    except AttributeError:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='User account not found in club')
 
 @router.post("/{club_id}/giving_chips_to_the_user", status_code=HTTP_200_OK,
              summary="Owner giv chips to the club's user")
@@ -465,7 +467,7 @@ async def v1_club_giving_chips_to_the_user(club_id: int, request: Annotated[
     UserChipsValue, Depends(check_compatibility_recipient_and_balance_type)],
                                            users=Depends(check_rights_user_club_owner)):
     async with DBI() as db:
-        await db.giving_chips_to_the_user(request.amount, request.recipient_user_id, request.balance, users[1].id)
+        await db.giving_chips_to_the_user(request.amount, request.account_id, request.balance, users[0].id)
 
 
 @router.post("/{club_id}/delete_chips_from_the_user", status_code=HTTP_200_OK,
@@ -475,9 +477,9 @@ async def v1_club_delete_chips_from_the_user(club_id: int, request: Annotated[
                                              users=Depends(check_rights_user_club_owner)):
     async with DBI() as db:
         if request.balance == "balance":
-            await db.delete_chips_from_the_account_balance(request.amount, users[1].id, request.recipient_user_id)
+            await db.delete_chips_from_the_account_balance(request.amount, request.account_id, users[0].id)
         else:
-            await db.delete_chips_from_the_agent_balance(request.amount, users[1].id, request.recipient_user_id)
+            await db.delete_chips_from_the_agent_balance(request.amount, request.account_id, users[0].id)
 
 
 @router.post("/{club_id}/request_chips", status_code=HTTP_200_OK, summary="The user requests chips from the club")
@@ -494,6 +496,11 @@ async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionU
         except AttributeError:
             return HTTPException(status_code=HTTP_403_FORBIDDEN,
                                  detail="You don't have enough rights to perform this action")
+
+        check_last_request = await db.check_request_to_replenishment(account.id)
+
+        if check_last_request.props['status'] == 'consider':
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Your request is still under consideration")
 
         json_data = await request.json()
 
@@ -686,21 +693,28 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
     mode = (await request.json())['mode']
     members_list = (await request.json())['club_members']
     club_owner_account = users[0]
-
-    amount = decimal.Decimal((await request.json())['amount'])
-    if amount <= 0 or isinstance(amount, decimal.Decimal) is False:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid mode value')
     if len(members_list) == 0:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Quantity club members for action is invalid')
 
+    amount = (await request.json())['amount']
+
+    if mode == 'pick_up' and amount == 'all':
+        amount = decimal.Decimal(999999999.9999)
+    else:
+        try:
+            amount = decimal.Decimal(amount)
+            if amount <= 0 or isinstance(amount, decimal.Decimal) is False:
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid amount value')
+        except decimal.InvalidOperation:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid amount value')
     async with DBI() as db:
         if mode == 'pick_up':
             for member in members_list:
                 if member['balance'] is True and member['balance_shared'] is True:
                     await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
-                    await db.delete_chips_from_the_agent_balance(amount, member['id'])#, club_owner_account.id) #Todo дописать в эту функцию добавление sender_d
+                    await db.delete_chips_from_the_agent_balance(amount, member['id'], club_owner_account.id)
                 elif member['balance'] is False and member['balance_shared'] is True:
-                    await db.delete_chips_from_the_agent_balance(amount, member['id']) #Todo дописать в эту функцию добавление sender_d
+                    await db.delete_chips_from_the_agent_balance(amount, member['id'], club_owner_account.id)
                 elif member['balance'] is True and member['balance_shared'] is False:
                     await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
             return HTTP_200_OK

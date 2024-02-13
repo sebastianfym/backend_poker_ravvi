@@ -547,7 +547,7 @@ async def test_giving_chips_to_the_user(api_client: TestClient, api_guest: UserA
 
     # начисляем фишки
     response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user",
-                               json={"amount": amount, "recipient_user_id": user_account_to_get_chips.user_id,
+                               json={"amount": amount, "account_id": user_account_to_get_chips.user_id,
                                      "balance": balance_type})
     assert response.status_code == 200
 
