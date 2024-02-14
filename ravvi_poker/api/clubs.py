@@ -60,6 +60,11 @@ class UserRequest(BaseModel):
     nickname: str | None
     txn_value: float | None
 
+    join_in_club: float | None
+    leave_from_club: float | None
+
+    class Config:
+        arbitrary_types_allowed = True
 
 class UnionProfile(BaseModel):
     name: str | None = None
@@ -484,10 +489,12 @@ async def v1_club_delete_chips_from_the_user(club_id: int, request: Annotated[
 
 
 @router.post("/{club_id}/request_chips", status_code=HTTP_200_OK, summary="The user requests chips from the club")
-async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionUUID, request: Request):
+async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionUUID, request: Request, users=Depends(check_rights_user_club_owner)):
     async with DBI() as db:
-        _, user = await get_session_and_user(db, session_uuid)
-        club = await db.get_club(club_id)
+        # _, user = await get_session_and_user(db, session_uuid)
+        # club = await db.get_club(club_id)
+        user = users[1]
+        club = users[2]
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
@@ -676,6 +683,10 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
     async with DBI() as db:
         for member in await db.get_club_members(club_id):
             try:
+                leave_from_club = datetime.datetime.timestamp(member.closed_ts)
+            except TypeError:
+                leave_from_club = None
+            try:
                 txn_value = (await db.get_user_requests_to_replenishment(member.id)).txn_value
                 all_users_requests.append(
                     UserRequest(
@@ -685,6 +696,8 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
                         user_role=member.user_role,
                         user_img=(await db.get_user_image(member.user_id)).image_id,
                         txn_value=txn_value,
+                        join_in_club=datetime.datetime.timestamp(member.created_ts), #todo расширить модель
+                        leave_from_club=leave_from_club
                     )
                 )
             except AttributeError:
