@@ -279,13 +279,13 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
     assert response.json()['detail'] == 'Your request is still under consideration'
     #
     response = api_client_2.post(f"/v1/clubs/{club.id}/request_chips", json={"amount": 1, "balance": "balance_shared"})
-    assert response.status_code == 200
+    assert response.status_code == 403
 
     response = api_client_2.post(f"/v1/clubs/{17031788}/request_chips", json={"amount": 1, "balance": "balance_shared"})
-    assert response.status_code == 404
+    assert response.status_code == 403
 
-    response = api_client_2.post(f"/v1/clubs/{17031788}/request_chips", json={})
-    assert response.status_code == 404
+    response = api_client.post(f"/v1/clubs/{17031788}/request_chips", json={})
+    assert response.status_code == 403
 
     # Actions with manipulations of the club's balance
 
