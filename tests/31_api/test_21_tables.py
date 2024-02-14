@@ -255,3 +255,61 @@ def test_create_table_with_validation(api_client: TestClient, api_guest: UserAcc
     error_validate_in_access_password_attributes_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
     assert error_validate_in_access_password_attributes_response.status_code == 400
     assert "unknown_field" not in response.json()
+
+    params = {
+        "table_name": "TEST",
+        "table_type": "SNG",
+        "table_seats": 6,
+        "game_type": "NLH",
+        "game_subtype": "REGULAR"
+    }
+    validate_in_table_type_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
+    assert validate_in_table_type_response.status_code == 201
+
+    params = {
+        "table_name": "TEST",
+        "table_type": "MTT",
+        "table_seats": 6,
+        "game_type": "NLH",
+        "game_subtype": "REGULAR"
+    }
+    validate_in_table_type_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
+    assert validate_in_table_type_response.status_code == 201
+
+    params = {
+        "table_name": "TEST",
+        "table_type": "FLASH",
+        "table_seats": 6,
+        "game_type": "NLH",
+        "game_subtype": "REGULAR"
+    }
+    validate_in_table_type_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
+    assert validate_in_table_type_response.status_code == 422
+
+    params = {
+        "table_name": "TEST",
+        "table_type": "SPIN",
+        "table_seats": 6,
+        "game_type": "NLH",
+        "game_subtype": "REGULAR"
+    }
+    validate_in_table_type_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
+    assert validate_in_table_type_response.status_code == 422
+
+    params = {
+        "table_name": "TEST",
+        "table_seats": 6,
+        "game_type": "NLH",
+        "game_subtype": "REGULAR"
+    }
+    validate_in_table_type_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
+    assert validate_in_table_type_response.status_code == 422
+
+    params = {
+        "table_name": "TEST",
+        "table_type": "SPIN",
+        "table_seats": 6,
+        "game_subtype": "REGULAR"
+    }
+    validate_in_table_type_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
+    assert validate_in_table_type_response.status_code == 422
