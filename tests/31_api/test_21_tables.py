@@ -313,3 +313,5 @@ def test_create_table_with_validation(api_client: TestClient, api_guest: UserAcc
     }
     validate_in_table_type_response = api_client.post(f"/v1/clubs/{club.id}/tables", json=params)
     assert validate_in_table_type_response.status_code == 422
+
+
