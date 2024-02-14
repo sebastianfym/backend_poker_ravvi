@@ -11,6 +11,7 @@ class Table_RG(Table):
                     action_time=30, **kwargs):
         from ..poker.ante import AnteUpController
         from ..poker.bomb_pot import BombPotController
+        from ..poker.seven_deuce import SevenDeuceController
 
         self.buyin_min = buyin_min
         self.buyin_max = buyin_max
@@ -23,6 +24,9 @@ class Table_RG(Table):
                 self.game_props.update(ante=self.ante.current_ante_value)
         if bompot_settings := getattr(self, "game_modes_config").bombpot_settings:
             self.bombpot = BombPotController(bompot_settings)
+            # TODO согласовать что отправлять
+        if seven_deuce := getattr(self, "game_modes_config").seven_deuce:
+            self.seven_deuce = SevenDeuceController(seven_deuce)
             # TODO согласовать что отправлять
 
     @property

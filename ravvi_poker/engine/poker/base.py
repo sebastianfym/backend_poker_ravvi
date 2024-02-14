@@ -375,6 +375,15 @@ class PokerBase(Game):
         async with self.DBI(log=self.log) as db:
             await self.broadcast_GAME_RESULT(db, winners_info)
 
+        # если включен режим seven deuce сформируем новый банк и распределим его
+        if self.table.seven_deuce:
+            bank_seven_deuce, winners_seven_deuce_info = await self.table.seven_deuce.handle_winners(winners_info,
+                                                                                                     self.players)
+            if bank_seven_deuce:
+                async with self.DBI(log=self.log) as db:
+                    await self.broadcast_GAME_ROUND_END(db, [bank_seven_deuce], bank_seven_deuce)
+                    await self.broadcast_GAME_RESULT(db, winners_seven_deuce_info)
+
         await asyncio.sleep(self.SLEEP_GAME_END)
         async with self.DBI(log=self.log) as db:
             await self.broadcast_GAME_END(db)
@@ -387,6 +396,8 @@ class PokerBase(Game):
         # если включен режим bombpot, то увеличим счетчик
         if self.table.bombpot:
             await self.table.bombpot.handle_last_round()
+
+        # если в
 
         # end
         await asyncio.sleep(0.1)

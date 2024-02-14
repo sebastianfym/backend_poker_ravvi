@@ -25,6 +25,7 @@ class Table:
     ):
         from ..poker.ante import AnteUpController
         from ..poker.bomb_pot import BombPotController
+        from ..poker.seven_deuce import SevenDeuceController
 
         # table async lock
         self.lock = asyncio.Lock()
@@ -37,6 +38,7 @@ class Table:
         # инстансы параметров
         self.ante: AnteUpController | None = None
         self.bombpot: BombPotController | None = None
+        self.seven_deuce: SevenDeuceController | None = None
 
         self.club_id = club_id
         self.table_id = id
