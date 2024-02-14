@@ -696,7 +696,7 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
                         user_role=member.user_role,
                         user_img=(await db.get_user_image(member.user_id)).image_id,
                         txn_value=txn_value,
-                        join_in_club=datetime.datetime.timestamp(member.created_ts), #todo расширить модель
+                        join_in_club=datetime.datetime.timestamp(member.created_ts),
                         leave_from_club=leave_from_club
                     )
                 )
