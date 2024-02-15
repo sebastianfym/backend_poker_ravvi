@@ -69,6 +69,9 @@ def test_user(api_client: TestClient, api_guest: UserAccessProfile, api_client_2
     assert user_1.email is None
     assert user_1.country == 'RU'
 
+    params = {'country': '4040'}
+    response = api_client.patch("/v1/user/profile", json=params)
+    assert response.status_code == 400
 
     response = api_client_2.get(f"/v1/user/{api_guest.user.id}")
     assert response.status_code == HTTP_200_OK
