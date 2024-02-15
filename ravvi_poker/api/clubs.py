@@ -738,24 +738,28 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
     async with DBI() as db:
         if mode == 'pick_up':
             for member in members_list:
-                if member['balance'] is True and member['balance_shared'] is True:
+                if member['balance'] is None and member['balance_shared'] is None:
+                    continue
+                elif member['balance'] is None and member['balance_shared'] >= 0:
+                    await db.delete_chips_from_the_agent_balance(amount, member['id'], club_owner_account.id)
+                elif member['balance'] >= 0 and member['balance_shared'] is None:
+                    await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
+                elif member['balance'] >= 0 and member['balance_shared'] >= 0:
                     await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
                     await db.delete_chips_from_the_agent_balance(amount, member['id'], club_owner_account.id)
-                elif member['balance'] is False and member['balance_shared'] is True:
-                    await db.delete_chips_from_the_agent_balance(amount, member['id'], club_owner_account.id)
-                elif member['balance'] is True and member['balance_shared'] is False:
-                    await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
             return HTTP_200_OK
 
         elif mode == 'give_out':
             for member in members_list:
-                if member['balance'] is True and member['balance_shared'] is True:
+                if member['balance'] is None and member['balance_shared'] is None:
+                    continue
+                elif member['balance'] is None and member['balance_shared'] >= 0:
+                    await db.giving_chips_to_the_user(amount, member['id'], "balance_shared", club_owner_account.id)
+                elif member['balance'] >= 0 and member['balance_shared'] is None:
+                    await db.giving_chips_to_the_user(amount, member['id'], "balance", club_owner_account.id)
+                elif member['balance'] >= 0 and member['balance_shared'] >= 0:
                     await db.giving_chips_to_the_user(amount, member['id'], "balance", club_owner_account.id)
                     await db.giving_chips_to_the_user(amount, member['id'], "balance_shared", club_owner_account.id)
-                elif member['balance'] is False and member['balance_shared'] is True:
-                    await db.giving_chips_to_the_user(amount, member['id'], "balance_shared", club_owner_account.id)
-                elif member['balance'] is True and member['balance_shared'] is False:
-                    await db.giving_chips_to_the_user(amount, member['id'], "balance", club_owner_account.id)
             return HTTP_200_OK
 
         else:
