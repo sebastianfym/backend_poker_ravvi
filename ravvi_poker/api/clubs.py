@@ -651,19 +651,24 @@ async def v1_operations_at_the_checkout(club_id: int, users=Depends(check_rights
     async with DBI() as db:
         club = users[2]  # await db.get_club(club_id)
         club_balance = club.club_balance
-
-        club_members = [
-            ClubMemberProfile(
-                id=member.id,
-                username=(await db.get_user(id=member.user_id)).name,
-                nickname=member.nickname,
-                user_role=member.user_role,
-                balance=member.balance,
-                balance_shared=member.balance_shared,
-                user_img=(await db.get_user_image(member.user_id)).image_id,
-                country="RU" #TODO убрать заглушку страны
-            )
-            for member in await db.get_club_members(club_id)]
+        club_members = []
+        for member in await db.get_club_members(club_id):
+            try:
+                leave_from_club = datetime.datetime.timestamp(member.closed_ts)
+            except TypeError:
+                leave_from_club = None
+            club_members.append(ClubMemberProfile(
+                    id=member.id,
+                    username=(await db.get_user(id=member.user_id)).name,
+                    nickname=member.nickname,
+                    user_role=member.user_role,
+                    balance=member.balance,
+                    balance_shared=member.balance_shared,
+                    user_img=(await db.get_user_image(member.user_id)).image_id,
+                    join_in_club=datetime.datetime.timestamp(member.created_ts),
+                    leave_from_club=leave_from_club,
+                    country="RU" #TODO убрать заглушку страны
+                ))
 
         members_balance = sum(user.balance for user in club_members)
         shared_balance = sum(user.balance_shared for user in club_members)
