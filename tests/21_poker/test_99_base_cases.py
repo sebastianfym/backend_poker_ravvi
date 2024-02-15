@@ -1,14 +1,11 @@
 import logging
-import asyncio
-from unittest.mock import MagicMock, PropertyMock, AsyncMock
+from unittest.mock import AsyncMock
 
 import pytest
-from ravvi_poker.engine.poker.base import PokerBase
-
 from helpers.x_game_case import load_game_cases, create_game_case
-from helpers.x_dbi import X_DBI
-from helpers.x_table import X_Table
-from ravvi_poker.engine.events import Command
+from helpers.mocked_table import MockedTable
+
+from ravvi_poker.engine.poker.base import PokerBase
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +24,7 @@ async def test_case(game_case):
     X_Game.GAME_TYPE = 'TEST'
     X_Game.GAME_SUBTYPE = 'TEST'
 
-    mocked_table = AsyncMock()
+    mocked_table = MockedTable()
     game = X_Game(mocked_table, **kwargs)
     await game.run()
     assert not game._check_steps

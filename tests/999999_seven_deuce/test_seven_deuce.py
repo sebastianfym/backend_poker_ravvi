@@ -1,10 +1,9 @@
-from unittest.mock import AsyncMock, PropertyMock
-
 import pytest
-
-from ravvi_poker.engine.poker.nlh import Poker_NLH_REGULAR
 from helpers.x_game_case import load_game_cases, create_game_case
+from helpers.mocked_table import MockedTable
 
+from ravvi_poker.engine.poker.double_board import DoubleBoardMixin
+from ravvi_poker.engine.poker.nlh import Poker_NLH_REGULAR
 from ravvi_poker.engine.poker.seven_deuce import SevenDeuceController
 
 
@@ -21,9 +20,12 @@ class TestSevenDeuce_NLX_RG:
     async def test_case(self, game_case):
         name, kwargs = game_case
 
-        mocked_table = AsyncMock()
-        type(mocked_table).seven_deuce = SevenDeuceController(3)
+        mocked_table = MockedTable(
+            seven_deuce=SevenDeuceController(3)
+        )
         game = X_Game(mocked_table, **kwargs)
+        if "double-board" in game_case[0]:
+            game.__class__ = type(game.__class__.__name__, (DoubleBoardMixin, game.__class__), {})
         await game.run()
         assert not game._check_steps
 

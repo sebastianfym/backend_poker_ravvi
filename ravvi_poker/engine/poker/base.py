@@ -377,12 +377,7 @@ class PokerBase(Game):
 
         # если включен режим seven deuce сформируем новый банк и распределим его
         if self.table.seven_deuce:
-            bank_seven_deuce, winners_seven_deuce_info = await self.table.seven_deuce.handle_winners(winners_info,
-                                                                                                     self.players)
-            if bank_seven_deuce:
-                async with self.DBI(log=self.log) as db:
-                    await self.broadcast_GAME_ROUND_END(db, [bank_seven_deuce], bank_seven_deuce)
-                    await self.broadcast_GAME_RESULT(db, winners_seven_deuce_info)
+            await self.run_SEVEN_DEUCE(winners_info)
 
         await asyncio.sleep(self.SLEEP_GAME_END)
         async with self.DBI(log=self.log) as db:
@@ -396,8 +391,6 @@ class PokerBase(Game):
         # если включен режим bombpot, то увеличим счетчик
         if self.table.bombpot:
             await self.table.bombpot.handle_last_round()
-
-        # если в
 
         # end
         await asyncio.sleep(0.1)
@@ -584,6 +577,16 @@ class PokerBase(Game):
 
         await asyncio.sleep(self.SLEEP_ROUND_END)
         self.log.info("SHOWDOWN end")
+
+    async def run_SEVEN_DEUCE(self, winners_info):
+        bank_seven_deuce, winners_seven_deuce_info = await self.table.seven_deuce.handle_winners(winners_info,
+                                                                                                 self.players)
+        if bank_seven_deuce:
+            async with self.DBI(log=self.log) as db:
+                await self.broadcast_GAME_ROUND_END(db, [bank_seven_deuce], bank_seven_deuce)
+                # модификатор не должен перехватить управление (к примеру double board рассчитан список списков,
+                # а у нас список словарей
+                await super().broadcast_GAME_RESULT(db, winners_seven_deuce_info)
 
     def append_cards(self, cards_num):
         for _ in range(cards_num):
