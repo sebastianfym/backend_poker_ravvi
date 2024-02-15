@@ -1,3 +1,6 @@
+import json
+import os
+import re
 from typing import Annotated
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 from fastapi import Depends
@@ -29,3 +32,25 @@ async def get_session_and_user(db, session_uuid):
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Invalid user")
     return session, user
 
+
+def get_country_code(country):
+    for file_name in ['countries_ru', 'countries_en']:
+        relative_path = f'engine/data/{file_name}.json'
+        absolute_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', relative_path))
+
+        with open(absolute_path, 'r') as countries_file:
+            countries_dict = json.load(countries_file)
+            if country in countries_dict.values():
+                for key, value in countries_dict.items():
+                    if value == country:
+                        return key
+    raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid country')
+
+def check_username(name, user_id):
+    pattern = fr'^u\d+$'
+    match = re.match(pattern, name)
+    if match:
+        pattern = fr'^u{user_id}$'
+        match = re.match(pattern, name)
+        if match is None:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid name")

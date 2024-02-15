@@ -31,18 +31,21 @@ class UserPrivateProfile(UserPublicProfile):
     image_id: int | None = None
     email: EmailStr | None = None
     has_password: bool
+    country: str | None = None
 
     @classmethod
     def from_row(cls, row):
         return cls(
-            id = row.id,
-            name = row.name,
-            image_id = row.image_id,
-            email = row.email,
-            has_password = bool(row.password_hash)
+            id=row.id,
+            name=row.name,
+            image_id=row.image_id,
+            email=row.email,
+            has_password=bool(row.password_hash),
+            country=row.country
             )
 
 class UserMutableProps(BaseModel):
     name: str | None = None
     image_id: int | None = None
+    country: str | None = None
 

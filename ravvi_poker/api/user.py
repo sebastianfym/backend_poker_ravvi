@@ -4,11 +4,12 @@ from uuid import UUID
 from fastapi import APIRouter, Request
 from fastapi.exceptions import HTTPException
 from pydantic import BaseModel, EmailStr
-from starlette.status import HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
+from starlette.status import HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY, HTTP_400_BAD_REQUEST
 
 from ..db import DBI as DBI
-from .utils import SessionUUID, get_session_and_user
+from .utils import SessionUUID, get_session_and_user, get_country_code, check_username
 from .types import UserPublicProfile, UserPrivateProfile, UserMutableProps
+
 
 log = logging.getLogger(__name__)
 
@@ -40,8 +41,11 @@ async def v1_update_user(props: UserMutableProps, session_uuid: SessionUUID, req
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         kwargs = props.model_dump(exclude_unset=True)
+        if "country" in kwargs.keys():
+            kwargs['country'] = get_country_code(kwargs['country'])
+        if "name" in kwargs.keys():
+            check_username(kwargs['name'], user.id)
         user = await db.update_user(user.id, **kwargs)
-
     return UserPrivateProfile.from_row(user)
 
 

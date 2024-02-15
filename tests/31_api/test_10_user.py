@@ -60,6 +60,8 @@ def test_user(api_client: TestClient, api_guest: UserAccessProfile, api_client_2
     assert user_1.image_id == 11
     assert user_1.has_password == False
     assert user_1.email is None
+    assert user_1.country is None
+
 
     response = api_client_2.get(f"/v1/user/{api_guest.user.id}")
     assert response.status_code == HTTP_200_OK

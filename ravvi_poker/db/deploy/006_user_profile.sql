@@ -1,0 +1,1 @@
+ALTER TABLE ONLY user_profile ADD COLUMN country CHARACTER VARYING(2);
