@@ -53,10 +53,19 @@ def test_user(api_client: TestClient, api_guest: UserAccessProfile, api_client_2
 
     params = {'country': 'Российская Федерация'}
     response = api_client.patch("/v1/user/profile", json=params)
+    assert response.status_code == 400
+
+    params = {'country': 'zxcvbn'}
+    response = api_client.patch("/v1/user/profile", json=params)
+    assert response.status_code == 400
+
+    params = {'country': 'RU'}
+    response = api_client.patch("/v1/user/profile", json=params)
     assert response.status_code == HTTP_200_OK
     user_1 = UserPrivateProfile(**response.json())
     assert user_1.id == api_guest.user.id
     assert user_1.country == 'RU'
+
 
     params = {}
     response = api_client.patch("/v1/user/profile", json=params)

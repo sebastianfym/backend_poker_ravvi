@@ -11,6 +11,7 @@ from ..engine.jwt import jwt_get
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/auth/login_form")
 
+
 async def get_current_session_uuid(access_token: Annotated[str, Depends(oauth2_scheme)]):
     session_uuid = jwt_get(access_token, "session_uuid")
     if not session_uuid:
@@ -21,7 +22,9 @@ async def get_current_session_uuid(access_token: Annotated[str, Depends(oauth2_s
         )
     return session_uuid
 
+
 SessionUUID = Annotated[str, Depends(get_current_session_uuid)]
+
 
 async def get_session_and_user(db, session_uuid):
     session = await db.get_session_info(uuid=session_uuid)
@@ -40,11 +43,10 @@ def get_country_code(country):
 
         with open(absolute_path, 'r') as countries_file:
             countries_dict = json.load(countries_file)
-            if country in countries_dict.values():
-                for key, value in countries_dict.items():
-                    if value == country:
-                        return key
+            if country in countries_dict.keys():
+                return country
     raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid country')
+
 
 def check_username(name, user_id):
     pattern = fr'^u\d+$'
