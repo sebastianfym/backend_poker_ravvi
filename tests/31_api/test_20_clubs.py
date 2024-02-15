@@ -732,13 +732,13 @@ def test_leave_from_club(api_client: TestClient, api_guest: UserAccessProfile, a
     request = api_client.get(f"/v1/clubs/{club.id}/members")
     assert request.status_code == 200
 
-    request = api_client_2.post(f"/v1/clubs/{club.id}/leave_from_club")
+    request = api_client_2.get(f"/v1/clubs/{club.id}/leave_from_club")
     assert request.status_code == 200
 
-    request = api_client_2.post(f"/v1/clubs/{17031788}/leave_from_club")
+    request = api_client_2.get(f"/v1/clubs/{17031788}/leave_from_club")
     assert request.status_code == 404
 
-    request = api_client.post(f"/v1/clubs/{club.id}/leave_from_club")
+    request = api_client.get(f"/v1/clubs/{club.id}/leave_from_club")
     assert request.status_code == 403
 
 

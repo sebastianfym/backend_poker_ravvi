@@ -531,7 +531,7 @@ async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionU
         return HTTP_200_OK
 
 
-@router.post("/{club_id}/leave_from_club", status_code=HTTP_200_OK, summary="Leave from club")
+@router.get("/{club_id}/leave_from_club", status_code=HTTP_200_OK, summary="Leave from club")
 async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
