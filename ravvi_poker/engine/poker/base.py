@@ -1,3 +1,4 @@
+import time
 from typing import List, Tuple
 import asyncio
 from itertools import zip_longest, groupby, combinations
@@ -212,7 +213,9 @@ class PokerBase(Game):
         if player.user.connected:
             self.bet_event.clear()
             async with self.DBI(log=self.log) as db:
-                await self.broadcast_PLAYER_MOVE(db, player, options, **params)
+                bet_timeout_timestamp = int(time.time() + self.bet_timeout)
+                await self.broadcast_PLAYER_MOVE(db, player, options, **params,
+                                                 bet_timeout_timestamp=bet_timeout_timestamp)
             self.log.info("wait %ss for player %s ...", self.bet_timeout, player.user_id)
             try:
                 await asyncio.wait_for(self.wait_for_player_bet(), self.bet_timeout)
