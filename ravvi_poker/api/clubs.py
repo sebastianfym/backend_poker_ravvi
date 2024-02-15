@@ -51,6 +51,9 @@ class ClubMemberProfile(BaseModel):
     balance: float | None = 00.00
     balance_shared: float | None = 00.00
 
+    join_in_club: float | None
+    leave_from_club: float | None
+
 
 class UserRequest(BaseModel):
     id: int | None
