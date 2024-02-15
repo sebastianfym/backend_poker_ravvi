@@ -28,7 +28,7 @@ class MixinMeta(type):
 
     def check_compatibility(cls, mixin):
         if mixin not in cls.SUPPORTED_MODIFICATIONS:
-            raise ValueError(f"game with type {cls.__name__} not support node {mixin.__name__}")
+            raise ValueError(f"game with type {cls.__name__} not support mode {mixin.__name__}")
 
 
 
