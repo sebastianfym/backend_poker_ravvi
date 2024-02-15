@@ -660,7 +660,8 @@ async def v1_operations_at_the_checkout(club_id: int, users=Depends(check_rights
                 user_role=member.user_role,
                 balance=member.balance,
                 balance_shared=member.balance_shared,
-                user_img=(await db.get_user_image(member.user_id)).image_id
+                user_img=(await db.get_user_image(member.user_id)).image_id,
+                country="RU" #TODO убрать заглушку страны
             )
             for member in await db.get_club_members(club_id)]
 
@@ -697,7 +698,8 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
                         user_img=(await db.get_user_image(member.user_id)).image_id,
                         txn_value=txn_value,
                         join_in_club=datetime.datetime.timestamp(member.created_ts),
-                        leave_from_club=leave_from_club
+                        leave_from_club=leave_from_club,
+                        country="RU" #TODO убрать заглушку страны
                     )
                 )
             except AttributeError:
