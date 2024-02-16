@@ -179,11 +179,13 @@ class Table:
 
         if self.game:
             game_info = self.game.get_info(users_info=users_info)
+            player_move = game_info.get("player_move", None)
         else:
             # игра еще не началась
             game_info = None
+            player_move = None
 
-        result |= {"game": game_info}
+        result |= {"game": game_info, "player_move": player_move}
 
         # добавляем данные из конфиг классов
         for configCl in configCls:

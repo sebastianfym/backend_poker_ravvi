@@ -66,7 +66,7 @@ class PokerBase(Game):
         game_props = dict(
             blind_small=self.blind_small,
             blind_big=self.blind_big,
-            bet_timeout=self.bet_timeout
+            # bet_timeout=self.bet_timeout
         )
         if self.ante:
             game_props |= {
@@ -91,7 +91,11 @@ class PokerBase(Game):
         # current player
         player = self.current_player
         if player.bet_type is None:
-            info.update(current_user_id=self.current_player.user_id)
+            info.update(player_move={
+                "user_id": player.user_id
+                "bet_timeout": self.bet_timeout,
+                "player_timeout": self.bet_timeout
+            })
         if users_info:
             for p in self.players:
                 if p.cards_open or p.user_id == user_id:
@@ -106,6 +110,7 @@ class PokerBase(Game):
                     amount=p.bet_amount,
                     cards=cards
                 )
+        print(info)
         return info
 
     # PLAYERS
