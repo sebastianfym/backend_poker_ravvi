@@ -659,13 +659,17 @@ async def v1_operations_at_the_checkout(club_id: int, users=Depends(check_rights
                 leave_from_club = datetime.datetime.timestamp(member.closed_ts)
             except TypeError:
                 leave_from_club = None
+            if member.user_role != "A" or member.user_role != "S":
+                balance_shared = None
+            else:
+                balance_shared = member.balance_shared
             club_members.append(ClubMemberProfile(
                     id=member.id,
                     username=(await db.get_user(id=member.user_id)).name,
                     nickname=member.nickname,
                     user_role=member.user_role,
                     balance=member.balance,
-                    balance_shared=member.balance_shared,
+                    balance_shared=balance_shared,
                     user_img=(await db.get_user_image(member.user_id)).image_id,
                     join_in_club=datetime.datetime.timestamp(member.created_ts),
                     leave_from_club=leave_from_club,
@@ -673,10 +677,9 @@ async def v1_operations_at_the_checkout(club_id: int, users=Depends(check_rights
                 ))
 
         members_balance = sum(user.balance for user in club_members)
-        shared_balance = sum(user.balance_shared for user in club_members)
+        shared_balance = sum(user.balance_shared for user in club_members  if user.balance_shared is not None)
         total_balance = members_balance + shared_balance
-    for i in club_members:
-        print(i)
+
     return {
         "club_balance": club_balance,
         "members_balance": members_balance,
@@ -736,21 +739,22 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
                 raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid amount value')
         except decimal.InvalidOperation:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid amount value')
+
     async with DBI() as db:
         if mode == 'pick_up':
             for member in members_list:
                 if member['balance'] is None and member['balance_shared'] is None:
                     continue
                 elif member['balance'] is None and member['balance_shared'] >= 0:
-                    await db.delete_chips_from_the_agent_balance(amount, member['id'], club_owner_account.id)
-                    await db.refresh_club_balance(club_id, amount, mode)
+                    balance_shared = await db.delete_chips_from_the_agent_balance(amount, member['id'], club_owner_account.id)
+                    await db.refresh_club_balance(club_id, balance_shared.balance_shared, mode)
                 elif member['balance'] >= 0 and member['balance_shared'] is None:
-                    await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
-                    await db.refresh_club_balance(club_id, amount, mode)
+                    balance = await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
+                    await db.refresh_club_balance(club_id, balance.balance, mode)
                 elif member['balance'] >= 0 and member['balance_shared'] >= 0:
-                    await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
-                    await db.delete_chips_from_the_agent_balance(amount, member['id'], club_owner_account.id)
-                    await db.refresh_club_balance(club_id, amount * 2, mode)
+                    balance = await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
+                    balance_shared = await db.delete_chips_from_the_agent_balance(amount, member['id'], club_owner_account.id)
+                    await db.refresh_club_balance(club_id, balance.balance + balance_shared.balance_shared, mode)
             return HTTP_200_OK
 
         elif mode == 'give_out':

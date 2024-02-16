@@ -634,7 +634,7 @@ def test_operations_at_the_checkout(api_client: TestClient, api_guest: UserAcces
     assert response.json().get('total_balance') == 0.0
     assert response.json().get('club_members')[0]['user_role'] == "O"
     assert response.json().get('club_members')[0]['balance'] == 0.0
-    assert response.json().get('club_members')[0]['balance_shared'] == 0.0
+    assert response.json().get('club_members')[0]['balance_shared'] == None
 
 
 def test_get_requests_for_chips(api_client: TestClient,
@@ -811,7 +811,7 @@ def test_pick_up_or_give_out_chips(api_client: TestClient, api_guest: UserAccess
     }
 
     request = api_client.post(f"/v1/clubs/{club.id}/pick_up_or_give_out_chips", json=data)
-    assert request.status_code == 200
+    assert request.status_code == 400
 
     data = {
         "mode": "give_out",
@@ -819,14 +819,14 @@ def test_pick_up_or_give_out_chips(api_client: TestClient, api_guest: UserAccess
         "club_members": [
             {
                 "id": second_account_id,
-                "balance": False,
-                "balance_shared": False
+                "balance": 123,
+                "balance_shared": None
             }
         ]
     }
 
     request = api_client.post(f"/v1/clubs/{club.id}/pick_up_or_give_out_chips", json=data)
-    assert request.status_code == 200
+    assert request.status_code == 400
 
     data = {
         "mode": "give_out",

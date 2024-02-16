@@ -784,13 +784,13 @@ class DBI:
             if (balance_shared.balance_shared - amount) < 0:
                 sql = "UPDATE user_account SET balance_shared = 0 WHERE id = %s"
                 await cursor.execute(sql, (account_id,))
-                return
+                return balance_shared
 
             await cursor.execute(sql, (amount, account_id,))
             row = await cursor.fetchone()
             sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
             await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance_shared, sender_id))
-            return
+        return balance_shared
 
     async def delete_chips_from_the_account_balance(self, amount, account_id, sender_id):
         get_balance_shared_sql = "SELECT balance FROM user_account WHERE id = %s"
@@ -802,12 +802,12 @@ class DBI:
             if (balance.balance - amount) <= 0:
                 sql = "UPDATE user_account SET balance = 0 WHERE id = %s"
                 await cursor.execute(sql, (account_id,))
-                return
+                return balance
             await cursor.execute(sql, (amount, account_id,))
             row = await cursor.fetchone()
             sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
             await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance, sender_id))
-        return
+        return balance
 
     async def leave_from_club(self, account_id):
         closed_time = datetime.datetime.utcnow()
