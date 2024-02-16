@@ -768,6 +768,7 @@ def test_pick_up_or_give_out_chips(api_client: TestClient, api_guest: UserAccess
     assert request.status_code == 200
     second_account_id = request.json()[1].get('id')
 
+
     data = {
                 "mode": "give_out",
                 "amount": 500,
@@ -947,3 +948,7 @@ def test_pick_up_or_give_out_chips(api_client: TestClient, api_guest: UserAccess
 
     request = api_client.post(f"/v1/clubs/{club.id}/pick_up_or_give_out_chips", json=data)
     assert request.status_code == 400
+
+    request = api_client.get(f"/v1/clubs/{club.id}/club_txn_history")
+    assert request.status_code == 200
+    assert len(request.json()) >= 1
