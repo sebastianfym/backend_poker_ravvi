@@ -66,8 +66,8 @@ class UserRequest(BaseModel):
     join_in_club: float | None
     leave_from_club: float | None
 
-    class Config:
-        arbitrary_types_allowed = True
+    # class Config:
+    #     arbitrary_types_allowed = True
 
 class UnionProfile(BaseModel):
     name: str | None = None
@@ -462,7 +462,7 @@ async def check_compatibility_recipient_and_balance_type(club_id: int, request: 
     async with DBI() as db:
         user_account = await db.find_account(user_id=request.account_id, club_id=club_id)
     try:
-        if user_account.user_role not in ["A", "S", "O"] and request.balance == "balance_shared":
+        if user_account.user_role not in ["A", "S"] and request.balance == "balance_shared":
             raise ValueError
         request.user_account = user_account
         return request
@@ -655,10 +655,8 @@ async def v1_operations_at_the_checkout(club_id: int, users=Depends(check_rights
         club_balance = club.club_balance
         club_members = []
         for member in await db.get_club_members(club_id):
-            try:
-                leave_from_club = datetime.datetime.timestamp(member.closed_ts)
-            except TypeError:
-                leave_from_club = None
+            leave_from_club = datetime.datetime.timestamp(member.closed_ts) if member.closed_ts is not None else None
+
             if member.user_role != "A" or member.user_role != "S":
                 balance_shared = None
             else:
@@ -731,7 +729,7 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
     amount = (await request.json())['amount']
 
     if mode == 'pick_up' and amount == 'all':
-        amount = decimal.Decimal(999999999.9999)
+        amount = decimal.Decimal(999999999.9999) #Todo придумать что-то со значением
     else:
         try:
             amount = decimal.Decimal(amount)
@@ -745,13 +743,13 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
             for member in members_list:
                 if member['balance'] is None and member['balance_shared'] is None:
                     continue
-                elif member['balance'] is None and member['balance_shared'] >= 0:
+                elif member['balance'] is None and member['balance_shared']:
                     balance_shared = await db.delete_chips_from_the_agent_balance(amount, member['id'], club_owner_account.id)
                     await db.refresh_club_balance(club_id, balance_shared.balance_shared, mode)
-                elif member['balance'] >= 0 and member['balance_shared'] is None:
+                elif member['balance'] and member['balance_shared'] is None:
                     balance = await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
                     await db.refresh_club_balance(club_id, balance.balance, mode)
-                elif member['balance'] >= 0 and member['balance_shared'] >= 0:
+                elif member['balance'] and member['balance_shared']:
                     balance = await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
                     balance_shared = await db.delete_chips_from_the_agent_balance(amount, member['id'], club_owner_account.id)
                     await db.refresh_club_balance(club_id, balance.balance + balance_shared.balance_shared, mode)
@@ -776,13 +774,13 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
             for member in members_list:
                 if member['balance'] is None and member['balance_shared'] is None:
                     continue
-                elif member['balance'] is None and member['balance_shared'] >= 0:
+                elif member['balance'] is None and member['balance_shared']:
                     await db.giving_chips_to_the_user(amount, member['id'], "balance_shared", club_owner_account.id)
                     await db.refresh_club_balance(club_id, amount, mode)
-                elif member['balance'] >= 0 and member['balance_shared'] is None:
+                elif member['balance'] and member['balance_shared'] is None:
                     await db.giving_chips_to_the_user(amount, member['id'], "balance", club_owner_account.id)
                     await db.refresh_club_balance(club_id, amount, mode)
-                elif member['balance'] >= 0 and member['balance_shared'] >= 0:
+                elif member['balance'] and member['balance_shared']:
                     await db.giving_chips_to_the_user(amount, member['id'], "balance", club_owner_account.id)
                     await db.giving_chips_to_the_user(amount, member['id'], "balance_shared", club_owner_account.id)
                     await db.refresh_club_balance(club_id, amount * 2, mode)
@@ -830,9 +828,6 @@ async def v1_club_txn_history(club_id: int, request: Request, users=Depends(chec
 
 @router.patch("/{club_id}/set_user_data", status_code=HTTP_200_OK, summary="Set a user nickname and comment")
 async def v1_set_user_data(club_id: int, request: Request, users=Depends(check_rights_user_club_owner_or_manager)):
-    owner = users[0]
-    club = users[2]
-
     account_id = (await request.json()).get('account_id')
     nickname = (await request.json()).get('nickname')
     club_comment = (await request.json()).get('club_comment')

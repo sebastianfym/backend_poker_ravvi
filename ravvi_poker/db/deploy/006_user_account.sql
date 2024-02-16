@@ -1,1 +1,1 @@
-ALTER TABLE ONLY user_account ADD COLUMN nickname TEXT;
+ALTER TABLE ONLY user_account ADD COLUMN nickname VARCHAR(28);
