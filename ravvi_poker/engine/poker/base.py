@@ -95,7 +95,7 @@ class PokerBase(Game):
                 "user_id": player.user_id,
                 "bet_timeout": self.bet_timeout,
                 "player_timeout": int(
-                    time.time()) - self.bet_timeout_timestamp if self.bet_timeout_timestamp else self.bet_timeout
+                    self.bet_timeout_timestamp - time.time()) if self.bet_timeout_timestamp else self.bet_timeout
             })
         if users_info:
             for p in self.players:
