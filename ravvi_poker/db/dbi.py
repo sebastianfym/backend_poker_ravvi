@@ -680,6 +680,13 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def get_all_account_txn(self, account_id):
+        sql = "SELECT * FROM user_account_txn WHERE account_id=%s AND txn_type=%s or txn_type=%s  ORDER BY id DESC"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (account_id, "CASHIN", "REMOVE" ))
+            row = await cursor.fetchall()
+        return row
+
     async def txn_with_chip_on_club_balance(self, club_id, amount, mode, account_id, sender_id):
         if mode == 'CASHIN':
             sql = "UPDATE club_profile SET club_balance = club_balance + %s WHERE id=%s RETURNING club_balance"
@@ -783,7 +790,6 @@ class DBI:
         async with self.cursor() as cursor:
             await cursor.execute(get_balance_shared_sql, (account_id,))
             balance = await cursor.fetchone()
-            print(type(balance.balance), type(amount))
             if (balance.balance - amount) <= 0:
                 sql = "UPDATE user_account SET balance = 0 WHERE id = %s"
                 await cursor.execute(sql, (account_id,))

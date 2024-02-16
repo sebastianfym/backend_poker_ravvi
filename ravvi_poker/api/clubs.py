@@ -766,6 +766,42 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid mode value')
 
 
+@router.get("/{club_id}/club_txn_history", status_code=HTTP_200_OK, summary='Get club transaction history')
+async def v1_club_txn_history(club_id: int, request: Request, users=Depends(check_rights_user_club_owner_or_manager)):
+    async with DBI() as db:
+        all_club_members_id = [member.id for member in await db.get_club_members(club_id)]
+        if len(all_club_members_id) == 0:
+            return []
+        result_list = []
+        for member_id in all_club_members_id:
+            all_member_txns = await db.get_all_account_txn(member_id)
+            if len(all_club_members_id) == 0:
+                continue
+            recipient = await db.get_club_member(member_id)
+            member_user_profile = await db.get_user(recipient.user_id)
+            for txn in all_member_txns:
+                try:
+                    txn_dict = {}
+                    txn_dict['txn_type'] = txn.txn_type
+                    txn_dict['txn_value'] = txn.txn_value
+
+                    txn_dict['recipient_id'] = member_id
+                    txn_dict['recipient_name'] = member_user_profile.name
+                    txn_dict['recipient_nickname'] = recipient.nickname
+                    txn_dict['recipient_country'] = member_user_profile.country
+
+                    sender = await db.get_club_member(txn.sender_id)
+                    sender_user_profile = await db.get_user(sender.user_id)
+                    txn_dict['sender_id'] = txn.sender_id
+                    txn_dict['sender_name'] = sender_user_profile.name
+                    txn_dict['sender_nickname'] = sender.nickname
+                    txn_dict['sender_country'] = sender_user_profile.country
+                except AttributeError:
+                    continue
+                result_list.append(txn_dict)
+    return result_list
+
+
 @router.patch("/{club_id}/set_user_data", status_code=HTTP_200_OK, summary="Set a user nickname and comment")
 async def v1_set_user_data(club_id: int, request: Request, users=Depends(check_rights_user_club_owner_or_manager)):
     owner = users[0]
