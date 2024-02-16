@@ -92,7 +92,7 @@ class PokerBase(Game):
         player = self.current_player
         if player.bet_type is None:
             info.update(player_move={
-                "user_id": player.user_id
+                "user_id": player.user_id,
                 "bet_timeout": self.bet_timeout,
                 "player_timeout": self.bet_timeout
             })
