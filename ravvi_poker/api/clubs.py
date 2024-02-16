@@ -728,6 +728,8 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
 
     amount = (await request.json())['amount']
 
+    print(await request.json())
+
     if mode == 'pick_up' and amount == 'all':
         amount = decimal.Decimal(999999999.9999) #Todo придумать что-то со значением
     else:
@@ -759,6 +761,8 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
             balance_count = 0
             balance_shared_count = 0
 
+            print(members_list)
+
             for check_balance in members_list:
                 if check_balance['balance'] is None:
                     balance_count = balance_count
@@ -777,7 +781,7 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
                 elif member['balance'] is None and member['balance_shared']:
                     await db.giving_chips_to_the_user(amount, member['id'], "balance_shared", club_owner_account.id)
                     await db.refresh_club_balance(club_id, amount, mode)
-                elif member['balance'] and member['balance_shared'] is None:
+                elif member['balance'] or member["balance"] == 0 and member['balance_shared'] is None:
                     await db.giving_chips_to_the_user(amount, member['id'], "balance", club_owner_account.id)
                     await db.refresh_club_balance(club_id, amount, mode)
                 elif member['balance'] and member['balance_shared']:
