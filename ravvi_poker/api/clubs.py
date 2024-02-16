@@ -548,8 +548,8 @@ async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
         return HTTP_200_OK
 
 
-@router.get("/{club_id}/user_account", status_code=HTTP_200_OK, summary="Page with data about user's account in club")
-async def v1_user_account(club_id: int, session_uuid: SessionUUID):
+@router.post("/{club_id}/user_account", status_code=HTTP_200_OK, summary="Page with data about user's account in club")
+async def v1_user_account(club_id: int, session_uuid: SessionUUID, request: Request):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
@@ -571,7 +571,6 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
         now_datestamp = int(time.mktime(datetime.datetime.fromisoformat(str(datetime.datetime.utcnow())).timetuple()))
 
         date_now = str(datetime.datetime.now()).split(" ")[0]
-
         table_types = []
         game_types = []
         game_subtype = []

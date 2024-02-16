@@ -747,10 +747,10 @@ def test_user_account(api_client: TestClient, api_guest: UserAccessProfile):
 
     club = create_club(api_client)
 
-    response = api_client.get(f"/v1/clubs/{club.id}/user_account")
+    response = api_client.post(f"/v1/clubs/{club.id}/user_account")
     assert response.status_code == 200
 
-    response = api_client.get(f"/v1/clubs/{17031788}/user_account")
+    response = api_client.post(f"/v1/clubs/{17031788}/user_account")
     assert response.status_code == 404
 
 
@@ -767,10 +767,10 @@ def test_pick_up_or_give_out_chips(api_client: TestClient, api_guest: UserAccess
     request = api_client_2.get(f"/v1/clubs/{club.id}/members")
     assert request.status_code == 200
     second_account_id = request.json()[1].get('id')
-
+    club.club_balance = 150000
 
     data = {
-                "mode": "give_out",
+                "mode": "pick_up",
                 "amount": 500,
                 "club_members": [
                     {
@@ -780,12 +780,11 @@ def test_pick_up_or_give_out_chips(api_client: TestClient, api_guest: UserAccess
                     }
                 ]
            }
-
     request = api_client.post(f"/v1/clubs/{club.id}/pick_up_or_give_out_chips", json=data)
     assert request.status_code == 200
 
     data = {
-        "mode": "give_out",
+        "mode": "pick_up",
         "amount": 500,
         "club_members": [
             {
