@@ -1,5 +1,5 @@
 import time
-from typing import List, Tuple
+from typing import List, Tuple, Deque
 import asyncio
 from itertools import zip_longest, groupby, combinations
 
@@ -58,6 +58,7 @@ class PokerBase(Game):
         self.bet_total = 0
         self.bet_event = asyncio.Event()
         self.bet_timeout = bet_timeout
+        self.bet_timeout_timestamp: int | None = None
         self.count_in_the_game = 0
         self.count_has_options = 0
 
@@ -93,7 +94,8 @@ class PokerBase(Game):
             info.update(player_move={
                 "user_id": player.user_id,
                 "bet_timeout": self.bet_timeout,
-                "player_timeout": self.bet_timeout
+                "player_timeout": int(
+                    time.time()) - self.bet_timeout_timestamp if self.bet_timeout_timestamp else self.bet_timeout
             })
         if users_info:
             for p in self.players:
@@ -195,11 +197,6 @@ class PokerBase(Game):
 
     def get_bet_options(self, player) -> Tuple[List[Bet], dict]:
         call_delta, raise_min, raise_max, player_max = self.get_bet_limits(player)
-        print("!!!!!!!!!!!!!!!!!")
-        print(call_delta)
-        print(raise_min)
-        print(raise_max)
-        print(player_max)
         options = [Bet.FOLD]
         params = dict()
         if call_delta == 0:
@@ -222,11 +219,12 @@ class PokerBase(Game):
         if player.user.connected:
             self.bet_event.clear()
             async with self.DBI(log=self.log) as db:
+                self.bet_timeout_timestamp = int(time.time()) + self.bet_timeout
                 await self.broadcast_PLAYER_MOVE(db, player, options, **params,
                                                  bet_timeout=self.bet_timeout, player_timeout=self.bet_timeout)
             self.log.info("wait %ss for player %s ...", self.bet_timeout, player.user_id)
             try:
-                await asyncio.wait_for(self.wait_for_player_bet(), self.bet_timeout)
+                await asyncio.wait_for(self.wait_for_player_bet(), self.bet_timeout + 2)
             except asyncio.exceptions.TimeoutError:
                 self.log.info("player timeout: %s", player.user_id)
         async with self.DBI() as db:
