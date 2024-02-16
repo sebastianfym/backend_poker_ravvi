@@ -178,8 +178,8 @@ class Table:
         )
 
         if self.game:
-            game_info = self.game.get_info(users_info=users_info)
-            player_move = game_info.get("player_move", None)
+            game_info = self.game.get_info(users_info=users_info, user_id=user_id)
+            player_move = game_info.pop("player_move", None)
         else:
             # игра еще не началась
             game_info = None

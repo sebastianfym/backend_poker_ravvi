@@ -66,7 +66,6 @@ class PokerBase(Game):
         game_props = dict(
             blind_small=self.blind_small,
             blind_big=self.blind_big,
-            # bet_timeout=self.bet_timeout
         )
         if self.ante:
             game_props |= {
@@ -110,7 +109,7 @@ class PokerBase(Game):
                     amount=p.bet_amount,
                     cards=cards
                 )
-        print(info)
+
         return info
 
     # PLAYERS
@@ -196,6 +195,11 @@ class PokerBase(Game):
 
     def get_bet_options(self, player) -> Tuple[List[Bet], dict]:
         call_delta, raise_min, raise_max, player_max = self.get_bet_limits(player)
+        print("!!!!!!!!!!!!!!!!!")
+        print(call_delta)
+        print(raise_min)
+        print(raise_max)
+        print(player_max)
         options = [Bet.FOLD]
         params = dict()
         if call_delta == 0:
