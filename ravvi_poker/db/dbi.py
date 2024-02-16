@@ -710,6 +710,15 @@ class DBI:
             sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
             await cursor.execute(sql, (account_id, f"CLUB_{mode}", amount, row.club_balance, sender_id))
 
+    async def refresh_club_balance(self, club_id, amount, mode):
+        if mode == 'pick_up':
+            sql = "UPDATE club_profile SET club_balance = club_balance + %s WHERE id=%s RETURNING club_balance"
+        elif mode == 'give_out':
+            sql = "UPDATE club_profile SET club_balance = club_balance - %s WHERE id=%s  RETURNING club_balance"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (amount, club_id))
+
+
     async def send_request_for_replenishment_of_chips(self, account_id, amount, balance):
         sql = "INSERT INTO public.user_account_txn (account_id, txn_type, txn_value, props) VALUES (%s, %s, %s, %s::jsonb)"
         txn_type = "REPLENISHMENT"

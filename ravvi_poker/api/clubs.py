@@ -676,7 +676,8 @@ async def v1_operations_at_the_checkout(club_id: int, users=Depends(check_rights
         members_balance = sum(user.balance for user in club_members)
         shared_balance = sum(user.balance_shared for user in club_members)
         total_balance = members_balance + shared_balance
-
+    for i in club_members:
+        print(i)
     return {
         "club_balance": club_balance,
         "members_balance": members_balance,
@@ -721,6 +722,7 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
     mode = (await request.json())['mode']
     members_list = (await request.json())['club_members']
     club_owner_account = users[0]
+    club = users[2]
     if len(members_list) == 0:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Quantity club members for action is invalid')
 
@@ -742,24 +744,45 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
                     continue
                 elif member['balance'] is None and member['balance_shared'] >= 0:
                     await db.delete_chips_from_the_agent_balance(amount, member['id'], club_owner_account.id)
+                    await db.refresh_club_balance(club_id, amount, mode)
                 elif member['balance'] >= 0 and member['balance_shared'] is None:
                     await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
+                    await db.refresh_club_balance(club_id, amount, mode)
                 elif member['balance'] >= 0 and member['balance_shared'] >= 0:
                     await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
                     await db.delete_chips_from_the_agent_balance(amount, member['id'], club_owner_account.id)
+                    await db.refresh_club_balance(club_id, amount * 2, mode)
             return HTTP_200_OK
 
         elif mode == 'give_out':
+            balance_count = 0
+            balance_shared_count = 0
+
+            for check_balance in members_list:
+                if check_balance['balance'] is None:
+                    balance_count = balance_count
+                elif check_balance['balance'] >= 0:
+                    balance_count += 1
+                if check_balance['balance_shared'] is None:
+                    balance_shared_count = balance_shared_count
+                elif check_balance['balance_shared'] >= 0:
+                    balance_shared_count += 1
+
+            if club.club_balance < amount * (balance_count + balance_shared_count):
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Club balance cannot be less than request amount')
             for member in members_list:
                 if member['balance'] is None and member['balance_shared'] is None:
                     continue
                 elif member['balance'] is None and member['balance_shared'] >= 0:
                     await db.giving_chips_to_the_user(amount, member['id'], "balance_shared", club_owner_account.id)
+                    await db.refresh_club_balance(club_id, amount, mode)
                 elif member['balance'] >= 0 and member['balance_shared'] is None:
                     await db.giving_chips_to_the_user(amount, member['id'], "balance", club_owner_account.id)
+                    await db.refresh_club_balance(club_id, amount, mode)
                 elif member['balance'] >= 0 and member['balance_shared'] >= 0:
                     await db.giving_chips_to_the_user(amount, member['id'], "balance", club_owner_account.id)
                     await db.giving_chips_to_the_user(amount, member['id'], "balance_shared", club_owner_account.id)
+                    await db.refresh_club_balance(club_id, amount * 2, mode)
             return HTTP_200_OK
 
         else:
