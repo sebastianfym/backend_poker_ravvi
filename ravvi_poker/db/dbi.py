@@ -1,4 +1,5 @@
 import datetime
+import decimal
 import logging
 import os
 import json
@@ -12,11 +13,11 @@ logger = logging.getLogger(__name__)
 
 
 class DBI:
-    DB_HOST = os.getenv("RAVVI_POKER_DB_HOST", "localhost")
-    DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "15432"))
-    DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "develop")
-    DB_USER = os.getenv("RAVVI_POKER_DB_USER", "postgres")
-    DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
+    DB_HOST = "localhost"  # os.getenv("RAVVI_POKER_DB_HOST", "localhost")
+    DB_PORT = "5432"  # int(os.getenv("RAVVI_POKER_DB_PORT", "15432"))
+    DB_NAME = 'poker_db'  # os.getenv("RAVVI_POKER_DB_NAME", "develop")
+    DB_USER = 'poker_test'  # os.getenv("RAVVI_POKER_DB_USER", "postgres")
+    DB_PASSWORD = 'poker_test'  # os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
     APPLICATION_NAME = 'CPS'
     CONNECT_TIMEOUT = 15
 
@@ -785,7 +786,7 @@ class DBI:
         async with self.cursor() as cursor:
             await cursor.execute(get_balance_shared_sql, (account_id,))
             balance_shared = await cursor.fetchone()
-            if (balance_shared.balance_shared - amount) < 0:
+            if (balance_shared.balance_shared - decimal.Decimal(amount)) < 0:
                 sql = "UPDATE user_account SET balance_shared = 0 WHERE id = %s RETURNING balance_shared"
                 await cursor.execute(sql, (account_id,))
                 # return balance_shared
@@ -810,7 +811,7 @@ class DBI:
         async with self.cursor() as cursor:
             await cursor.execute(get_balance_shared_sql, (account_id,))
             balance = await cursor.fetchone()
-            if (balance.balance - amount) <= 0:
+            if (balance.balance - decimal.Decimal(amount)) <= 0:
                 sql = "UPDATE user_account SET balance = 0 WHERE id = %s RETURNING balance"
                 await cursor.execute(sql, (account_id,))
                 # return balance
