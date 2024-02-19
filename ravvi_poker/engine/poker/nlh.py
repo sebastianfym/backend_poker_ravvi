@@ -6,6 +6,7 @@ from ravvi_poker.engine.poker.bomb_pot import BombPotMixin
 from .double_board import MixinMeta
 from .hands import HandType
 from .base import PokerBase, Bet
+from ..events import Command
 from ..user import User
 
 
@@ -34,7 +35,6 @@ class Poker_NLH_REGULAR(Poker_NLH_X):
     GAME_DECK = 52
 
     SUPPORTED_MODIFICATIONS = [BombPotMixin, DoubleBoardMixin]
-
 
 
 class Poker_NLH_AOF(Poker_NLH_X):
@@ -67,6 +67,30 @@ class Poker_NLH_3M1(Poker_NLH_X):
 
     PLAYER_CARDS_FREFLOP = 3
 
+    async def handle_cmd(self, db, user_id, client_id, cmd_type: Command.Type, props: dict):
+        await super().handle_cmd(db, user_id, client_id, cmd_type, props)
+        if cmd_type == Command.Type.DROP_CARD:
+            self.handle_cmd_drop_card(db, user_id, client_id, props)
+
+    def handle_cmd_drop_card(self, db, user_id, client_id, props):
+        # TODO описать команду
+        print("________________")
+        print("new command")
+        print(user_id)
+        print(client_id)
+        print(props)
+
+    async def run_PREFLOP(self):
+        # при копировании класса в метаклассе он копирует ссылки на функции изначального класса из-за чего методы
+        # миксинов в MRO оказываются левее и игнорируются
+        for mro_class in self.__class__.mro():
+            if mro_class == Poker_NLH_3M1:
+                await super().run_PREFLOP()
+            elif hasattr(mro_class, "run_PREFLOP"):
+                await super(mro_class, self).run_PREFLOP()
+            else:
+                continue
+            break
 
 
 class Poker_NLH_6P(Poker_NLH_X):
@@ -76,7 +100,7 @@ class Poker_NLH_6P(Poker_NLH_X):
     SUPPORTED_MODIFICATIONS = [BombPotMixin, DoubleBoardMixin]
 
     GAME_HAND_RANK = [
-        HandType.HIGH_CARD, 
+        HandType.HIGH_CARD,
         HandType.ONE_PAIR,
         HandType.TWO_PAIRS,
         HandType.THREE_OF_KIND,
@@ -91,10 +115,10 @@ class Poker_NLH_6P(Poker_NLH_X):
         super().__init__(table, users, **kwargs)
         self.ante = None
 
+
 NLH_GAMES = [
     Poker_NLH_REGULAR,
     Poker_NLH_AOF,
     Poker_NLH_3M1,
     Poker_NLH_6P
 ]
-
