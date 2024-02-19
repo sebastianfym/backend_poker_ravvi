@@ -5,6 +5,14 @@ class MixinMeta(type):
     def __call__(cls, *args, **kwargs):
         try:
             mixin = kwargs.pop("mixin")
+
+            # проверяем совместимость модификатора и режима
+            if isinstance(mixin, list):
+                for mix in mixin:
+                    cls.check_compatibility(mix)
+            else:
+                cls.check_compatibility(mixin)
+
             if isinstance(mixin, type):
                 name = f"{cls.__name__}With{mixin.__name__}"
                 cls = type(name, (mixin, cls), dict(cls.__dict__))
@@ -12,10 +20,16 @@ class MixinMeta(type):
                 name = f"{cls.__name__}".join([f"With{mixin_object.__name__}" for mixin_object in mixin])
                 for mixin_object in mixin:
                     cls = type(name, (mixin_object, cls), dict(cls.__dict__))
+
         except KeyError:
             pass
 
         return type.__call__(cls, *args, **kwargs)
+
+    def check_compatibility(cls, mixin):
+        if mixin not in cls.SUPPORTED_MODIFICATIONS:
+            raise ValueError(f"game with type {cls.__name__} not support mode {mixin.__name__}")
+
 
 
 class DoubleBoardMixin:

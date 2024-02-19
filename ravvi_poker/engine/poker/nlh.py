@@ -1,5 +1,8 @@
 from typing import List, Tuple
 
+from ravvi_poker.engine.poker.double_board import DoubleBoardMixin
+from ravvi_poker.engine.poker.bomb_pot import BombPotMixin
+
 from .double_board import MixinMeta
 from .hands import HandType
 from .base import PokerBase, Bet
@@ -30,11 +33,15 @@ class Poker_NLH_REGULAR(Poker_NLH_X):
     GAME_SUBTYPE = "REGULAR"
     GAME_DECK = 52
 
+    SUPPORTED_MODIFICATIONS = [BombPotMixin, DoubleBoardMixin]
+
 
 
 class Poker_NLH_AOF(Poker_NLH_X):
     GAME_SUBTYPE = "AOF"
     GAME_DECK = 52
+
+    SUPPORTED_MODIFICATIONS = []
 
     def __init__(self, table, users: List[User], **kwargs):
         super().__init__(table, users, **kwargs)
@@ -56,6 +63,8 @@ class Poker_NLH_3M1(Poker_NLH_X):
     GAME_SUBTYPE = "3-1"
     GAME_DECK = 52
 
+    SUPPORTED_MODIFICATIONS = [BombPotMixin, DoubleBoardMixin]
+
     PLAYER_CARDS_FREFLOP = 3
 
 
@@ -63,6 +72,8 @@ class Poker_NLH_3M1(Poker_NLH_X):
 class Poker_NLH_6P(Poker_NLH_X):
     GAME_SUBTYPE = "6+"
     GAME_DECK = 36
+
+    SUPPORTED_MODIFICATIONS = [BombPotMixin, DoubleBoardMixin]
 
     GAME_HAND_RANK = [
         HandType.HIGH_CARD, 

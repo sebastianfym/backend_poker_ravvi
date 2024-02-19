@@ -18,7 +18,7 @@ class SevenDeuceController:
                 bank_seven_deuce_delta, winners_seven_deuce_user_id_delta = \
                     await self.collect_winners(winners_board, players)
                 bank_seven_deuce += bank_seven_deuce_delta
-                winners_seven_deuce_user_id.append(*winners_seven_deuce_user_id_delta)
+                winners_seven_deuce_user_id.extend(winners_seven_deuce_user_id_delta)
         else:
             # winners для любого другого режима
             bank_seven_deuce, winners_seven_deuce_user_id = await self.collect_winners(winners_info, players)
