@@ -5,11 +5,23 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_401_UNAUTHORIZED
 from ravvi_poker.api.auth import UserAccessProfile
+from ravvi_poker.api.clubs import ClubProfile
 
 from ravvi_poker.engine import data
 
 logger = logging.getLogger(__name__)
 
+def create_club(client: list[TestClient] | TestClient):
+    params = {}
+    if isinstance(client, list):
+        response = client[0].post("/v1/clubs", json=params)
+    elif isinstance(client, TestClient):
+        response = client.post("/v1/clubs", json=params)
+    else:
+        raise ValueError("incorrect client type")
+    club = ClubProfile(**response.json())
+
+    return club
 
 def test_get_levels_schedule_no_access(api_client: TestClient, api_guest: UserAccessProfile):
     # negative (no access)
@@ -59,7 +71,6 @@ def test_get_levels_schedule(api_client: TestClient, api_guest: UserAccessProfil
 #     assert response.json() == payment_structure_list
 
 def test_countries_list(api_client: TestClient, api_guest: UserAccessProfile):
-
     data.getJSONFiles()
 
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
@@ -78,7 +89,6 @@ def test_countries_list(api_client: TestClient, api_guest: UserAccessProfile):
 
 
 def test_rewards_distribution(api_client: TestClient, api_guest: UserAccessProfile):
-
     response = api_client.get("/v1/info/rewards_distribution")
     assert response.status_code == 401
     assert response.json() == {"detail": "Not authenticated"}
@@ -86,6 +96,7 @@ def test_rewards_distribution(api_client: TestClient, api_guest: UserAccessProfi
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
     response = api_client.get("/v1/info/rewards_distribution")
     assert response.status_code == 200
+
 
 # def test_timezone(api_client: TestClient, api_guest: UserAccessProfile):
 #     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
@@ -102,3 +113,10 @@ def test_rewards_distribution(api_client: TestClient, api_guest: UserAccessProfi
 #     response_2 = api_client.post("/v1/info/timezone", json={})
 #     assert response_2.status_code == 422
 
+def test_clubs_history(api_client: TestClient, api_guest: UserAccessProfile):
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+
+    club = create_club(api_client)
+    response = api_client.get(f"/v1/info/{club.id}/history")
+
+    assert response.status_code == 200

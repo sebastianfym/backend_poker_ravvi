@@ -189,17 +189,24 @@ class Table:
         )
 
         if self.game:
-            game_info = self.game.get_info(users_info=users_info)
+            game_info = self.game.get_info(users_info=users_info, user_id=user_id)
+            player_move = game_info.pop("player_move", None)
         else:
             # игра еще не началась
             game_info = None
+            player_move = None
 
-        result |= {"game": game_info}
+        result |= {"game": game_info, "player_move": player_move}
 
         # добавляем данные из конфиг классов
         for configCl in configCls:
             if len(config_dict_for_add := getattr(self, configCl.cls_as_config_name()).unpack_for_msg()) != 0:
                 result |= config_dict_for_add
+
+        # заменяем ante_up из настроек на ante_options
+        if self.ante:
+            result.pop("ante_up")
+            result["ante_options"] = self.ante.ante_levels
 
         return result
 
@@ -454,6 +461,9 @@ class Table:
                 # сбрасываем уровень бомпота
                 if self.bombpot:
                     await self.bombpot.reset_step()
+                # сбрасываем уровень анте
+                if self.ante:
+                    await self.ante.reset_ante_level()
                 return
             self.game = await self.create_game(users)
         try:

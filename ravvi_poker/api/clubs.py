@@ -1,4 +1,5 @@
 import datetime
+import decimal
 import time
 from decimal import Decimal
 from typing import Annotated, Any
@@ -20,7 +21,6 @@ router = APIRouter(prefix="/clubs", tags=["clubs"])
 class ClubProps(BaseModel):
     name: str | None = None
     description: str | None = None
-    # TODO не должно быть None
     image_id: int | None = None
 
 
@@ -47,6 +47,27 @@ class ClubMemberProfile(BaseModel):
     user_role: str | None = None
     user_approved: bool | None = None
 
+    nickname: str | None = None
+    balance: float | None = 00.00
+    balance_shared: float | None = 00.00
+
+    join_in_club: float | None = None
+    leave_from_club: float | None = None
+
+
+class UserRequest(BaseModel):
+    id: int | None
+    username: str | None
+    user_img: int | None
+    user_role: str | None
+    nickname: str | None
+    txn_value: float | None
+
+    join_in_club: float | None
+    leave_from_club: float | None
+
+    # class Config:
+    #     arbitrary_types_allowed = True
 
 class UnionProfile(BaseModel):
     name: str | None = None
@@ -64,6 +85,70 @@ class AccountDetailInfo(BaseModel):
     winning: float | None
     bb_100_winning: float | None
     now_datestamp: float | None
+
+
+class ClubChipsValue(BaseModel):
+    amount: Decimal = Field(
+        gt=0,
+        lt=10 ** 10,
+        decimal_places=2
+    )
+
+    @field_validator("amount", mode="before")
+    @classmethod
+    def ensure_not_str(cls, v: Any):
+        if isinstance(v, str):
+            raise ValueError
+        return v
+
+
+class UserChipsValue(ClubChipsValue):
+    balance: str
+    # ID аккаунта внутри клуба
+    account_id: int
+    user_account: Row | None = Field(default=None)
+
+    @field_validator("balance", mode="before")
+    @classmethod
+    def ensure_correct_type(cls, v: Any):
+        if v not in ["balance", "balance_shared"]:
+            raise ValueError
+        return v
+
+
+async def check_rights_user_club_owner(club_id: int, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+        elif club.closed_ts:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+        club_owner_account = await db.find_account(user_id=user.id, club_id=club_id)
+        if club_owner_account is None or club_owner_account.user_role != "O":
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+
+    return club_owner_account, user, club
+
+
+async def check_rights_user_club_owner_or_manager(club_id: int, session_uuid: SessionUUID):
+    async with DBI() as db:
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+        elif club.closed_ts:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+        club_owner_account = await db.find_account(user_id=user.id, club_id=club_id)
+        if club_owner_account is None or club_owner_account.user_role.lower() not in ['o', 'm']:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action.")
+        return club_owner_account, user, club
 
 
 @router.post("", status_code=HTTP_201_CREATED, summary="Create new club")
@@ -259,10 +344,10 @@ async def v1_create_club_table(club_id: int, params: TableParams, session_uuid: 
         kwargs = params.model_dump(exclude_unset=False)
         main_parameters = ["club_id", "table_type", "table_name", "table_seats", "game_type", "game_subtype"]
 
-        table_type = kwargs.get('table_type')  # .value
+        table_type = kwargs.get('table_type')
         table_name = kwargs.get('table_name')
         table_seats = kwargs.get('table_seats')
-        game_type = kwargs.get('game_type')  # .value
+        game_type = kwargs.get('game_type')
         game_subtype = kwargs.get('game_subtype')
 
         for param in ["players_count", "viewers_count", "created", "opened", "closed"]:
@@ -355,39 +440,6 @@ async def v1_get_all_unions(session_uuid: SessionUUID):
         return [UnionProfile(id=union.id, name=union.name) for union in unions]
 
 
-class ClubChipsValue(BaseModel):
-    amount: Decimal = Field(
-        gt=0,
-        lt=10 ** 10,
-        decimal_places=2
-    )
-
-    @field_validator("amount", mode="before")
-    @classmethod
-    def ensure_not_str(cls, v: Any):
-        if isinstance(v, str):
-            raise ValueError
-        return v
-
-
-async def check_rights_user_club_owner(club_id: int, session_uuid: SessionUUID):
-    async with DBI() as db:
-        _, user = await get_session_and_user(db, session_uuid)
-        club = await db.get_club(club_id)
-        if not club:
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                detail="You don't have enough rights to perform this action")
-        elif club.closed_ts:
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                detail="You don't have enough rights to perform this action")
-        club_owner_account = await db.find_account(user_id=user.id, club_id=club_id)
-        if club_owner_account is None or club_owner_account.user_role != "O":
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                detail="You don't have enough rights to perform this action")
-
-    return club_owner_account, user
-
-
 @router.post("/{club_id}/add_chip_on_club_balance", status_code=HTTP_200_OK,
              summary="Adds a certain number of chips to the club's balance")
 async def v1_add_chip_on_club_balance(club_id: int, chips_value: ClubChipsValue,
@@ -406,27 +458,16 @@ async def v1_delete_chip_from_club_balance(club_id: int, chips_value: ClubChipsV
         await db.txn_with_chip_on_club_balance(club_id, chips_value.amount, "REMOVE", club_owner_account.id, user.id)
 
 
-class UserChipsValue(ClubChipsValue):
-    balance: str
-    # ID аккаунта внутри клуба
-    recipient_user_id: int
-    recipient_user_account: Row | None = Field(default=None)
-
-    @field_validator("balance", mode="before")
-    @classmethod
-    def ensure_correct_type(cls, v: Any):
-        if v not in ["balance", "balance_shared"]:
-            raise ValueError
-        return v
-
-
 async def check_compatibility_recipient_and_balance_type(club_id: int, request: UserChipsValue):
     async with DBI() as db:
-        user_account = await db.find_account(user_id=request.recipient_user_id, club_id=club_id)
-    if user_account.user_role not in ["A", "S"] and request.balance == "balance_shared":
-        raise ValueError
-    request.recipient_user_account = user_account
-    return request
+        user_account = await db.find_account(user_id=request.account_id, club_id=club_id)
+    try:
+        if user_account.user_role not in ["A", "S"] and request.balance == "balance_shared":
+            raise ValueError
+        request.user_account = user_account
+        return request
+    except AttributeError:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='User account not found in club')
 
 
 @router.post("/{club_id}/giving_chips_to_the_user", status_code=HTTP_200_OK,
@@ -435,26 +476,28 @@ async def v1_club_giving_chips_to_the_user(club_id: int, request: Annotated[
     UserChipsValue, Depends(check_compatibility_recipient_and_balance_type)],
                                            users=Depends(check_rights_user_club_owner)):
     async with DBI() as db:
-        await db.giving_chips_to_the_user(request.amount, request.recipient_user_id, request.balance, users[1].id)
+        await db.giving_chips_to_the_user(request.amount, request.account_id, request.balance, users[0].id)
 
 
 @router.post("/{club_id}/delete_chips_from_the_user", status_code=HTTP_200_OK,
              summary="Owner take away chips from the club's user")
 async def v1_club_delete_chips_from_the_user(club_id: int, request: Annotated[
     UserChipsValue, Depends(check_compatibility_recipient_and_balance_type)],
-                                           users=Depends(check_rights_user_club_owner)):
+                                             users=Depends(check_rights_user_club_owner)):
     async with DBI() as db:
         if request.balance == "balance":
-            await db.delete_chips_from_the_account_balance(request.amount, users[1].id, request.recipient_user_id)
+            await db.delete_chips_from_the_account_balance(request.amount, request.account_id, users[0].id)
         else:
-            await db.delete_chips_from_the_agent_balance(request.amount, users[1].id, request.recipient_user_id)
+            await db.delete_chips_from_the_agent_balance(request.amount, request.account_id, users[0].id)
 
 
 @router.post("/{club_id}/request_chips", status_code=HTTP_200_OK, summary="The user requests chips from the club")
-async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionUUID, request: Request):
+async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionUUID, request: Request, users=Depends(check_rights_user_club_owner)):
     async with DBI() as db:
-        _, user = await get_session_and_user(db, session_uuid)
-        club = await db.get_club(club_id)
+        # _, user = await get_session_and_user(db, session_uuid)
+        # club = await db.get_club(club_id)
+        user = users[1]
+        club = users[2]
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
@@ -464,6 +507,14 @@ async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionU
         except AttributeError:
             return HTTPException(status_code=HTTP_403_FORBIDDEN,
                                  detail="You don't have enough rights to perform this action")
+
+        check_last_request = await db.check_request_to_replenishment(account.id)
+
+        try:
+            if check_last_request.props['status'] == 'consider':
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Your request is still under consideration")
+        except AttributeError:
+            pass
 
         json_data = await request.json()
 
@@ -480,7 +531,7 @@ async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionU
         return HTTP_200_OK
 
 
-@router.post("/{club_id}/leave_from_club", status_code=HTTP_200_OK, summary="Leave from club")
+@router.get("/{club_id}/leave_from_club", status_code=HTTP_200_OK, summary="Leave from club")
 async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -497,8 +548,8 @@ async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
         return HTTP_200_OK
 
 
-@router.get("/{club_id}/user_account", status_code=HTTP_200_OK, summary="Page with data about user's account in club")
-async def v1_user_account(club_id: int, session_uuid: SessionUUID):
+@router.post("/{club_id}/user_account", status_code=HTTP_200_OK, summary="Page with data about user's account in club")
+async def v1_user_account(club_id: int, session_uuid: SessionUUID, request: Request):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
@@ -520,7 +571,6 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
         now_datestamp = int(time.mktime(datetime.datetime.fromisoformat(str(datetime.datetime.utcnow())).timetuple()))
 
         date_now = str(datetime.datetime.now()).split(" ")[0]
-
         table_types = []
         game_types = []
         game_subtype = []
@@ -534,13 +584,15 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
                 game_subtype.append(game.game_subtype)
 
         winning_row = await db.get_statistics_about_winning(account.id, date_now)
-        sum_all_buyin = sum([float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']])
-        sum_all_cashout = sum([float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'CASHOUT']])
+        sum_all_buyin = sum(
+            [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']])
+        sum_all_cashout = sum(
+            [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'CASHOUT']])
         winning = sum_all_cashout - abs(sum_all_buyin)
 
         bb_100_winning = 0
 
-        all_games_id = [id.game_id for id in await db.all_players_games(user.id)]
+        all_games_id = [id.game_id for id in await db.all_players_games(user.id)]  # user.id
         access_games = []
         access_game_id = []
 
@@ -552,10 +604,10 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
 
         game_props_list = []
         for game_id in access_game_id:
-            balance_data = await db.get_balance_begin_and_end_from_game(game_id, user.id) #
+            balance_data = await db.get_balance_begin_and_end_from_game(game_id, user.id)  #
             game_data = await db.get_game_and_players(game_id)
             game_props_list.append({'game_id': game_id, 'balance_begin': float(balance_data.balance_begin),
-                                    'balance_end':float(balance_data.balance_end),
+                                    'balance_end': float(balance_data.balance_end),
                                     'big_blind': game_data[0].props['blind_big']})
 
         blind_big_dict = {}
@@ -568,13 +620,13 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
             else:
                 blind_big_dict[big_blind] = {'big_blind': big_blind, 'sum_winning': balance_difference,
                                              'count': 1}
-
         result_list = list(blind_big_dict.values())
 
         quantity_games = 0
         for winning_100 in result_list:
             bb_100_winning += winning_100['sum_winning'] / winning_100['big_blind']
             quantity_games += winning_100['count']
+
         try:
             bb_100_winning /= quantity_games
             bb_100_winning *= 100
@@ -584,12 +636,217 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID):
         return AccountDetailInfo(
             join_datestamp=unix_time,
             now_datestamp=now_datestamp,
-            timezone="Asia/Singapore",
+            timezone=club.timezone,
             table_types=set(table_types),
             game_types=set(game_types),
             game_subtypes=set(game_subtype),
             opportunity_leave=opportunity_leave,
-            hands=count_of_games_played, #todo потом добавить триггеры
+            hands=count_of_games_played,  # todo потом добавить триггеры
             winning=winning,
             bb_100_winning=bb_100
         )
+
+
+@router.get("/{club_id}/operations_at_the_checkout", status_code=HTTP_200_OK,
+            summary="Get all the operations that were carried out at the club's cash desk and detailed information about these operations")
+async def v1_operations_at_the_checkout(club_id: int, users=Depends(check_rights_user_club_owner_or_manager)):
+    async with DBI() as db:
+        club = users[2]  # await db.get_club(club_id)
+        club_balance = club.club_balance
+        club_members = []
+        for member in await db.get_club_members(club_id):
+            leave_from_club = datetime.datetime.timestamp(member.closed_ts) if member.closed_ts is not None else None
+
+            if member.user_role != "A" or member.user_role != "S":
+                balance_shared = None
+            else:
+                balance_shared = member.balance_shared
+            club_members.append(ClubMemberProfile(
+                    id=member.id,
+                    username=(await db.get_user(id=member.user_id)).name,
+                    nickname=member.nickname,
+                    user_role=member.user_role,
+                    balance=member.balance,
+                    balance_shared=balance_shared,
+                    user_img=(await db.get_user_image(member.user_id)).image_id,
+                    join_in_club=datetime.datetime.timestamp(member.created_ts),
+                    leave_from_club=leave_from_club,
+                    country="RU" #TODO убрать заглушку страны
+                ))
+
+        members_balance = sum(user.balance for user in club_members)
+        shared_balance = sum(user.balance_shared for user in club_members  if user.balance_shared is not None)
+        total_balance = members_balance + shared_balance
+
+    return {
+        "club_balance": club_balance,
+        "members_balance": members_balance,
+        "agents_balance": shared_balance,
+        "total_balance": total_balance,
+        "club_members": club_members
+    }
+
+
+@router.get("/{club_id}/get_requests_for_chips", status_code=HTTP_200_OK, summary="Get request for chips")
+async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_user_club_owner)):
+    all_users_requests = []
+    async with DBI() as db:
+        for member in await db.get_club_members(club_id):
+            try:
+                leave_from_club = datetime.datetime.timestamp(member.closed_ts)
+            except TypeError:
+                leave_from_club = None
+            try:
+                txn_value = (await db.get_user_requests_to_replenishment(member.id)).txn_value
+                all_users_requests.append(
+                    UserRequest(
+                        id=member.id,
+                        username=(await db.get_user(id=member.user_id)).name,
+                        nickname=member.nickname,
+                        user_role=member.user_role,
+                        user_img=(await db.get_user_image(member.user_id)).image_id,
+                        txn_value=txn_value,
+                        join_in_club=datetime.datetime.timestamp(member.created_ts),
+                        leave_from_club=leave_from_club,
+                        country="RU" #TODO убрать заглушку страны
+                    )
+                )
+            except AttributeError:
+                continue
+        return all_users_requests
+
+
+@router.post("/{club_id}/pick_up_or_give_out_chips", status_code=HTTP_200_OK,
+             summary="Pick up or give out chips to members")
+async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Depends(check_rights_user_club_owner)):
+    mode = (await request.json())['mode']
+    members_list = (await request.json())['club_members']
+    club_owner_account = users[0]
+    club = users[2]
+    if len(members_list) == 0:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Quantity club members for action is invalid')
+
+    amount = (await request.json())['amount']
+
+    print(await request.json())
+
+    if mode == 'pick_up' and amount == 'all':
+        amount = decimal.Decimal(999999999.9999) #Todo придумать что-то со значением
+    else:
+        try:
+            amount = decimal.Decimal(amount)
+            if amount <= 0 or isinstance(amount, decimal.Decimal) is False:
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid amount value')
+        except decimal.InvalidOperation:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid amount value')
+
+    async with DBI() as db:
+        if mode == 'pick_up':
+            for member in members_list:
+                if member['balance'] is None and member['balance_shared'] is None:
+                    continue
+                elif member['balance'] is None and member['balance_shared']:
+                    balance_shared = await db.delete_chips_from_the_agent_balance(amount, member['id'], club_owner_account.id)
+                    await db.refresh_club_balance(club_id, balance_shared.balance_shared, mode)
+                elif member['balance'] and member['balance_shared'] is None:
+                    balance = await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
+                    await db.refresh_club_balance(club_id, balance.balance, mode)
+                elif member['balance'] and member['balance_shared']:
+                    balance = await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
+                    balance_shared = await db.delete_chips_from_the_agent_balance(amount, member['id'], club_owner_account.id)
+                    await db.refresh_club_balance(club_id, balance.balance + balance_shared.balance_shared, mode)
+            return HTTP_200_OK
+
+        elif mode == 'give_out':
+            balance_count = 0
+            balance_shared_count = 0
+
+            print(members_list)
+
+            for check_balance in members_list:
+                if check_balance['balance'] is None:
+                    balance_count = balance_count
+                elif check_balance['balance'] >= 0:
+                    balance_count += 1
+                if check_balance['balance_shared'] is None:
+                    balance_shared_count = balance_shared_count
+                elif check_balance['balance_shared'] >= 0:
+                    balance_shared_count += 1
+
+            if club.club_balance < amount * (balance_count + balance_shared_count):
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Club balance cannot be less than request amount')
+            for member in members_list:
+                if member['balance'] is None and member['balance_shared'] is None:
+                    continue
+                elif member['balance'] is None and member['balance_shared']:
+                    await db.giving_chips_to_the_user(amount, member['id'], "balance_shared", club_owner_account.id)
+                    await db.refresh_club_balance(club_id, amount, mode)
+                elif member['balance'] or member["balance"] == 0 and member['balance_shared'] is None:
+                    await db.giving_chips_to_the_user(amount, member['id'], "balance", club_owner_account.id)
+                    await db.refresh_club_balance(club_id, amount, mode)
+                elif member['balance'] and member['balance_shared']:
+                    await db.giving_chips_to_the_user(amount, member['id'], "balance", club_owner_account.id)
+                    await db.giving_chips_to_the_user(amount, member['id'], "balance_shared", club_owner_account.id)
+                    await db.refresh_club_balance(club_id, amount * 2, mode)
+            return HTTP_200_OK
+
+        else:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid mode value')
+
+
+@router.get("/{club_id}/club_txn_history", status_code=HTTP_200_OK, summary='Get club transaction history')
+async def v1_club_txn_history(club_id: int, request: Request, users=Depends(check_rights_user_club_owner_or_manager)):
+    async with DBI() as db:
+        all_club_members_id = [member.id for member in await db.get_club_members(club_id)]
+        if len(all_club_members_id) == 0:
+            return []
+        result_list = []
+        for member_id in all_club_members_id:
+            all_member_txns = await db.get_all_account_txn(member_id)
+            if len(all_club_members_id) == 0:
+                continue
+            recipient = await db.get_club_member(member_id)
+            member_user_profile = await db.get_user(recipient.user_id)
+            for txn in all_member_txns:
+                try:
+                    txn_dict = {}
+                    txn_dict['txn_type'] = txn.txn_type
+                    txn_dict['txn_value'] = txn.txn_value
+
+                    txn_dict['recipient_id'] = member_id
+                    txn_dict['recipient_name'] = member_user_profile.name
+                    txn_dict['recipient_nickname'] = recipient.nickname
+                    txn_dict['recipient_country'] = member_user_profile.country
+
+                    sender = await db.get_club_member(txn.sender_id)
+                    sender_user_profile = await db.get_user(sender.user_id)
+                    txn_dict['sender_id'] = txn.sender_id
+                    txn_dict['sender_name'] = sender_user_profile.name
+                    txn_dict['sender_nickname'] = sender.nickname
+                    txn_dict['sender_country'] = sender_user_profile.country
+                except AttributeError:
+                    continue
+                result_list.append(txn_dict)
+    return result_list
+
+
+@router.patch("/{club_id}/set_user_data", status_code=HTTP_200_OK, summary="Set a user nickname and comment")
+async def v1_set_user_data(club_id: int, request: Request, users=Depends(check_rights_user_club_owner_or_manager)):
+    account_id = (await request.json()).get('account_id')
+    nickname = (await request.json()).get('nickname')
+    club_comment = (await request.json()).get('club_comment')
+
+    if account_id is None:
+        raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail='Account id is not specified')
+    if club_comment is None and nickname is None:
+        raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail='You not specified any params')
+
+    async with DBI() as db:
+        if club_comment is not None and nickname is None:
+            await db.club_owner_update_user_account(account_id, club_comment, "club_comment")
+        elif club_comment is None and nickname is not None:
+            await db.club_owner_update_user_account(account_id, nickname, "nickname")
+        elif club_comment is not None and nickname is not None:
+            await db.club_owner_update_user_account(account_id, nickname, "nickname")
+            await db.club_owner_update_user_account(account_id, club_comment, "club_comment")
+    return HTTP_200_OK
