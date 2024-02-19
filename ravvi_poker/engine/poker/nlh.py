@@ -1,11 +1,12 @@
 from typing import List, Tuple
 
+from .double_board import MixinMeta
 from .hands import HandType
 from .base import PokerBase, Bet
 from ..user import User
 
 
-class Poker_NLH_X(PokerBase):
+class Poker_NLH_X(PokerBase, metaclass=MixinMeta):
     GAME_TYPE = "NLH"
     GAME_SUBTYPE = None
 
