@@ -771,9 +771,9 @@ class DBI:
         async with self.cursor() as cursor:
             await cursor.execute(sql, (amount, user_account_id))
             row = await cursor.fetchone()
-
-            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
-            await cursor.execute(sql, (user_account_id, "CASHIN", amount, row.balance, sender_id))
+            props = json.dumps({"balance_type": balance})
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
+            await cursor.execute(sql, (user_account_id, "CASHIN", amount, row.balance, sender_id, props))
 
     async def delete_chips_from_the_agent_balance(self, amount, account_id, sender_id):
         get_balance_shared_sql = "SELECT balance_shared FROM user_account WHERE id = %s"
@@ -793,9 +793,10 @@ class DBI:
             else:
                 await cursor.execute(sql, (amount, account_id,))
                 row = await cursor.fetchone()
-            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
+            props = json.dumps({"balance_type": "balance_shared"})
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
             amount = -amount
-            await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance_shared, sender_id))
+            await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance_shared, sender_id, props))
         return balance_shared
 
     async def delete_chips_from_the_account_balance(self, amount, account_id, sender_id):
@@ -817,9 +818,10 @@ class DBI:
             else:
                 await cursor.execute(sql, (amount, account_id,))
                 row = await cursor.fetchone()
-            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
+            props = json.dumps({"balance_type": "balance"})
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
             amount = -amount
-            await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance, sender_id))
+            await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance, sender_id, props))
         return balance
 
     async def leave_from_club(self, account_id):

@@ -815,6 +815,7 @@ async def v1_club_txn_history(club_id: int, request: Request, users=Depends(chec
                     txn_dict = {}
                     txn_dict['txn_type'] = txn.txn_type
                     txn_dict['txn_value'] = txn.txn_value
+                    txn_dict['txn_time'] = txn.created_ts.timestamp()
 
                     txn_dict['recipient_id'] = member_id
                     txn_dict['recipient_name'] = member_user_profile.name
@@ -830,7 +831,7 @@ async def v1_club_txn_history(club_id: int, request: Request, users=Depends(chec
                     txn_dict['sender_country'] = sender_user_profile.country
                     txn_dict['sender_role'] = sender.user_role
 
-                    txn_dict['txn_time'] = txn.created_ts.timestamp()
+                    txn_dict['balance_type'] = txn.props.get('balance_type', None)
                 except AttributeError as error:
                     log.info(f"Error getting club. Error: {error}")
                     continue
