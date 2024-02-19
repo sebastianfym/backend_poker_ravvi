@@ -7,6 +7,7 @@ from ravvi_poker.engine.poker.nlh import Poker_NLH_REGULAR
 from ravvi_poker.engine.tables import Table_RG
 
 from helpers.x_game_case import load_game_cases, create_game_case
+from helpers.mocked_table import MockedTable
 
 
 class TestAnteUpControllerInstance:
@@ -163,7 +164,7 @@ class TestAnte_NLH_RG:
     async def test_case(self, game_case):
         name, kwargs = game_case
 
-        mocked_table = AsyncMock()
+        mocked_table = MockedTable()
 
         game = X_Game(mocked_table, **kwargs)
         await game.run()

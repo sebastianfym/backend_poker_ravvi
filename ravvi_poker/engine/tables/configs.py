@@ -56,7 +56,7 @@ class TableGameModesConfig(TableConfigParams):
                  double_board: bool | None = None,
                  bombpot_freq: int | None = None, bombpot_min: int | None = None, bombpot_max: int | None = None,
                  bombpot_double_board: bool | None = None,
-                 seven_deuce: bool | None = None, each_prize: int | None = None, hi_low: bool | None = None,
+                 seven_deuce: int | None = None, each_prize: int | None = None, hi_low: bool | None = None,
                  ofc_joker: bool | None = None,
                  **kwargs):
         from ravvi_poker.engine.poker.plo import Poker_PLO_X
@@ -79,7 +79,6 @@ class TableGameModesConfig(TableConfigParams):
             }
 
         self.seven_deuce = seven_deuce
-        self.each_prize = each_prize
 
         self.hi_low = None
         if game_type == Poker_PLO_X.GAME_TYPE:

@@ -38,8 +38,6 @@ class DoubleBoardMixin:
         # делим каждый банк на две части
         banks = [[], []]
         for num in range(len(self.banks)):
-            print(self.banks[num][0] / 2)
-            print(round(self.banks[num][0] / 2, 2))
             # TODO округление
             banks[0].append(
                 (round(self.banks[num][0] / 2, 2), self.banks[num][1]),
@@ -52,11 +50,11 @@ class DoubleBoardMixin:
         players = [p for p in self.players if p.in_the_game]
         if len(players) == 1:
             p = players[0]
-            w_amount = 0
-            # если один игрок, то нам нет необходимости использовать раздвоенные банки
-            for bank_amount, _ in self.banks:
-                w_amount += bank_amount
-            winners[p.user_id] = w_amount
+            for num in range(2):
+                w_amount = 0
+                for bank_amount, _ in banks[num]:
+                    w_amount += bank_amount
+                winners[num][p.user_id] = w_amount
         else:
             for num in range(2):
                 rankKey = lambda x: x.hand[num].rank

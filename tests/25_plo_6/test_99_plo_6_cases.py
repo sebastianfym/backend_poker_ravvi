@@ -6,6 +6,7 @@ import pytest
 from ravvi_poker.engine.poker.plo import Poker_PLO_6
 
 from helpers.x_game_case import load_game_cases, create_game_case
+from helpers.mocked_table import MockedTable
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ def pytest_generate_tests(metafunc):
 async def test_case(game_case):
     name, kwargs = game_case
 
-    mocked_table = AsyncMock()
+    mocked_table = MockedTable()
     game = X_Game(mocked_table, **kwargs)
     await game.run()
     assert not game._check_steps

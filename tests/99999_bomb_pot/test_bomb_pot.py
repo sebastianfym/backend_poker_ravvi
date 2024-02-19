@@ -6,6 +6,7 @@ from ravvi_poker.engine.poker.double_board import DoubleBoardMixin
 from ravvi_poker.engine.poker.bomb_pot import BombPotMixin
 from ravvi_poker.engine.poker.nlh import Poker_NLH_REGULAR
 from helpers.x_game_case import load_game_cases, create_game_case
+from helpers.mocked_table import MockedTable
 
 
 def pytest_generate_tests(metafunc):
@@ -16,12 +17,12 @@ def pytest_generate_tests(metafunc):
 X_Game = create_game_case(Poker_NLH_REGULAR)
 
 
-class TestBobPot_NLX_RG:
+class TestBombPot_NLX_RG:
     @pytest.mark.asyncio
     async def test_case(self, game_case):
         name, kwargs = game_case
 
-        mocked_table = AsyncMock()
+        mocked_table = MockedTable()
         game = X_Game(mocked_table, **kwargs)
         game.__class__ = type(game.__class__.__name__, (BombPotMixin, game.__class__), {})
         if "double-board" in game_case[0]:
