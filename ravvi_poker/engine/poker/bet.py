@@ -9,6 +9,7 @@ class Bet(IntEnum):
     CHECK = 22
     RAISE = 30
     ANTE = 40
+    BOMBPOT_ANTE = 41
     ALLIN = 99
 
     @classmethod

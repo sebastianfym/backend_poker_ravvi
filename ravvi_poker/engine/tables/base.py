@@ -24,6 +24,7 @@ class Table:
             props=None, **kwargs
     ):
         from ..poker.ante import AnteUpController
+        from ..poker.bomb_pot import BombPotController
 
         # table async lock
         self.lock = asyncio.Lock()
@@ -35,6 +36,7 @@ class Table:
 
         # инстансы параметров
         self.ante: AnteUpController | None = None
+        self.bombpot: BombPotController | None = None
 
         self.club_id = club_id
         self.table_id = id
@@ -89,16 +91,20 @@ class Table:
     async def game_factory(self, users):
         from ..game import get_game_class
         from ..poker.double_board import DoubleBoardMixin
+        from ..poker.bomb_pot import BombPotMixin
 
         self.log.info("game_factory(%s, %s, %s)", self.game_type, self.game_subtype, self.game_props)
         game_class = get_game_class(self.game_type, self.game_subtype)
 
-        print(getattr(self, "game_modes_config"))
-        print(getattr(getattr(self, "game_modes_config"), "double_board"))
         # расширяем игру миксином
-
         if getattr(getattr(self, "game_modes_config"), "double_board"):
             game = game_class(self, users, **self.game_props, mixin=DoubleBoardMixin)
+        elif getattr(getattr(self, "game_modes_config"), "bombpot_settings") and self.bombpot.is_bobmpot_active:
+            self.game_props |= {"bombpot_blind_multiplier": self.bombpot.bombpot_multiplier}
+            if self.bombpot.double_board_mode:
+                game = game_class(self, users, **self.game_props, mixin=[BombPotMixin, DoubleBoardMixin])
+            else:
+                game = game_class(self, users, **self.game_props, mixin=BombPotMixin)
         else:
             game = game_class(self, users, **self.game_props)
 
@@ -452,6 +458,9 @@ class Table:
         async with self.lock:
             users = self.get_game_players()
             if not users:
+                # сбрасываем уровень бомпота
+                if self.bombpot:
+                    await self.bombpot.reset_step()
                 # сбрасываем уровень анте
                 if self.ante:
                     await self.ante.reset_ante_level()

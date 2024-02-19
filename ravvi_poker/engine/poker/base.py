@@ -37,7 +37,7 @@ class PokerBase(Game):
 
     def __init__(self, table, users: List[User],
                  *, blind_small: float = 0.01, blind_big: float = 0.02, bet_timeout=30,
-                 ante: float | None = None, **kwargs) -> None:
+                 ante: float | None = None, bombpot_blind_multiplier: int | None = None, **kwargs) -> None:
         super().__init__(table=table, users=users)
         self.log.logger = logger
         self.round = None
@@ -51,6 +51,7 @@ class PokerBase(Game):
 
         # модификаторы
         self.ante = ante
+        self.bombpot_blind_multiplier = bombpot_blind_multiplier
 
         self.bet_id = None
         self.bet_level = 0
@@ -391,6 +392,10 @@ class PokerBase(Game):
         # значение анте
         if self.ante:
             await self.table.ante.handle_last_round_type(self.round)
+
+        # если включен режим bombpot, то увеличим счетчик
+        if self.table.bombpot:
+            await self.table.bombpot.handle_last_round()
 
         # end
         await asyncio.sleep(0.1)
