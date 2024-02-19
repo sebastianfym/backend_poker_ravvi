@@ -1,4 +1,5 @@
 import datetime
+import decimal
 import logging
 import os
 import json
@@ -702,6 +703,7 @@ class DBI:
                     reset_balance_sql = "UPDATE club_profile SET club_balance = 0 WHERE id=%s"
                     await cursor.execute(reset_balance_sql, (club_id,))
                     sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
+                    amount = -amount
                     await cursor.execute(sql, (account_id, f"CLUB_{mode}", amount, 0, sender_id))
                     return
 
@@ -770,43 +772,57 @@ class DBI:
         async with self.cursor() as cursor:
             await cursor.execute(sql, (amount, user_account_id))
             row = await cursor.fetchone()
-
-            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
-            await cursor.execute(sql, (user_account_id, "CASHIN", amount, row.balance, sender_id))
+            props = json.dumps({"balance_type": balance})
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
+            await cursor.execute(sql, (user_account_id, "CASHIN", amount, row.balance, sender_id, props))
 
     async def delete_chips_from_the_agent_balance(self, amount, account_id, sender_id):
         get_balance_shared_sql = "SELECT balance_shared FROM user_account WHERE id = %s"
-        sql = "UPDATE user_account SET balance_shared = balance_shared - %s WHERE id = %s RETURNING balance_shared"
+        if amount == 'all':
+            amount = 0
+            sql = "UPDATE user_account SET balance_shared = %s WHERE id = %s RETURNING balance_shared"
+        else:
+            sql = "UPDATE user_account SET balance_shared = balance_shared - %s WHERE id = %s RETURNING balance_shared"
         async with self.cursor() as cursor:
             await cursor.execute(get_balance_shared_sql, (account_id,))
             balance_shared = await cursor.fetchone()
-
-            if (balance_shared.balance_shared - amount) < 0:
-                sql = "UPDATE user_account SET balance_shared = 0 WHERE id = %s"
+            if (balance_shared.balance_shared - decimal.Decimal(amount)) < 0:
+                sql = "UPDATE user_account SET balance_shared = 0 WHERE id = %s RETURNING balance_shared"
                 await cursor.execute(sql, (account_id,))
-                return balance_shared
-
-            await cursor.execute(sql, (amount, account_id,))
-            row = await cursor.fetchone()
-            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
-            await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance_shared, sender_id))
+                # return balance_shared
+                row = await cursor.fetchone()
+            else:
+                await cursor.execute(sql, (amount, account_id,))
+                row = await cursor.fetchone()
+            props = json.dumps({"balance_type": "balance_shared"})
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
+            amount = -amount
+            await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance_shared, sender_id, props))
         return balance_shared
 
     async def delete_chips_from_the_account_balance(self, amount, account_id, sender_id):
         get_balance_shared_sql = "SELECT balance FROM user_account WHERE id = %s"
-        sql = "UPDATE user_account SET balance = balance - %s WHERE id = %s RETURNING balance"
+        if amount == 'all':
+            amount = 0
+            sql = "UPDATE user_account SET balance = %s WHERE id = %s RETURNING balance"
+        else:
+            sql = "UPDATE user_account SET balance = balance - %s WHERE id = %s RETURNING balance"
 
         async with self.cursor() as cursor:
             await cursor.execute(get_balance_shared_sql, (account_id,))
             balance = await cursor.fetchone()
-            if (balance.balance - amount) <= 0:
-                sql = "UPDATE user_account SET balance = 0 WHERE id = %s"
+            if (balance.balance - decimal.Decimal(amount)) <= 0:
+                sql = "UPDATE user_account SET balance = 0 WHERE id = %s RETURNING balance"
                 await cursor.execute(sql, (account_id,))
-                return balance
-            await cursor.execute(sql, (amount, account_id,))
-            row = await cursor.fetchone()
-            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
-            await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance, sender_id))
+                # return balance
+                row = await cursor.fetchone()
+            else:
+                await cursor.execute(sql, (amount, account_id,))
+                row = await cursor.fetchone()
+            props = json.dumps({"balance_type": "balance"})
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
+            amount = -amount
+            await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance, sender_id, props))
         return balance
 
     async def leave_from_club(self, account_id):
