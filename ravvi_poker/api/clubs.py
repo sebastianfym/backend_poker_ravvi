@@ -3,7 +3,7 @@ import decimal
 import time
 from decimal import Decimal
 from typing import Annotated, Any
-
+from logging import getLogger
 from fastapi import APIRouter, Request, Depends
 from fastapi.exceptions import HTTPException
 from psycopg.rows import Row
@@ -14,6 +14,8 @@ from pydantic import BaseModel, Field, field_validator
 from ..db import DBI
 from .utils import SessionUUID, get_session_and_user
 from .tables import TableParams, TableProfile
+
+log = getLogger(__name__)
 
 router = APIRouter(prefix="/clubs", tags=["clubs"])
 
@@ -818,6 +820,7 @@ async def v1_club_txn_history(club_id: int, request: Request, users=Depends(chec
                     txn_dict['recipient_name'] = member_user_profile.name
                     txn_dict['recipient_nickname'] = recipient.nickname
                     txn_dict['recipient_country'] = member_user_profile.country
+                    txn_dict['recipient_role'] = recipient.user_role
 
                     sender = await db.get_club_member(txn.sender_id)
                     sender_user_profile = await db.get_user(sender.user_id)
@@ -825,7 +828,11 @@ async def v1_club_txn_history(club_id: int, request: Request, users=Depends(chec
                     txn_dict['sender_name'] = sender_user_profile.name
                     txn_dict['sender_nickname'] = sender.nickname
                     txn_dict['sender_country'] = sender_user_profile.country
-                except AttributeError as e:
+                    txn_dict['sender_role'] = sender.user_role
+
+                    txn_dict['txn_time'] = txn.created_ts.timestamp()
+                except AttributeError as error:
+                    log.info(f"Error getting club. Error: {error}")
                     continue
                 result_list.append(txn_dict)
     return result_list
