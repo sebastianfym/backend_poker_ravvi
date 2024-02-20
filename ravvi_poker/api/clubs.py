@@ -62,6 +62,8 @@ class ClubMemberProfile(BaseModel):
 
 class UserRequest(BaseModel):
     id: int | None
+    txn_id: int | None
+
     username: str | None
     image_id: int | None
     user_role: str | None
@@ -737,7 +739,7 @@ async def v1_get_all_club_balance(club_id: int, users=Depends(check_rights_user_
     }
 
 
-@router.get("/{club_id}/requests_chip_replenishment", status_code=HTTP_200_OK, summary="Get request for chips")
+@router.get("/{club_id}/requests_chip_replenishment", status_code=HTTP_200_OK, summary="Получение списка с запросами на пополнение баланса")
 async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_user_club_owner)):
     all_users_requests = []
     async with DBI() as db:
@@ -750,7 +752,8 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
                 txn = await db.get_user_requests_to_replenishment(member.id)
                 all_users_requests.append(
                     UserRequest(
-                        id=txn.id,
+                        id=member.id,
+                        txn_id=txn.id,
                         username=(await db.get_user(id=member.user_id)).name,
                         nickname=member.nickname,
                         user_role=member.user_role,
