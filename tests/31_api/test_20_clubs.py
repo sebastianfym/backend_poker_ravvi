@@ -621,21 +621,19 @@ async def test_giving_chips_to_the_user(api_client: TestClient, api_guest: UserA
             # cursor.execute("SELECT * FROM user_account_txn WHERE id = %s AND club_id = %s ")
 
 
-def test_operations_at_the_checkout(api_client: TestClient, api_guest: UserAccessProfile):
+def test_club_balance(api_client: TestClient, api_guest: UserAccessProfile):
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
 
     club = create_club(api_client)
 
-    response = api_client.get(f"/v1/clubs/{club.id}/operations_at_the_checkout")
+    response = api_client.get(f"/v1/clubs/{club.id}/club_balance")
 
     assert response.status_code == 200
     assert response.json().get('club_balance') == 0.0
     assert response.json().get('members_balance') == 0.0
     assert response.json().get('agents_balance') == 0.0
     assert response.json().get('total_balance') == 0.0
-    assert response.json().get('club_members')[0]['user_role'] == "O"
-    assert response.json().get('club_members')[0]['balance'] == 0.0
-    assert response.json().get('club_members')[0]['balance_shared'] == None
+
 
 
 def test_get_requests_for_chips(api_client: TestClient,

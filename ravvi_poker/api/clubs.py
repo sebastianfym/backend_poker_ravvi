@@ -653,31 +653,63 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID, request: Requ
         )
 
 
-@router.get("/{club_id}/operations_at_the_checkout", status_code=HTTP_200_OK,
-            summary="Get all the operations that were carried out at the club's cash desk and detailed information about these operations")
-async def v1_operations_at_the_checkout(club_id: int, users=Depends(check_rights_user_club_owner_or_manager)):
+# @router.get("/{club_id}/operations_at_the_checkout", status_code=HTTP_200_OK,
+#             summary="Get all the operations that were carried out at the club's cash desk and detailed information about these operations")
+# async def v1_operations_at_the_checkout(club_id: int, users=Depends(check_rights_user_club_owner_or_manager)):
+#     async with DBI() as db:
+#         club = users[2]  # await db.get_club(club_id)
+#         club_balance = club.club_balance
+#         club_members = []
+#         for member in await db.get_club_members(club_id):
+#             leave_from_club = datetime.datetime.timestamp(member.closed_ts) if member.closed_ts is not None else None
+#
+#             if member.user_role != "A" or member.user_role != "S":
+#                 balance_shared = None
+#             else:
+#                 balance_shared = member.balance_shared
+#             club_members.append(ClubMemberProfile(
+#                 id=member.id,
+#                 username=(await db.get_user(id=member.user_id)).name,
+#                 nickname=member.nickname,
+#                 user_role=member.user_role,
+#                 balance=member.balance,
+#                 balance_shared=balance_shared,
+#                 user_img=(await db.get_user_image(member.user_id)).image_id,
+#                 join_in_club=datetime.datetime.timestamp(member.created_ts),
+#                 leave_from_club=leave_from_club,
+#                 country="RU"  # TODO убрать заглушку страны
+#             ))
+#
+#         members_balance = sum(user.balance for user in club_members)
+#         shared_balance = sum(user.balance_shared for user in club_members if user.balance_shared is not None)
+#         total_balance = members_balance + shared_balance
+#
+#     return {
+#         "club_balance": club_balance,
+#         "members_balance": members_balance,
+#         "agents_balance": shared_balance,
+#         "total_balance": total_balance,
+#         "club_members": club_members
+#     }
+
+
+@router.get("/{club_id}/club_balance", status_code=HTTP_200_OK,
+            summary="Получить все допустимые типы балансов (суммарные) для клуба: агентский баланс, баланс пользователей, баланс клуба")
+async def v1_get_all_club_balance(club_id: int, users=Depends(check_rights_user_club_owner_or_manager)):
     async with DBI() as db:
-        club = users[2]  # await db.get_club(club_id)
+        club = users[2]
         club_balance = club.club_balance
         club_members = []
+
         for member in await db.get_club_members(club_id):
-            leave_from_club = datetime.datetime.timestamp(member.closed_ts) if member.closed_ts is not None else None
 
             if member.user_role != "A" or member.user_role != "S":
                 balance_shared = None
             else:
                 balance_shared = member.balance_shared
             club_members.append(ClubMemberProfile(
-                id=member.id,
-                username=(await db.get_user(id=member.user_id)).name,
-                nickname=member.nickname,
-                user_role=member.user_role,
                 balance=member.balance,
-                balance_shared=balance_shared,
-                user_img=(await db.get_user_image(member.user_id)).image_id,
-                join_in_club=datetime.datetime.timestamp(member.created_ts),
-                leave_from_club=leave_from_club,
-                country="RU"  # TODO убрать заглушку страны
+                balance_shared=balance_shared
             ))
 
         members_balance = sum(user.balance for user in club_members)
@@ -689,11 +721,9 @@ async def v1_operations_at_the_checkout(club_id: int, users=Depends(check_rights
         "members_balance": members_balance,
         "agents_balance": shared_balance,
         "total_balance": total_balance,
-        "club_members": club_members
     }
 
-
-@router.get("/{club_id}/get_requests_for_chips", status_code=HTTP_200_OK, summary="Get request for chips")
+@router.get("/{club_id}/get_requests_for_chips/", status_code=HTTP_200_OK, summary="Get request for chips")
 async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_user_club_owner)):
     all_users_requests = []
     async with DBI() as db:
@@ -720,6 +750,9 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
             except AttributeError:
                 continue
         return all_users_requests
+
+
+# @router.post("/{club_id}/action_with_user_request", status_code=HTTP_200_OK, summary='Подтвердить или отклонить пользовательские запросы на пополнение баланса')
 
 
 @router.post("/{club_id}/pick_up_or_give_out_chips", status_code=HTTP_200_OK,
