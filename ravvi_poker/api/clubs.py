@@ -283,8 +283,8 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
     return list([
         ClubMemberProfile(
             id=member.id,
-            username=member.username,
-            image_id=member.image_id,
+            username='username',#member.username,
+            image_id=None,#member.image_id,
             user_role=member.user_role,
             user_approved=member.approved_ts is not None,
             balance=member.balance,
@@ -778,6 +778,8 @@ async def v1_action_with_user_request(club_id: int, request_for_chips: RequestFo
     async with DBI() as db:
         for account_request in request_for_chips.model_dump()["user_requests"]:
             if account_request["operation"] == "approve":
+                txn = await db.get_specific_txn(account_request['id'])
+                print(txn)
                 pass
                 """
                 Тут получаем транзакцию по id, смотрим сумму пополнения и аккаунт получателя.
