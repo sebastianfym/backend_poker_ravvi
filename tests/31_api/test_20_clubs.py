@@ -28,6 +28,7 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_c
     assert club1.image_id is None
     assert club1.user_role == "O"
     assert club1.user_approved is True
+    assert club1.timezone is None
 
     # create club with props
     params = {"name": "New club", "description": "Desc"}

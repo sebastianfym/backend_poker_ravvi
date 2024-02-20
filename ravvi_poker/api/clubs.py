@@ -24,6 +24,7 @@ class ClubProps(BaseModel):
     name: str | None = None
     description: str | None = None
     image_id: int | None = None
+    timezone: str | None = None
 
 
 class ClubProfile(BaseModel):
@@ -40,6 +41,8 @@ class ClubProfile(BaseModel):
     agents_balance: float | None = 0.00
     club_balance: float | None = 0.00
     service_balance: float | None = 0.00
+
+    timezone: str | None = None
 
 
 class ClubMemberProfile(BaseModel):
@@ -159,17 +162,16 @@ async def v1_create_club(params: ClubProps, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.create_club(user_id=user.id, name=params.name, description=params.description,
-                                    image_id=params.image_id)
-
+                                    image_id=params.image_id, timezone=params.timezone)
     club_profile = ClubProfile(
         id=club.id,
         name=club.name,
         description=club.description,
         image_id=club.image_id,
         user_role="O",
-        user_approved=True
+        user_approved=True,
+        timezone=club.timezone
     ).model_dump()
-
     for param in ["tables_count", "players_count", "user_balance", "agents_balance", "club_balance", "service_balance"]:
         club_profile.pop(param, None)
     return club_profile
@@ -222,7 +224,8 @@ async def v1_get_club(club_id: int, session_uuid: SessionUUID):
             players_count=club.players_online,
             user_balance=await db.get_user_balance_in_club(club_id=club.id, user_id=user.id),
             agents_balance=await db.get_balance_shared_in_club(club_id=club.id, user_id=user.id),
-            service_balance=await db.get_service_balance_in_club(club_id=club.id, user_id=user.id)
+            service_balance=await db.get_service_balance_in_club(club_id=club.id, user_id=user.id),
+            timezone=club.timezone
         )
 
 
@@ -498,8 +501,6 @@ async def v1_club_delete_chips_from_the_user(club_id: int, request: Annotated[
 async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionUUID, request: Request,
                                             users=Depends(check_rights_user_club_owner)):
     async with DBI() as db:
-        # _, user = await get_session_and_user(db, session_uuid)
-        # club = await db.get_club(club_id)
         user = users[1]
         club = users[2]
         if not club:
