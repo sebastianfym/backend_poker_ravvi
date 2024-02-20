@@ -2,14 +2,14 @@ import datetime
 import decimal
 import time
 from decimal import Decimal
-from typing import Annotated, Any
+from typing import Annotated, Any, List
 from logging import getLogger
 from fastapi import APIRouter, Request, Depends
 from fastapi.exceptions import HTTPException
 from psycopg.rows import Row
 from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_418_IM_A_TEAPOT
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, validator
 
 from ..db import DBI
 from .utils import SessionUUID, get_session_and_user
@@ -71,9 +71,6 @@ class UserRequest(BaseModel):
     join_in_club: float | None
     leave_from_club: float | None
 
-    # class Config:
-    #     arbitrary_types_allowed = True
-
 
 class UnionProfile(BaseModel):
     name: str | None = None
@@ -120,6 +117,20 @@ class UserChipsValue(ClubChipsValue):
         if v not in ["balance", "balance_shared"]:
             raise ValueError
         return v
+
+
+class ChipRequestForm(BaseModel):
+    id: int
+    operation: str
+
+    @validator('operation')
+    def operation_validate(cls, value):
+        if value not in ["approve", "reject"]:
+            raise ValueError('Operation must be either "approve" or "reject"')
+        return value
+
+class RequestForChips(BaseModel):
+    user_requests: List[ChipRequestForm] = Field(min_length=0)
 
 
 async def check_rights_user_club_owner(club_id: int, session_uuid: SessionUUID):
@@ -265,15 +276,17 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         members = await db.get_club_members(club_id=club.id)
-
+    print(members)
+    # TODO наверное исключенных игроков не надо показывать?
     return list([
         ClubMemberProfile(
             id=member.id,
             # username=member.username,
             # image_id=member.image_id,
             user_role=member.user_role,
-            # TODO наверное исключенных игроков не надо показывать?
-            user_approved=member.approved_ts is not None
+            user_approved=member.approved_ts is not None,
+            balance=member.balance,
+            balance_shared=member.balance_shared
         ) for member in members
     ])
 
@@ -723,6 +736,7 @@ async def v1_get_all_club_balance(club_id: int, users=Depends(check_rights_user_
         "total_balance": total_balance,
     }
 
+
 @router.get("/{club_id}/get_requests_for_chips/", status_code=HTTP_200_OK, summary="Get request for chips")
 async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_user_club_owner)):
     all_users_requests = []
@@ -752,7 +766,17 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
         return all_users_requests
 
 
-# @router.post("/{club_id}/action_with_user_request", status_code=HTTP_200_OK, summary='Подтвердить или отклонить пользовательские запросы на пополнение баланса')
+@router.post("/{club_id}/action_with_user_request", status_code=HTTP_200_OK,
+             summary='Подтвердить или отклонить пользовательские запросы на пополнение баланса')
+async def v1_action_with_user_request(club_id: int, request_for_chips: RequestForChips,
+                                      users=Depends(check_rights_user_club_owner)):
+    async with DBI() as db:
+        for account_request in request_for_chips.model_dump()["user_requests"]:
+            if account_request["operation"] == "approve":
+                pass
+            elif account_request["operation"] == "reject":
+                pass
+    return HTTP_200_OK
 
 
 @router.post("/{club_id}/pick_up_or_give_out_chips", status_code=HTTP_200_OK,
@@ -789,7 +813,8 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
                     balance = await db.delete_chips_from_the_account_balance(amount, member['id'],
                                                                              club_owner_account.id)
                     await db.refresh_club_balance(club_id, balance.balance, mode)
-                elif (member['balance'] or member["balance"] == 0) and (member['balance_shared'] or member["balance_shared"] == 0):
+                elif (member['balance'] or member["balance"] == 0) and (
+                        member['balance_shared'] or member["balance_shared"] == 0):
                     balance = await db.delete_chips_from_the_account_balance(amount, member['id'],
                                                                              club_owner_account.id)
                     balance_shared = await db.delete_chips_from_the_agent_balance(amount, member['id'],
@@ -823,7 +848,8 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
                 elif (member['balance'] or member["balance"] == 0) and member['balance_shared'] is None:
                     await db.giving_chips_to_the_user(amount, member['id'], "balance", club_owner_account.id)
                     await db.refresh_club_balance(club_id, amount, mode)
-                elif (member['balance'] or member["balance"] == 0) and (member['balance_shared'] or member["balance_shared"] == 0):
+                elif (member['balance'] or member["balance"] == 0) and (
+                        member['balance_shared'] or member["balance_shared"] == 0):
                     await db.giving_chips_to_the_user(amount, member['id'], "balance", club_owner_account.id)
                     await db.giving_chips_to_the_user(amount, member['id'], "balance_shared", club_owner_account.id)
                     await db.refresh_club_balance(club_id, amount * 2, mode)
