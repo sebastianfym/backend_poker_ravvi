@@ -399,14 +399,14 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    async def create_account_txn(self, member_id, txntype, amount, sender_id):
+    async def create_account_txn(self, member_id, txntype, amount, sender_id, table_id):
         async with self.cursor() as cursor:
             sql = "UPDATE user_account SET balance=balance+(%s) WHERE id=%s RETURNING balance"
             await cursor.execute(sql, (amount, member_id))
             row = await cursor.fetchone()
-
-            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
-            await cursor.execute(sql, (member_id, txntype, amount, row.balance, sender_id))
+            props = json.dumps({"table_id": table_id})
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
+            await cursor.execute(sql, (member_id, txntype, amount, row.balance, sender_id, props))
             # txn = await cursor.fetchone()
         return row
 
@@ -839,13 +839,13 @@ class DBI:
 
     async def get_user_history_trx_in_club(self, user_id, club_id):
         sql_history = "SELECT * FROM user_account_txn WHERE account_id=%s"
-        sql_users_accounts = "SELECT id FROM user_account WHERE user_id=%s AND club_id=%s"
+        sql_user_account = "SELECT id FROM user_account WHERE user_id=%s AND club_id=%s"
         result_list = []
         async with self.cursor() as cursor:
-            await cursor.execute(sql_users_accounts, (user_id, club_id))
+            await cursor.execute(sql_user_account, (user_id, club_id))
             rows_ids = await cursor.fetchall()
-            for a_id in rows_ids:
-                await cursor.execute(sql_history, (a_id.id,))
+            for account in rows_ids:
+                await cursor.execute(sql_history, (account.id,))
                 row = await cursor.fetchall()
                 result_list.append(row)
         return row
