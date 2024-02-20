@@ -108,6 +108,7 @@ async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
         for txn in txn_history:
             txn = txn._asdict()
             sender_account = await db.get_club_member(member_id=txn['sender_id'])
+
             if txn['txn_type'] not in ["BUYIN", "CASHOUT", "REPLENISHMENT"]:
                 try:
                     username = (await db.get_user(sender_account.user_id)).name
@@ -130,6 +131,8 @@ async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
                 )
                 txn_list.append(txn_manual)
             else:
+                if txn['txn_type'] == "REPLENISHMENT":
+                    continue
                 table_info = await db.get_table(txn['props'].get('table_id'))
                 txn_table = TxnHistoryOnTable(
                     table_name=table_info.table_name,
@@ -142,5 +145,4 @@ async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
                     balance=txn['total_balance']
                 )
                 txn_list.append(txn_table)
-
         return txn_list
