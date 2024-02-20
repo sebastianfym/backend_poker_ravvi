@@ -74,6 +74,7 @@ class UserRequest(BaseModel):
     join_in_club: float | None
     leave_from_club: float | None
 
+    country: str | None
 
 class UnionProfile(BaseModel):
     name: str | None = None
@@ -779,15 +780,15 @@ async def v1_action_with_user_request(club_id: int, request_for_chips: RequestFo
         for account_request in request_for_chips.model_dump()["user_requests"]:
             if account_request["operation"] == "approve":
                 txn = await db.get_specific_txn(account_request['id'])
-                print(txn)
-                pass
+                await db.giving_chips_to_the_user(txn.txn_value, txn.account_id, txn.props["balance"],
+                                                  club_owner_account.id)
+                await db.update_status_txn(txn.id, "approve")
                 """
                 Тут получаем транзакцию по id, смотрим сумму пополнения и аккаунт получателя.
                 Далее вызываем функцию пополнения баланса.
                 Изменяем статус операции на approve
                 """
-                txn = await db.get_specific_txn(account_request['id'])
-                await db.giving_chips_to_the_user(txn.txn_value, txn.account_id, txn.props.model_dump()["balance"], club_owner_account.id)
+
             elif account_request["operation"] == "reject":
                 pass
                 """
