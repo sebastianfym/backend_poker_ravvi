@@ -76,6 +76,7 @@ class UserRequest(BaseModel):
 
     country: str | None
 
+
 class UnionProfile(BaseModel):
     name: str | None = None
     """По мере прогресса раширить модель"""
@@ -515,11 +516,10 @@ async def v1_club_delete_chips_from_the_user(club_id: int, request: Annotated[
 
 
 @router.post("/{club_id}/request_chips", status_code=HTTP_200_OK, summary="The user requests chips from the club")
-async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionUUID, request: Request,
-                                            users=Depends(check_rights_user_club_owner)):
+async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionUUID, request: Request):
     async with DBI() as db:
-        user = users[1]
-        club = users[2]
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
@@ -783,19 +783,9 @@ async def v1_action_with_user_request(club_id: int, request_for_chips: RequestFo
                 await db.giving_chips_to_the_user(txn.txn_value, txn.account_id, txn.props["balance"],
                                                   club_owner_account.id)
                 await db.update_status_txn(txn.id, "approve")
-                """
-                Тут получаем транзакцию по id, смотрим сумму пополнения и аккаунт получателя.
-                Далее вызываем функцию пополнения баланса.
-                Изменяем статус операции на approve
-                """
-
             elif account_request["operation"] == "reject":
-                pass
-                """
-                Тут получаем транзакцию по id.
-                Изменяем статус операции на reject
-                """
                 txn = await db.get_specific_txn(account_request['id'])
+                await db.update_status_txn(txn.id, "reject")
     return HTTP_200_OK
 
 

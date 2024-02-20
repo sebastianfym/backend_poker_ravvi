@@ -688,6 +688,13 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def update_status_txn(self, txn_id, status):
+        sql = "UPDATE user_account_txn SET props = props::jsonb || %s::jsonb WHERE id = %s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (json.dumps({"status": status}), txn_id))
+        return
+
+
     async def get_all_account_txn(self, account_id):
         sql = "SELECT * FROM user_account_txn WHERE account_id=%s AND txn_type=%s or txn_type=%s  ORDER BY id DESC"
         async with self.cursor() as cursor:
