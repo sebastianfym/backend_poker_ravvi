@@ -102,6 +102,7 @@ class Game:
                       cards_open=player.cards_open,
                       **kwargs
                       )
+
         await self.emit_msg(db, msg)
 
     async def broadcast_PLAYER_MOVE(self, db, player, **kwargs):

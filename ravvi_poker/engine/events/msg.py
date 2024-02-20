@@ -37,7 +37,8 @@ class Message(dict):
     Type = MessageType
 
     def __init__(
-        self, id=None, *, msg_type: int, table_id: int = None, game_id: int = None, cmd_id=None, client_id=None, **props
+            self, id=None, *, msg_type: int, table_id: int = None, game_id: int = None, cmd_id=None, client_id=None,
+            **props
     ) -> None:
         super().__init__(
             table_id=table_id, game_id=game_id, msg_type=msg_type, cmd_id=cmd_id, client_id=client_id, props=props
@@ -87,12 +88,24 @@ class Message(dict):
         def hide_cards(props: dict):
             user_id = props.get("user_id", None)
             cards_open = props.pop("cards_open", None)
+            visible_cards = props.pop("visible_cards", None)
             if not cards_open and user_id != for_user_id:
                 cards = props.get("cards", [])
-                cards = [0 for _ in cards]
+                # если есть карты которые пользователь захотел показать
+                if visible_cards:
+                    cards = []
+                    for card in cards:
+                        if card in visible_cards:
+                            cards.append(card)
+                        else:
+                            cards.append(0)
+                else:
+                    cards = [0 for _ in cards]
                 props.update(cards=cards)
                 props.pop("hand_type", None)
                 props.pop("hand_cards", None)
+            if user_id == for_user_id:
+                props.update(visible_cards=visible_cards)
 
         msg = self.clone()
         if msg.msg_type == Message.Type.TABLE_INFO:
