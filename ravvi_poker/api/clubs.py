@@ -747,17 +747,18 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
             except TypeError:
                 leave_from_club = None
             try:
-                txn_value = (await db.get_user_requests_to_replenishment(member.id)).txn_value
-                txn_type = (await db.get_user_requests_to_replenishment(member.id)).txn_type
+                txn = await db.get_user_requests_to_replenishment(member.id)
+                # txn_value = (await db.get_user_requests_to_replenishment(member.id)).txn_value
+                # txn_type = (await db.get_user_requests_to_replenishment(member.id)).txn_type
                 all_users_requests.append(
                     UserRequest(
-                        id=member.id,
+                        id=txn.id,
                         username=(await db.get_user(id=member.user_id)).name,
                         nickname=member.nickname,
                         user_role=member.user_role,
                         image_id=(await db.get_user_image(member.user_id)).image_id,
-                        txn_value=txn_value,
-                        txn_type=txn_type,
+                        txn_value=txn.txn_value,
+                        txn_type=txn.txn_type,
                         join_in_club=datetime.datetime.timestamp(member.created_ts),
                         leave_from_club=leave_from_club,
                         country="RU"  # TODO убрать заглушку страны
@@ -772,12 +773,25 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
              summary='Подтвердить или отклонить пользовательские запросы на пополнение баланса')
 async def v1_action_with_user_request(club_id: int, request_for_chips: RequestForChips,
                                       users=Depends(check_rights_user_club_owner)):
+    club_owner_account = users[0]
     async with DBI() as db:
         for account_request in request_for_chips.model_dump()["user_requests"]:
             if account_request["operation"] == "approve":
                 pass
+                """
+                Тут получаем транзакцию по id, смотрим сумму пополнения и аккаунт получателя.
+                Далее вызываем функцию пополнения баланса.
+                Изменяем статус операции на approve
+                """
+                txn = await db.get_specific_txn(account_request['id'])
+                await db.giving_chips_to_the_user(txn.txn_value, txn.account_id, txn.props.model_dump()["balance"], club_owner_account.id)
             elif account_request["operation"] == "reject":
                 pass
+                """
+                Тут получаем транзакцию по id.
+                Изменяем статус операции на reject
+                """
+                txn = await db.get_specific_txn(account_request['id'])
     return HTTP_200_OK
 
 

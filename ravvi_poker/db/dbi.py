@@ -673,11 +673,18 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    # CLUB'S TXN
+    # TXN
     async def check_request_to_replenishment(self, account_id):
         sql = "SELECT * FROM user_account_txn WHERE account_id=%s AND txn_type=%s ORDER BY id DESC LIMIT 1"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (account_id, "REPLENISHMENT"))
+            row = await cursor.fetchone()
+        return row
+
+    async def get_specific_txn(self, txn_id):
+        sql = "SELECT * FROM user_account_txn WHERE id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (txn_id,))
             row = await cursor.fetchone()
         return row
 
