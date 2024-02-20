@@ -851,7 +851,7 @@ class DBI:
         return row
 
     async def get_user_requests_to_replenishment(self, account_id):
-        sql = "SELECT txn_value FROM user_account_txn WHERE account_id = %s AND props @> %s::jsonb"
+        sql = "SELECT * FROM user_account_txn WHERE account_id = %s AND props @> %s::jsonb"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (account_id, json.dumps({"status": "consider"})))
             row = await cursor.fetchone()

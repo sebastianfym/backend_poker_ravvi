@@ -63,10 +63,11 @@ class ClubMemberProfile(BaseModel):
 class UserRequest(BaseModel):
     id: int | None
     username: str | None
-    user_img: int | None
+    image_id: int | None
     user_role: str | None
     nickname: str | None
     txn_value: float | None
+    txn_type: str | None
 
     join_in_club: float | None
     leave_from_club: float | None
@@ -276,17 +277,17 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         members = await db.get_club_members(club_id=club.id)
-    print(members)
     # TODO наверное исключенных игроков не надо показывать?
     return list([
         ClubMemberProfile(
             id=member.id,
-            # username=member.username,
-            # image_id=member.image_id,
+            username=member.username,
+            image_id=member.image_id,
             user_role=member.user_role,
             user_approved=member.approved_ts is not None,
             balance=member.balance,
-            balance_shared=member.balance_shared
+            balance_shared=member.balance_shared,
+            join_in_club=None
         ) for member in members
     ])
 
@@ -726,6 +727,7 @@ async def v1_get_all_club_balance(club_id: int, users=Depends(check_rights_user_
             ))
 
         members_balance = sum(user.balance for user in club_members)
+        print()
         shared_balance = sum(user.balance_shared for user in club_members if user.balance_shared is not None)
         total_balance = members_balance + shared_balance
 
@@ -737,7 +739,7 @@ async def v1_get_all_club_balance(club_id: int, users=Depends(check_rights_user_
     }
 
 
-@router.get("/{club_id}/get_requests_for_chips/", status_code=HTTP_200_OK, summary="Get request for chips")
+@router.get("/{club_id}/get_requests_for_chips", status_code=HTTP_200_OK, summary="Get request for chips")
 async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_user_club_owner)):
     all_users_requests = []
     async with DBI() as db:
@@ -748,14 +750,16 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
                 leave_from_club = None
             try:
                 txn_value = (await db.get_user_requests_to_replenishment(member.id)).txn_value
+                txn_type = (await db.get_user_requests_to_replenishment(member.id)).txn_type
                 all_users_requests.append(
                     UserRequest(
                         id=member.id,
                         username=(await db.get_user(id=member.user_id)).name,
                         nickname=member.nickname,
                         user_role=member.user_role,
-                        user_img=(await db.get_user_image(member.user_id)).image_id,
+                        image_id=(await db.get_user_image(member.user_id)).image_id,
                         txn_value=txn_value,
+                        txn_type=txn_type,
                         join_in_club=datetime.datetime.timestamp(member.created_ts),
                         leave_from_club=leave_from_club,
                         country="RU"  # TODO убрать заглушку страны
