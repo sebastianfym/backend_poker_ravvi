@@ -716,18 +716,16 @@ async def v1_get_all_club_balance(club_id: int, users=Depends(check_rights_user_
         club_members = []
 
         for member in await db.get_club_members(club_id):
-
-            if member.user_role != "A" or member.user_role != "S":
-                balance_shared = None
-            else:
+            if member.user_role == 'A' or member.user_role == "S":
                 balance_shared = member.balance_shared
+            else:
+                balance_shared = None
             club_members.append(ClubMemberProfile(
                 balance=member.balance,
                 balance_shared=balance_shared
             ))
 
         members_balance = sum(user.balance for user in club_members)
-        print()
         shared_balance = sum(user.balance_shared for user in club_members if user.balance_shared is not None)
         total_balance = members_balance + shared_balance
 
