@@ -737,7 +737,7 @@ async def v1_get_all_club_balance(club_id: int, users=Depends(check_rights_user_
     }
 
 
-@router.get("/{club_id}/get_requests_for_chips", status_code=HTTP_200_OK, summary="Get request for chips")
+@router.get("/{club_id}/requests_chip_replenishment", status_code=HTTP_200_OK, summary="Get request for chips")
 async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_user_club_owner)):
     all_users_requests = []
     async with DBI() as db:
@@ -748,8 +748,6 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
                 leave_from_club = None
             try:
                 txn = await db.get_user_requests_to_replenishment(member.id)
-                # txn_value = (await db.get_user_requests_to_replenishment(member.id)).txn_value
-                # txn_type = (await db.get_user_requests_to_replenishment(member.id)).txn_type
                 all_users_requests.append(
                     UserRequest(
                         id=txn.id,
