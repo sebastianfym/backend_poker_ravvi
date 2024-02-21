@@ -70,6 +70,7 @@ class UserRequest(BaseModel):
     nickname: str | None
     txn_value: float | None
     txn_type: str | None
+    balance: str | None
 
     join_in_club: float | None
     leave_from_club: float | None
@@ -545,9 +546,11 @@ async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionU
             balance = json_data["balance"]
         except KeyError as e:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
-
-        if account.user_role == "P":
-            balance = "balance"
+        # print(account.id, account.user_role)
+        # if (account.user_role != "A" or account.user_role != "S") and balance == "balance_shared":
+        #     # balance = "balance"
+        #     print(account.user_role)
+        #     raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You don't have enough permissions to work with agent balance")
 
         await db.send_request_for_replenishment_of_chips(account_id=account.id, amount=amount, balance=balance)
         return HTTP_200_OK
@@ -760,6 +763,7 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
                         image_id=(await db.get_user_image(member.user_id)).image_id,
                         txn_value=txn.txn_value,
                         txn_type=txn.txn_type,
+                        balance=txn.props.get("balance"),
                         join_in_club=datetime.datetime.timestamp(member.created_ts),
                         leave_from_club=leave_from_club,
                         country="RU"  # TODO убрать заглушку страны
@@ -807,6 +811,7 @@ async def v1_general_action_with_user_request(club_id: int, request: Request, us
             else:
                 raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid value. Operation must be 'approve' or 'reject")
     return HTTP_200_OK
+
 
 @router.post("/{club_id}/pick_up_or_give_out_chips", status_code=HTTP_200_OK,
              summary="Pick up or give out chips to members")
