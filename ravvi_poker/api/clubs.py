@@ -134,8 +134,7 @@ class ChipRequestForm(BaseModel):
             raise ValueError('Operation must be either "approve" or "reject"')
         return value
 
-class RequestForChips(BaseModel):
-    user_requests: List[ChipRequestForm] = Field(min_length=0)
+
 
 
 async def check_rights_user_club_owner(club_id: int, session_uuid: SessionUUID):
@@ -773,21 +772,41 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
 
 @router.post("/{club_id}/action_with_user_request", status_code=HTTP_200_OK,
              summary='Подтвердить или отклонить пользовательские запросы на пополнение баланса')
-async def v1_action_with_user_request(club_id: int, request_for_chips: RequestForChips,
+async def v1_action_with_user_request(club_id: int, request_for_chips: ChipRequestForm,
                                       users=Depends(check_rights_user_club_owner)):
     club_owner_account = users[0]
+    request_for_chips = request_for_chips.model_dump()
     async with DBI() as db:
-        for account_request in request_for_chips.model_dump()["user_requests"]:
-            if account_request["operation"] == "approve":
-                txn = await db.get_specific_txn(account_request['id'])
+        if request_for_chips["operation"] == "approve":
+            txn = await db.get_specific_txn(request_for_chips['id'])
+            await db.giving_chips_to_the_user(txn.txn_value, txn.account_id, txn.props["balance"],
+                                              club_owner_account.id)
+            await db.update_status_txn(txn.id, "approve")
+        elif request_for_chips["operation"] == "reject":
+            txn = await db.get_specific_txn(request_for_chips['id'])
+            await db.update_status_txn(txn.id, "reject")
+    return HTTP_200_OK
+
+
+@router.post("/{club_id}/general_action_with_user_request", status_code=HTTP_200_OK, summary="Подтвердить или отклонить ВСЕ запросы.")
+async def v1_general_action_with_user_request(club_id: int, request: Request, users=Depends(check_rights_user_club_owner)):
+    club_owner_account = users[0]
+    request = await request.json()
+    async with DBI() as db:
+        for member in await db.get_club_members(club_id):
+            txn = await db.get_user_requests_to_replenishment(member.id)
+
+            if txn is None:
+                continue
+            if request["operation"] == "approve":
                 await db.giving_chips_to_the_user(txn.txn_value, txn.account_id, txn.props["balance"],
                                                   club_owner_account.id)
                 await db.update_status_txn(txn.id, "approve")
-            elif account_request["operation"] == "reject":
-                txn = await db.get_specific_txn(account_request['id'])
+            elif request["operation"] == "reject":
                 await db.update_status_txn(txn.id, "reject")
+            else:
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid value. Operation must be 'approve' or 'reject")
     return HTTP_200_OK
-
 
 @router.post("/{club_id}/pick_up_or_give_out_chips", status_code=HTTP_200_OK,
              summary="Pick up or give out chips to members")
