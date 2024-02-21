@@ -540,7 +540,6 @@ async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionU
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
-        print(account)
         try:
             if account.approved_ts is None or account.approved_ts is False:
                 raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Your account has not been verified")
