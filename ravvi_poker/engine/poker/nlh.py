@@ -1,13 +1,17 @@
+import asyncio
+import time
+from itertools import permutations, combinations
 from typing import List, Tuple
 
 from ravvi_poker.engine.poker.double_board import DoubleBoardMixin
 from ravvi_poker.engine.poker.bomb_pot import BombPotMixin
 
 from .double_board import MixinMeta
-from .hands import HandType
-from .base import PokerBase, Bet
+from .hands import HandType, Hand
+from .base import PokerBase, Bet, Round
 from ..events import Command
 from ..user import User
+from ...db import DBI
 
 
 class Poker_NLH_X(PokerBase, metaclass=MixinMeta):
@@ -67,30 +71,65 @@ class Poker_NLH_3M1(Poker_NLH_X):
 
     PLAYER_CARDS_FREFLOP = 3
 
+    SLEEP_DROP_CARD = 10
+
+    def __init__(self, table, users: List[User], **kwargs):
+        super().__init__(table, users, **kwargs)
+        self.round_to_drop_card: Round = Round.FLOP
+
     async def handle_cmd(self, db, user_id, client_id, cmd_type: Command.Type, props: dict):
         await super().handle_cmd(db, user_id, client_id, cmd_type, props)
         if cmd_type == Command.Type.DROP_CARD:
             self.handle_cmd_drop_card(db, user_id, client_id, props)
 
     def handle_cmd_drop_card(self, db, user_id, client_id, props):
-        # TODO описать команду
-        print("________________")
-        print("new command")
-        print(user_id)
-        print(client_id)
-        print(props)
+        asyncio.run(self.drop_card(db, user_id, props.get("card")))
 
-    async def run_PREFLOP(self):
-        # при копировании класса в метаклассе он копирует ссылки на функции изначального класса из-за чего методы
-        # миксинов в MRO оказываются левее и игнорируются
-        for mro_class in self.__class__.mro():
-            if mro_class == Poker_NLH_3M1:
-                await super().run_PREFLOP()
-            elif hasattr(mro_class, "run_PREFLOP"):
-                await super(mro_class, self).run_PREFLOP()
-            else:
-                continue
-            break
+    async def drop_card(self, db, user_id, card_for_drop):
+        # удалить карту у пользователя
+        for player in self.players:
+            if player.user_id == user_id:
+                player.cards.remove(card_for_drop)
+                # TODO согласовать как мы оповестим о сброшенной карте
+                await self.broadcast_PLAYER_CARDS(db, player)
+
+    async def offer_card_for_drop(self, player, cards_on_table) -> tuple[int, int]:
+        hands_combinations = []
+        for combination in combinations(player.cards, 2):
+            if cards_on_table:
+                combination = combination + tuple(cards_on_table)
+            hand = Hand(combination)
+            hand.rank = self.get_hand_rank(hand)
+            hands_combinations.append(hand)
+
+        hands_combinations.sort(reverse=True, key=lambda x: x.rank)
+        card_code_for_drop, card_index_for_drop = None, None
+        for num, card in enumerate(player.cards):
+            if card not in [hand_card.code for hand_card in hands_combinations[0].cards]:
+                card_code_for_drop = card
+                card_index_for_drop = num
+
+        return card_code_for_drop, card_index_for_drop
+
+    async def run_round(self, start_from_role):
+        async with DBI() as db:
+            if self.round is self.round_to_drop_card:
+                players_cards_map = {}
+                for player in self.players:
+                    card_code_for_drop, card_index_for_drop = await self.offer_card_for_drop(player, self.cards)
+                    players_cards_map[player.user_id] = card_code_for_drop
+
+                    await super().emit_PROPOSED_CARD_DROP(db,
+                                                          player=player,
+                                                          card_code=card_code_for_drop,
+                                                          card_index=card_index_for_drop)
+
+                await asyncio.sleep(self.SLEEP_DROP_CARD)
+
+                for player in self.players:
+                    if len(player.cards) == self.PLAYER_CARDS_FREFLOP:
+                        await self.drop_card(db, player.user_id, players_cards_map[player.user_id])
+        await super().run_round(start_from_role)
 
 
 class Poker_NLH_6P(Poker_NLH_X):
