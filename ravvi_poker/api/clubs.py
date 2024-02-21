@@ -540,11 +540,12 @@ async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionU
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
+        print(account)
         try:
             if account.approved_ts is None or account.approved_ts is False:
-                return HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Your account has not been verified")
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Your account has not been verified")
         except AttributeError:
-            return HTTPException(status_code=HTTP_403_FORBIDDEN,
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
                                  detail="You don't have enough rights to perform this action")
 
         check_last_request = await db.check_request_to_replenishment(account.id)
