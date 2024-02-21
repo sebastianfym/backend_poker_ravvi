@@ -1,5 +1,6 @@
 import datetime
 import decimal
+import json
 import time
 from decimal import Decimal
 from typing import Annotated, Any, List
@@ -797,10 +798,15 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
 async def v1_action_with_user_request(club_id: int, request_for_chips: ChipRequestForm,
                                       users=Depends(check_rights_user_club_owner)):
     club_owner_account = users[0]
+    club = users[2]
+    club_balance = club.club_balance
     request_for_chips = request_for_chips.model_dump()
     async with DBI() as db:
         if request_for_chips["operation"] == "approve":
             txn = await db.get_specific_txn(request_for_chips['id'])
+            if club_balance - txn.txn_value < 0:
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Club balance cannot be less than 0')
+
             await db.giving_chips_to_the_user(txn.txn_value, txn.account_id, txn.props["balance"],
                                               club_owner_account.id)
             await db.update_status_txn(txn.id, "approve")
@@ -817,11 +823,20 @@ async def v1_general_action_with_user_request(club_id: int, request: Request,
                                               users=Depends(check_rights_user_club_owner)):
     club_owner_account = users[0]
     request = await request.json()
+    club = users[2]
+    club_balance = club.club_balance
+    txn_list = []
     async with DBI() as db:
         for member in await db.get_club_members(club_id):
             txn = await db.get_user_requests_to_replenishment(member.id)
             if txn is None:
                 continue
+            else:
+                txn_list.append(txn)
+        sum_all_txn = sum(row.txn_value for row in txn_list)
+        if club_balance - sum_all_txn < 0 and request["operation"] == "approve":
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Club balance cannot be less than 0")
+        for txn in txn_list:
             if request["operation"] == "approve":
                 await db.giving_chips_to_the_user(txn.txn_value, txn.account_id, txn.props["balance"],
                                                   club_owner_account.id)
