@@ -136,8 +136,6 @@ class ChipRequestForm(BaseModel):
         return value
 
 
-
-
 async def check_rights_user_club_owner(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -902,7 +900,7 @@ async def v1_club_txn_history(club_id: int, request: Request, users=Depends(chec
             recipient = await db.get_club_member(member_id)
             member_user_profile = await db.get_user(recipient.user_id)
             for txn in all_member_txns:
-                try:
+                try: #TODO добавить Pydantic типизацию
                     txn_dict = {}
                     txn_dict['txn_type'] = txn.txn_type
                     txn_dict['txn_value'] = txn.txn_value

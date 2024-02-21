@@ -958,10 +958,50 @@ def test_actions_with_users_requests(api_client: TestClient, api_guest: UserAcce
     api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
 
     club = create_club(api_client)
+    #
+    # request = api_client_2.post(f"/v1/clubs/{club.id}/members")
+    # assert request.status_code == 200
+    #
+    # request = api_client_2.get(f"/v1/clubs/{club.id}/members")
+    # assert request.status_code == 200
 
-    request = api_client_2.post(f"/v1/clubs/{club.id}/members")
+    params = {"amount": 10, "balance": "balance"}
+    request = api_client.post(f"/v1/clubs/{club.id}/request_chips", json=params)
     assert request.status_code == 200
 
-    request = api_client_2.get(f"/v1/clubs/{club.id}/members")
+    request = api_client.get(f"/v1/clubs/{club.id}/requests_chip_replenishment")
+    txn_id = request.json()[0].get('txn_id')
+    assert request.status_code == 200
+
+    params = {"id": txn_id, "operation": "approve"}
+    request = api_client.post(f"/v1/clubs/{club.id}/action_with_user_request", json=params)
+    assert request.status_code == 200
+
+    params = {"amount": 10, "balance": "balance"}
+    request = api_client.post(f"/v1/clubs/{club.id}/request_chips", json=params)
+    assert request.status_code == 200
+
+    request = api_client.get(f"/v1/clubs/{club.id}/requests_chip_replenishment")
+    txn_id = request.json()[0].get('txn_id')
+    assert request.status_code == 200
+
+    params = {"id": txn_id, "operation": "reject"}
+    request = api_client.post(f"/v1/clubs/{club.id}/action_with_user_request", json=params)
+    assert request.status_code == 200
+
+    params = {"amount": 10, "balance": "balance"}
+    request = api_client.post(f"/v1/clubs/{club.id}/request_chips", json=params)
+    assert request.status_code == 200
+
+    params = {"operation": "approve"}
+    request = api_client.post(f"/v1/clubs/{club.id}/general_action_with_user_request", json=params)
+    assert request.status_code == 200
+
+    params = {"amount": 10, "balance": "balance"}
+    request = api_client.post(f"/v1/clubs/{club.id}/request_chips", json=params)
+    assert request.status_code == 200
+
+    params = {"operation": "reject"}
+    request = api_client.post(f"/v1/clubs/{club.id}/general_action_with_user_request", json=params)
     assert request.status_code == 200
 
