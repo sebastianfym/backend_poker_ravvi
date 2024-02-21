@@ -315,6 +315,7 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
             balance_shared=balance_shared,
             join_in_club=None
         )
+        result_list.append(member)
     return result_list
 
 
