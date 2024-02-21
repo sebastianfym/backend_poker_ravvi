@@ -294,23 +294,28 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
+        result_list = []
         # TODO а если клуб закрыт?
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         members = await db.get_club_members(club_id=club.id)
     # TODO наверное исключенных игроков не надо показывать?
-    return list([
-        ClubMemberProfile(
+    for member in members:
+        if member.user_role not in ["A", "S"]:
+            balance_shared = None
+        else:
+            balance_shared = member.balance_shared
+        member = ClubMemberProfile(
             id=member.id,
             username='username',  # member.username,
             image_id=None,  # member.image_id,
             user_role=member.user_role,
             user_approved=member.approved_ts is not None,
             balance=member.balance,
-            balance_shared=member.balance_shared,
+            balance_shared=balance_shared,
             join_in_club=None
-        ) for member in members
-    ])
+        )
+    return result_list
 
 
 @router.post("/{club_id}/members", summary="Submit join request")
