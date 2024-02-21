@@ -280,13 +280,13 @@ def test_txn_balance_club(api_client: TestClient, api_guest: UserAccessProfile, 
     assert response.json()['detail'] == 'Your request is still under consideration'
     #
     response = api_client_2.post(f"/v1/clubs/{club.id}/request_chips", json={"amount": 1, "balance": "balance_shared"})
-    assert response.status_code == 403
+    assert response.json()['status_code'] == 403
 
     response = api_client_2.post(f"/v1/clubs/{17031788}/request_chips", json={"amount": 1, "balance": "balance_shared"})
-    assert response.status_code == 403
+    assert response.status_code == 404
 
     response = api_client.post(f"/v1/clubs/{17031788}/request_chips", json={})
-    assert response.status_code == 403
+    assert response.status_code == 404
 
     # Actions with manipulations of the club's balance
 
@@ -642,7 +642,7 @@ def test_get_requests_for_chips(api_client: TestClient,
 
     club = create_club(api_client)
 
-    response = api_client.get(f"/v1/clubs/{club.id}/get_requests_for_chips")
+    response = api_client.get(f"/v1/clubs/{club.id}/requests_chip_replenishment")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
@@ -950,3 +950,18 @@ def test_pick_up_or_give_out_chips(api_client: TestClient, api_guest: UserAccess
     request = api_client.get(f"/v1/clubs/{club.id}/club_txn_history")
     assert request.status_code == 200
     assert len(request.json()) >= 0
+
+
+def test_actions_with_users_requests(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
+                                   api_guest_2: UserAccessProfile):
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+    api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
+
+    club = create_club(api_client)
+
+    request = api_client_2.post(f"/v1/clubs/{club.id}/members")
+    assert request.status_code == 200
+
+    request = api_client_2.get(f"/v1/clubs/{club.id}/members")
+    assert request.status_code == 200
+

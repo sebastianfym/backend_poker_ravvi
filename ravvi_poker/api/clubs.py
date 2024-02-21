@@ -70,7 +70,7 @@ class UserRequest(BaseModel):
     nickname: str | None
     txn_value: float | None
     txn_type: str | None
-    balance: str | None
+    balance_type: str | None
 
     join_in_club: float | None
     leave_from_club: float | None
@@ -546,11 +546,9 @@ async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionU
             balance = json_data["balance"]
         except KeyError as e:
             return HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"You forgot to add a value: {e}")
-        # print(account.id, account.user_role)
-        # if (account.user_role != "A" or account.user_role != "S") and balance == "balance_shared":
-        #     # balance = "balance"
-        #     print(account.user_role)
-        #     raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You don't have enough permissions to work with agent balance")
+        if account.user_role not in ["A", "S"] and balance == "balance_shared":
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You don't have enough permissions to work "
+                                                                       "with agent balance")
 
         await db.send_request_for_replenishment_of_chips(account_id=account.id, amount=amount, balance=balance)
         return HTTP_200_OK
@@ -592,7 +590,6 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID, request: Requ
 
         time_obj = datetime.datetime.fromisoformat(str(account.created_ts))
         unix_time = int(time.mktime(time_obj.timetuple()))
-
         now_datestamp = int(time.mktime(datetime.datetime.fromisoformat(str(datetime.datetime.utcnow())).timetuple()))
 
         date_now = str(datetime.datetime.now()).split(" ")[0]
@@ -763,7 +760,7 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
                         image_id=(await db.get_user_image(member.user_id)).image_id,
                         txn_value=txn.txn_value,
                         txn_type=txn.txn_type,
-                        balance=txn.props.get("balance"),
+                        balance_type=txn.props.get("balance"),
                         join_in_club=datetime.datetime.timestamp(member.created_ts),
                         leave_from_club=leave_from_club,
                         country="RU"  # TODO убрать заглушку страны
