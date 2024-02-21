@@ -381,9 +381,9 @@ class DBI:
     # USER ACCOUNT
 
     async def create_club_member(self, club_id, user_id, user_comment):
-        sql = "INSERT INTO user_account (club_id, user_id, user_comment) VALUES (%s,%s,%s) RETURNING *"
+        sql = "INSERT INTO user_account (club_id, user_id, user_comment, approved_ts) VALUES (%s,%s,%s,%s) RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (club_id, user_id, user_comment))
+            await cursor.execute(sql, (club_id, user_id, user_comment, datetime.datetime.now()))
             row = await cursor.fetchone()
         return row
 
