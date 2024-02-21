@@ -136,6 +136,24 @@ class ChipRequestForm(BaseModel):
         return value
 
 
+class ClubHistoryTransaction(BaseModel):
+    txn_type: str | None
+    txn_value: float | None
+    txn_time: float | None
+    recipient_id: int | None
+    recipient_name: str | None
+    recipient_nickname: str | None
+    recipient_country: str | None
+    recipient_role: str | None
+
+    sender_id: int | None
+    sender_name: str | None
+    sender_nickname: str | None
+    sender_country: str | None
+    sender_role: str | None
+    balance_type: str | None
+
+
 async def check_rights_user_club_owner(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -283,8 +301,8 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
     return list([
         ClubMemberProfile(
             id=member.id,
-            username='username',#member.username,
-            image_id=None,#member.image_id,
+            username='username',  # member.username,
+            image_id=None,  # member.image_id,
             user_role=member.user_role,
             user_approved=member.approved_ts is not None,
             balance=member.balance,
@@ -569,7 +587,7 @@ async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
         return HTTP_200_OK
 
 
-@router.post("/{club_id}/user_account", status_code=HTTP_200_OK, summary="Page with data about user's account in club")
+@router.post("/{club_id}/user_account", status_code=HTTP_200_OK, summary="Страница с информацией о конкретном участнике клуба")
 async def v1_user_account(club_id: int, session_uuid: SessionUUID, request: Request):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -737,9 +755,12 @@ async def v1_get_all_club_balance(club_id: int, users=Depends(check_rights_user_
     }
 
 
-@router.get("/{club_id}/requests_chip_replenishment", status_code=HTTP_200_OK, summary="Получение списка с запросами на пополнение баланса")
+@router.get("/{club_id}/requests_chip_replenishment", status_code=HTTP_200_OK,
+            summary="Получение списка с запросами на пополнение баланса")
 async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_user_club_owner)):
+    sum_txn_value = 0
     all_users_requests = []
+    result_dict = {"sum_txn_value": sum_txn_value, "users_requests": all_users_requests}
     async with DBI() as db:
         for member in await db.get_club_members(club_id):
             try:
@@ -748,7 +769,7 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
                 leave_from_club = None
             try:
                 txn = await db.get_user_requests_to_replenishment(member.id)
-                all_users_requests.append(
+                result_dict['users_requests'].append(
                     UserRequest(
                         id=member.id,
                         txn_id=txn.id,
@@ -764,9 +785,11 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
                         country="RU"  # TODO убрать заглушку страны
                     )
                 )
+                result_dict['sum_txn_value'] += txn.txn_value
+
             except AttributeError:
                 continue
-        return all_users_requests
+        return result_dict
 
 
 @router.post("/{club_id}/action_with_user_request", status_code=HTTP_200_OK,
@@ -781,30 +804,34 @@ async def v1_action_with_user_request(club_id: int, request_for_chips: ChipReque
             await db.giving_chips_to_the_user(txn.txn_value, txn.account_id, txn.props["balance"],
                                               club_owner_account.id)
             await db.update_status_txn(txn.id, "approve")
+            await db.refresh_club_balance(club_id, txn.txn_value, "give_out")
         elif request_for_chips["operation"] == "reject":
             txn = await db.get_specific_txn(request_for_chips['id'])
             await db.update_status_txn(txn.id, "reject")
     return HTTP_200_OK
 
 
-@router.post("/{club_id}/general_action_with_user_request", status_code=HTTP_200_OK, summary="Подтвердить или отклонить ВСЕ запросы.")
-async def v1_general_action_with_user_request(club_id: int, request: Request, users=Depends(check_rights_user_club_owner)):
+@router.post("/{club_id}/general_action_with_user_request", status_code=HTTP_200_OK,
+             summary="Подтвердить или отклонить ВСЕ запросы.")
+async def v1_general_action_with_user_request(club_id: int, request: Request,
+                                              users=Depends(check_rights_user_club_owner)):
     club_owner_account = users[0]
     request = await request.json()
     async with DBI() as db:
         for member in await db.get_club_members(club_id):
             txn = await db.get_user_requests_to_replenishment(member.id)
-
             if txn is None:
                 continue
             if request["operation"] == "approve":
                 await db.giving_chips_to_the_user(txn.txn_value, txn.account_id, txn.props["balance"],
                                                   club_owner_account.id)
                 await db.update_status_txn(txn.id, "approve")
+                await db.refresh_club_balance(club_id, txn.txn_value, "give_out")
             elif request["operation"] == "reject":
                 await db.update_status_txn(txn.id, "reject")
             else:
-                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid value. Operation must be 'approve' or 'reject")
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST,
+                                    detail="Invalid value. Operation must be 'approve' or 'reject")
     return HTTP_200_OK
 
 
@@ -900,31 +927,30 @@ async def v1_club_txn_history(club_id: int, request: Request, users=Depends(chec
             recipient = await db.get_club_member(member_id)
             member_user_profile = await db.get_user(recipient.user_id)
             for txn in all_member_txns:
-                try: #TODO добавить Pydantic типизацию
-                    txn_dict = {}
-                    txn_dict['txn_type'] = txn.txn_type
-                    txn_dict['txn_value'] = txn.txn_value
-                    txn_dict['txn_time'] = txn.created_ts.timestamp()
-
-                    txn_dict['recipient_id'] = member_id
-                    txn_dict['recipient_name'] = member_user_profile.name
-                    txn_dict['recipient_nickname'] = recipient.nickname
-                    txn_dict['recipient_country'] = member_user_profile.country
-                    txn_dict['recipient_role'] = recipient.user_role
-
+                try:
                     sender = await db.get_club_member(txn.sender_id)
                     sender_user_profile = await db.get_user(sender.user_id)
-                    txn_dict['sender_id'] = txn.sender_id
-                    txn_dict['sender_name'] = sender_user_profile.name
-                    txn_dict['sender_nickname'] = sender.nickname
-                    txn_dict['sender_country'] = sender_user_profile.country
-                    txn_dict['sender_role'] = sender.user_role
 
-                    txn_dict['balance_type'] = txn.props.get('balance_type', None)
+                    txn_model = ClubHistoryTransaction(
+                        txn_type=txn.txn_type,
+                        txn_value=txn.txn_value,
+                        txn_time=txn.created_ts.timestamp(),
+                        recipient_id=member_id,
+                        recipient_name=member_user_profile.name,
+                        recipient_nickname=recipient.nickname,
+                        recipient_country=member_user_profile.country,
+                        recipient_role=recipient.user_role,
+                        sender_id=txn.sender_id,
+                        sender_name=sender_user_profile.name,
+                        sender_nickname=sender.nickname,
+                        sender_country=sender_user_profile.country,
+                        sender_role=sender.user_role,
+                        balance_type=txn.props.get('balance_type', None)
+                    )
                 except AttributeError as error:
                     log.info(f"Error getting club. Error: {error}")
                     continue
-                result_list.append(txn_dict)
+                result_list.append(txn_model)
     return result_list
 
 
