@@ -75,7 +75,7 @@ class TableParams(BaseModel):
     ev_chop: bool | None = False
     ratholing: int | None = None
     withdrawals: bool | None = None
-    drop_card_round: Optional[str]
+    drop_card_round: Optional[str] | None = None
 
 
     @field_validator('table_type')
@@ -182,7 +182,8 @@ class TableParams(BaseModel):
 
     @field_validator("drop_card_round")
     @classmethod
-    def check_drop_card_round(cls, drop_card_round: str, game_subtype: str):
+    def check_drop_card_round(cls, drop_card_round: str, info: ValidationInfo):
+        game_subtype = info.data["game_subtype"]
         if game_subtype != "3-1" and drop_card_round:
             raise ValueError("only NLH 3-1 support drop_card_round")
         elif game_subtype == "3-1" and drop_card_round not in ["PREFLOP", "FLOP"]:
