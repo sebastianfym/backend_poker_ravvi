@@ -74,6 +74,8 @@ class Poker_NLH_3M1(Poker_NLH_X):
     SLEEP_DROP_CARD = 10
 
     def __init__(self, table, users: List[User], **kwargs):
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print(kwargs)
         super().__init__(table, users, **kwargs)
         self.round_to_drop_card: Round = Round.FLOP
 
