@@ -299,24 +299,26 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         members = await db.get_club_members(club_id=club.id)
-    # TODO наверное исключенных игроков не надо показывать?
-    for member in members:
-        if member.user_role not in ["A", "S"]:
-            balance_shared = None
-        else:
-            balance_shared = member.balance_shared
-        member = ClubMemberProfile(
-            id=member.id,
-            username='username',  # member.username,
-            image_id=None,  # member.image_id,
-            user_role=member.user_role,
-            user_approved=member.approved_ts is not None,
-            balance=member.balance,
-            balance_shared=balance_shared,
-            join_in_club=None
-        )
-        result_list.append(member)
-    return result_list
+        for member in members:
+            if member.closed_ts is not None:
+                continue
+            user = await db.get_user(id=member.user_id)
+            if member.user_role not in ["A", "S"]:
+                balance_shared = None
+            else:
+                balance_shared = member.balance_shared
+            member = ClubMemberProfile(
+                id=user.id,
+                username=user.name,
+                image_id=user.image_id,
+                user_role=member.user_role,
+                user_approved=member.approved_ts is not None,
+                balance=member.balance,
+                balance_shared=balance_shared,
+                join_in_club=member.created_ts.timestamp()
+            )
+            result_list.append(member)
+        return result_list
 
 
 @router.post("/{club_id}/members", summary="Submit join request")
