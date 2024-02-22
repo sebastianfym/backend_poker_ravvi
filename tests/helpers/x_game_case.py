@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from ravvi_poker.engine.user import User
@@ -55,6 +56,11 @@ class X_CaseMixIn:
             raise ValueError('invalid check entry', step_num)
 
         msg_type = expected.pop('type')
+        # if "CMD" in msg_type:
+        #     print("+++++++++++++++++++++")
+        #     print(msg)
+        #     print(msg_type)
+        #     asyncio.create_task(self.translate_msg_to_cmd(msg))
         expected['msg_type'] = Message.Type.decode(msg_type)
         cmp = [(k, v, getattr(msg, k, None))for k, v in expected.items()]
         #self.log.info("%s msg: %s", step_num, msg.props)
@@ -81,7 +87,6 @@ class X_CaseMixIn:
                     rv = [HandType.decode(rv_item) for rv_item in rv]
             assert ev == rv, f"{step_msg} - {k}: {ev} / {rv}"
 
-
     async def wait_for_player_bet(self):
         assert self._check_steps
         step_num, step = self._check_steps.pop(0)
@@ -103,6 +108,14 @@ class X_CaseMixIn:
         cmd = Command(table_id=-1, client_id=-1, cmd_type=cmd_type, **cmd)
         self.log.debug("cmd %s", cmd)
         assert cmd.user_id == self.current_player.user_id, step_msg
+        async with self.DBI() as db:
+            await self.handle_cmd(db, cmd.user_id, cmd.client_id, cmd.cmd_type, cmd.props)
+
+    async def translate_msg_to_cmd(self, msg):
+        cmd_type = Command.Type.DROP_CARD
+        cmd = {"card": msg["props"]["card"]}
+        cmd = Command(table_id=-1, client_id=-1, cmd_type=cmd_type, **cmd)
+        self.log.debug("cmd %s", cmd)
         async with self.DBI() as db:
             await self.handle_cmd(db, cmd.user_id, cmd.client_id, cmd.cmd_type, cmd.props)
 

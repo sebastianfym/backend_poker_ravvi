@@ -74,10 +74,11 @@ class Poker_NLH_3M1(Poker_NLH_X):
     SLEEP_DROP_CARD = 10
 
     def __init__(self, table, users: List[User], **kwargs):
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        print(kwargs)
         super().__init__(table, users, **kwargs)
-        self.round_to_drop_card: Round = Round.FLOP
+        if kwargs.get("drop_card_round", None) == "FLOP":
+            self.round_to_drop_card: Round = Round.FLOP
+        else:
+            self.round_to_drop_card: Round = Round.PREFLOP
 
     async def handle_cmd(self, db, user_id, client_id, cmd_type: Command.Type, props: dict):
         await super().handle_cmd(db, user_id, client_id, cmd_type, props)
@@ -85,13 +86,19 @@ class Poker_NLH_3M1(Poker_NLH_X):
             self.handle_cmd_drop_card(db, user_id, client_id, props)
 
     def handle_cmd_drop_card(self, db, user_id, client_id, props):
+        # TODO проверить а можно ли вообще сбрасывать карту
         asyncio.run(self.drop_card(db, user_id, props.get("card")))
 
     async def drop_card(self, db, user_id, card_for_drop):
         # удалить карту у пользователя
         for player in self.players:
             if player.user_id == user_id:
+                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                print(player.cards)
+                print(card_for_drop)
                 player.cards.remove(card_for_drop)
+                # TODO дописать совместимость с double board
+                player.hand = self.get_best_hand(player.cards, self.cards)
                 # TODO согласовать как мы оповестим о сброшенной карте
                 await self.broadcast_PLAYER_CARDS(db, player)
 
