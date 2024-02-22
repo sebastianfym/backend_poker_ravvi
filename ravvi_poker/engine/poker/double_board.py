@@ -1,3 +1,4 @@
+from copy import copy, deepcopy
 from itertools import groupby
 
 
@@ -13,13 +14,13 @@ class MixinMeta(type):
             else:
                 cls.check_compatibility(mixin)
 
+            # добавляем миксины
             if isinstance(mixin, type):
                 name = f"{cls.__name__}With{mixin.__name__}"
                 cls = type(name, (mixin, cls), dict(cls.__dict__))
             elif isinstance(mixin, list):
-                name = f"{cls.__name__}".join([f"With{mixin_object.__name__}" for mixin_object in mixin])
-                for mixin_object in mixin:
-                    cls = type(name, (mixin_object, cls), dict(cls.__dict__))
+                name = f"{cls.__name__}" + "_".join([f"With{mixin_object.__name__}" for mixin_object in mixin])
+                cls = type(name, (*mixin, cls), dict(cls.__dict__))
 
         except KeyError:
             pass

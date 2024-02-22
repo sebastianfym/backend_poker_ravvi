@@ -57,7 +57,7 @@ class TableGameModesConfig(TableConfigParams):
                  bombpot_freq: int | None = None, bombpot_min: int | None = None, bombpot_max: int | None = None,
                  bombpot_double_board: bool | None = None,
                  seven_deuce: int | None = None, each_prize: int | None = None, hi_low: bool | None = None,
-                 ofc_joker: bool | None = None,
+                 ofc_joker: bool | None = None, drop_card_round: str | None = None,
                  **kwargs):
         from ravvi_poker.engine.poker.plo import Poker_PLO_X
         from ravvi_poker.engine.poker.ofc import Poker_OFC_X, Poker_OFC_Limited
@@ -87,6 +87,9 @@ class TableGameModesConfig(TableConfigParams):
         self.ofc_joker = None
         if game_type == Poker_OFC_X.GAME_TYPE and game_subtype == Poker_OFC_Limited.GAME_SUBTYPE:
             self.ofc_joker = ofc_joker
+
+        if drop_card_round:
+            self.drop_card_round = drop_card_round
 
         logger.debug(f"table {self.cls_as_config_name()} initialized with {self.unpack_for_debug()}")
 

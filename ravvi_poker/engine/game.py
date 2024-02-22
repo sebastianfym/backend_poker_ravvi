@@ -104,6 +104,15 @@ class Game:
                       )
         await self.emit_msg(db, msg)
 
+    async def emit_PROPOSED_CARD_DROP(self, db, player, card_code, card_index, **kwargs):
+        msg = Message(msg_type=Message.Type.GAME_PROPOSED_CARD_DROP,
+                      user_id=player.user_id,
+                      card_code=card_code,
+                      card_index=card_index,
+                      **kwargs
+                      )
+        await self.emit_msg(db, msg)
+
     async def broadcast_PLAYER_MOVE(self, db, player, **kwargs):
         msg = Message(msg_type=Message.Type.GAME_PLAYER_MOVE,
                       user_id=player.user_id,
