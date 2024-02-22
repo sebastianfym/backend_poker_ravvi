@@ -816,6 +816,31 @@ class DBI:
             await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance_shared, sender_id, props))
         return balance_shared
 
+    async def delete_all_chips_from_the_agent_balance(self, account_id, sender_id):
+        get_balance_shared_sql = "SELECT balance_shared FROM user_account WHERE id = %s"
+        reset_balance_shared_sql = "UPDATE user_account SET balance_shared =%s WHERE id=%s"
+        txn_sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
+        props = json.dumps({"balance_type": "balance_shared"})
+        async with self.cursor() as cursor:
+            await cursor.execute(get_balance_shared_sql, (account_id,))
+            row = await cursor.fetchone()
+            await cursor.execute(reset_balance_shared_sql, (0, account_id))
+            await cursor.execute(txn_sql, (account_id, "REMOVE", row.balance_shared, 0, sender_id, props))
+        return row
+
+    async def delete_all_chips_from_the_account_balance(self, account_id, sender_id):
+        get_balance_sql = "SELECT balance FROM user_account WHERE id = %s"
+        reset_balance_sql = "UPDATE user_account SET balance =%s WHERE id=%s"
+        txn_sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
+        props = json.dumps({"balance_type": "balance"})
+
+        async with self.cursor() as cursor:
+            await cursor.execute(get_balance_sql, (account_id,))
+            row = await cursor.fetchone()
+            await cursor.execute(reset_balance_sql, (0, account_id))
+            await cursor.execute(txn_sql, (account_id, "REMOVE", row.balance, 0, sender_id, props))
+        return row
+
     async def delete_chips_from_the_account_balance(self, amount, account_id, sender_id):
         get_balance_shared_sql = "SELECT balance FROM user_account WHERE id = %s"
         if amount == 'all':
