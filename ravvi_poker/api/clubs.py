@@ -899,7 +899,7 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
                         balance = await db.delete_all_chips_from_the_account_balance(member['id'], club_owner_account.id)
                         await db.refresh_club_balance(club_id, balance.balance + balance_shared.balance_shared, mode)
             else:
-                amount = round(decimal.Decimal(amount / len(members_list)), 2) #TODO округлить через decimal
+                amount = round(decimal.Decimal(amount / len(members_list)), 2)
                 for member in members_list:
                     if member['balance'] is None and member['balance_shared'] is None:
                         continue
@@ -936,7 +936,7 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
 
             if (club.club_balance < amount) or (club.club_balance - amount < 0):
                 raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Club balance cannot be less than request amount')
-            amount = round(decimal.Decimal(amount / len(members_list)), 2) #TODO округлить через decimal
+            amount = round(decimal.Decimal(amount / len(members_list)), 2)
             for member in members_list:
                 if member['balance'] is None and member['balance_shared'] is None:
                     continue
