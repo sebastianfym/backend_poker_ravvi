@@ -308,7 +308,7 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
             else:
                 balance_shared = member.balance_shared
             member = ClubMemberProfile(
-                id=user.id,
+                id=member.id,#user.id,
                 username=user.name,
                 image_id=user.image_id,
                 user_role=member.user_role,
