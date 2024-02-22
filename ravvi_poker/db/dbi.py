@@ -696,9 +696,9 @@ class DBI:
 
 
     async def get_all_account_txn(self, account_id):
-        sql = "SELECT * FROM user_account_txn WHERE account_id=%s AND txn_type=%s or txn_type=%s  ORDER BY id DESC"
+        sql = "SELECT * FROM user_account_txn WHERE account_id=%s  ORDER BY id DESC" #AND txn_type=%s or txn_type=%s
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (account_id, "CASHIN", "REMOVE" ))
+            await cursor.execute(sql, (account_id, )) #"CASHIN", "REMOVE"
             row = await cursor.fetchall()
         return row
 
@@ -717,13 +717,13 @@ class DBI:
                     reset_balance_sql = "UPDATE club_profile SET club_balance = 0 WHERE id=%s"
                     await cursor.execute(reset_balance_sql, (club_id,))
                     sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
-                    # amount = -amount
+                    amount = -amount
                     await cursor.execute(sql, (account_id, f"CLUB_{mode}", amount, 0, sender_id))
                     return
 
             await cursor.execute(sql, (amount, club_id))
             row = await cursor.fetchone()
-            amount = -amount
+            # amount = -amount
             sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
             await cursor.execute(sql, (account_id, f"CLUB_{mode}", amount, row.club_balance, sender_id))
 
@@ -788,7 +788,7 @@ class DBI:
             await cursor.execute(sql, (amount, user_account_id))
             row = await cursor.fetchone()
             props = json.dumps({"balance_type": balance})
-            amount = -amount
+            # amount = -amount
             sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
             await cursor.execute(sql, (user_account_id, "CASHIN", amount, row.balance, sender_id, props))
 
@@ -812,7 +812,7 @@ class DBI:
                 row = await cursor.fetchone()
             props = json.dumps({"balance_type": "balance_shared"})
             sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
-            # amount = -amount
+            amount = -amount
             await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance_shared, sender_id, props))
         return balance_shared
 
@@ -837,7 +837,7 @@ class DBI:
                 row = await cursor.fetchone()
             props = json.dumps({"balance_type": "balance"})
             sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
-            # amount = -amount
+            amount = -amount
             await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance, sender_id, props))
         return balance
 

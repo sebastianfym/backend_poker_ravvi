@@ -946,17 +946,20 @@ async def v1_club_txn_history(club_id: int, request: Request, users=Depends(chec
             return []
         result_list = []
         for member_id in all_club_members_id:
-            all_member_txns = await db.get_all_account_txn(member_id)
+            all_member_txns = await db.get_all_account_txn(member_id) #Возвращает список id транзакций
+            # print(all_member_txns)
             recipient = await db.get_club_member(member_id)
             member_user_profile = await db.get_user(recipient.user_id)
             for txn in all_member_txns:
+                if txn.txn_type in ["CASHOUT", "BUYIN"]:
+                    continue
                 try:
                     sender = await db.get_club_member(txn.sender_id)
                     sender_user_profile = await db.get_user(sender.user_id)
 
                     txn_model = ClubHistoryTransaction(
                         txn_type=txn.txn_type,
-                        txn_value=txn.txn_value,
+                        txn_value=-txn.txn_value,
                         txn_time=txn.created_ts.timestamp(),
                         recipient_id=member_id,
                         recipient_name=member_user_profile.name,
@@ -970,10 +973,10 @@ async def v1_club_txn_history(club_id: int, request: Request, users=Depends(chec
                         sender_role=sender.user_role,
                         balance_type=txn.props.get('balance_type', None)
                     )
+                    result_list.append(txn_model)
                 except AttributeError as error:
-                    log.info(f"Error getting club. Error: {error}")
+                    # log.info(f"Error getting club. Error: {error}")
                     continue
-                result_list.append(txn_model)
     # print(result_list)
     return result_list
 
