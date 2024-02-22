@@ -974,6 +974,7 @@ async def v1_club_txn_history(club_id: int, request: Request, users=Depends(chec
                     log.info(f"Error getting club. Error: {error}")
                     continue
                 result_list.append(txn_model)
+    # print(result_list)
     return result_list
 
 
