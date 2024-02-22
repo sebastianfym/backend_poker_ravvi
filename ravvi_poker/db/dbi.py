@@ -381,9 +381,9 @@ class DBI:
     # USER ACCOUNT
 
     async def create_club_member(self, club_id, user_id, user_comment):
-        sql = "INSERT INTO user_account (club_id, user_id, user_comment) VALUES (%s,%s,%s) RETURNING *"
+        sql = "INSERT INTO user_account (club_id, user_id, user_comment, approved_ts) VALUES (%s,%s,%s,%s) RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (club_id, user_id, user_comment))
+            await cursor.execute(sql, (club_id, user_id, user_comment, datetime.datetime.now()))
             row = await cursor.fetchone()
         return row
 
@@ -673,7 +673,7 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    # CLUB'S TXN
+    # TXN
     async def check_request_to_replenishment(self, account_id):
         sql = "SELECT * FROM user_account_txn WHERE account_id=%s AND txn_type=%s ORDER BY id DESC LIMIT 1"
         async with self.cursor() as cursor:
@@ -681,10 +681,24 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    async def get_all_account_txn(self, account_id):
-        sql = "SELECT * FROM user_account_txn WHERE account_id=%s AND txn_type=%s or txn_type=%s  ORDER BY id DESC"
+    async def get_specific_txn(self, txn_id):
+        sql = "SELECT * FROM user_account_txn WHERE id=%s"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (account_id, "CASHIN", "REMOVE" ))
+            await cursor.execute(sql, (txn_id,))
+            row = await cursor.fetchone()
+        return row
+
+    async def update_status_txn(self, txn_id, status):
+        sql = "UPDATE user_account_txn SET props = props::jsonb || %s::jsonb WHERE id = %s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (json.dumps({"status": status}), txn_id))
+        return
+
+
+    async def get_all_account_txn(self, account_id):
+        sql = "SELECT * FROM user_account_txn WHERE account_id=%s  ORDER BY id DESC" #AND txn_type=%s or txn_type=%s
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (account_id, )) #"CASHIN", "REMOVE"
             row = await cursor.fetchall()
         return row
 
@@ -709,6 +723,7 @@ class DBI:
 
             await cursor.execute(sql, (amount, club_id))
             row = await cursor.fetchone()
+            # amount = -amount
             sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
             await cursor.execute(sql, (account_id, f"CLUB_{mode}", amount, row.club_balance, sender_id))
 
@@ -773,6 +788,7 @@ class DBI:
             await cursor.execute(sql, (amount, user_account_id))
             row = await cursor.fetchone()
             props = json.dumps({"balance_type": balance})
+            # amount = -amount
             sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
             await cursor.execute(sql, (user_account_id, "CASHIN", amount, row.balance, sender_id, props))
 
@@ -799,6 +815,31 @@ class DBI:
             amount = -amount
             await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance_shared, sender_id, props))
         return balance_shared
+
+    async def delete_all_chips_from_the_agent_balance(self, account_id, sender_id):
+        get_balance_shared_sql = "SELECT balance_shared FROM user_account WHERE id = %s"
+        reset_balance_shared_sql = "UPDATE user_account SET balance_shared =%s WHERE id=%s"
+        txn_sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
+        props = json.dumps({"balance_type": "balance_shared"})
+        async with self.cursor() as cursor:
+            await cursor.execute(get_balance_shared_sql, (account_id,))
+            row = await cursor.fetchone()
+            await cursor.execute(reset_balance_shared_sql, (0, account_id))
+            await cursor.execute(txn_sql, (account_id, "REMOVE", -row.balance_shared, 0, sender_id, props))
+        return row
+
+    async def delete_all_chips_from_the_account_balance(self, account_id, sender_id):
+        get_balance_sql = "SELECT balance FROM user_account WHERE id = %s"
+        reset_balance_sql = "UPDATE user_account SET balance =%s WHERE id=%s"
+        txn_sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
+        props = json.dumps({"balance_type": "balance"})
+
+        async with self.cursor() as cursor:
+            await cursor.execute(get_balance_sql, (account_id,))
+            row = await cursor.fetchone()
+            await cursor.execute(reset_balance_sql, (0, account_id))
+            await cursor.execute(txn_sql, (account_id, "REMOVE", -row.balance, 0, sender_id, props))
+        return row
 
     async def delete_chips_from_the_account_balance(self, amount, account_id, sender_id):
         get_balance_shared_sql = "SELECT balance FROM user_account WHERE id = %s"
@@ -851,7 +892,7 @@ class DBI:
         return row
 
     async def get_user_requests_to_replenishment(self, account_id):
-        sql = "SELECT txn_value FROM user_account_txn WHERE account_id = %s AND props @> %s::jsonb"
+        sql = "SELECT * FROM user_account_txn WHERE account_id = %s AND props @> %s::jsonb"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (account_id, json.dumps({"status": "consider"})))
             row = await cursor.fetchone()
