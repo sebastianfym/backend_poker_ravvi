@@ -825,7 +825,7 @@ class DBI:
             await cursor.execute(get_balance_shared_sql, (account_id,))
             row = await cursor.fetchone()
             await cursor.execute(reset_balance_shared_sql, (0, account_id))
-            await cursor.execute(txn_sql, (account_id, "REMOVE", row.balance_shared, 0, sender_id, props))
+            await cursor.execute(txn_sql, (account_id, "REMOVE", -row.balance_shared, 0, sender_id, props))
         return row
 
     async def delete_all_chips_from_the_account_balance(self, account_id, sender_id):
@@ -838,7 +838,7 @@ class DBI:
             await cursor.execute(get_balance_sql, (account_id,))
             row = await cursor.fetchone()
             await cursor.execute(reset_balance_sql, (0, account_id))
-            await cursor.execute(txn_sql, (account_id, "REMOVE", row.balance, 0, sender_id, props))
+            await cursor.execute(txn_sql, (account_id, "REMOVE", -row.balance, 0, sender_id, props))
         return row
 
     async def delete_chips_from_the_account_balance(self, amount, account_id, sender_id):

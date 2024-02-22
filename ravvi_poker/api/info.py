@@ -108,8 +108,8 @@ async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
         for txn in txn_history:
             txn = txn._asdict()
             sender_account = await db.get_club_member(member_id=txn['sender_id'])
-
             if txn['txn_type'] not in ["BUYIN", "CASHOUT", "REPLENISHMENT", "CLUB_CASHIN"]:
+
                 try:
                     username = (await db.get_user(sender_account.user_id)).name
                     role = (await db.find_account(user_id=sender_account.user_id, club_id=club_id)).user_role

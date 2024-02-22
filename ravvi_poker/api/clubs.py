@@ -891,20 +891,15 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
                         await db.refresh_club_balance(club_id, balance_shared.balance_shared, mode)
 
                     elif (member['balance'] or member["balance"] == 0) and member['balance_shared'] is None:
-                        # balance = await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
                         balance = await db.delete_all_chips_from_the_account_balance(member['id'], club_owner_account.id)
                         await db.refresh_club_balance(club_id, balance.balance, mode)
                     elif (member['balance'] or member["balance"] == 0) and (
                             member['balance_shared'] or member["balance_shared"] == 0):
-                        # balance = await db.delete_chips_from_the_account_balance(amount, member['id'],
-                        #                                                          club_owner_account.id)
-                        # balance_shared = await db.delete_chips_from_the_agent_balance(amount, member['id'],
-                        #                                                               club_owner_account.id)
                         balance_shared = await db.delete_all_chips_from_the_agent_balance(member['id'], club_owner_account.id)
                         balance = await db.delete_all_chips_from_the_account_balance(member['id'], club_owner_account.id)
                         await db.refresh_club_balance(club_id, balance.balance + balance_shared.balance_shared, mode)
             else:
-                amount = amount / len(members_list) #TODO округлить через decimal
+                amount = round(decimal.Decimal(amount / len(members_list)), 2) #TODO округлить через decimal
                 for member in members_list:
                     if member['balance'] is None and member['balance_shared'] is None:
                         continue
@@ -925,8 +920,6 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
                         await db.refresh_club_balance(club_id, balance.balance + balance_shared.balance_shared, mode)
             return HTTP_200_OK
 
-            """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
         elif mode == 'give_out':
             balance_count = 0
             balance_shared_count = 0
@@ -943,7 +936,7 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
 
             if (club.club_balance < amount) or (club.club_balance - amount < 0):
                 raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Club balance cannot be less than request amount')
-            amount = amount / len(members_list) #TODO округлить через decimal
+            amount = round(decimal.Decimal(amount / len(members_list)), 2) #TODO округлить через decimal
             for member in members_list:
                 if member['balance'] is None and member['balance_shared'] is None:
                     continue
