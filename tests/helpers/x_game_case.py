@@ -56,11 +56,16 @@ class X_CaseMixIn:
             raise ValueError('invalid check entry', step_num)
 
         msg_type = expected.pop('type')
-        # if "CMD" in msg_type:
-        #     print("+++++++++++++++++++++")
-        #     print(msg)
-        #     print(msg_type)
-        #     asyncio.create_task(self.translate_msg_to_cmd(msg))
+        # если мы видим что игра предлагает карты для сброса, то поищем действия сброса инициированные пользователем
+        if msg_type == "GAME_PROPOSED_CARD_DROP":
+            # поищем команду drop для этого пользователя
+            for step_num, step in self._check_steps:
+                if "CMD_PLAYER_DROP_CARD" in step["type"] and step["user_id"] == msg["props"]["user_id"]:
+                    print(f"find cmd to drop card: card - {step['card']}, user - {step['user_id']}")
+                    self._check_steps.remove((step_num, step))
+                    asyncio.create_task(self.translate_msg_to_cmd(step))
+                    break
+
         expected['msg_type'] = Message.Type.decode(msg_type)
         cmp = [(k, v, getattr(msg, k, None))for k, v in expected.items()]
         #self.log.info("%s msg: %s", step_num, msg.props)
@@ -113,7 +118,7 @@ class X_CaseMixIn:
 
     async def translate_msg_to_cmd(self, msg):
         cmd_type = Command.Type.DROP_CARD
-        cmd = {"card": msg["props"]["card"]}
+        cmd = {"card": msg["card"], "user_id": msg["user_id"]}
         cmd = Command(table_id=-1, client_id=-1, cmd_type=cmd_type, **cmd)
         self.log.debug("cmd %s", cmd)
         async with self.DBI() as db:
