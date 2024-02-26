@@ -88,7 +88,7 @@ class Message(dict):
         def hide_cards(props: dict):
             user_id = props.get("user_id", None)
             cards_open = props.pop("cards_open", None)
-            visible_cards = props.pop("visible_cards", None)
+            visible_cards = props.pop("visible_cards", [])
             if not cards_open and user_id != for_user_id:
                 cards = props.get("cards", [])
                 # если есть карты которые пользователь захотел показать
@@ -104,6 +104,9 @@ class Message(dict):
                 props.update(cards=cards)
                 props.pop("hand_type", None)
                 props.pop("hand_cards", None)
+            if cards_open and user_id == for_user_id:
+                cards = props.get("cards", [])
+                props.update(visible_cards=visible_cards, cards=cards)
             if user_id == for_user_id:
                 props.update(visible_cards=visible_cards)
 
