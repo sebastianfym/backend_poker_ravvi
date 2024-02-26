@@ -25,6 +25,36 @@ CREATE FUNCTION public.now_utc() RETURNS timestamp without time zone
   select now() at time zone 'utc';
 $$;
 
+CREATE FUNCTION public.players_online_trg_proc() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    club_id_var bigint;
+BEGIN
+    -- Получаем club_id из table_profile по id
+    SELECT club_id INTO club_id_var FROM public.table_profile WHERE id = NEW.table_id;
+
+    IF NEW.created_ts IS NOT NULL AND NEW.closed_ts IS NULL THEN
+        UPDATE public.club_profile SET players_online = players_online + 1 WHERE id = club_id_var;
+    ELSIF NEW.created_ts IS NOT NULL AND NEW.closed_ts IS NOT NULL THEN
+        UPDATE public.club_profile SET players_online = players_online - 1 WHERE id = club_id_var;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE FUNCTION public.table_close_trg_proc() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF (SELECT tables_сount FROM public.club_profile WHERE id = NEW.club_id) > 0 THEN
+      UPDATE public.club_profile SET tables_сount = tables_сount - 1 WHERE id = NEW.club_id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
 CREATE FUNCTION public.table_cmd_created_trg_func() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -48,6 +78,17 @@ BEGIN
   SELECT pg_notify('table_msg', payload) INTO x;
   RETURN NEW;
 END; $$;
+
+CREATE FUNCTION public.table_open_trg_proc() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NEW.created_ts IS NOT NULL AND NEW.closed_ts IS NULL THEN
+    UPDATE public.club_profile SET tables_сount = tables_сount + 1 WHERE id = NEW.club_id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
 
 CREATE FUNCTION public.table_profile_created_trg_func() RETURNS trigger
     LANGUAGE plpgsql
@@ -130,7 +171,11 @@ CREATE TABLE public.club_profile (
     service_balance numeric(18,2) DEFAULT 0 NOT NULL,
     service_limit numeric(18,2) DEFAULT 0 NOT NULL,
     created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
-    closed_ts timestamp without time zone
+    closed_ts timestamp without time zone,
+    club_balance numeric(20,4) DEFAULT 0,
+    tables_сount integer DEFAULT 0,
+    players_online integer DEFAULT 0,
+    timezone text
 );
 
 CREATE SEQUENCE public.club_profile_id_seq
@@ -146,7 +191,9 @@ CREATE TABLE public.game_player (
     game_id bigint NOT NULL,
     user_id bigint NOT NULL,
     balance_begin numeric(16,2),
-    balance_end numeric(16,2)
+    balance_end numeric(16,2),
+    result_abs numeric,
+    result_bb numeric
 );
 
 CREATE TABLE public.game_profile (
@@ -298,6 +345,7 @@ CREATE TABLE public.user_account (
     approved_ts timestamp without time zone,
     approved_by bigint,
     club_comment character varying(255) DEFAULT NULL::character varying,
+    nickname character varying(28),
     balance numeric(20,4) DEFAULT 0 NOT NULL,
     balance_shared numeric(20,4) DEFAULT 0 NOT NULL,
     closed_ts timestamp without time zone,
@@ -319,7 +367,9 @@ CREATE TABLE public.user_account_txn (
     account_id bigint NOT NULL,
     txn_type character varying(30) NOT NULL,
     txn_value numeric(20,4) NOT NULL,
-    props jsonb
+    total_balance numeric(20,4) DEFAULT 0.0,
+    props jsonb,
+    sender_id integer
 );
 
 CREATE SEQUENCE public.user_account_txn_id_seq
@@ -390,7 +440,8 @@ CREATE TABLE public.user_profile (
     created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
     closed_ts timestamp without time zone,
     email character varying(100) DEFAULT NULL::character varying,
-    image_id bigint
+    image_id bigint,
+    country character varying(2)
 );
 
 CREATE SEQUENCE public.user_profile_id_seq
@@ -529,9 +580,15 @@ CREATE INDEX user_session_idx_closed ON public.user_session USING btree (login_i
 
 CREATE TRIGGER club_name_trg BEFORE INSERT OR UPDATE ON public.club_profile FOR EACH ROW EXECUTE FUNCTION public.club_name_trg_proc();
 
+CREATE TRIGGER players_online_trg AFTER INSERT OR UPDATE OF created_ts, closed_ts ON public.table_session FOR EACH ROW EXECUTE FUNCTION public.players_online_trg_proc();
+
+CREATE TRIGGER table_closed_trg AFTER UPDATE OF closed_ts ON public.table_profile FOR EACH ROW EXECUTE FUNCTION public.table_close_trg_proc();
+
 CREATE TRIGGER table_cmd_created_trg AFTER INSERT ON public.table_cmd FOR EACH ROW EXECUTE FUNCTION public.table_cmd_created_trg_func();
 
 CREATE TRIGGER table_msg_created_trg AFTER INSERT ON public.table_msg FOR EACH ROW EXECUTE FUNCTION public.table_msg_created_trg_func();
+
+CREATE TRIGGER table_open_trg AFTER INSERT OR UPDATE OF created_ts ON public.table_profile FOR EACH ROW EXECUTE FUNCTION public.table_open_trg_proc();
 
 CREATE TRIGGER table_profile_created_trg AFTER INSERT ON public.table_profile FOR EACH ROW EXECUTE FUNCTION public.table_profile_created_trg_func();
 
