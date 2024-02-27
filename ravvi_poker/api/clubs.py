@@ -61,7 +61,7 @@ class ClubMemberProfile(BaseModel):
     join_in_club: float | None = None
     leave_from_club: float | None = None
 
-    last_session: float | None  = None
+    last_session: float | None = None
     last_game: float | None = None
 
     winning: float | None = 00.00
@@ -306,7 +306,7 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         members = await db.get_club_members(club_id=club.id)
-        for member in members[1::]:
+        for member in members:
             if member.closed_ts is not None:
                 continue
             user = await db.get_user(id=member.user_id)
@@ -320,33 +320,27 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
 
             table_id_list = [table.id for table in await db.get_club_tables(club_id)]
 
-            count_of_games_played = 0
-            print(table_id_list)
-            print(game for game in (await db.get_games_player_through_user_id(user.id)))
             try:
                 all_user_game_id = [game.game_id for game in (await db.get_games_player_through_user_id(user.id))] #Todo id всех игр в которых учавствовал игрок
             except TypeError:
                 all_user_game_id = []
             print(all_user_game_id)
-            try:
+            if len(all_user_game_id) != 0:
                 hands = len(await db.statistics_all_games_users_in_club(all_user_game_id, table_id_list))
-            except:
+            else:
                 hands = 0
-            print(hands)
-            # for table_id in table_id_list:
-            #     for game in await db.statistics_of_games_played(table_id): # TODO тут идет подсчет общий, а нужен на игрока
-            #         # await db.get_game_player_through_user_id(user.id)
-            #         print(game)
-            #         count_of_games_played += 1
+            print('hands: ', hands)
 
             try:
                 last_game_id = (await db.get_game_player_through_user_id(member.user_id)).game_id
                 last_game_time = (await db.get_game_and_players(last_game_id))[0].begin_ts.timestamp()
             except AttributeError:
                 last_game_time = None
-
-            account = await db.get_club_member(member.id)
-            winning_row = await db.get_all_account_txns(account.id)
+            # account = await db.get_club_member(member.id)
+            try:
+                winning_row = await db.get_all_account_txns(member.id)
+            except:
+                winning_row = []
             sum_all_buyin = sum(
                 [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']])
             sum_all_cashout = sum(
@@ -366,7 +360,7 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
                 last_session=last_session.created_ts.timestamp(),
                 last_game=last_game_time,
                 winning=winning,
-                hands=count_of_games_played
+                hands=hands
             )
             result_list.append(member)
         return result_list
