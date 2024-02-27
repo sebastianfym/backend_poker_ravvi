@@ -245,6 +245,8 @@ async def v1_get_club(club_id: int, session_uuid: SessionUUID):
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
+        if account.approved_ts is None:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Your account not been approved")
         return ClubProfile(
             id=club.id,
             name=club.name,
@@ -344,7 +346,7 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID):
     )
 
 
-@router.put("/{club_id}/members/{member_id}", summary="Approve join request")
+@router.put("/{club_id}/members/{member_id}", summary="Approve or reject join request") #TODO
 async def v1_approve_join_request(club_id: int, member_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -368,6 +370,12 @@ async def v1_approve_join_request(club_id: int, member_id: int, session_uuid: Se
         user_role=member.user_role,
         user_approved=member.approved_ts is not None
     )
+
+@router.get("/{club_id}/members/requests", status_code=HTTP_200_OK, summary="Отображение всех заявок на вступление в клуб")
+async def v1_requests_to_join_in_club(club_id: int, users=Depends(check_rights_user_club_owner)):
+    # club_owner_account, user, club
+    async with DBI() as db:
+        not_approved_members = await db.requests_to_join_in_club(users[2].id)
 
 
 @router.post("/{club_id}/tables", status_code=HTTP_201_CREATED, summary="Create club table")
@@ -692,46 +700,6 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID, request: Requ
             winning=winning,
             bb_100_winning=bb_100
         )
-
-
-# @router.get("/{club_id}/operations_at_the_checkout", status_code=HTTP_200_OK,
-#             summary="Get all the operations that were carried out at the club's cash desk and detailed information about these operations")
-# async def v1_operations_at_the_checkout(club_id: int, users=Depends(check_rights_user_club_owner_or_manager)):
-#     async with DBI() as db:
-#         club = users[2]  # await db.get_club(club_id)
-#         club_balance = club.club_balance
-#         club_members = []
-#         for member in await db.get_club_members(club_id):
-#             leave_from_club = datetime.datetime.timestamp(member.closed_ts) if member.closed_ts is not None else None
-#
-#             if member.user_role != "A" or member.user_role != "S":
-#                 balance_shared = None
-#             else:
-#                 balance_shared = member.balance_shared
-#             club_members.append(ClubMemberProfile(
-#                 id=member.id,
-#                 username=(await db.get_user(id=member.user_id)).name,
-#                 nickname=member.nickname,
-#                 user_role=member.user_role,
-#                 balance=member.balance,
-#                 balance_shared=balance_shared,
-#                 user_img=(await db.get_user_image(member.user_id)).image_id,
-#                 join_in_club=datetime.datetime.timestamp(member.created_ts),
-#                 leave_from_club=leave_from_club,
-#                 country="RU"  # TODO убрать заглушку страны
-#             ))
-#
-#         members_balance = sum(user.balance for user in club_members)
-#         shared_balance = sum(user.balance_shared for user in club_members if user.balance_shared is not None)
-#         total_balance = members_balance + shared_balance
-#
-#     return {
-#         "club_balance": club_balance,
-#         "members_balance": members_balance,
-#         "agents_balance": shared_balance,
-#         "total_balance": total_balance,
-#         "club_members": club_members
-#     }
 
 
 @router.get("/{club_id}/club_balance", status_code=HTTP_200_OK,
