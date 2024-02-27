@@ -157,12 +157,12 @@ class TableParams(BaseModel):
         try:
             match table_type:
                 case "SNG" | "MTT":
-                    if 2 <= level_time <= 30:
+                    if 1 <= level_time <= 30:
                         return level_time
                     else:
                         raise ValueError(f'level_time must be between 2 and 30')
                 case "SPIN":
-                    if 2 <= level_time <= 6 or None:
+                    if 1 <= level_time <= 6 or None:
                         return level_time
                     else:
                         raise ValueError(f'level_time must be between 2 and 6')
