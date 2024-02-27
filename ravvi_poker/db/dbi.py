@@ -636,11 +636,11 @@ class DBI:
             row = await cursor.fetchall()
         return row
 
-    async def get_game_player_through_user_id(self, user_id):
+    async def get_games_player_through_user_id(self, user_id):
         sql = "SELECT * FROM game_player WHERE user_id=%s ORDER BY game_id DESC"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (user_id,))
-            row = await cursor.fetchone()
+            row = await cursor.fetchall()
         return row
 
 
@@ -928,6 +928,13 @@ class DBI:
         sql = "SELECT * FROM public.game_profile WHERE table_id = %s AND end_ts >= %s AND end_ts < %s"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (table_id, date_now, tomorrow,))
+            row = await cursor.fetchall()
+        return row
+
+    async def statistics_all_games_users_in_club(self, game_list, table_list):
+        sql = "SELECT * FROM game_profile WHERE id IN %s AND table_id IN %s;"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (game_list, table_list,))
             row = await cursor.fetchall()
         return row
 
