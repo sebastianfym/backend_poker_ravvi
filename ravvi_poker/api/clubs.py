@@ -653,8 +653,10 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID, request: Requ
         for game_id in access_game_id:
             balance_data = await db.get_balance_begin_and_end_from_game(game_id, user.id)  #
             game_data = await db.get_game_and_players(game_id)
+            if balance_data.balance_end:
+                balance_end = float(balance_data.balance_end)
             game_props_list.append({'game_id': game_id, 'balance_begin': float(balance_data.balance_begin),
-                                    'balance_end': float(balance_data.balance_end),
+                                    'balance_end': balance_end,
                                     'big_blind': game_data[0].props['blind_big']})
 
         blind_big_dict = {}
