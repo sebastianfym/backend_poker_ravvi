@@ -33,7 +33,7 @@ class PokerBase(Game):
     SLEEP_ROUND_BEGIN = 1.5
     SLEEP_ROUND_END = 2
     SLEEP_SHOWDOWN_CARDS = 1.5
-    SLEEP_GAME_END = 30
+    SLEEP_GAME_END = 4
 
     def __init__(self, table, users: List[User],
                  *, blind_small: float = 0.01, blind_big: float = 0.02, bet_timeout=30,
@@ -308,9 +308,17 @@ class PokerBase(Game):
 
         for player in self.players:
             if player.user_id == user_id:
-                player.cards_open_on_request = cards
-                if self.showdown_is_end:
-                    await self.broadcast_with_db_instance(player)
+                # открываем карты по двум условиям
+                # 1. карты игрока не открыты принудительно
+                # 2. пришли только те карты которые есть у игрока
+                # 3. есть еще не открытые карты
+                if (not player.cards_open
+                        and set(cards).intersection(set(player.cards)) == set(cards)
+                        and (not player.cards_open_on_request or
+                             len(player.cards_open_on_request) != len(player.cards))):
+                    player.cards_open_on_request = cards
+                    if self.showdown_is_end:
+                        await self.broadcast_with_db_instance(player)
 
     async def broadcast_with_db_instance(self, player):
         async with self.DBI() as db:
@@ -411,18 +419,20 @@ class PokerBase(Game):
         await self.run_TERN()
         await self.run_RIVER()
         await self.run_SHOWDOWN()
-        self.showdown_is_end = True
 
         # winners
         winners_info = self.get_winners()
         async with self.DBI(log=self.log) as db:
             await self.broadcast_GAME_RESULT(db, winners_info)
 
+        self.showdown_is_end = True
+
         # если включен режим seven deuce сформируем новый банк и распределим его
         if self.table.seven_deuce:
             await self.run_SEVEN_DEUCE(winners_info)
 
         # TODO тут вызовем показ карт
+        logger.info("Показываем")
         await self.open_cards_on_request()
 
         await asyncio.sleep(self.SLEEP_GAME_END)
