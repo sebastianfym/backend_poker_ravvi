@@ -57,6 +57,7 @@ class X_CaseMixIn:
             raise ValueError('invalid check entry', step_num)
 
         msg_type = expected.pop('type')
+        task = None
         # если мы видим что игра предлагает карты для сброса, то поищем действия сброса инициированные пользователем
         if msg_type == "GAME_PROPOSED_CARD_DROP":
             # поищем команду drop для этого пользователя
@@ -99,10 +100,8 @@ class X_CaseMixIn:
                     rv = [HandType.decode(rv_item) for rv_item in rv]
             assert ev == rv, f"{step_msg} - {k}: {ev} / {rv}"
 
-        try:
+        if task:
             await task
-        except Exception as e:
-            pass
 
     async def wait_for_player_bet(self):
         assert self._check_steps
