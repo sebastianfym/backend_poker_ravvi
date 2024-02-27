@@ -52,6 +52,7 @@ class ClubMemberProfile(BaseModel):
     image_id: int | None = None
     user_role: str | None = None
     user_approved: bool | None = None
+    country: str | None = None
 
     nickname: str | None = None
     balance: float | None = 00.00
@@ -59,6 +60,12 @@ class ClubMemberProfile(BaseModel):
 
     join_in_club: float | None = None
     leave_from_club: float | None = None
+
+    last_session: float | None
+    last_game: float | None = None
+
+    winning: float | None = 00.00
+    hands: float | None = 00.00
 
 
 class UserRequest(BaseModel):
@@ -307,15 +314,54 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
                 balance_shared = None
             else:
                 balance_shared = member.balance_shared
+
+            last_login_id = (await db.get_last_user_login(member.user_id)).id
+            last_session = await db.get_last_user_session(last_login_id)
+
+            table_id_list = [table.id for table in await db.get_club_tables(club_id)]
+
+            count_of_games_played = 0
+
+            # try:
+            #     all_user_game_id = [game.id for game in (await db.get_game_player_through_user_id(user.id))] #Todo это свяхано с нижним циклом, подумай как это обработать
+            # except TypeError:
+            #     all_user_game_id = []
+            # print(all_user_game_id)
+
+            # for table_id in table_id_list:
+            #     for game in await db.statistics_of_games_played(table_id): # TODO тут идет подсчет общий, а нужен на игрока
+            #         # await db.get_game_player_through_user_id(user.id)
+            #         print(game)
+            #         count_of_games_played += 1
+
+            try:
+                last_game_id = (await db.get_game_player_through_user_id(member.user_id)).game_id
+                last_game_time = (await db.get_game_and_players(last_game_id))[0].begin_ts.timestamp()
+            except AttributeError:
+                last_game_time = None
+
+            account = await db.get_club_member(member.id)
+            winning_row = await db.get_all_account_txns(account.id)
+            sum_all_buyin = sum(
+                [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']])
+            sum_all_cashout = sum(
+                [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'CASHOUT']])
+            winning = sum_all_cashout - abs(sum_all_buyin)
+
             member = ClubMemberProfile(
                 id=member.id,#user.id,
                 username=user.name,
                 image_id=user.image_id,
                 user_role=member.user_role,
                 user_approved=member.approved_ts is not None,
+                country=user.country,
                 balance=member.balance,
                 balance_shared=balance_shared,
-                join_in_club=member.created_ts.timestamp()
+                join_in_club=member.created_ts.timestamp(),
+                last_session=last_session.created_ts.timestamp(),
+                last_game=last_game_time,
+                winning=winning,
+                hands=count_of_games_played
             )
             result_list.append(member)
         return result_list

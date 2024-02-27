@@ -220,6 +220,13 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def get_last_user_login(self, user_id=None):
+        sql = f"SELECT * FROM user_login WHERE user_id=%s ORDER BY id DESC"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (user_id,))
+            row = await cursor.fetchone()
+        return row
+
     # SESSION
 
     async def create_session(self, login_id):
@@ -260,6 +267,13 @@ class DBI:
         async with self.cursor() as cursor:
             sql = f"UPDATE user_session SET closed_ts=now_utc() WHERE {key}=%s RETURNING *"  # nosec
             await cursor.execute(sql, (value,))
+            row = await cursor.fetchone()
+        return row
+
+    async def get_last_user_session(self, last_login_id):
+        sql = "SELECT * FROM user_session WHERE login_id=%s ORDER BY id DESC"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (last_login_id,))
             row = await cursor.fetchone()
         return row
 
@@ -621,6 +635,15 @@ class DBI:
             await cursor.execute(sql, (user_id,))
             row = await cursor.fetchall()
         return row
+
+    async def get_game_player_through_user_id(self, user_id):
+        sql = "SELECT * FROM game_player WHERE user_id=%s ORDER BY game_id DESC"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (user_id,))
+            row = await cursor.fetchone()
+        return row
+
+
     # EVENTS (TABLE_CMD)
 
     def json_dumps(self, obj):
@@ -906,7 +929,6 @@ class DBI:
         async with self.cursor() as cursor:
             await cursor.execute(sql, (table_id, date_now, tomorrow,))
             row = await cursor.fetchall()
-
         return row
 
     async def get_statistics_about_winning(self, account_id, date):
@@ -916,7 +938,13 @@ class DBI:
         async with self.cursor() as cursor:
             await cursor.execute(sql, (account_id, date_now, tomorrow))
             row = await cursor.fetchall()
+        return row
 
+    async def get_all_account_txns(self, account_id):
+        sql = "SELECT * FROM user_account_txn WHERE account_id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (account_id,))
+            row = await cursor.fetchall()
         return row
 
     async def check_game_by_date(self, game_id, date):
