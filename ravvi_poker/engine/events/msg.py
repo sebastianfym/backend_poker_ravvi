@@ -19,6 +19,7 @@ class MessageType(IntEnum):
     GAME_ROUND = 302
     GAME_CARDS = 303
     GAME_PLAYER_MOVE = 304
+    GAME_PROPOSED_CARD_DROP = 310
     GAME_RESULT = 390
     GAME_END = 399
 

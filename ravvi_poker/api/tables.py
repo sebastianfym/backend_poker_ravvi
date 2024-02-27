@@ -75,6 +75,7 @@ class TableParams(BaseModel):
     ev_chop: bool | None = False
     ratholing: int | None = None
     withdrawals: bool | None = None
+    drop_card_round: Optional[str] | None = None
 
 
     @field_validator('table_type')
@@ -156,12 +157,12 @@ class TableParams(BaseModel):
         try:
             match table_type:
                 case "SNG" | "MTT":
-                    if 2 <= level_time <= 30:
+                    if 1 <= level_time <= 30:
                         return level_time
                     else:
                         raise ValueError(f'level_time must be between 2 and 30')
                 case "SPIN":
-                    if 2 <= level_time <= 6 or None:
+                    if 1 <= level_time <= 6 or None:
                         return level_time
                     else:
                         raise ValueError(f'level_time must be between 2 and 6')
@@ -178,6 +179,16 @@ class TableParams(BaseModel):
                 return chat_mode
             case _:
                 return None
+
+    @field_validator("drop_card_round")
+    @classmethod
+    def check_drop_card_round(cls, drop_card_round: str, info: ValidationInfo):
+        game_subtype = info.data["game_subtype"]
+        if game_subtype != "3-1" and drop_card_round:
+            raise ValueError("only NLH 3-1 support drop_card_round")
+        elif game_subtype == "3-1" and drop_card_round not in ["PREFLOP", "FLOP"]:
+            raise ValueError("incorrect round for drop card in NLH 3-1")
+        return drop_card_round
 
 
 class TableProfile(TableParams):

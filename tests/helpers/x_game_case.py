@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from ravvi_poker.engine.user import User
@@ -55,6 +56,16 @@ class X_CaseMixIn:
             raise ValueError('invalid check entry', step_num)
 
         msg_type = expected.pop('type')
+        # если мы видим что игра предлагает карты для сброса, то поищем действия сброса инициированные пользователем
+        if msg_type == "GAME_PROPOSED_CARD_DROP":
+            # поищем команду drop для этого пользователя
+            for step_num, step in self._check_steps:
+                if "CMD_PLAYER_DROP_CARD" in step["type"] and step["user_id"] == msg["props"]["user_id"]:
+                    print(f"find cmd to drop card: card - {step['card']}, user - {step['user_id']}")
+                    self._check_steps.remove((step_num, step))
+                    asyncio.create_task(self.translate_msg_to_cmd(step))
+                    break
+
         expected['msg_type'] = Message.Type.decode(msg_type)
         cmp = [(k, v, getattr(msg, k, None))for k, v in expected.items()]
         #self.log.info("%s msg: %s", step_num, msg.props)
@@ -81,7 +92,6 @@ class X_CaseMixIn:
                     rv = [HandType.decode(rv_item) for rv_item in rv]
             assert ev == rv, f"{step_msg} - {k}: {ev} / {rv}"
 
-
     async def wait_for_player_bet(self):
         assert self._check_steps
         step_num, step = self._check_steps.pop(0)
@@ -103,6 +113,14 @@ class X_CaseMixIn:
         cmd = Command(table_id=-1, client_id=-1, cmd_type=cmd_type, **cmd)
         self.log.debug("cmd %s", cmd)
         assert cmd.user_id == self.current_player.user_id, step_msg
+        async with self.DBI() as db:
+            await self.handle_cmd(db, cmd.user_id, cmd.client_id, cmd.cmd_type, cmd.props)
+
+    async def translate_msg_to_cmd(self, msg):
+        cmd_type = Command.Type.DROP_CARD
+        cmd = {"card": msg["card"], "user_id": msg["user_id"]}
+        cmd = Command(table_id=-1, client_id=-1, cmd_type=cmd_type, **cmd)
+        self.log.debug("cmd %s", cmd)
         async with self.DBI() as db:
             await self.handle_cmd(db, cmd.user_id, cmd.client_id, cmd.cmd_type, cmd.props)
 

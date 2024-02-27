@@ -107,11 +107,13 @@ async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
         txn_list = []
         for txn in txn_history:
             txn = txn._asdict()
-            if txn['txn_type'] not in ["BUYIN", "CASHOUT"]:
+            sender_account = await db.get_club_member(member_id=txn['sender_id'])
+            if txn['txn_type'] not in ["BUYIN", "CASHOUT", "REPLENISHMENT", "CLUB_CASHIN"]:
+
                 try:
-                    username = (await db.get_user(txn['sender_id'])).name
-                    role = (await db.find_account(user_id=txn['sender_id'], club_id=club_id)).user_role
-                    image_id = (await db.get_user(txn['sender_id'])).image_id
+                    username = (await db.get_user(sender_account.user_id)).name
+                    role = (await db.find_account(user_id=sender_account.user_id, club_id=club_id)).user_role
+                    image_id = (await db.get_user(sender_account.user_id)).image_id
                 except (ValueError, AttributeError):
                     username = "Undefined username"
                     role = "Undefined role"
@@ -129,7 +131,9 @@ async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
                 )
                 txn_list.append(txn_manual)
             else:
-                table_info = await db.get_table(txn['sender_id'])
+                if txn['txn_type'] in ["REPLENISHMENT", "CLUB_CASHIN"]:
+                    continue
+                table_info = await db.get_table(txn['props'].get('table_id'))
                 txn_table = TxnHistoryOnTable(
                     table_name=table_info.table_name,
                     table_id=table_info.id,
@@ -141,5 +145,4 @@ async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
                     balance=txn['total_balance']
                 )
                 txn_list.append(txn_table)
-
         return txn_list
