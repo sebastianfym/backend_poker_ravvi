@@ -654,8 +654,8 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID, request: Requ
             balance_data = await db.get_balance_begin_and_end_from_game(game_id, user.id)  #
             game_data = await db.get_game_and_players(game_id)
             if balance_data.balance_end:
-                balance_end = float(balance_data.balance_end)
-            game_props_list.append({'game_id': game_id, 'balance_begin': float(balance_data.balance_begin),
+                balance_end = balance_data.balance_end
+            game_props_list.append({'game_id': game_id, 'balance_begin': balance_data.balance_begin,
                                     'balance_end': balance_end,
                                     'big_blind': game_data[0].props['blind_big']})
 
@@ -673,7 +673,7 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID, request: Requ
 
         quantity_games = 0
         for winning_100 in result_list:
-            bb_100_winning += winning_100['sum_winning'] / winning_100['big_blind']
+            bb_100_winning += winning_100['sum_winning'] / decimal.Decimal(winning_100['big_blind'])
             quantity_games += winning_100['count']
 
         try:
