@@ -658,7 +658,6 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID, request: Requ
             game_props_list.append({'game_id': game_id, 'balance_begin': balance_data.balance_begin,
                                     'balance_end': balance_end,
                                     'big_blind': game_data[0].props['blind_big']})
-
         blind_big_dict = {}
         for item in game_props_list:
             big_blind = item['big_blind']
