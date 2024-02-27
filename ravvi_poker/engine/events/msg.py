@@ -85,6 +85,8 @@ class Message(dict):
         )
 
     def hide_private_info(self, for_user_id):
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print(f"Прилетел запрос на скрытие карт для пользователя: {for_user_id}")
         def hide_cards(props: dict):
             user_id = props.get("user_id", None)
             cards_open = props.pop("cards_open", None)
@@ -92,22 +94,28 @@ class Message(dict):
             if not cards_open and user_id != for_user_id:
                 cards = props.get("cards", [])
                 # если есть карты которые пользователь захотел показать
+                print(f"Общие карты: {cards}")
+                print(f"Видимые карты: {visible_cards}")
                 if visible_cards:
-                    cards = []
+                    updated_cards = []
                     for card in cards:
                         if card in visible_cards:
-                            cards.append(card)
+                            updated_cards.append(card)
                         else:
-                            cards.append(0)
+                            updated_cards.append(0)
+                    cards = updated_cards
                 else:
                     cards = [0 for _ in cards]
                 props.update(cards=cards)
+                print(cards)
                 props.pop("hand_type", None)
                 props.pop("hand_cards", None)
             if cards_open and user_id == for_user_id:
                 cards = props.get("cards", [])
                 props.update(visible_cards=visible_cards, cards=cards)
             if user_id == for_user_id:
+                print("_+_+_+_+_+_+_+_+_+_+_")
+                print(visible_cards)
                 props.update(visible_cards=visible_cards)
 
         msg = self.clone()
