@@ -63,6 +63,8 @@ class PokerBase(Game):
         self.count_in_the_game = 0
         self.count_has_options = 0
 
+        self.showdown_is_end: bool = False
+
     @property
     def game_props(self):
         game_props = dict(
@@ -139,6 +141,9 @@ class PokerBase(Game):
             bet_type = props.get("bet", None)
             raise_delta = props.get("amount", None)
             self.handle_cmd_bet(db, user_id=user_id, bet_type=bet_type, raise_delta=raise_delta)
+        if cmd_type == Command.Type.SHOW_CARDS:
+            cards = props.get("cards", None)
+            await self.handle_cmd_show_cards(user_id=user_id, cards=cards)
 
     # MSG
 
@@ -148,6 +153,21 @@ class PokerBase(Game):
             hand_type = player.hand.type[0]
             hand_cards = [c.code for c in player.hand.cards]
         await super().broadcast_PLAYER_CARDS(db, player, hand_type=hand_type.value, hand_cards=hand_cards)
+
+    async def broadcast_PLAYER_CARDS_ON_REQUEST(self, db, player):
+        hand_type, hand_cards = None, None
+        if player.hand:
+            hand_type = player.hand.type[0]
+            hand_cards = [c.code for c in player.hand.cards]
+
+        visible_cards: list = []
+        for card in player.cards:
+            if card in player.cards_open_on_request:
+                visible_cards.append(card)
+            else:
+                visible_cards.append(0)
+        await super().broadcast_PLAYER_CARDS(db, player, hand_type=hand_type.value, hand_cards=hand_cards,
+                                             visible_cards=visible_cards)
 
     async def broadcast_PLAYER_MOVE(self, db, player, options, **kwargs):
         await super().broadcast_PLAYER_MOVE(db, player,
@@ -283,6 +303,19 @@ class PokerBase(Game):
                        p.user_id, b_0, b_a_0, b_t_0, p.bet_delta, p.balance, p.bet_amount, p.bet_total, self.bet_id)
         self.bet_event.set()
 
+    async def handle_cmd_show_cards(self, user_id, cards):
+        self.log.info("handle cmd show_cards: %s %s", user_id, cards)
+
+        for player in self.players:
+            if player.user_id == user_id:
+                player.cards_open_on_request = cards
+                if self.showdown_is_end:
+                    await self.broadcast_with_db_instance(player)
+
+    async def broadcast_with_db_instance(self, player):
+        async with self.DBI() as db:
+            await self.broadcast_PLAYER_CARDS_ON_REQUEST(db, player)
+
     def update_banks(self):
         self.banks, self.bank_total = get_banks(self.players)
         # TODO окргуление
@@ -378,6 +411,7 @@ class PokerBase(Game):
         await self.run_TERN()
         await self.run_RIVER()
         await self.run_SHOWDOWN()
+        self.showdown_is_end = True
 
         # winners
         winners_info = self.get_winners()
@@ -387,6 +421,9 @@ class PokerBase(Game):
         # если включен режим seven deuce сформируем новый банк и распределим его
         if self.table.seven_deuce:
             await self.run_SEVEN_DEUCE(winners_info)
+
+        # TODO тут вызовем показ карт
+        await self.open_cards_on_request()
 
         await asyncio.sleep(self.SLEEP_GAME_END)
         async with self.DBI(log=self.log) as db:
@@ -616,6 +653,19 @@ class PokerBase(Game):
                 p.cards_open = True
                 await self.broadcast_PLAYER_CARDS(db, p)
                 self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.type)
+
+    async def open_cards_on_request(self):
+        print("_______________________")
+        print("Прилетел запрос на открытие карт в конце игры")
+        # открываем карты по запросу
+        async with self.DBI() as db:
+            for p in self.players:
+                print(f"Смотрим для {p.user_id}")
+                print(p.cards_open_on_request)
+                print(p.cards_open)
+                if p.cards_open_on_request and not p.cards_open:
+                    await self.broadcast_PLAYER_CARDS_ON_REQUEST(db, p)
+                    self.log.info("player %s: open cards on request %s", p.user_id, p.cards_open_on_request)
 
     def get_winners(self):
         winners = {}

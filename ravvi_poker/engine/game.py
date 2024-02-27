@@ -102,6 +102,7 @@ class Game:
                       cards_open=player.cards_open,
                       **kwargs
                       )
+
         await self.emit_msg(db, msg)
 
     async def emit_PROPOSED_CARD_DROP(self, db, player, card_code, card_index, **kwargs):
