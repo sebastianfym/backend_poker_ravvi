@@ -156,7 +156,7 @@ class ClubHistoryTransaction(BaseModel):
 
 
 class UserRequestsToJoin(BaseModel):
-    id: int
+    id: int | None
     accept: bool
 
 
@@ -339,7 +339,7 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID):
         if not account:
             account = await db.create_club_member(club.id, user.id, None)
         elif account.closed_ts is not None and account.club_id == club_id:
-            await db.return_member_in_club(account.id)
+            await db.refresh_member_in_club(account.id)
 
     return ClubProfile(
         id=club.id,
@@ -351,7 +351,7 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID):
     )
 
 
-@router.put("/{club_id}/members", summary="Approve or reject join request") # TOdo что мы делаем, если решили отклонить заявку ?
+@router.put("/{club_id}/members", summary="Approve or reject join request")
 async def v1_approve_join_request(club_id: int, consideration_application: UserRequestsToJoin, users=Depends(check_rights_user_club_owner)):
     user_id = consideration_application.id
     accept = consideration_application.accept
@@ -368,20 +368,37 @@ async def v1_approve_join_request(club_id: int, consideration_application: UserR
         if member.approved_ts is None and accept:
             member = await db.approve_club_member(member.id, owner.id, None)
 
-        new_member_profile = await db.get_user(member.user_id)
-    return ClubMemberProfile(
-        id=new_member_profile.id,
-        username=new_member_profile.name,
-        image_id=new_member_profile.image_id,
-        user_role=member.user_role,
-        user_approved=member.approved_ts is not None
-    )
+            new_member_profile = await db.get_user(member.user_id)
+            return ClubMemberProfile(
+                id=new_member_profile.id,
+                username=new_member_profile.name,
+                image_id=new_member_profile.image_id,
+                user_role=member.user_role,
+                user_approved=member.approved_ts is not None
+            )
+        elif accept is False:
+            await db.close_club_member(member.id, owner.id, None)
+            return HTTP_200_OK
+
+@router.post("/{club_id}/members/all", status_code=HTTP_200_OK, summary="Принять или отклонить все заявки на вступление в клуб")
+async def v1_consideration_all_requests_to_join(club_id: int, consider: UserRequestsToJoin, users=Depends(check_rights_user_club_owner)):
+    accept = consider.accept
+    owner = users[1]
+    async with DBI() as db:
+        all_requests_to_join = await db.requests_to_join_in_club(club_id)
+
+        if accept:
+            for member in all_requests_to_join:
+                await db.approve_club_member(member.id, owner.id, None)
+        else:
+            for member in all_requests_to_join:
+                await db.close_club_member(member.id, owner.id, None)
+    return HTTP_200_OK
 
 
 @router.get("/{club_id}/members/requests", status_code=HTTP_200_OK,
             summary="Отображение всех заявок на вступление в клуб")
 async def v1_requests_to_join_in_club(club_id: int, users=Depends(check_rights_user_club_owner)):
-    # club_owner_account, user, club
     result_list = []
 
     async with DBI() as db:
@@ -619,7 +636,7 @@ async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Account not found")
         if account.user_role == "O":
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You can't leave your own club")
-        await db.leave_from_club(account.id)
+        await db.close_club_member(account.id, user.id, None)
         return HTTP_200_OK
 
 

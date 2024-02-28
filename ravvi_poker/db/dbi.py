@@ -426,9 +426,9 @@ class DBI:
         return row
 
     async def close_club_member(self, member_id, closed_by, club_comment):
-        sql = "UPDATE user_account SET closed_ts=now_utc(), closed_by=%s, club_comment=%s WHERE id=%s RETURNING *"
+        sql = "UPDATE user_account SET closed_ts=now_utc(), closed_by=%s, club_comment=%s, approved_ts=%s, approved_by=%s WHERE id=%s RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (closed_by, club_comment, member_id))
+            await cursor.execute(sql, (closed_by, club_comment, None, None, member_id))
             row = await cursor.fetchone()
         return row
 
@@ -449,11 +449,17 @@ class DBI:
             await cursor.execute(sql, (data, account_id,))
 
     async def requests_to_join_in_club(self, club_id):
-        sql = "SELECT * FROM user_account WHERE club_id=%s AND approved_ts IS NULL"
+        sql = "SELECT * FROM user_account WHERE club_id=%s AND approved_ts IS NULL AND approved_by IS NULL AND closed_ts IS NULL AND closed_by IS NULL"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (club_id,))
             rows = await cursor.fetchall()
         return rows
+
+
+    async def refresh_member_in_club(self, account_id):
+        sql = "UPDATE user_account SET approved_ts=%s, approved_by=%s, closed_ts=%s, closed_by=%s WHERE id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (None, None, None, None, account_id,))
 
 
     # TABLE
@@ -875,17 +881,6 @@ class DBI:
             await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance, sender_id, props))
         return balance
 
-    async def leave_from_club(self, account_id):
-        closed_time = datetime.datetime.utcnow()
-        sql = "UPDATE user_account SET closed_ts=%s, closed_by=%s WHERE id=%s"
-        async with self.cursor() as cursor:
-            await cursor.execute(sql, (closed_time, account_id, account_id,))
-
-    async def return_member_in_club(self, account_id):
-        closed_time = datetime.datetime.utcnow()
-        sql = "UPDATE user_account SET created_ts=%s, closed_ts=%s, closed_by=%s WHERE id=%s"
-        async with self.cursor() as cursor:
-            await cursor.execute(sql, (closed_time, None, None, account_id,))
 
     async def get_user_history_trx_in_club(self, user_id, club_id):
         sql_history = "SELECT * FROM user_account_txn WHERE account_id=%s"
