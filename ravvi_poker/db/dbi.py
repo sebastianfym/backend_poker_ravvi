@@ -456,10 +456,10 @@ class DBI:
         return rows
 
 
-    async def refresh_member_in_club(self, account_id):
-        sql = "UPDATE user_account SET approved_ts=%s, approved_by=%s, closed_ts=%s, closed_by=%s WHERE id=%s"
+    async def refresh_member_in_club(self, account_id, user_comment):
+        sql = "UPDATE user_account SET approved_ts=%s, approved_by=%s, closed_ts=%s, closed_by=%s, user_comment=%s WHERE id=%s"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (None, None, None, None, account_id,))
+            await cursor.execute(sql, (None, None, None, None, user_comment, account_id,))
 
 
     # TABLE

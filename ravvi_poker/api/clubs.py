@@ -52,13 +52,15 @@ class ClubMemberProfile(BaseModel):
     image_id: int | None = None
     user_role: str | None = None
     user_approved: bool | None = None
-
+    country: str | None = None
     nickname: str | None = None
     balance: float | None = 00.00
     balance_shared: float | None = 00.00
 
     join_in_club: float | None = None
     leave_from_club: float | None = None
+
+    user_comment: str | None = None
 
 
 class UserRequest(BaseModel):
@@ -333,17 +335,21 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
 
 
 @router.post("/{club_id}/members", summary="Submit join request")
-async def v1_join_club(club_id: int, session_uuid: SessionUUID):
+async def v1_join_club(club_id: int, session_uuid: SessionUUID, request: Request):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
+        try:
+            user_comment = (await request.json())['user_comment']
+        except json.decoder.JSONDecodeError:
+            user_comment = None
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
         if not account:
-            account = await db.create_club_member(club.id, user.id, None)
+            account = await db.create_club_member(club.id, user.id, user_comment)
         elif account.closed_ts is not None and account.club_id == club_id:
-            await db.refresh_member_in_club(account.id)
+            await db.refresh_member_in_club(account.id, user_comment) #Todo тут обновлять комментарий пользователя
 
     return ClubProfile(
         id=club.id,
@@ -370,7 +376,7 @@ async def v1_approve_join_request(club_id: int, consideration_application: UserR
     async with DBI() as db:
         member = await db.find_account(user_id=user_id, club_id=club_id)
         if not member:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member was not found")
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member not found")
 
         if not member or member.club_id != club.id:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member not found")
@@ -417,7 +423,9 @@ async def v1_requests_to_join_in_club(club_id: int, users=Depends(check_rights_u
             potential_member = ClubMemberProfile(
                 id=user.id,
                 username=user.name,
-                image_id=user.image_id  #
+                image_id=user.image_id,
+                country=user.country,
+                user_comment=member.user_comment
             )
             result_list.append(potential_member)
         return result_list
