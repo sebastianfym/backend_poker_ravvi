@@ -1,0 +1,2 @@
+class HiLowMixin:
+    def
