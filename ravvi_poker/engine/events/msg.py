@@ -113,7 +113,7 @@ class Message(dict):
                 props.pop("hand_cards", None)
             if cards_open and user_id == for_user_id:
                 cards = props.get("cards", [])
-                props.update(visible_cards=visible_cards, cards=cards)
+                props.update(visible_cards=cards, cards=cards)
             if user_id == for_user_id:
                 print("_+_+_+_+_+_+_+_+_+_+_")
                 print(visible_cards)
