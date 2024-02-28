@@ -362,16 +362,15 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID, request: Request
 
 
 @router.put("/{club_id}/members", summary="Approve or reject join request")
-async def v1_approve_join_request(club_id: int, consideration_application: UserRequestsToJoin, users=Depends(check_rights_user_club_owner)):
-    user_id = consideration_application.id
-    accept = consideration_application.accept
-    agent_id = consideration_application.agent_id
-    rakeback = consideration_application.rakeback
-    nickname = consideration_application.nickname
-    comment = consideration_application.comment
+async def v1_approve_join_request(club_id: int, params: UserRequestsToJoin, users=Depends(check_rights_user_club_owner)):
+    user_id = params.id
+    accept = params.accept
+    agent_id = params.agent_id
+    rakeback = params.rakeback
+    nickname = params.nickname
+    comment = params.comment
 
-    club = users[2]
-    owner = users[1]
+    _, owner, club = users
 
     async with DBI() as db:
         member = await db.find_account(user_id=user_id, club_id=club_id)
@@ -394,21 +393,6 @@ async def v1_approve_join_request(club_id: int, consideration_application: UserR
         elif accept is False:
             await db.close_club_member(member.id, owner.id, None)
             return HTTP_200_OK
-
-# @router.post("/{club_id}/members/all", status_code=HTTP_200_OK, summary="Принять или отклонить все заявки на вступление в клуб")
-# async def v1_consideration_all_requests_to_join(club_id: int, consider: UserRequestsToJoin, users=Depends(check_rights_user_club_owner)):
-#     accept = consider.accept
-#     owner = users[1]
-#     async with DBI() as db:
-#         all_requests_to_join = await db.requests_to_join_in_club(club_id)
-#
-#         if accept:
-#             for member in all_requests_to_join:
-#                 await db.approve_club_member(member.id, owner.id, None)
-#         else:
-#             for member in all_requests_to_join:
-#                 await db.close_club_member(member.id, owner.id, None)
-#     return HTTP_200_OK
 
 
 @router.get("/{club_id}/members/requests", status_code=HTTP_200_OK,
@@ -554,7 +538,7 @@ async def v1_get_all_unions(session_uuid: SessionUUID):
              summary="Adds a certain number of chips to the club's balance")
 async def v1_add_chip_on_club_balance(club_id: int, chips_value: ClubChipsValue,
                                       users=Depends(check_rights_user_club_owner)):
-    club_owner_account, user = users[0], users[1]
+    club_owner_account, user, _ = users
     async with DBI() as db:
         await db.txn_with_chip_on_club_balance(club_id, chips_value.amount, "CASHIN", club_owner_account.id, user.id)
 
@@ -760,7 +744,7 @@ async def v1_user_account(club_id: int, session_uuid: SessionUUID, request: Requ
             summary="Получить все допустимые типы балансов (суммарные) для клуба: агентский баланс, баланс пользователей, баланс клуба")
 async def v1_get_all_club_balance(club_id: int, users=Depends(check_rights_user_club_owner_or_manager)):
     async with DBI() as db:
-        club = users[2]
+        _, _, club = users
         club_balance = club.club_balance
         club_members = []
 

@@ -13,11 +13,11 @@ logger = logging.getLogger(__name__)
 
 
 class DBI:
-    DB_HOST = os.getenv("RAVVI_POKER_DB_HOST", "localhost")
-    DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "15432"))
-    DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "develop")
-    DB_USER = os.getenv("RAVVI_POKER_DB_USER", "postgres")
-    DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
+    DB_HOST = "localhost"#os.getenv("RAVVI_POKER_DB_HOST", "localhost")
+    DB_PORT = "5432"#int(os.getenv("RAVVI_POKER_DB_PORT", "15432"))
+    DB_NAME = "poker_db"#os.getenv("RAVVI_POKER_DB_NAME", "develop")
+    DB_USER = "postgres"#os.getenv("RAVVI_POKER_DB_USER", "postgres")
+    DB_PASSWORD = "postgres "#os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
     APPLICATION_NAME = 'CPS'
     CONNECT_TIMEOUT = 15
 
@@ -426,9 +426,9 @@ class DBI:
         return row
 
     async def close_club_member(self, member_id, closed_by, club_comment):
-        sql = "UPDATE user_account SET closed_ts=now_utc(), closed_by=%s, club_comment=%s, approved_ts=%s, approved_by=%s WHERE id=%s RETURNING *"
+        sql = "UPDATE user_account SET closed_ts=now_utc(), closed_by=%s, club_comment=%s WHERE id=%s RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (closed_by, club_comment, None, None, member_id))
+            await cursor.execute(sql, (closed_by, club_comment, member_id))
             row = await cursor.fetchone()
         return row
 
