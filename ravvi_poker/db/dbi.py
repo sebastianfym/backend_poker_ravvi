@@ -418,10 +418,10 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    async def approve_club_member(self, member_id, approved_by, club_comment):
-        sql = "UPDATE user_account SET approved_ts=now_utc(), approved_by=%s, club_comment=%s WHERE id=%s RETURNING *"
+    async def approve_club_member(self, member_id, approved_by, club_comment, nickname):
+        sql = "UPDATE user_account SET approved_ts=now_utc(), approved_by=%s, club_comment=%s, nickname=%s WHERE id=%s RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (approved_by, club_comment, member_id))
+            await cursor.execute(sql, (approved_by, club_comment, nickname, member_id))
             row = await cursor.fetchone()
         return row
 

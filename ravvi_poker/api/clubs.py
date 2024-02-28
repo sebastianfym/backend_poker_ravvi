@@ -158,6 +158,10 @@ class ClubHistoryTransaction(BaseModel):
 class UserRequestsToJoin(BaseModel):
     id: int | None
     accept: bool
+    rakeback: int | None = None
+    agent_id: int | None = None
+    nickname: str | None = None
+    comment: str | None = None
 
 
 async def check_rights_user_club_owner(club_id: int, session_uuid: SessionUUID):
@@ -332,6 +336,7 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
 async def v1_join_club(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
+        print(user)
         club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
@@ -355,6 +360,11 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID):
 async def v1_approve_join_request(club_id: int, consideration_application: UserRequestsToJoin, users=Depends(check_rights_user_club_owner)):
     user_id = consideration_application.id
     accept = consideration_application.accept
+    agent_id = consideration_application.agent_id
+    rakeback = consideration_application.rakeback
+    nickname = consideration_application.nickname
+    comment = consideration_application.comment
+
     club = users[2]
     owner = users[1]
 
@@ -366,7 +376,7 @@ async def v1_approve_join_request(club_id: int, consideration_application: UserR
         if not member or member.club_id != club.id:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member not found")
         if member.approved_ts is None and accept:
-            member = await db.approve_club_member(member.id, owner.id, None)
+            member = await db.approve_club_member(member.id, owner.id, comment, nickname)
 
             new_member_profile = await db.get_user(member.user_id)
             return ClubMemberProfile(
@@ -380,20 +390,20 @@ async def v1_approve_join_request(club_id: int, consideration_application: UserR
             await db.close_club_member(member.id, owner.id, None)
             return HTTP_200_OK
 
-@router.post("/{club_id}/members/all", status_code=HTTP_200_OK, summary="Принять или отклонить все заявки на вступление в клуб")
-async def v1_consideration_all_requests_to_join(club_id: int, consider: UserRequestsToJoin, users=Depends(check_rights_user_club_owner)):
-    accept = consider.accept
-    owner = users[1]
-    async with DBI() as db:
-        all_requests_to_join = await db.requests_to_join_in_club(club_id)
-
-        if accept:
-            for member in all_requests_to_join:
-                await db.approve_club_member(member.id, owner.id, None)
-        else:
-            for member in all_requests_to_join:
-                await db.close_club_member(member.id, owner.id, None)
-    return HTTP_200_OK
+# @router.post("/{club_id}/members/all", status_code=HTTP_200_OK, summary="Принять или отклонить все заявки на вступление в клуб")
+# async def v1_consideration_all_requests_to_join(club_id: int, consider: UserRequestsToJoin, users=Depends(check_rights_user_club_owner)):
+#     accept = consider.accept
+#     owner = users[1]
+#     async with DBI() as db:
+#         all_requests_to_join = await db.requests_to_join_in_club(club_id)
+#
+#         if accept:
+#             for member in all_requests_to_join:
+#                 await db.approve_club_member(member.id, owner.id, None)
+#         else:
+#             for member in all_requests_to_join:
+#                 await db.close_club_member(member.id, owner.id, None)
+#     return HTTP_200_OK
 
 
 @router.get("/{club_id}/members/requests", status_code=HTTP_200_OK,
