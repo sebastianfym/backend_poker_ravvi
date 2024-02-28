@@ -33,7 +33,7 @@ class PokerBase(Game):
     SLEEP_ROUND_BEGIN = 1.5
     SLEEP_ROUND_END = 2
     SLEEP_SHOWDOWN_CARDS = 1.5
-    SLEEP_GAME_END = 4
+    SLEEP_GAME_END = 30
 
     def __init__(self, table, users: List[User],
                  *, blind_small: float = 0.01, blind_big: float = 0.02, bet_timeout=30,
