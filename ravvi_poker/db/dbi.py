@@ -384,7 +384,7 @@ class DBI:
         sql = "INSERT INTO user_account (club_id, user_id, user_comment) VALUES (%s,%s,%s) RETURNING *"
         #         sql = "INSERT INTO user_account (club_id, user_id, user_comment, approved_ts) VALUES (%s,%s,%s,%s) RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (club_id, user_id, user_comment, datetime.datetime.now()))
+            # await cursor.execute(sql, (club_id, user_id, user_comment, datetime.datetime.now()))
             await cursor.execute(sql, (club_id, user_id, user_comment))
             row = await cursor.fetchone()
         return row
@@ -915,7 +915,6 @@ class DBI:
         async with self.cursor() as cursor:
             await cursor.execute(sql, (table_id, date_now, tomorrow,))
             row = await cursor.fetchall()
-
         return row
 
     async def get_statistics_about_winning(self, account_id, date):
@@ -925,7 +924,6 @@ class DBI:
         async with self.cursor() as cursor:
             await cursor.execute(sql, (account_id, date_now, tomorrow))
             row = await cursor.fetchall()
-
         return row
 
     async def check_game_by_date(self, game_id, date):
