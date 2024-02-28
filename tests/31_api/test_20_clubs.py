@@ -180,7 +180,7 @@ def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_
 
     # approve
     p = pending[0]
-    data = {"id": int(p.username.split("u")[1]), "accept": True} #Todo тут нужен не p.id, а нужен user_id
+    data = {"id": int(p.username.split("u")[1]), "accept": True}
     response = api_client.put(f"/v1/clubs/{club.id}/members", json=data)
     assert response.status_code == 200
     member = ClubMemberProfile(**response.json())

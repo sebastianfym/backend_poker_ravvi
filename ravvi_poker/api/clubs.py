@@ -349,7 +349,7 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID, request: Request
         if not account:
             account = await db.create_club_member(club.id, user.id, user_comment)
         elif account.closed_ts is not None and account.club_id == club_id:
-            await db.refresh_member_in_club(account.id, user_comment) #Todo тут обновлять комментарий пользователя
+            await db.refresh_member_in_club(account.id, user_comment)
 
     return ClubProfile(
         id=club.id,
