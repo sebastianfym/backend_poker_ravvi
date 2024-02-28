@@ -336,7 +336,6 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
 async def v1_join_club(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
-        print(user)
         club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
@@ -986,7 +985,6 @@ async def v1_club_txn_history(club_id: int, request: Request, users=Depends(chec
         result_list = []
         for member_id in all_club_members_id:
             all_member_txns = await db.get_all_account_txn(member_id)  # Возвращает список id транзакций
-            # print(all_member_txns)
             recipient = await db.get_club_member(member_id)
             member_user_profile = await db.get_user(recipient.user_id)
             for txn in all_member_txns:
@@ -1016,7 +1014,6 @@ async def v1_club_txn_history(club_id: int, request: Request, users=Depends(chec
                 except AttributeError as error:
                     # log.info(f"Error getting club. Error: {error}")
                     continue
-    # print(result_list)
     return result_list
 
 

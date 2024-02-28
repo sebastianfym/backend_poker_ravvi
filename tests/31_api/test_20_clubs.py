@@ -70,11 +70,11 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_c
     response = api_client_2.post(f"/v1/clubs/{club2.id}/members")
     assert response.status_code == 200
     response = api_client_2.get(f"/v1/clubs/{club2.id}")
-    assert response.status_code == 200
-    club2_2 = ClubProfile(**response.json())
-    assert club2_2.id == club2.id
-    assert club2_2.user_role == "P"
-    assert club2_2.user_approved is True
+    assert response.status_code == 403
+    # club2_2 = ClubProfile(**response.json())
+    # assert club2_2.id == club2.id
+    # assert club2_2.user_role == "P"
+    # assert club2_2.user_approved is True
 
     response = api_client_2.get(f"/v1/clubs/{club_404}")
     assert response.status_code == 404
@@ -146,7 +146,7 @@ def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_
     assert club_2.id
     assert club_2.name
     assert club_2.user_role == 'P'
-    assert club_2.user_approved is True
+    assert club_2.user_approved is False
 
     # list clubs
     response = api_client.get("/v1/clubs")
@@ -171,9 +171,18 @@ def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_
     response = api_client.get(f"/v1/clubs/{17031778}/members")
     assert response.status_code == 404
 
+    # list requests to join in club
+    response = api_client.get(f"/v1/clubs/{club.id}/members/requests")
+    assert response.status_code == 200
+
+    response = api_client_2.get(f"/v1/clubs/{club.id}/members/requests")
+    assert response.status_code == 403
+
     # approve
     p = pending[0]
-    response = api_client.put(f"/v1/clubs/{club.id}/members/{p.id}")
+    data = {"id": p.id, "accept": True}
+    response = api_client.put(f"/v1/clubs/{club.id}/members", json=data)
+    print(response)
     assert response.status_code == 200
     member = ClubMemberProfile(**response.json())
     assert member.user_approved
