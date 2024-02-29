@@ -949,7 +949,6 @@ class DBI:
         async with self.cursor() as cursor:
             await cursor.execute(sql, (account_id, date_now, tomorrow))
             row = await cursor.fetchall()
-<<<<<<< ravvi_poker/db/dbi.py
         return row
 
     async def get_all_account_txns(self, account_id):
@@ -957,8 +956,6 @@ class DBI:
         async with self.cursor() as cursor:
             await cursor.execute(sql, (account_id,))
             row = await cursor.fetchall()
-=======
->>>>>>> ravvi_poker/db/dbi.py
         return row
 
     async def check_game_by_date(self, game_id, date):
