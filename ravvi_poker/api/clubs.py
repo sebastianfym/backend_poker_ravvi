@@ -320,18 +320,15 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
 
             table_id_list = [table.id for table in await db.get_club_tables(club_id)]
 
-            all_user_game_id = [game.game_id for game in (await db.get_games_player_through_user_id(user.id))]
+            all_user_games_id = [game.game_id for game in (await db.get_games_player_through_user_id(user.id))]
 
-            if len(all_user_game_id) != 0:
-                hands = len(await db.statistics_all_games_users_in_club(all_user_game_id, table_id_list))
+            if len(all_user_games_id) != 0:
+                hands = len(await db.statistics_all_games_users_in_club(all_user_games_id, table_id_list))
+                last_game = max(await db.statistics_all_games_users_in_club(all_user_games_id, table_id_list), key=lambda x: x.id)
+                last_game_time=last_game.begin_ts.timestamp()
             else:
                 hands = 0
 
-            try:
-                last_game_id = (await db.get_game_player_through_user_id(member.user_id)).game_id
-                last_game_time = (await db.get_game_and_players(last_game_id))[0].begin_ts.timestamp()
-            except AttributeError:
-                last_game_time = None
 
             winning_row = await db.get_all_account_txns(member.id)
 
