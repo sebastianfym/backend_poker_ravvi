@@ -395,9 +395,11 @@ class DBI:
     # USER ACCOUNT
 
     async def create_club_member(self, club_id, user_id, user_comment):
-        sql = "INSERT INTO user_account (club_id, user_id, user_comment, approved_ts) VALUES (%s,%s,%s,%s) RETURNING *"
+        sql = "INSERT INTO user_account (club_id, user_id, user_comment) VALUES (%s,%s,%s) RETURNING *"
+        #         sql = "INSERT INTO user_account (club_id, user_id, user_comment, approved_ts) VALUES (%s,%s,%s,%s) RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (club_id, user_id, user_comment, datetime.datetime.now()))
+            # await cursor.execute(sql, (club_id, user_id, user_comment, datetime.datetime.now()))
+            await cursor.execute(sql, (club_id, user_id, user_comment))
             row = await cursor.fetchone()
         return row
 
@@ -430,10 +432,10 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    async def approve_club_member(self, member_id, approved_by, club_comment):
-        sql = "UPDATE user_account SET approved_ts=now_utc(), approved_by=%s, club_comment=%s WHERE id=%s RETURNING *"
+    async def approve_club_member(self, member_id, approved_by, club_comment, nickname):
+        sql = "UPDATE user_account SET approved_ts=now_utc(), approved_by=%s, club_comment=%s, nickname=%s WHERE id=%s RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (approved_by, club_comment, member_id))
+            await cursor.execute(sql, (approved_by, club_comment, nickname, member_id))
             row = await cursor.fetchone()
         return row
 
@@ -459,6 +461,19 @@ class DBI:
 
         async with self.cursor() as cursor:
             await cursor.execute(sql, (data, account_id,))
+
+    async def requests_to_join_in_club(self, club_id):
+        sql = "SELECT * FROM user_account WHERE club_id=%s AND approved_ts IS NULL AND approved_by IS NULL AND closed_ts IS NULL AND closed_by IS NULL"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (club_id,))
+            rows = await cursor.fetchall()
+        return rows
+
+
+    async def refresh_member_in_club(self, account_id, user_comment):
+        sql = "UPDATE user_account SET approved_ts=%s, approved_by=%s, closed_ts=%s, closed_by=%s, user_comment=%s WHERE id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (None, None, None, None, user_comment, account_id,))
 
 
     # TABLE
@@ -889,17 +904,6 @@ class DBI:
             await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance, sender_id, props))
         return balance
 
-    async def leave_from_club(self, account_id):
-        closed_time = datetime.datetime.utcnow()
-        sql = "UPDATE user_account SET closed_ts=%s, closed_by=%s WHERE id=%s"
-        async with self.cursor() as cursor:
-            await cursor.execute(sql, (closed_time, account_id, account_id,))
-
-    async def return_member_in_club(self, account_id):
-        closed_time = datetime.datetime.utcnow()
-        sql = "UPDATE user_account SET created_ts=%s, closed_ts=%s, closed_by=%s WHERE id=%s"
-        async with self.cursor() as cursor:
-            await cursor.execute(sql, (closed_time, None, None, account_id,))
 
     async def get_user_history_trx_in_club(self, user_id, club_id):
         sql_history = "SELECT * FROM user_account_txn WHERE account_id=%s"
@@ -945,6 +949,7 @@ class DBI:
         async with self.cursor() as cursor:
             await cursor.execute(sql, (account_id, date_now, tomorrow))
             row = await cursor.fetchall()
+<<<<<<< ravvi_poker/db/dbi.py
         return row
 
     async def get_all_account_txns(self, account_id):
@@ -952,6 +957,8 @@ class DBI:
         async with self.cursor() as cursor:
             await cursor.execute(sql, (account_id,))
             row = await cursor.fetchall()
+=======
+>>>>>>> ravvi_poker/db/dbi.py
         return row
 
     async def check_game_by_date(self, game_id, date):
