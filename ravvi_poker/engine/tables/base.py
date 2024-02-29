@@ -94,6 +94,7 @@ class Table:
         from ..game import get_game_class
         from ..poker.double_board import DoubleBoardMixin
         from ..poker.bomb_pot import BombPotMixin
+        from ..poker.hi_low import HiLowMixin
 
         self.log.info("game_factory(%s, %s, %s)", self.game_type, self.game_subtype, self.game_props)
         game_class = get_game_class(self.game_type, self.game_subtype)
@@ -107,6 +108,8 @@ class Table:
                 game = game_class(self, users, **self.game_props, mixin=[BombPotMixin, DoubleBoardMixin])
             else:
                 game = game_class(self, users, **self.game_props, mixin=BombPotMixin)
+        elif getattr(getattr(self, "game_modes_config"), "hi_low"):
+            game = game_class(self, users, **self.game_props, mixin=HiLowMixin)
         else:
             game = game_class(self, users, **self.game_props)
 
