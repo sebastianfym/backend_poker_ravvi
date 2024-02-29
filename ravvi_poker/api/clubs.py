@@ -340,6 +340,7 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
                 last_game_time=last_game.begin_ts.timestamp()
             else:
                 hands = 0
+                last_game_time = 0
 
 
             winning_row = await db.get_all_account_txns(member.id)
