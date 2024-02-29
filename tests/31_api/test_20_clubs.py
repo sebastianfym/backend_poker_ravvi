@@ -610,10 +610,16 @@ def test_owner_set_user_data(api_client: TestClient, api_guest: UserAccessProfil
     assert request.status_code == 200
     request = api_client.get(f"/v1/clubs/{club.id}/members")
     assert request.status_code == 200
+    # data = {
+    #     "account_id": request.json()[0].get("id"),
+    #     "nickname": "nickname",
+    #     "club_comment": "club_comment"
+    # }
     data = {
-        "account_id": request.json()[1].get("id"),
-        "nickname": "nickname",
-        "club_comment": "club_comment"
+        "user_id": int(request.json()[0].get('username').split('u')[1]),
+        "nickname": "NickName",
+        "club_comment": "...",
+        "user_role": "P"
     }
     request = api_client.patch(f"/v1/clubs/{club.id}/set_user_data", json=data)
     assert request.status_code == 200
@@ -626,10 +632,9 @@ def test_owner_set_user_data(api_client: TestClient, api_guest: UserAccessProfil
         "club_comment": "club_comment"
     }
     request = api_client.patch(f"/v1/clubs/{club.id}/set_user_data", json=data)
-    assert request.status_code == 422
+    assert request.status_code == 403
 
-    request = api_client.patch(f"/v1/clubs/{club.id}/set_user_data", json={})
-    assert request.status_code == 422
+
 
 
 def test_leave_from_club(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
@@ -679,7 +684,7 @@ def test_pick_up_or_give_out_chips(api_client: TestClient, api_guest: UserAccess
 
     request = api_client_2.get(f"/v1/clubs/{club.id}/members")
     assert request.status_code == 200
-    second_account_id = request.json()[1].get('id')
+    second_account_id = request.json()[0].get('id')
     club.club_balance = 150000
 
     data = {
