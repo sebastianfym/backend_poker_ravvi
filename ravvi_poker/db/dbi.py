@@ -378,6 +378,12 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def club_agents(self, club_id):
+        sql = "SELECT * FROM user_account WHERE user_role = ANY(%s) AND club_id = %s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (['A', 'S'], club_id))
+            row = await cursor.fetchall()
+        return row
     # USER ACCOUNT
 
     async def create_club_member(self, club_id, user_id, user_comment):
@@ -418,10 +424,10 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    async def approve_club_member(self, member_id, approved_by, club_comment, nickname):
-        sql = "UPDATE user_account SET approved_ts=now_utc(), approved_by=%s, club_comment=%s, nickname=%s WHERE id=%s RETURNING *"
+    async def approve_club_member(self, member_id, approved_by, club_comment, nickname, user_role):
+        sql = "UPDATE user_account SET approved_ts=now_utc(), approved_by=%s, club_comment=%s, nickname=%s, user_role=%s WHERE id=%s RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (approved_by, club_comment, nickname, member_id))
+            await cursor.execute(sql, (approved_by, club_comment, nickname, user_role, member_id))
             row = await cursor.fetchone()
         return row
 
@@ -439,14 +445,27 @@ class DBI:
             rows = await cursor.fetchall()
         return rows
 
-    async def club_owner_update_user_account(self, account_id, data, row):
-        if row == "nickname":
-            sql = "UPDATE user_account SET nickname=%s WHERE id=%s"
-        elif row == "club_comment":
-            sql = "UPDATE user_account SET club_comment=%s WHERE id=%s"
+    async def club_owner_update_user_account(self, account_id, nickname=None, club_comment=None, user_role=None):
+        params = []
+        values = []
 
+        if nickname is not None:
+            params.append("nickname=%s")
+            values.append(nickname)
+        if club_comment is not None:
+            params.append("club_comment=%s")
+            values.append(club_comment)
+        if user_role is not None:
+            params.append("user_role=%s")
+            values.append(user_role)
+
+        values.append(account_id)
+        params_str = ", ".join(params)
+        sql = f"UPDATE user_account SET {params_str} WHERE id=%s RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (data, account_id,))
+            await cursor.execute(sql, values)
+            row = await cursor.fetchone()
+        return row
 
     async def requests_to_join_in_club(self, club_id):
         sql = "SELECT * FROM user_account WHERE club_id=%s AND approved_ts IS NULL AND approved_by IS NULL AND closed_ts IS NULL AND closed_by IS NULL"
