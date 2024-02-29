@@ -106,6 +106,8 @@ async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
 
         txn_list = []
         for txn in txn_history:
+            if txn.txn_value == 00.00:
+                continue
             txn = txn._asdict()
             sender_account = await db.get_club_member(member_id=txn['sender_id'])
             if txn['txn_type'] not in ["BUYIN", "CASHOUT", "REPLENISHMENT", "CLUB_CASHIN"]:
