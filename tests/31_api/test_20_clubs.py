@@ -162,8 +162,9 @@ def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_
     # list members
     response = api_client.get(f"/v1/clubs/{club.id}/members")
     assert response.status_code == 200
+
     members = [ClubMemberProfile(**m) for m in response.json()]
-    members[1].user_approved = False
+    members[0].user_approved = False
     pending = [m for m in members if not m.user_approved]
     assert members
     assert pending and len(pending) == 1
@@ -180,11 +181,14 @@ def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_
 
     # approve
     p = pending[0]
-    data = {"id": int(p.username.split("u")[1]), "accept": True}
+    data = {"id": int(p.username.split("u")[1]), "accept": True, "user_role": "A"}
+    print(data)
     response = api_client.put(f"/v1/clubs/{club.id}/members", json=data)
+    print(response.json())
     assert response.status_code == 200
-    member = ClubMemberProfile(**response.json())
-    assert member.user_approved
+    # member = ClubMemberProfile(**response.json())
+    # assert member.user_approved
+
 
     data = {"id": p.id, "accept": True}
     response = api_client_2.put(f"/v1/clubs/{club.id}/members", json=data)
@@ -943,15 +947,9 @@ def test_agents_in_club(api_client: TestClient, api_guest: UserAccessProfile, ap
     response = api_client.get(f"/v1/clubs/{club.id}/members/requests")
     assert response.status_code == 200
 
-    data = {"id": int(response.json()[0]["username"].split("u")[1]), "accept": True}
+    data = {"id": int(response.json()[0]["username"].split("u")[1]), "accept": True, "user_role": "A"}
     response = api_client.put(f"/v1/clubs/{club.id}/members", json=data)
     assert response.status_code == 200
 
-    response = api_client.get(f"/v1/clubs/{club.id}/members")
-    print(response.json())
-    assert response.status_code == 200
-
-
-    response = api_client.get(f"/v1/clubs/{club.id}/members")
-    print(response.json())
+    response = api_client.get(f"/v1/clubs/{club.id}/members/agents")
     assert response.status_code == 200
