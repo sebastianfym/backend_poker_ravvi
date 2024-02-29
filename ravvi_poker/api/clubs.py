@@ -53,6 +53,7 @@ class ClubMemberProfile(BaseModel):
     user_role: str | None = None
     user_approved: bool | None = None
     country: str | None = None
+
     nickname: str | None = None
     balance: float | None = 00.00
     balance_shared: float | None = 00.00
@@ -60,6 +61,11 @@ class ClubMemberProfile(BaseModel):
     join_in_club: float | None = None
     leave_from_club: float | None = None
 
+    last_session: float | None = None
+    last_game: float | None = None
+
+    winning: float | None = 00.00
+    hands: float | None = 00.00
     user_comment: str | None = None
 
 
@@ -320,15 +326,45 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
                 balance_shared = None
             else:
                 balance_shared = member.balance_shared
+
+            last_login_id = (await db.get_last_user_login(member.user_id)).id
+            last_session = await db.get_last_user_session(last_login_id)
+
+            table_id_list = [table.id for table in await db.get_club_tables(club_id)]
+
+            all_user_games_id = [game.game_id for game in (await db.get_games_player_through_user_id(user.id))]
+
+            if len(all_user_games_id) != 0:
+                hands = len(await db.statistics_all_games_users_in_club(all_user_games_id, table_id_list))
+                last_game = max(await db.statistics_all_games_users_in_club(all_user_games_id, table_id_list), key=lambda x: x.id)
+                last_game_time=last_game.begin_ts.timestamp()
+            else:
+                hands = 0
+                last_game_time = 0
+
+
+            winning_row = await db.get_all_account_txns(member.id)
+
+            sum_all_buyin = sum(
+                [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']])
+            sum_all_cashout = sum(
+                [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'CASHOUT']])
+            winning = sum_all_cashout - abs(sum_all_buyin)
+
             member = ClubMemberProfile(
                 id=member.id,  # user.id,
                 username=user.name,
                 image_id=user.image_id,
                 user_role=member.user_role,
                 user_approved=member.approved_ts is not None,
+                country=user.country,
                 balance=member.balance,
                 balance_shared=balance_shared,
-                join_in_club=member.created_ts.timestamp()
+                join_in_club=member.created_ts.timestamp(),
+                last_session=last_session.created_ts.timestamp(),
+                last_game=last_game_time,
+                winning=winning,
+                hands=hands
             )
             result_list.append(member)
         return result_list
