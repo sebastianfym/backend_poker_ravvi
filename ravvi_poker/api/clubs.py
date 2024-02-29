@@ -105,6 +105,12 @@ class ChangeMembersData(BaseModel):
     club_comment: str | None = None
     user_role: str | None = None
 
+    @validator("user_role")
+    def user_role_validate(cls, value):
+        if value not in ['O', 'M', 'A', 'P', 'S']:
+            raise ValueError('Operation must be either "approve" or "reject"')
+        return value
+
 
 class ClubChipsValue(BaseModel):
     amount: Decimal = Field(
@@ -171,7 +177,13 @@ class UserRequestsToJoin(BaseModel):
     agent_id: int | None = None
     nickname: str | None = None
     comment: str | None = None
-    user_role: str | None = None
+    user_role: str | None = "P"
+
+    @validator("user_role")
+    def user_role_validate(cls, value):
+        if value not in ['O', 'M', 'A', 'P', 'S']:
+            raise ValueError('Operation must be either "approve" or "reject"')
+        return value
 
 
 async def check_rights_user_club_owner(club_id: int, session_uuid: SessionUUID):
@@ -260,7 +272,6 @@ async def v1_get_club(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
-        # TODO а если клуб закрыт?
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
@@ -288,7 +299,6 @@ async def v1_update_club(club_id: int, params: ClubProps, session_uuid: SessionU
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
-        # TODO а если клуб закрыт?
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
@@ -316,7 +326,6 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
         result_list = []
-        # TODO а если клуб закрыт?
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         members = await db.get_club_members(club_id=club.id)
@@ -380,7 +389,6 @@ async def v1_approve_join_request(club_id: int, params: UserRequestsToJoin, user
     user_role = params.user_role
 
     _, owner, club = users
-    #Todo тут добавить поле в которое можно настроить роль вступающего в клуб account.user_role = "..."
     async with DBI() as db:
         member = await db.find_account(user_id=user_id, club_id=club_id)
         if not member:
@@ -793,11 +801,12 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
                 leave_from_club = None
             try:
                 txn = await db.get_user_requests_to_replenishment(member.id)
+                user = await db.get_user(id=member.user_id)
                 result_dict['users_requests'].append(
                     UserRequest(
                         id=member.id,
                         txn_id=txn.id,
-                        username=(await db.get_user(id=member.user_id)).name,
+                        username=user.name,
                         nickname=member.nickname,
                         user_role=member.user_role,
                         image_id=(await db.get_user_image(member.user_id)).image_id,
@@ -806,7 +815,7 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
                         balance_type=txn.props.get("balance"),
                         join_in_club=datetime.datetime.timestamp(member.created_ts),
                         leave_from_club=leave_from_club,
-                        country="RU"  # TODO убрать заглушку страны
+                        country=user.country
                     )
                 )
                 result_dict['sum_txn_value'] += txn.txn_value
@@ -1024,7 +1033,7 @@ async def v1_set_user_data(club_id: int, params: ChangeMembersData, users=Depend
     user_id = params.user_id
     nickname = params.nickname
     club_comment = params.club_comment
-    user_role = params.user_role #Todo в ChangeMembersData сделай валидацию для значений user_role
+    user_role = params.user_role
 
     async with DBI() as db:
         account = await db.find_account(user_id=params.user_id, club_id=club_id)
