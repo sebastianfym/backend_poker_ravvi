@@ -413,7 +413,7 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID, request: Request
     )
 
 
-@router.put("/{club_id}/members", summary="Принимает заявку на вступление в клуб") #Todo тут разделить логику на принять и отклонить. reject перенести в router.delete()
+@router.put("/{club_id}/members", summary="Принимает заявку на вступление в клуб") 
 async def v1_approve_join_request(club_id: int, params: UserRequestsToJoin, users=Depends(check_rights_user_club_owner)):
     user_id = params.id
     # accept = params.accept
