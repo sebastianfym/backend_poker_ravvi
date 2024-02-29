@@ -56,7 +56,8 @@ def test_message_private_info():
 
     msg = x.hide_private_info(for_user_id=10)
 
-    assert msg.users[0] == {'user_id': 10, 'cards': [11, 12], 'hand_type': 'A', 'hand_cards': [11, 12, 13, 14, 15]}
+    assert msg.users[0] == {'user_id': 10, 'cards': [11, 12], 'hand_type': 'A', 'hand_cards': [11, 12, 13, 14, 15],
+                            "visible_cards": []}
     assert msg.users[1] == {'user_id': 20, 'cards': [21, 22], 'hand_type': 'B', 'hand_cards': [21, 22, 23, 24, 25]}
     assert msg.users[2] == {'user_id': 30, 'cards': [0, 0]}
 

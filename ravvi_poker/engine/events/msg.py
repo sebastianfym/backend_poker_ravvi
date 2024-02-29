@@ -38,7 +38,8 @@ class Message(dict):
     Type = MessageType
 
     def __init__(
-        self, id=None, *, msg_type: int, table_id: int = None, game_id: int = None, cmd_id=None, client_id=None, **props
+            self, id=None, *, msg_type: int, table_id: int = None, game_id: int = None, cmd_id=None, client_id=None,
+            **props
     ) -> None:
         super().__init__(
             table_id=table_id, game_id=game_id, msg_type=msg_type, cmd_id=cmd_id, client_id=client_id, props=props
@@ -85,15 +86,38 @@ class Message(dict):
         )
 
     def hide_private_info(self, for_user_id):
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print(f"Прилетел запрос на скрытие карт для пользователя: {for_user_id}")
         def hide_cards(props: dict):
             user_id = props.get("user_id", None)
             cards_open = props.pop("cards_open", None)
+            visible_cards = props.pop("visible_cards", [])
             if not cards_open and user_id != for_user_id:
                 cards = props.get("cards", [])
-                cards = [0 for _ in cards]
+                # если есть карты которые пользователь захотел показать
+                print(f"Общие карты: {cards}")
+                print(f"Видимые карты: {visible_cards}")
+                if visible_cards:
+                    updated_cards = []
+                    for card in cards:
+                        if card in visible_cards:
+                            updated_cards.append(card)
+                        else:
+                            updated_cards.append(0)
+                    cards = updated_cards
+                else:
+                    cards = [0 for _ in cards]
                 props.update(cards=cards)
+                print(cards)
                 props.pop("hand_type", None)
                 props.pop("hand_cards", None)
+            if cards_open and user_id == for_user_id:
+                cards = props.get("cards", [])
+                props.update(visible_cards=visible_cards, cards=cards)
+            if user_id == for_user_id:
+                print("_+_+_+_+_+_+_+_+_+_+_")
+                print(visible_cards)
+                props.update(visible_cards=visible_cards)
 
         msg = self.clone()
         if msg.msg_type == Message.Type.TABLE_INFO:

@@ -1,2 +1,0 @@
-ALTER TABLE ONLY user_account ADD COLUMN nickname VARCHAR(28);
-ALTER TABLE ONLY user_profile ADD COLUMN country CHARACTER VARYING(2);

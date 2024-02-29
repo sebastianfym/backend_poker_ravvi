@@ -8,7 +8,8 @@ class CommandType(IntEnum):
     TAKE_SEAT = 13
 
     BET = 21
-    DROP_CARD = 22
+    SHOW_CARDS = 22
+    DROP_CARD = 23
 
     @classmethod
     def verify(cls, value):

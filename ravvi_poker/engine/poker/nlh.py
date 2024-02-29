@@ -83,19 +83,17 @@ class Poker_NLH_3M1(Poker_NLH_X):
     async def handle_cmd(self, db, user_id, client_id, cmd_type: Command.Type, props: dict):
         await super().handle_cmd(db, user_id, client_id, cmd_type, props)
         if cmd_type == Command.Type.DROP_CARD:
-            self.handle_cmd_drop_card(db, user_id, client_id, props)
+            await self.handle_cmd_drop_card(db, user_id, client_id, props)
 
-    def handle_cmd_drop_card(self, db, user_id, client_id, props):
+    async def handle_cmd_drop_card(self, db, user_id, client_id, props):
         # TODO проверить а можно ли вообще сбрасывать карту
-        asyncio.run(self.drop_card(db, user_id, props.get("card")))
+        await self.drop_card(db, user_id, props.get("card"))
 
     async def drop_card(self, db, user_id, card_for_drop):
         # удалить карту у пользователя
         for player in self.players:
             if player.user_id == user_id:
-                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                print(player.cards)
-                print(card_for_drop)
+                # TODO дописать обработку
                 player.cards.remove(card_for_drop)
                 # TODO дописать совместимость с double board
                 player.hand = self.get_best_hand(player.cards, self.cards)
@@ -133,7 +131,9 @@ class Poker_NLH_3M1(Poker_NLH_X):
                                                           card_code=card_code_for_drop,
                                                           card_index=card_index_for_drop)
 
+                print("Начал спать")
                 await asyncio.sleep(self.SLEEP_DROP_CARD)
+                print("Закончил спать")
 
                 for player in self.players:
                     if len(player.cards) == self.PLAYER_CARDS_FREFLOP:

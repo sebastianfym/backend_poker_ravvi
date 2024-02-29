@@ -8,6 +8,8 @@ class Player:
         self.cards = None
         self.cards_open = False
 
+        self.cards_open_on_request: list | None = None
+
     @property
     def id(self) -> int:
         return self.user.id
