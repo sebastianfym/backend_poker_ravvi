@@ -180,18 +180,22 @@ def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_
     assert response.status_code == 403
 
     # approve
-    p = pending[0]
-    data = {"id": int(p.username.split("u")[1]), "accept": True, "user_role": "A"}
-    print(data)
-    response = api_client.put(f"/v1/clubs/{club.id}/members", json=data)
-    print(response.json())
+    response = api_client_2.get(f"/v1/clubs/{club.id}/members/")
     assert response.status_code == 200
-    # member = ClubMemberProfile(**response.json())
-    # assert member.user_approved
 
+    response = api_client.get(f"/v1/clubs/{club.id}/members/requests")
+    user_id = response.json()[0]['id']
+    assert response.status_code == 200
 
-    data = {"id": p.id, "accept": True}
-    response = api_client_2.put(f"/v1/clubs/{club.id}/members", json=data)
+    # p = pending[0]
+    data = {"user_role": "A"}
+    # print("DATA ::: ", data)
+    response = api_client.put(f"/v1/clubs/{club.id}/members/{int(user_id)}", json=data)
+    # print("response.json() ::: ", response.json())
+    assert response.status_code == 200
+
+    data = {"id": (user_id), "accept": True}
+    response = api_client_2.put(f"/v1/clubs/{club.id}/members/{int(user_id)}", json=data)
     assert response.status_code == 403
 
     response = api_client.post(
@@ -205,13 +209,31 @@ def test_21_club_join(api_client: TestClient, api_guest: UserAccessProfile, api_
     assert response.json() == {"detail": "Club not found"}
 
     response = api_client.put(
-        f"/v1/clubs/{23131232141241212512512125125551525252152151251252151554554765634353534534}/members")
+        f"/v1/clubs/{23131232141241212512512125125551525252152151251252151554554765634353534534}/members/{user_id}")
     assert response.status_code == 403
     assert response.json() == {"detail": "You don't have enough rights to perform this action"}
 
-    response = api_client.put(f"/v1/clubs/{club.id}/members", json={"id":243234133132322245221, "accept": False})
-    assert response.status_code == 404
+    response = api_client.put(f"/v1/clubs/{club.id}/members/{user_id}", json={"id":243234133132322245221, "accept": False})
+    assert response.status_code == 400
     assert response.json() == {'detail': 'Member not found'}
+
+    #reject
+    response = api_client_2.post(f"/v1/clubs/{club.id}/members")
+    assert response.status_code == 200
+
+    response = api_client.get(f"/v1/clubs/{club.id}/members/requests")
+    user_id = response.json()[0]['id']
+    assert response.status_code == 200
+
+    # data = {"id": int(join_id)}
+    # print("DATA ::: ", data)
+    response = api_client.delete(f"/v1/clubs/{club.id}/members/{user_id}")
+    print("response.json() ::: ", response.json())
+    assert response.status_code == 200
+
+    data = {"id": (user_id), "accept": True}
+    response = api_client_2.delete(f"/v1/clubs/{club.id}/members")
+    assert response.status_code == 403
 
 
 def test_get_relations(api_client: TestClient, api_guest: UserAccessProfile):
@@ -917,14 +939,6 @@ def test_actions_with_users_requests(api_client: TestClient, api_guest: UserAcce
     request = api_client.post(f"/v1/clubs/{club.id}/request_chips", json=params)
     assert request.status_code == 200
 
-    # params = {"operation": "approve"}
-    # request = api_client.post(f"/v1/clubs/{club.id}/general_action_with_user_request", json=params)
-    # assert request.status_code == 200
-    #
-    # params = {"amount": 10, "balance": "balance"}
-    # request = api_client.post(f"/v1/clubs/{club.id}/request_chips", json=params)
-    # assert request.status_code == 200
-
     params = {"operation": "reject"}
     request = api_client.post(f"/v1/clubs/{club.id}/general_action_with_user_request", json=params)
     assert request.status_code == 200
@@ -952,8 +966,12 @@ def test_agents_in_club(api_client: TestClient, api_guest: UserAccessProfile, ap
     response = api_client.get(f"/v1/clubs/{club.id}/members/requests")
     assert response.status_code == 200
 
-    data = {"id": int(response.json()[0]["username"].split("u")[1]), "accept": True, "user_role": "A"}
-    response = api_client.put(f"/v1/clubs/{club.id}/members", json=data)
+    response = api_client.get(f"/v1/clubs/{club.id}/members/requests")
+    user_id = response.json()[0]['id']
+    assert response.status_code == 200
+
+    data = {"user_role": "A"}
+    response = api_client.put(f"/v1/clubs/{club.id}/members/{user_id}", json=data)
     assert response.status_code == 200
 
     response = api_client.get(f"/v1/clubs/{club.id}/members/agents")

@@ -177,8 +177,6 @@ class ClubHistoryTransaction(BaseModel):
 
 
 class UserRequestsToJoin(BaseModel):
-    id: int | None
-    # accept: bool
     rakeback: int | None = None
     agent_id: int | None = None
     nickname: str | None = None
@@ -413,9 +411,9 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID, request: Request
     )
 
 
-@router.put("/{club_id}/members", summary="Принимает заявку на вступление в клуб") #Todo тут разделить логику на принять и отклонить. reject перенести в router.delete()
-async def v1_approve_join_request(club_id: int, params: UserRequestsToJoin, users=Depends(check_rights_user_club_owner)):
-    user_id = params.id
+@router.put("/{club_id}/members/{user_id}", summary="Принимает заявку на вступление в клуб") #Todo тут разделить логику на принять и отклонить. reject перенести в router.delete()
+async def v1_approve_join_request(club_id: int, user_id: int, params: UserRequestsToJoin, users=Depends(check_rights_user_club_owner)):
+    # user_id = params.id
     # accept = params.accept
     agent_id = params.agent_id
     rakeback = params.rakeback
@@ -445,10 +443,8 @@ async def v1_approve_join_request(club_id: int, params: UserRequestsToJoin, user
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="An unexpected error has occurred")
 
 
-@router.delete("/{club_id}/members", status_code=HTTP_200_OK, summary="Отклоняет заявку на вступление в клуб")
-async def v1_reject_join_request(club_id: int, params: Request, users=Depends(check_rights_user_club_owner_or_manager)):
-    user_id = (await params.json())["id"]
-
+@router.delete("/{club_id}/members/{user_id}", status_code=HTTP_200_OK, summary="Отклоняет заявку на вступление в клуб")
+async def v1_reject_join_request(club_id: int, user_id: int, users=Depends(check_rights_user_club_owner_or_manager)):
     _, owner, club = users
     async with DBI() as db:
         member = await db.find_account(user_id=user_id, club_id=club_id)
@@ -459,6 +455,7 @@ async def v1_reject_join_request(club_id: int, params: Request, users=Depends(ch
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member not found")
         await db.close_club_member(member.id, owner.id, None)
         return HTTP_200_OK
+
 
 @router.get("/{club_id}/members/requests", status_code=HTTP_200_OK,
             summary="Отображение всех заявок на вступление в клуб")
