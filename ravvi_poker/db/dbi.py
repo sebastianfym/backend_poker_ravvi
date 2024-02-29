@@ -13,11 +13,11 @@ logger = logging.getLogger(__name__)
 
 
 class DBI:
-    DB_HOST = "localhost"#os.getenv("RAVVI_POKER_DB_HOST", "localhost")
-    DB_PORT = "5432"#int(os.getenv("RAVVI_POKER_DB_PORT", "15432"))
-    DB_NAME = "poker_db"#os.getenv("RAVVI_POKER_DB_NAME", "develop")
-    DB_USER = "postgres"#os.getenv("RAVVI_POKER_DB_USER", "postgres")
-    DB_PASSWORD = "postgres "#os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
+    DB_HOST = os.getenv("RAVVI_POKER_DB_HOST", "localhost")
+    DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "15432"))
+    DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "develop")
+    DB_USER = os.getenv("RAVVI_POKER_DB_USER", "postgres")
+    DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
     APPLICATION_NAME = 'CPS'
     CONNECT_TIMEOUT = 15
 
@@ -220,6 +220,13 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def get_last_user_login(self, user_id=None):
+        sql = f"SELECT * FROM user_login WHERE user_id=%s ORDER BY id DESC"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (user_id,))
+            row = await cursor.fetchone()
+        return row
+
     # SESSION
 
     async def create_session(self, login_id):
@@ -260,6 +267,13 @@ class DBI:
         async with self.cursor() as cursor:
             sql = f"UPDATE user_session SET closed_ts=now_utc() WHERE {key}=%s RETURNING *"  # nosec
             await cursor.execute(sql, (value,))
+            row = await cursor.fetchone()
+        return row
+
+    async def get_last_user_session(self, last_login_id):
+        sql = "SELECT * FROM user_session WHERE login_id=%s ORDER BY id DESC"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (last_login_id,))
             row = await cursor.fetchone()
         return row
 
@@ -655,6 +669,15 @@ class DBI:
             await cursor.execute(sql, (user_id,))
             row = await cursor.fetchall()
         return row
+
+    async def get_games_player_through_user_id(self, user_id):
+        sql = "SELECT * FROM game_player WHERE user_id=%s ORDER BY game_id DESC"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (user_id,))
+            row = await cursor.fetchall()
+        return row
+
+
     # EVENTS (TABLE_CMD)
 
     def json_dumps(self, obj):
@@ -931,12 +954,26 @@ class DBI:
             row = await cursor.fetchall()
         return row
 
+    async def statistics_all_games_users_in_club(self, game_list, table_list):
+        sql = f"SELECT * FROM game_profile WHERE id IN ({','.join(map(str, game_list))}) AND table_id IN ({','.join(map(str, table_list))});"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql)
+            row = await cursor.fetchall()
+        return row
+
     async def get_statistics_about_winning(self, account_id, date):
         sql = "SELECT * FROM user_account_txn WHERE account_id=%s AND created_ts >= %s AND created_ts < %s"
         date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
         tomorrow = date_now + datetime.timedelta(days=1)
         async with self.cursor() as cursor:
             await cursor.execute(sql, (account_id, date_now, tomorrow))
+            row = await cursor.fetchall()
+        return row
+
+    async def get_all_account_txns(self, account_id):
+        sql = "SELECT * FROM user_account_txn WHERE account_id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (account_id,))
             row = await cursor.fetchall()
         return row
 
