@@ -321,7 +321,7 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         members = await db.get_club_members(club_id=club.id)
         for member in members:
-            if member.closed_ts is not None:
+            if member.closed_ts is not None or member.approved_ts is None:
                 continue
             user = await db.get_user(id=member.user_id)
             if member.user_role not in ["A", "S"]:
