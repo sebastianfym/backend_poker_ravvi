@@ -701,8 +701,8 @@ async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
         return HTTP_200_OK
 
 
-@router.post("/{club_id}/profile/{user_id}", status_code=HTTP_200_OK,
-             summary="Страница с информацией о конкретном участнике клуба для админа")
+@router.post("/{club_id}/user_account/{user_id}", status_code=HTTP_200_OK,
+             summary="Страница с информацией о конкретном участнике клуба")
 async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -804,104 +804,6 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID)
             bb_100_winning=bb_100
         )
 
-
-@router.post("/{club_id}/user_account", status_code=HTTP_200_OK,
-             summary="Страница с информацией о конкретном участнике клуба")
-async def v1_detail_account(club_id: int, session_uuid: SessionUUID):
-    async with DBI() as db:
-        _, user = await get_session_and_user(db, session_uuid)
-        club = await db.get_club(club_id)
-        if not club:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        account = await db.find_account(user_id=user.id, club_id=club_id)
-        opportunity_leave = True
-        if account.user_role == "O":
-            opportunity_leave = False
-        if not account or account.closed_ts is not None:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Account not found")
-
-        table_id_list = [table.id for table in await db.get_club_tables(club_id)]
-
-        time_obj = datetime.datetime.fromisoformat(str(account.created_ts))
-        unix_time = int(time.mktime(time_obj.timetuple()))
-        now_datestamp = int(time.mktime(datetime.datetime.fromisoformat(str(datetime.datetime.utcnow())).timetuple()))
-
-        date_now = str(datetime.datetime.now()).split(" ")[0]
-        table_types = []
-        game_types = []
-        game_subtype = []
-        count_of_games_played = 0
-
-        for table_id in table_id_list:
-            for game in await db.statistics_of_games_played(table_id, date_now):
-                count_of_games_played += 1
-                table_types.append((await db.get_table(game.table_id)).table_type)
-                game_types.append(game.game_type)
-                game_subtype.append(game.game_subtype)
-
-        winning_row = await db.get_statistics_about_winning(account.id, date_now)
-        sum_all_buyin = sum(
-            [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']])
-        sum_all_cashout = sum(
-            [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'CASHOUT']])
-        winning = sum_all_cashout - abs(sum_all_buyin)
-
-        bb_100_winning = 0
-
-        all_games_id = [id.game_id for id in await db.all_players_games(user.id)]  # user.id
-        access_games = []
-        access_game_id = []
-
-        for game_id in all_games_id:
-            game = await db.check_game_by_date(game_id, date_now)
-            if game is not None:
-                access_games.append(game)
-                access_game_id.append(game.id)
-
-        game_props_list = []
-        for game_id in access_game_id:
-            balance_data = await db.get_balance_begin_and_end_from_game(game_id, user.id)  #
-            game_data = await db.get_game_and_players(game_id)
-            if balance_data.balance_end:
-                balance_end = balance_data.balance_end
-            game_props_list.append({'game_id': game_id, 'balance_begin': balance_data.balance_begin,
-                                    'balance_end': balance_end,
-                                    'big_blind': game_data[0].props['blind_big']})
-        blind_big_dict = {}
-        for item in game_props_list:
-            big_blind = item['big_blind']
-            balance_difference = item['balance_end'] - item['balance_begin']
-            if big_blind in blind_big_dict:
-                blind_big_dict[big_blind]['sum_winning'] += balance_difference
-                blind_big_dict[big_blind]['count'] += 1
-            else:
-                blind_big_dict[big_blind] = {'big_blind': big_blind, 'sum_winning': balance_difference,
-                                             'count': 1}
-        result_list = list(blind_big_dict.values())
-
-        quantity_games = 0
-        for winning_100 in result_list:
-            bb_100_winning += winning_100['sum_winning'] / decimal.Decimal(winning_100['big_blind'])
-            quantity_games += winning_100['count']
-
-        try:
-            bb_100_winning /= quantity_games
-            bb_100_winning *= 100
-            bb_100 = round(bb_100_winning, 2)
-        except ZeroDivisionError:
-            bb_100 = 0
-        return AccountDetailInfo(
-            join_datestamp=unix_time,
-            now_datestamp=now_datestamp,
-            timezone=club.timezone,
-            table_types=set(table_types),
-            game_types=set(game_types),
-            game_subtypes=set(game_subtype),
-            opportunity_leave=opportunity_leave,
-            hands=count_of_games_played,  # todo потом добавить триггеры
-            winning=winning,
-            bb_100_winning=bb_100
-        )
 
 @router.get("/{club_id}/club_balance", status_code=HTTP_200_OK,
             summary="Получить все допустимые типы балансов (суммарные) для клуба: агентский баланс, баланс пользователей, баланс клуба")
