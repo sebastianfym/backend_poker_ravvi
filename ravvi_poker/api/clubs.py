@@ -701,16 +701,20 @@ async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
         return HTTP_200_OK
 
 
-@router.post("/{club_id}/user_account", status_code=HTTP_200_OK,
+@router.post("/{club_id}/user_account/{user_id}", status_code=HTTP_200_OK,
              summary="Страница с информацией о конкретном участнике клуба")
-async def v1_user_account(club_id: int, session_uuid: SessionUUID, request: Request):
+async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-
-        account = await db.find_account(user_id=user.id, club_id=club_id)
+        owner = await db.find_account(user_id=user.id, club_id=club_id)
+        account = await db.find_account(user_id=user_id, club_id=club_id)
+        if user.id != user_id and owner is None:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You dont have permission")
+        if user.id != user_id and owner.user_role != "O":
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You dont have permission")
         opportunity_leave = True
         if account.user_role == "O":
             opportunity_leave = False

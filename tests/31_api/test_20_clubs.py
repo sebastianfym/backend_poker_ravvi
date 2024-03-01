@@ -678,11 +678,14 @@ def test_user_account(api_client: TestClient, api_guest: UserAccessProfile):
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
 
     club = create_club(api_client)
+    response = api_client.get(f"/v1/clubs/{club.id}/members")
+    assert response.status_code == 200
+    user_id = response.json()[0]['username'].split('u')[1]
 
-    response = api_client.post(f"/v1/clubs/{club.id}/user_account")
+    response = api_client.post(f"/v1/clubs/{club.id}/user_account/{user_id}")
     assert response.status_code == 200
 
-    response = api_client.post(f"/v1/clubs/{17031788}/user_account")
+    response = api_client.post(f"/v1/clubs/{17031788}/user_account/{user_id}")
     assert response.status_code == 404
 
 
