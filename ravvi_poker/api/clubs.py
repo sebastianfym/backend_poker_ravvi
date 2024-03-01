@@ -105,6 +105,19 @@ class AccountDetailInfo(BaseModel):
     now_datestamp: float | None
 
 
+class ChangeMembersData(BaseModel):
+    user_id: int
+    nickname: str | None = None
+    club_comment: str | None = None
+    user_role: str | None = None
+
+    @validator("user_role")
+    def user_role_validate(cls, value):
+        if value not in ['O', 'M', 'A', 'P', 'S']:
+            raise ValueError('Operation must be either "approve" or "reject"')
+        return value
+
+
 class ClubChipsValue(BaseModel):
     amount: Decimal = Field(
         gt=0,
@@ -164,12 +177,17 @@ class ClubHistoryTransaction(BaseModel):
 
 
 class UserRequestsToJoin(BaseModel):
-    id: int | None
-    accept: bool
     rakeback: int | None = None
     agent_id: int | None = None
     nickname: str | None = None
     comment: str | None = None
+    user_role: str | None = "P"
+
+    @validator("user_role")
+    def user_role_validate(cls, value):
+        if value not in ['O', 'M', 'A', 'P', 'S']:
+            raise ValueError('Operation must be either "approve" or "reject"')
+        return value
 
 
 async def check_rights_user_club_owner(club_id: int, session_uuid: SessionUUID):
@@ -258,7 +276,6 @@ async def v1_get_club(club_id: int, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
-        # TODO а если клуб закрыт?
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
@@ -286,7 +303,6 @@ async def v1_update_club(club_id: int, params: ClubProps, session_uuid: SessionU
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
-        # TODO а если клуб закрыт?
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
@@ -314,12 +330,11 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
         result_list = []
-        # TODO а если клуб закрыт?
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         members = await db.get_club_members(club_id=club.id)
         for member in members:
-            if member.closed_ts is not None:
+            if member.closed_ts is not None or member.approved_ts is None:
                 continue
             user = await db.get_user(id=member.user_id)
             if member.user_role not in ["A", "S"]:
@@ -341,7 +356,6 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
             else:
                 hands = 0
                 last_game_time = 0
-
 
             winning_row = await db.get_all_account_txns(member.id)
 
@@ -397,17 +411,15 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID, request: Request
     )
 
 
-@router.put("/{club_id}/members", summary="Approve or reject join request")
-async def v1_approve_join_request(club_id: int, params: UserRequestsToJoin, users=Depends(check_rights_user_club_owner)):
-    user_id = params.id
-    accept = params.accept
+@router.put("/{club_id}/members/{user_id}", summary="Принимает заявку на вступление в клуб")
+async def v1_approve_join_request(club_id: int, user_id: int, params: UserRequestsToJoin, users=Depends(check_rights_user_club_owner)):
     agent_id = params.agent_id
     rakeback = params.rakeback
     nickname = params.nickname
     comment = params.comment
+    user_role = params.user_role
 
     _, owner, club = users
-
     async with DBI() as db:
         member = await db.find_account(user_id=user_id, club_id=club_id)
         if not member:
@@ -415,9 +427,8 @@ async def v1_approve_join_request(club_id: int, params: UserRequestsToJoin, user
 
         if not member or member.club_id != club.id:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member not found")
-        if member.approved_ts is None and accept:
-            member = await db.approve_club_member(member.id, owner.id, comment, nickname)
-
+        if member.approved_ts is None:
+            member = await db.approve_club_member(member.id, owner.id, comment, nickname, user_role)
             new_member_profile = await db.get_user(member.user_id)
             return ClubMemberProfile(
                 id=new_member_profile.id,
@@ -426,9 +437,22 @@ async def v1_approve_join_request(club_id: int, params: UserRequestsToJoin, user
                 user_role=member.user_role,
                 user_approved=member.approved_ts is not None
             )
-        elif accept is False:
-            await db.close_club_member(member.id, owner.id, None)
-            return HTTP_200_OK
+        else:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="An unexpected error has occurred")
+
+
+@router.delete("/{club_id}/members/{user_id}", status_code=HTTP_200_OK, summary="Отклоняет заявку на вступление в клуб")
+async def v1_reject_join_request(club_id: int, user_id: int, users=Depends(check_rights_user_club_owner_or_manager)):
+    _, owner, club = users
+    async with DBI() as db:
+        member = await db.find_account(user_id=user_id, club_id=club_id)
+        if not member:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member not found")
+
+        if not member or member.club_id != club.id:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member not found")
+        await db.close_club_member(member.id, owner.id, None)
+        return HTTP_200_OK
 
 
 @router.get("/{club_id}/members/requests", status_code=HTTP_200_OK,
@@ -821,11 +845,12 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
                 leave_from_club = None
             try:
                 txn = await db.get_user_requests_to_replenishment(member.id)
+                user = await db.get_user(id=member.user_id)
                 result_dict['users_requests'].append(
                     UserRequest(
                         id=member.id,
                         txn_id=txn.id,
-                        username=(await db.get_user(id=member.user_id)).name,
+                        username=user.name,
                         nickname=member.nickname,
                         user_role=member.user_role,
                         image_id=(await db.get_user_image(member.user_id)).image_id,
@@ -834,7 +859,7 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
                         balance_type=txn.props.get("balance"),
                         join_in_club=datetime.datetime.timestamp(member.created_ts),
                         leave_from_club=leave_from_club,
-                        country="RU"  # TODO убрать заглушку страны
+                        country=user.country
                     )
                 )
                 result_dict['sum_txn_value'] += txn.txn_value
@@ -1046,23 +1071,61 @@ async def v1_club_txn_history(club_id: int, request: Request, users=Depends(chec
     return result_list
 
 
-@router.patch("/{club_id}/set_user_data", status_code=HTTP_200_OK, summary="Set a user nickname and comment")
-async def v1_set_user_data(club_id: int, request: Request, users=Depends(check_rights_user_club_owner_or_manager)):
-    account_id = (await request.json()).get('account_id')
-    nickname = (await request.json()).get('nickname')
-    club_comment = (await request.json()).get('club_comment')
 
-    if account_id is None:
-        raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail='Account id is not specified')
-    if club_comment is None and nickname is None:
-        raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail='You not specified any params')
+@router.patch("/{club_id}/set_user_data", status_code=HTTP_200_OK, summary="Set a user nickname and comment")
+async def v1_set_user_data(club_id: int, params: ChangeMembersData, users=Depends(check_rights_user_club_owner_or_manager)):
+    user_id = params.user_id
+    nickname = params.nickname
+    club_comment = params.club_comment
+    user_role = params.user_role
 
     async with DBI() as db:
-        if club_comment is not None and nickname is None:
-            await db.club_owner_update_user_account(account_id, club_comment, "club_comment")
-        elif club_comment is None and nickname is not None:
-            await db.club_owner_update_user_account(account_id, nickname, "nickname")
-        elif club_comment is not None and nickname is not None:
-            await db.club_owner_update_user_account(account_id, nickname, "nickname")
-            await db.club_owner_update_user_account(account_id, club_comment, "club_comment")
+        account = await db.find_account(user_id=params.user_id, club_id=club_id)
+        if user_id is None:
+            raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail='User id is not specified')
+        if club_comment is None and nickname is None:
+            raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail='You not specified any params')
+        if account is None:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail='No such account was found')
+        await db.club_owner_update_user_account(account.id, nickname=nickname, club_comment=club_comment, user_role=user_role)
     return HTTP_200_OK
+
+
+@router.get("/{club_id}/members/agents", status_code=HTTP_200_OK, summary="Страница возвращающая всех агентов и суперагентов в клубе")
+async def v1_club_agents(club_id: int, users=Depends(check_rights_user_club_owner_or_manager)):
+    # club_owner_account, user, club
+    owner, _, club = users
+    """
+    ClubMemberProfile(BaseModel):
+        id: int | None = None
+        username=: str | None = None
+        image_id=: int | None = None
+        user_role=: str | None = None
+        user_approved: bool | None = None
+        country=: str | None = None
+        nickname=: str | None = None
+        balance=: float | None = 00.00
+        balance_shared=: float | None = 00.00
+    
+        join_in_club=: float | None = None
+        leave_from_club: float | None = None
+    
+        user_comment=: str | None = None
+    """
+    agents_list = []
+    async with DBI() as db:
+        for agent in await db.club_agents(club.id):
+            user = await db.get_user(agent.user_id)
+            agent = ClubMemberProfile(
+                id=user.id,
+                username=user.name,
+                image_id=user.image_id,
+                user_role=agent.user_role,
+                country=user.country,
+                nickname=agent.nickname,
+                balance=agent.balance,
+                balance_shared=agent.balance_shared,
+                join_in_club=agent.approved_ts.timestamp()
+            )
+            agents_list.append(agent)
+    return agents_list

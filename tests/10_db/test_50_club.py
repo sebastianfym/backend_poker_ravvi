@@ -94,7 +94,7 @@ async def test_club_member(club_and_owner, user):
     assert uclub.approved_ts is None
 
     async with DBI() as db:
-        member = await db.approve_club_member(member.id, owner.id, 'club comment', 'nickname')
+        member = await db.approve_club_member(member.id, owner.id, 'club comment', 'nickname', 'P')
         clubs = await db.get_clubs_for_user(user.id)
     assert member
     assert member.club_id == club.id
