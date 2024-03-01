@@ -119,6 +119,10 @@
         {"type": "GAME_ROUND", "banks": [120, 200], "bank_total": 320},
 
         {"type": "GAME_RESULT", "winners": [
+            {"user_id": 111, "balance": 295, "delta": -60},
+            {"user_id": 333, "balance": 80, "delta": -60}
+            ]},
+        {"type": "GAME_RESULT", "winners": [
             {"user_id": 111, "balance": 375, "delta": 20},
             {"user_id": 333, "balance": 160, "delta": 20}
             ]},
