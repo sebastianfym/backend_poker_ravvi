@@ -33,7 +33,7 @@ class PokerBase(Game):
     SLEEP_ROUND_BEGIN = 1.5
     SLEEP_ROUND_END = 2
     SLEEP_SHOWDOWN_CARDS = 1.5
-    SLEEP_GAME_END = 30
+    SLEEP_GAME_END = 4
 
     def __init__(self, table, users: List[User],
                  *, blind_small: float = 0.01, blind_big: float = 0.02, bet_timeout=30,
@@ -307,15 +307,19 @@ class PokerBase(Game):
         self.log.info("handle cmd show_cards: %s %s", user_id, cards)
 
         for player in self.players:
-            if player.user_id == user_id:
-                # открываем карты по двум условиям
+            # идем дальше только если пришли те карты, которые есть у игрока
+            if player.user_id == user_id and set(cards).intersection(set(player.cards)) == set(cards):
+                # до shutdown
+                # 1. игрок должен быть в состоянии Fold
+                # карты для открытия перезаписываются
+                if not self.showdown_is_end and not player.in_the_game:
+                    player.cards_open_on_request = cards
+
+                # после и во время shutdown
                 # 1. карты игрока не открыты принудительно
-                # 2. пришли только те карты которые есть у игрока
-                # 3. есть еще не открытые карты
-                if (not player.cards_open
-                        and set(cards).intersection(set(player.cards)) == set(cards)
-                        and (not player.cards_open_on_request or
-                             len(player.cards_open_on_request) != len(player.cards))):
+                # 2. есть еще не открытые карты
+                if (not player.cards_open and (not player.cards_open_on_request or
+                                               len(player.cards_open_on_request) != len(player.cards))):
                     player.cards_open_on_request = cards
                     if self.showdown_is_end:
                         await self.broadcast_with_db_instance(player)
