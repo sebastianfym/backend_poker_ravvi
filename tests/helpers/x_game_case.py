@@ -42,10 +42,11 @@ class X_CaseMixIn:
         self.deck = X_Deck(self._deck)
 
     async def emit_msg(self, db, msg: Message):
-        self.x_check_msg(msg)
+        print(f"Ожидаю {msg}")
+        await self.x_check_msg(msg)
         await super().emit_msg(db, msg)
 
-    def x_check_msg(self, msg: Message):
+    async def x_check_msg(self, msg: Message):
         assert self._check_steps
         step_num, step = self._check_steps.pop(0)
         step_msg = f"msg {step_num}"
@@ -56,6 +57,7 @@ class X_CaseMixIn:
             raise ValueError('invalid check entry', step_num)
 
         msg_type = expected.pop('type')
+        task = None
         # если мы видим что игра предлагает карты для сброса, то поищем действия сброса инициированные пользователем
         if msg_type == "GAME_PROPOSED_CARD_DROP":
             # поищем команду drop для этого пользователя
@@ -63,8 +65,14 @@ class X_CaseMixIn:
                 if "CMD_PLAYER_DROP_CARD" in step["type"] and step["user_id"] == msg["props"]["user_id"]:
                     print(f"find cmd to drop card: card - {step['card']}, user - {step['user_id']}")
                     self._check_steps.remove((step_num, step))
-                    asyncio.create_task(self.translate_msg_to_cmd(step))
+                    asyncio.create_task(self.translate_drop_card_msg_to_cmd(step))
                     break
+        elif msg_type == "CMD_PLAYER_SHOW_CARD":
+            task = asyncio.create_task(self.translate_show_cards_msg_to_cmd(step))
+            # берем следующее сообщение
+            step_num, step = self._check_steps.pop(0)
+            expected = step
+            msg_type = expected.pop('type')
 
         expected['msg_type'] = Message.Type.decode(msg_type)
         cmp = [(k, v, getattr(msg, k, None))for k, v in expected.items()]
@@ -100,6 +108,10 @@ class X_CaseMixIn:
                         rv = [HandType.decode(rv_item) for rv_item in rv]
             assert ev == rv, f"{step_msg} - {k}: {ev} / {rv}"
 
+
+        if task:
+            await task
+
     def is_low_hand(self, hand):
         return set(hand) <= set("2345678A") if hand is not None else True
 
@@ -127,9 +139,17 @@ class X_CaseMixIn:
         async with self.DBI() as db:
             await self.handle_cmd(db, cmd.user_id, cmd.client_id, cmd.cmd_type, cmd.props)
 
-    async def translate_msg_to_cmd(self, msg):
+    async def translate_drop_card_msg_to_cmd(self, msg):
         cmd_type = Command.Type.DROP_CARD
         cmd = {"card": msg["card"], "user_id": msg["user_id"]}
+        cmd = Command(table_id=-1, client_id=-1, cmd_type=cmd_type, **cmd)
+        self.log.debug("cmd %s", cmd)
+        async with self.DBI() as db:
+            await self.handle_cmd(db, cmd.user_id, cmd.client_id, cmd.cmd_type, cmd.props)
+
+    async def translate_show_cards_msg_to_cmd(self, msg):
+        cmd_type = Command.Type.SHOW_CARDS
+        cmd = {"cards": msg["cards"], "user_id": msg["user_id"]}
         cmd = Command(table_id=-1, client_id=-1, cmd_type=cmd_type, **cmd)
         self.log.debug("cmd %s", cmd)
         async with self.DBI() as db:

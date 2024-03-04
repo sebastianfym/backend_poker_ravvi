@@ -307,10 +307,22 @@ class PokerBase(Game):
         self.log.info("handle cmd show_cards: %s %s", user_id, cards)
 
         for player in self.players:
-            if player.user_id == user_id:
-                player.cards_open_on_request = cards
-                if self.showdown_is_end:
-                    await self.broadcast_with_db_instance(player)
+            # идем дальше только если пришли те карты, которые есть у игрока
+            if player.user_id == user_id and set(cards).intersection(set(player.cards)) == set(cards):
+                # до shutdown
+                # 1. игрок должен быть в состоянии Fold
+                # карты для открытия перезаписываются
+                if not self.showdown_is_end and not player.in_the_game:
+                    player.cards_open_on_request = cards
+
+                # после и во время shutdown
+                # 1. карты игрока не открыты принудительно
+                # 2. есть еще не открытые карты
+                if (not player.cards_open and (not player.cards_open_on_request or
+                                               len(player.cards_open_on_request) != len(player.cards))):
+                    player.cards_open_on_request = cards
+                    if self.showdown_is_end:
+                        await self.broadcast_with_db_instance(player)
 
     async def broadcast_with_db_instance(self, player):
         async with self.DBI() as db:
@@ -474,18 +486,20 @@ class PokerBase(Game):
         await self.run_TERN()
         await self.run_RIVER()
         await self.run_SHOWDOWN()
-        self.showdown_is_end = True
 
         # winners
         winners_info = self.get_winners()
         async with self.DBI(log=self.log) as db:
             await self.broadcast_GAME_RESULT(db, winners_info)
 
+        self.showdown_is_end = True
+
         # если включен режим seven deuce сформируем новый банк и распределим его
         if self.table.seven_deuce:
             await self.run_SEVEN_DEUCE(winners_info)
 
         # TODO тут вызовем показ карт
+        logger.info("Показываем")
         await self.open_cards_on_request()
 
         await asyncio.sleep(self.SLEEP_GAME_END)
