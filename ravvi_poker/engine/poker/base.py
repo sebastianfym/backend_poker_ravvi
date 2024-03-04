@@ -1,19 +1,17 @@
-import time
-from typing import List, Tuple, Deque
 import asyncio
-from itertools import zip_longest, groupby, combinations
-
-from ...logging import getLogger
+import time
+from enum import IntEnum, unique
+from itertools import groupby, combinations
+from typing import List, Tuple
 
 from .bet import Bet
+from .board import Board
 from .hands import Hand, HandType, LowHand, LowHandType
-from .player import User, Player, PlayerRole
 from .multibank import get_banks
-
-from ..game import Game
+from .player import User, Player, PlayerRole
 from ..events import Command
-
-from enum import IntEnum, unique
+from ..game import Game
+from ...logging import getLogger
 
 logger = getLogger(__name__)
 
@@ -42,7 +40,9 @@ class PokerBase(Game):
         self.log.logger = logger
         self.round = None
         self.deck = None
-        self.cards = None
+        # TODO удалить
+        # self.boards_types: list[BoardType] = [BoardType.BOARD1]
+        # self.boards = None
         self.bank_total = None
         self.banks = None
 
@@ -84,8 +84,9 @@ class PokerBase(Game):
     def get_info(self, users_info: dict = None, user_id: int = None):
         info = super().get_info()
         info |= self.game_props
+        # TODO поменять
         info.update(
-            cards=self.cards if self.cards else [],
+            boards=self.boards
         )
         banks_info = []
         for b in (self.banks or []):
@@ -148,26 +149,34 @@ class PokerBase(Game):
     # MSG
 
     async def broadcast_PLAYER_CARDS(self, db, player):
-        hand_type, hand_cards = None, None
-        if player.hand:
-            hand_type = player.hand.type[0]
-            hand_cards = [c.code for c in player.hand.cards]
-        await super().broadcast_PLAYER_CARDS(db, player, hand_type=hand_type.value, hand_cards=hand_cards)
+        hands = await self.prepare_hands(player)
+        await super().broadcast_PLAYER_CARDS(db, player, hands=hands)
 
     async def broadcast_PLAYER_CARDS_ON_REQUEST(self, db, player):
-        hand_type, hand_cards = None, None
-        if player.hand:
-            hand_type = player.hand.type[0]
-            hand_cards = [c.code for c in player.hand.cards]
-
+        hands = await self.prepare_hands(player)
         visible_cards: list = []
         for card in player.cards:
             if card in player.cards_open_on_request:
                 visible_cards.append(card)
             else:
                 visible_cards.append(0)
-        await super().broadcast_PLAYER_CARDS(db, player, hand_type=hand_type.value, hand_cards=hand_cards,
-                                             visible_cards=visible_cards)
+        await super().broadcast_PLAYER_CARDS(db, player, hands=hands, visible_cards=visible_cards)
+
+    async def prepare_hands(self, player) -> list[dict]:
+        hands = []
+        for player_hand in player.hands:
+            print(player_hand)
+            hand = {
+                "hand_belong": player_hand.board.board_type.value,
+            }
+            hand_info = {
+                "hand_type": player_hand.type[0].value,
+                "hand_cards": [c.code for c in player_hand.cards]
+            }
+            hand |= hand_info
+            hands.append(hand)
+
+        return hands
 
     async def broadcast_PLAYER_MOVE(self, db, player, options, **kwargs):
         await super().broadcast_PLAYER_MOVE(db, player,
@@ -375,11 +384,11 @@ class PokerBase(Game):
         cards = player_cards + game_cards
         return combinations(cards, min(5, len(cards)))
 
-    def get_best_hand(self, player_cards, game_cards):
+    def get_best_hand(self, player_cards, board: Board) -> Hand | None:
         deck36 = (self.GAME_DECK == 36)
         results = []
-        for h in self.iter_player_hands_combinations(player_cards, game_cards):
-            hand = Hand(h, deck36=deck36)
+        for h in self.iter_player_hands_combinations(player_cards, board.cards):
+            hand = Hand(h, board, deck36=deck36)
             hand.rank = self.get_hand_rank(hand)
             results.append(hand)
         if not results:
@@ -474,7 +483,7 @@ class PokerBase(Game):
         self.bank_total = 0
 
         self.setup_players_roles()
-        self.setup_cards()
+        self.setup_boards()
 
         async with self.DBI(log=self.log) as db:
             await self.broadcast_GAME_BEGIN(db)
@@ -560,14 +569,16 @@ class PokerBase(Game):
 
         self.players_to_role(PlayerRole.DEALER)
         self.players_rotate()
+        print([card for card in self.deck.cards])
         for _ in range(self.PLAYER_CARDS_FREFLOP):
             for p in self.players:
                 p.cards.append(self.deck.get_next())
+                print(p.cards)
         self.deck.get_next()
 
         async with self.DBI() as db:
             for p in self.players:
-                p.hand = self.get_best_hand(p.cards, self.cards)
+                p.hands = [self.get_best_hand(p.cards, board) for board in self.boards]
                 await self.broadcast_PLAYER_CARDS(db, p)
 
             self.bet_level = 0
@@ -629,7 +640,7 @@ class PokerBase(Game):
             self.players_to_role(PlayerRole.DEALER)
             self.players_rotate()
             for p in self.players:
-                p.hand = self.get_best_hand(p.cards, self.cards)
+                p.hands = [self.get_best_hand(p.cards, board) for board in self.boards]
                 await self.broadcast_PLAYER_CARDS(db, p)
 
         await self.run_round(PlayerRole.DEALER)
@@ -647,7 +658,7 @@ class PokerBase(Game):
             self.players_to_role(PlayerRole.DEALER)
             self.players_rotate()
             for p in self.players:
-                p.hand = self.get_best_hand(p.cards, self.cards)
+                p.hands = [self.get_best_hand(p.cards, board) for board in self.boards]
                 await self.broadcast_PLAYER_CARDS(db, p)
 
         await self.run_round(PlayerRole.DEALER)
@@ -665,7 +676,7 @@ class PokerBase(Game):
             self.players_to_role(PlayerRole.DEALER)
             self.players_rotate()
             for p in self.players:
-                p.hand = self.get_best_hand(p.cards, self.cards)
+                p.hands = [self.get_best_hand(p.cards, board) for board in self.boards]
                 await self.broadcast_PLAYER_CARDS(db, p)
 
         await self.run_round(PlayerRole.DEALER)
@@ -686,9 +697,7 @@ class PokerBase(Game):
         # get players hands
         open_all = False
         for p in players:
-            p.hand = self.get_best_hand(p.cards, self.cards)
-            print("Тут ошибка")
-            print(p.hand)
+            p.hands = [self.get_best_hand(p.cards, board) for board in self.boards]
             if isinstance(p.hand, list):
                 self.log.info("player %s hand: %s %s", p.user_id, p.hand, ",".join([str(hand.type) for hand in p.hand
                                                                                     if hand is not None]))
@@ -715,8 +724,9 @@ class PokerBase(Game):
                 await super().broadcast_GAME_RESULT(db, winners_seven_deuce_info)
 
     def append_cards(self, cards_num):
-        for _ in range(cards_num):
-            self.cards.append(self.deck.get_next())
+        for board in self.boards:
+            for _ in range(cards_num):
+                board.append_card(self.deck.get_next())
 
     async def open_cards_in_game_end(self, players, open_all):
         best_hand = None

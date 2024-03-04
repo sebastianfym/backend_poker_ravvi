@@ -1,5 +1,6 @@
 import logging
 
+from .poker.board import Board, BoardType
 from .tables.configs import configCls
 from ..logging import ObjectLoggerAdapter
 from ..db import DBI
@@ -27,7 +28,8 @@ class Game:
         self.players = [self.player_factory(u) for u in users]
         self.dealer_id = None
         self.deck = None
-        self.cards = None
+        self.boards_types: list[BoardType] = [BoardType.BOARD1]
+        self.boards: list[Board] | None = None
 
     def player_factory(self, user) -> Player:
         return Player(user)
@@ -60,10 +62,10 @@ class Game:
 
     # CARDS
 
-    def setup_cards(self):
+    def setup_boards(self):
         # deck
         self.deck = Deck(self.GAME_DECK)
-        self.cards = []
+        self.boards = [Board(board_type) for board_type in self.boards_types]
         # players
         for p in self.players:
             p.cards = []
@@ -92,7 +94,7 @@ class Game:
         await self.emit_msg(db, msg)
 
     async def broadcast_GAME_CARDS(self, db):
-        msg = Message(msg_type=Message.Type.GAME_CARDS, cards=self.cards)
+        msg = Message(msg_type=Message.Type.GAME_CARDS, boards=self.boards)
         await self.emit_msg(db, msg)
 
     async def broadcast_PLAYER_CARDS(self, db, player, **kwargs):
