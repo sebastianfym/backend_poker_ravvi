@@ -713,7 +713,7 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID)
         account = await db.find_account(user_id=user_id, club_id=club_id)
         if user.id != user_id and owner is None:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You dont have permission")
-        if user.id != user_id and owner.user_role != "O":
+        if user.id != user_id and owner.user_role not in ["O", "M"]:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You dont have permission")
 
         opportunity_leave = True
