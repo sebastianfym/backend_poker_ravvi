@@ -27,6 +27,8 @@ class ClubProps(BaseModel):
     image_id: int | None = None
     timezone: str | None = None
 
+    auto_addition: bool | None = False #Todo проверить, что при измении клуба не меняется этот параметр, если его не указать
+
 
 class ClubProfile(BaseModel):
     id: int
