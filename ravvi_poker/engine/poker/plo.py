@@ -2,13 +2,14 @@ from itertools import combinations
 
 from ravvi_poker.engine.poker.bomb_pot import BombPotMixin
 from ravvi_poker.engine.poker.double_board import MixinMeta, DoubleBoardMixin
+from ravvi_poker.engine.poker.hi_low import HiLowMixin
 from .base import PokerBase
 
 
 class Poker_PLO_X(PokerBase, metaclass=MixinMeta):
     GAME_TYPE = "PLO"
 
-    SUPPORTED_MODIFICATIONS = [BombPotMixin, DoubleBoardMixin]
+    SUPPORTED_MODIFICATIONS = [BombPotMixin, DoubleBoardMixin, HiLowMixin]
 
     def get_bet_limits(self, player=None):
         p = player or self.current_player

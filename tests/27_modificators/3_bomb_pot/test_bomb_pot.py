@@ -1,12 +1,10 @@
-from unittest.mock import AsyncMock
-
 import pytest
-
-from ravvi_poker.engine.poker.double_board import DoubleBoardMixin
-from ravvi_poker.engine.poker.bomb_pot import BombPotMixin
-from ravvi_poker.engine.poker.nlh import Poker_NLH_REGULAR
-from helpers.x_game_case import load_game_cases, create_game_case
 from helpers.mocked_table import MockedTable
+from helpers.x_game_case import load_game_cases, create_game_case
+
+from ravvi_poker.engine.poker.bomb_pot import BombPotMixin
+from ravvi_poker.engine.poker.double_board import DoubleBoardMixin
+from ravvi_poker.engine.poker.nlh import Poker_NLH_REGULAR
 
 
 def pytest_generate_tests(metafunc):
