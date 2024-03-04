@@ -5,7 +5,7 @@ from ravvi_poker.engine.user import User
 from ravvi_poker.engine.cards import Card
 from ravvi_poker.engine.events import Message, Command
 from ravvi_poker.engine.poker.bet import Bet
-from ravvi_poker.engine.poker.hands import HandType
+from ravvi_poker.engine.poker.hands import HandType, LowHandType
 
 logger = logging.getLogger(__name__)
 
@@ -96,12 +96,24 @@ class X_CaseMixIn:
                     ev = HandType.decode(ev)
                     rv = HandType.decode(rv)
                 elif isinstance(ev, list):
-                    ev = [HandType.decode(ev_item) for ev_item in ev]
-                    rv = [HandType.decode(rv_item) for rv_item in rv]
+                    if self.is_low_hand(ev[1]):
+                        ev_decode, rv_decode = [], []
+                        ev_decode.append(HandType.decode(ev[0]))
+                        rv_decode.append(HandType.decode(rv[0]))
+                        ev_decode.append(LowHandType.decode(ev[1]))
+                        rv_decode.append(LowHandType.decode(rv[1]))
+                        ev, rv = ev_decode, rv_decode
+                    else:
+                        ev = [HandType.decode(ev_item) for ev_item in ev]
+                        rv = [HandType.decode(rv_item) for rv_item in rv]
             assert ev == rv, f"{step_msg} - {k}: {ev} / {rv}"
+
 
         if task:
             await task
+
+    def is_low_hand(self, hand):
+        return set(hand) <= set("2345678A") if hand is not None else True
 
     async def wait_for_player_bet(self):
         assert self._check_steps

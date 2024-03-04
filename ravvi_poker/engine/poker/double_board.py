@@ -119,6 +119,7 @@ class DoubleBoardMixin:
                     if p.cards_open:
                         continue
                     p.cards_open = True
+                    # TODO эта проверка не нужна
                     if p not in players_to_open_cards:
                         players_to_open_cards.append(p)
 

@@ -74,7 +74,7 @@ async def test_club_member(club_and_owner, user):
     assert member.user_comment == 'user comment'
     assert member.user_role == 'P'
     assert member.created_ts
-    assert member.approved_ts is not None
+    assert member.approved_ts is None
     assert member.approved_by is None
     assert member.club_comment is None
     assert member.closed_ts is None
@@ -91,10 +91,10 @@ async def test_club_member(club_and_owner, user):
     assert clubs
     uclub = clubs[0]
     assert uclub.id == club.id
-    assert uclub.approved_ts is not None
+    assert uclub.approved_ts is None
 
     async with DBI() as db:
-        member = await db.approve_club_member(member.id, owner.id, 'club comment')
+        member = await db.approve_club_member(member.id, owner.id, 'club comment', 'nickname', 'P')
         clubs = await db.get_clubs_for_user(user.id)
     assert member
     assert member.club_id == club.id

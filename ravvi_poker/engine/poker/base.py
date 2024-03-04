@@ -6,7 +6,7 @@ from itertools import zip_longest, groupby, combinations
 from ...logging import getLogger
 
 from .bet import Bet
-from .hands import Hand, HandType
+from .hands import Hand, HandType, LowHand, LowHandType
 from .player import User, Player, PlayerRole
 from .multibank import get_banks
 
@@ -399,10 +399,73 @@ class PokerBase(Game):
         HandType.STRAIGHT_FLUSH
     ]
 
+    GAME_LOW_HAND_RANK = [
+        LowHandType.H_5432A,
+        LowHandType.H_6432A,
+        LowHandType.H_6532A,
+        LowHandType.H_6542A,
+        LowHandType.H_6543A,
+        LowHandType.H_65432,
+        LowHandType.H_7432A,
+        LowHandType.H_7532A,
+        LowHandType.H_7542A,
+        LowHandType.H_7543A,
+        LowHandType.H_75432,
+        LowHandType.H_7632A,
+        LowHandType.H_7642A,
+        LowHandType.H_7643A,
+        LowHandType.H_76432,
+        LowHandType.H_7652A,
+        LowHandType.H_7653A,
+        LowHandType.H_76532,
+        LowHandType.H_7654A,
+        LowHandType.H_76542,
+        LowHandType.H_76543,
+        LowHandType.H_8432A,
+        LowHandType.H_8532A,
+        LowHandType.H_8542A,
+        LowHandType.H_8543A,
+        LowHandType.H_85432,
+        LowHandType.H_8632A,
+        LowHandType.H_8642A,
+        LowHandType.H_8643A,
+        LowHandType.H_86432,
+        LowHandType.H_8652A,
+        LowHandType.H_8653A,
+        LowHandType.H_86532,
+        LowHandType.H_8654A,
+        LowHandType.H_86542,
+        LowHandType.H_86543,
+        LowHandType.H_8732A,
+        LowHandType.H_8742A,
+        LowHandType.H_8743A,
+        LowHandType.H_87432,
+        LowHandType.H_8752A,
+        LowHandType.H_8753A,
+        LowHandType.H_87532,
+        LowHandType.H_8754A,
+        LowHandType.H_87542,
+        LowHandType.H_87543,
+        LowHandType.H_8762A,
+        LowHandType.H_8763A,
+        LowHandType.H_87632,
+        LowHandType.H_8764A,
+        LowHandType.H_87642,
+        LowHandType.H_87643,
+        LowHandType.H_8765A,
+        LowHandType.H_87652,
+        LowHandType.H_87653,
+        LowHandType.H_87654,
+    ]
+
     def get_hand_rank(self, hand):
+        print(f"Пришел запрос на get_hand_rank {hand}")
         if not hand.type:
             return None
-        return self.GAME_HAND_RANK.index(hand.type[0]), *hand.type[1:]
+        if isinstance(hand, LowHand):
+            return len(self.GAME_LOW_HAND_RANK) - self.GAME_LOW_HAND_RANK.index(hand.type[0]), *hand.type[1:]
+        elif isinstance(hand, Hand):
+            return self.GAME_HAND_RANK.index(hand.type[0]), *hand.type[1:]
 
     async def run(self):
         self.log.info("begin players: %s", [p.user_id for p in self.players])
@@ -624,8 +687,11 @@ class PokerBase(Game):
         open_all = False
         for p in players:
             p.hand = self.get_best_hand(p.cards, self.cards)
+            print("Тут ошибка")
+            print(p.hand)
             if isinstance(p.hand, list):
-                self.log.info("player %s hand: %s %s", p.user_id, p.hand, ",".join([str(hand.type) for hand in p.hand]))
+                self.log.info("player %s hand: %s %s", p.user_id, p.hand, ",".join([str(hand.type) for hand in p.hand
+                                                                                    if hand is not None]))
             else:
                 self.log.info("player %s hand: %s %s", p.user_id, p.hand, p.hand.type)
             if p.bet_type == Bet.ALLIN:
