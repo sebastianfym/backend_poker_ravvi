@@ -69,6 +69,11 @@ class ClubMemberProfile(BaseModel):
     user_comment: str | None = None
 
 
+class SortingByDate(BaseModel):
+    starting_date: float | None = None
+    end_date: float | None = None
+
+
 class UserRequest(BaseModel):
     id: int | None
     txn_id: int | None
@@ -107,7 +112,8 @@ class AccountDetailInfo(BaseModel):
 
 class MemberAccountDetailInfo(BaseModel):
     join_datestamp: float | None
-    las_entrance_in_club: float | None
+    last_session: float | None
+    last_entrance_in_club: float | None
     last_game: float | None
     timezone: str | None
     opportunity_leave: bool | None = True
@@ -721,7 +727,7 @@ async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
 
 @router.post("/{club_id}/profile/{user_id}", status_code=HTTP_200_OK,
              summary="Страница с информацией о конкретном участнике клуба для админа")
-async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID):
+async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID, sorting_date: SortingByDate):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
@@ -743,6 +749,22 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID)
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Account not found")
 
         table_id_list = [table.id for table in await db.get_club_tables(club_id)]
+
+        # Todo сортировка по дате
+        if sorting_date.starting_date:
+            start_time = datetime.datetime.fromtimestamp(sorting_date.starting_date).strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            start_time = None
+
+        if sorting_date.end_date:
+            end_time = datetime.datetime.fromtimestamp(sorting_date.end_date).strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            end_time = None
+        print(f"start: {start_time}, end: {end_time}")
+        #Если оба значения пустые, то выводим все
+        #starting_date
+        #end_date
+
 
         time_obj = datetime.datetime.fromisoformat(str(account.created_ts))
         unix_time = int(time.mktime(time_obj.timetuple()))
@@ -815,7 +837,6 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID)
 
         last_login_id = (await db.get_last_user_login(user_id)).id
         last_session = await db.get_last_user_session(last_login_id)
-        #Todo изменить значение у поля las_entrance_in_club на актуальную последнюю дату входа в клуб
 
         user_profile = await db.get_user(id=user_id)
         all_user_games_id = [game.game_id for game in (await db.get_games_player_through_user_id(user.id))]
@@ -832,7 +853,9 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID)
             now_datestamp=now_datestamp,
             timezone=club.timezone,
             last_game=last_game_time,
-            las_entrance_in_club=last_session.created_ts.timestamp(),
+            last_session=last_session,
+            # Todo изменить значение у поля las_entrance_in_club на актуальную последнюю дату входа в клуб
+            last_entrance_in_club=last_session.created_ts.timestamp(),
             nickname=account.nickname,
             country=user_profile.country,
             club_comment=account.club_comment,
