@@ -105,6 +105,16 @@ class AccountDetailInfo(BaseModel):
     now_datestamp: float | None
 
 
+class MemberAccountDetailInfo(BaseModel):
+    join_datestamp: float | None
+    timezone: str | None
+    opportunity_leave: bool | None = True
+    hands: float | None
+    winning: float | None
+    bb_100_winning: float | None
+    now_datestamp: float | None
+
+
 class ChangeMembersData(BaseModel):
     user_id: int
     nickname: str | None = None
@@ -366,7 +376,7 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
             winning = sum_all_cashout - abs(sum_all_buyin)
 
             member = ClubMemberProfile(
-                id=member.id,  # user.id,
+                id=user.id, # member.id --- если нужно использовать старый функционал кассы
                 username=user.name,
                 image_id=user.image_id,
                 user_role=member.user_role,
@@ -711,6 +721,8 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID)
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         owner = await db.find_account(user_id=user.id, club_id=club_id)
         account = await db.find_account(user_id=user_id, club_id=club_id)
+        if not account:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Such a user is not a member of the club")
         if user.id != user_id and owner is None:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You dont have permission")
         if user.id != user_id and owner.user_role not in ["O", "M"]:
@@ -792,13 +804,13 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID)
             bb_100 = round(bb_100_winning, 2)
         except ZeroDivisionError:
             bb_100 = 0
-        return AccountDetailInfo(
+        return MemberAccountDetailInfo(
             join_datestamp=unix_time,
             now_datestamp=now_datestamp,
             timezone=club.timezone,
-            table_types=set(table_types),
-            game_types=set(game_types),
-            game_subtypes=set(game_subtype),
+            # table_types=set(table_types),
+            # game_types=set(game_types),
+            # game_subtypes=set(game_subtype),
             opportunity_leave=opportunity_leave,
             hands=count_of_games_played,  # todo потом добавить триггеры
             winning=winning,
