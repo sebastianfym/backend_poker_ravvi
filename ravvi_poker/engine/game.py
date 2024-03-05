@@ -91,7 +91,9 @@ class Game:
         await self.emit_msg(db, msg)
 
     async def broadcast_GAME_CARDS(self, db):
-        msg = Message(msg_type=Message.Type.GAME_CARDS, boards=self.boards)
+        msg = Message(msg_type=Message.Type.GAME_CARDS, boards=[
+            {"board_type": board.board_type.value, "cards": board.cards} for board in self.boards
+        ])
         await self.emit_msg(db, msg)
 
     async def broadcast_PLAYER_CARDS(self, db, player, **kwargs):
