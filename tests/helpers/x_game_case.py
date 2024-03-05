@@ -94,7 +94,8 @@ class X_CaseMixIn:
             elif k == 'boards':
                 ev = [{"board_type": board["board_type"], "cards": [Card(x).code for x in board["cards"]]}
                       for board in ev]
-                rv = [{"board_type": board.board_type.value, "cards": board.cards} for board in rv]
+                rv = [{"board_type": board["board_type"], "cards": [Card(x).code for x in board["cards"]]}
+                      for board in rv]
             elif k == 'options' and ev:
                 ev = [Bet.decode(x) for x in ev]
                 rv = [Bet.decode(x) for x in rv]
