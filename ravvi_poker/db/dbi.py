@@ -978,14 +978,14 @@ class DBI:
             row = await cursor.fetchall()
         return row
 
-    # async def get_statistics_about_winning(self, account_id, date): #Todo проверить и удалить
-    #     sql = "SELECT * FROM user_account_txn WHERE account_id=%s AND created_ts >= %s AND created_ts < %s"
-    #     date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
-    #     tomorrow = date_now + datetime.timedelta(days=1)
-    #     async with self.cursor() as cursor:
-    #         await cursor.execute(sql, (account_id, date_now, tomorrow))
-    #         row = await cursor.fetchall()
-    #     return row
+    async def get_statistics_about_winning_for_today(self, account_id, date): #Todo проверить и удалить
+        sql = "SELECT * FROM user_account_txn WHERE account_id=%s AND created_ts >= %s AND created_ts < %s"
+        date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+        tomorrow = date_now + datetime.timedelta(days=1)
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (account_id, date_now, tomorrow))
+            row = await cursor.fetchall()
+        return row
 
     async def get_statistics_about_winning(self, account_id, date_start, date_end):
         sql = "SELECT * FROM user_account_txn WHERE account_id=%s AND created_ts >= %s AND created_ts < %s"
