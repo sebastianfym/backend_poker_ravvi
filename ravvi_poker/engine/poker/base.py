@@ -497,15 +497,15 @@ class PokerBase(Game):
         await self.run_SHOWDOWN()
 
         # winners
-        winners_info = self.get_winners()
+        rewards, balances = self.get_winners()
         async with self.DBI(log=self.log) as db:
-            await self.broadcast_GAME_RESULT(db, winners_info)
+            await self.broadcast_GAME_RESULT(db, rewards, balances)
 
         self.showdown_is_end = True
 
         # если включен режим seven deuce сформируем новый банк и распределим его
         if self.table.seven_deuce:
-            await self.run_SEVEN_DEUCE(winners_info)
+            await self.run_SEVEN_DEUCE(rewards)
 
         # TODO тут вызовем показ карт
         logger.info("Показываем")
@@ -698,11 +698,8 @@ class PokerBase(Game):
         open_all = False
         for p in players:
             p.hands = [self.get_best_hand(p.cards, board) for board in self.boards]
-            if isinstance(p.hand, list):
-                self.log.info("player %s hand: %s %s", p.user_id, p.hand, ",".join([str(hand.type) for hand in p.hand
-                                                                                    if hand is not None]))
-            else:
-                self.log.info("player %s hand: %s %s", p.user_id, p.hand, p.hand.type)
+            self.log.info("player %s hand: %s %s", p.user_id, p.hands, ",".join([str(hand.type) for hand in p.hands
+                                                                                if hand is not None]))
             if p.bet_type == Bet.ALLIN:
                 open_all = True
         self.log.info("open all: %s", open_all)
@@ -732,8 +729,9 @@ class PokerBase(Game):
         best_hand = None
         async with self.DBI() as db:
             for p in players:
-                if not best_hand or best_hand.rank <= p.hand.rank:
-                    best_hand = p.hand
+                # TODO временно для одной руки
+                if not best_hand or best_hand.rank <= p.hands[0].rank:
+                    best_hand = p.hands[0]
                 elif open_all:
                     pass
                 else:
@@ -742,7 +740,8 @@ class PokerBase(Game):
                     continue
                 p.cards_open = True
                 await self.broadcast_PLAYER_CARDS(db, p)
-                self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.type)
+                # TODO временно для одной руки
+                self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hands, p.hands[0].type)
 
     async def open_cards_on_request(self):
         print("_______________________")
@@ -758,6 +757,8 @@ class PokerBase(Game):
                     self.log.info("player %s: open cards on request %s", p.user_id, p.cards_open_on_request)
 
     def get_winners(self):
+        rewards, balances = [], []
+
         winners = {}
         players = [p for p in self.players if p.in_the_game]
         if len(players) == 1:
@@ -767,7 +768,8 @@ class PokerBase(Game):
                 w_amount += bank_amount
             winners[p.user_id] = w_amount
         else:
-            rankKey = lambda x: x.hand.rank
+            # TODO временно для одной руки
+            rankKey = lambda x: x.hands[0].rank
             for amount, bank_players in self.banks:
                 bank_players.sort(key=rankKey)
                 bank_winners = []
@@ -778,23 +780,49 @@ class PokerBase(Game):
                 for p in bank_winners:
                     amount = winners.get(p.user_id, 0)
                     winners[p.user_id] = amount + w_amount
-        winners_info = []
-        for p in players:
+
+        for p in self.players:
+            print(balances)
+            balance = {
+                "user_id": p.user_id,
+                "balance": p.user.balance,
+                "delta": round(p.balance - p.balance_0, 2)
+            }
             amount = winners.get(p.user_id, None)
             if not amount:
+                balances.append(balance)
                 continue
             p.user.balance += amount
-            # TODO округление
-            delta = round(p.balance - p.balance_0, 2)
-            info = dict(
-                user_id=p.user_id,
-                balance=p.balance,
-                delta=delta
+            rewards.append(
+                {
+                    # TODO переписать под несколько бордов
+                    "type": "board1",
+                    "user_id": p.user_id,
+                    "amount": amount
+                }
             )
-            self.log.info("winner: %s %s %s", p.user_id, p.balance, delta)
-            winners_info.append(info)
+            balance["balance"] = p.user.balance
+            balance["delta"] = round(p.balance - p.balance_0, 2)
+            balances.append(balance)
+        balances.sort(key=lambda x: x["user_id"])
 
-        return winners_info
+        # winners_info = []
+        # for p in players:
+        #     amount = winners.get(p.user_id, None)
+        #     if not amount:
+        #         continue
+        #     p.user.balance += amount
+        #     # TODO округление
+        #     delta = round(p.balance - p.balance_0, 2)
+        #     info = dict(
+        #         user_id=p.user_id,
+        #         balance=p.balance,
+        #         delta=delta
+        #     )
+        #     self.log.info("winner: %s %s %s", p.user_id, p.balance, delta)
+        #     winners_info.append(info)
+
+        return rewards, balances
 
     async def collect_ante(self, db):
         for p in self.players:

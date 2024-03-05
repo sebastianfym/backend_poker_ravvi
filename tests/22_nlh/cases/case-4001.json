@@ -10,10 +10,26 @@
     "deck": ["A♠", "T♠", "T♥", "5♠", "3♣", "K♣", "J♣", "7♥", 0],
     "moves": [
         {"type": "GAME_BEGIN", "game_type": "NLH", "game_subtype": "REGULAR", "blind_small": 1, "blind_big": 2}, 
-        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["A♠", "3♣"], "hand_type": "HIGH_CARD", "hand_cards": ["A♠","3♣"]}, 
-        {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": ["T♠", "K♣"], "hand_type": "HIGH_CARD", "hand_cards": ["K♣","T♠"]}, 
-        {"type": "PLAYER_CARDS", "user_id": 444, "cards_open": false, "cards": ["T♥", "J♣"], "hand_type": "HIGH_CARD", "hand_cards": ["J♣","T♥"]},
-        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["5♠", "7♥"], "hand_type": "HIGH_CARD", "hand_cards": ["7♥","5♠"]},
+        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["A♠", "3♣"],
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["A♠","3♣"]}
+            ]
+        },
+        {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": ["T♠", "K♣"],
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["K♣","T♠"]}
+            ]
+        },
+        {"type": "PLAYER_CARDS", "user_id": 444, "cards_open": false, "cards": ["T♥", "J♣"],
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["J♣","T♥"]}
+            ]
+        },
+        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["5♠", "7♥"],
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["7♥","5♠"]}
+            ]
+        },
 
         {"type": "PLAYER_BET", "user_id": 222, "bet": "SMALL_BLIND", "delta": 1, "amount": 1, "balance": 45}, 
         {"type": "PLAYER_BET", "user_id": 333, "bet": "BIG_BLIND", "delta": 2, "amount": 2, "balance": 38},
@@ -92,7 +108,17 @@
         {"type": "GAME_ROUND", "banks": [90], "bank_total": 90},
 
 
-        {"type": "GAME_RESULT", "winners": [{"user_id": 333, "balance": 90, "delta": 50}]},
+        {"type": "GAME_RESULT",
+            "rewards": [
+                {"type": "board1", "user_id": 333, "amount": 90}
+            ],
+            "balances": [
+                {"user_id": 111, "balance": 42.2, "delta": -12},
+                {"user_id": 222, "balance": 12, "delta": -34},
+                {"user_id": 333, "balance": 90, "delta": 50},
+                {"user_id": 444, "balance": 125, "delta": -4}
+            ]
+        },
         {"type": "GAME_END"}
     ]
 }

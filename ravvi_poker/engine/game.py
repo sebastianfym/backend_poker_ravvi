@@ -1,14 +1,11 @@
 import logging
 
-from .poker.board import Board, BoardType
-from .tables.configs import configCls
-from ..logging import ObjectLoggerAdapter
-from ..db import DBI
-
 from .cards import Deck
-from .user import User
-from .player import Player
 from .events import Message, Command
+from .player import Player
+from .poker.board import Board, BoardType
+from ..db import DBI
+from ..logging import ObjectLoggerAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -134,8 +131,8 @@ class Game:
         msg = Message(msg_type=Message.Type.GAME_ROUND, banks=banks, bank_total=bank_total)
         await self.emit_msg(db, msg)
 
-    async def broadcast_GAME_RESULT(self, db, winners):
-        msg = Message(msg_type=Message.Type.GAME_RESULT, winners=winners)
+    async def broadcast_GAME_RESULT(self, db, rewards, balances):
+        msg = Message(msg_type=Message.Type.GAME_RESULT, rewards=rewards, balances=balances)
         await self.emit_msg(db, msg)
 
     async def broadcast_GAME_END(self, db):

@@ -9,9 +9,21 @@
     "deck": ["5♥", "7♥", "2♥", "9♣", "J♠", "6♥",  0, "Q♠","A♦","8♥",  "6♣",  "2♠"],
     "moves": [
         {"type": "GAME_BEGIN", "game_type": "NLH", "game_subtype": "REGULAR", "blind_small": 1, "blind_big": 2}, 
-        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["5♥", "9♣"], "hand_type": "HIGH_CARD", "hand_cards": ["9♣", "5♥"]}, 
-        {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": ["7♥", "J♠"], "hand_type": "HIGH_CARD", "hand_cards": ["J♠", "7♥"]},
-        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["2♥", "6♥"], "hand_type": "HIGH_CARD", "hand_cards": ["6♥", "2♥"]}, 
+        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["5♥", "9♣"],
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["9♣", "5♥"]}
+            ]
+        },
+        {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": ["7♥", "J♠"],
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["J♠", "7♥"]}
+            ]
+        },
+        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["2♥", "6♥"],
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["6♥", "2♥"]}
+            ]
+        },
 
         {"type": "PLAYER_BET", "user_id": 222, "bet": "SMALL_BLIND", "delta": 1, "amount": 1, "balance": 97, "bank_total": 1}, 
         {"type": "PLAYER_BET", "user_id": 333, "bet": "BIG_BLIND", "delta": 2, "amount": 2, "balance": 98, "bank_total": 3},
@@ -33,10 +45,22 @@
 
         {"type": "GAME_ROUND", "banks": [6], "bank_total": 6},         
 // 17        
-        {"type": "GAME_CARDS", "cards": ["Q♠","A♦","8♥"]}, 
-        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["5♥", "9♣"], "hand_type": "HIGH_CARD", "hand_cards": ["A♦", "Q♠", "9♣", "8♥", "5♥"]}, 
-        {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": ["7♥", "J♠"], "hand_type": "HIGH_CARD", "hand_cards": ["A♦", "Q♠", "J♠", "8♥", "7♥"]},
-        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["2♥", "6♥"], "hand_type": "HIGH_CARD", "hand_cards": ["A♦", "Q♠", "8♥", "6♥", "2♥"]}, 
+        {"type": "GAME_CARDS", "boards": [{"board_type": "board1", "cards": ["Q♠","A♦","8♥"]}]},
+        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["5♥", "9♣"],
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["A♦", "Q♠", "9♣", "8♥", "5♥"]}
+            ]
+        },
+        {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": ["7♥", "J♠"],
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["A♦", "Q♠", "J♠", "8♥", "7♥"]}
+            ]
+        },
+        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["2♥", "6♥"],
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["A♦", "Q♠", "8♥", "6♥", "2♥"]}
+            ]
+        },
 
 
         {"type": "GAME_PLAYER_MOVE", "user_id": 222, "options": ["FOLD", "CHECK", "RAISE", "ALLIN"], 
@@ -67,10 +91,22 @@
 
         {"type": "GAME_ROUND", "banks": [12], "bank_total": 12},         
 // TERN
-        {"type": "GAME_CARDS", "cards": ["Q♠","A♦","8♥","6♣"]}, 
-        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["5♥", "9♣"], "hand_type": "HIGH_CARD", "hand_cards": ["A♦","Q♠","9♣","8♥","6♣"]}, 
-        {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": ["7♥", "J♠"], "hand_type": "HIGH_CARD", "hand_cards": ["A♦","Q♠","J♠","8♥","7♥"]},
-        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["2♥", "6♥"], "hand_type": "ONE_PAIR",  "hand_cards": ["A♦","Q♠","8♥","6♣","6♥"]}, 
+        {"type": "GAME_CARDS", "boards": [{"board_type": "board1", "cards": ["Q♠","A♦","8♥","6♣"]}]},
+        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["5♥", "9♣"],
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["A♦","Q♠","9♣","8♥","6♣"]}
+            ]
+        },
+        {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": ["7♥", "J♠"],
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["A♦","Q♠","J♠","8♥","7♥"]}
+            ]
+        },
+        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["2♥", "6♥"],
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "ONE_PAIR",  "hand_cards": ["A♦","Q♠","8♥","6♣","6♥"]}
+            ]
+        },
 
         {"type": "GAME_PLAYER_MOVE", "user_id": 222, "options": ["FOLD", "CHECK", "RAISE", "ALLIN"], 
             "call": null, "raise_min": 2, "raise_max": 94}, 
@@ -106,10 +142,22 @@
         {"type": "GAME_ROUND", "banks": [24], "bank_total": 24},
 
 // RIVER
-        {"type": "GAME_CARDS", "cards": ["Q♠","A♦","8♥","6♣", "2♠"]}, 
-        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["5♥", "9♣"], "hand_type": "HIGH_CARD", "hand_cards": ["A♦","Q♠","9♣","8♥","6♣"]}, 
-        {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": ["7♥", "J♠"], "hand_type": "HIGH_CARD", "hand_cards": ["A♦","Q♠","J♠","8♥","7♥"]},
-        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["2♥", "6♥"], "hand_type": "TWO_PAIRS", "hand_cards": ["A♦","6♣","6♥","2♠","2♥"]}, 
+        {"type": "GAME_CARDS", "boards": [{"board_type": "board1", "cards": ["Q♠","A♦","8♥","6♣", "2♠"]}]},
+        {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["5♥", "9♣"],
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["A♦","Q♠","9♣","8♥","6♣"]}
+            ]
+        },
+        {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": ["7♥", "J♠"],
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["A♦","Q♠","J♠","8♥","7♥"]}
+            ]
+        },
+        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["2♥", "6♥"],
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "TWO_PAIRS", "hand_cards": ["A♦","6♣","6♥","2♠","2♥"]}
+            ]
+        },
 
         {"type": "GAME_PLAYER_MOVE", "user_id": 333, "options": ["FOLD", "CHECK", "RAISE", "ALLIN"], 
             "call": null, "raise_min": 2, "raise_max": 90}, 
@@ -131,7 +179,16 @@
 // SHOWDOWN
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": ["2♥", "6♥"]}, 
 
-        {"type": "GAME_RESULT", "winners": [{"user_id": 111, "balance": 126, "delta": 24}]},
+        {"type": "GAME_RESULT",
+            "rewards": [
+                {"type": "board1", "user_id": 111, "amount": 44}
+            ],
+            "balances": [
+                {"user_id": 111, "balance": 126, "delta": 24},
+                {"user_id": 222, "balance": 94, "delta": -4},
+                {"user_id": 333, "balance": 80, "delta": -20}
+            ]
+        },
         {"type": "GAME_END"}
     ]
 }

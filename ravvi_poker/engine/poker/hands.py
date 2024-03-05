@@ -5,6 +5,14 @@ from ..cards import Card
 
 
 @unique
+class HandBelong(Enum):
+    BOARD1 = "board1"
+    BOARD2 = "board2"
+    BOARD3 = "board3"
+    LOW = "low"
+
+
+@unique
 class HandType(Enum):
     HIGH_CARD = "H"
     ONE_PAIR = "P1"
