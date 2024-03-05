@@ -853,7 +853,7 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
             now_datestamp=now_datestamp,
             timezone=club.timezone,
             last_game=last_game_time,
-            last_session=last_session,
+            last_session=last_session.created_ts.timestamp(),
             # Todo изменить значение у поля las_entrance_in_club на актуальную последнюю дату входа в клуб
             last_entrance_in_club=last_session.created_ts.timestamp(),
             nickname=account.nickname,
