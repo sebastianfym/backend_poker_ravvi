@@ -111,6 +111,7 @@ class AccountDetailInfo(BaseModel):
 
 
 class MemberAccountDetailInfo(BaseModel):
+    id: int
     join_datestamp: float | None
     last_session: float | None
     last_entrance_in_club: float | None
@@ -119,6 +120,7 @@ class MemberAccountDetailInfo(BaseModel):
     opportunity_leave: bool | None = True
     nickname: str | None
     country: str | None
+    username: str | None
     user_role: str | None
     club_comment: str | None
     balance: float | None
@@ -760,15 +762,15 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
             end_time = datetime.datetime.fromtimestamp(sorting_date.end_date).strftime('%Y-%m-%d %H:%M:%S')
         else:
             end_time = None
-        print(f"start: {start_time}, end: {end_time}")
-        #Если оба значения пустые, то выводим все
-        #starting_date
-        #end_date
-
 
         time_obj = datetime.datetime.fromisoformat(str(account.created_ts))
         unix_time = int(time.mktime(time_obj.timetuple()))
         now_datestamp = int(time.mktime(datetime.datetime.fromisoformat(str(datetime.datetime.utcnow())).timetuple()))
+
+        print(f"start: {start_time}, end: {end_time}")
+        # Если оба значения пустые, то выводим все
+        # starting_date
+        # end_date
 
         date_now = str(datetime.datetime.now()).split(" ")[0]
         table_types = []
@@ -847,8 +849,10 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
             last_game_time = last_game.begin_ts.timestamp()
         else:
             last_game_time = None
+        ######################
 
         return MemberAccountDetailInfo(
+            id=user.id,
             join_datestamp=unix_time,
             now_datestamp=now_datestamp,
             timezone=club.timezone,
@@ -860,6 +864,7 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
             country=user_profile.country,
             club_comment=account.club_comment,
             user_role=account.user_role,
+            username=user.name,
             balance=account.balance,
             balance_shared=account.balance_shared,
             opportunity_leave=opportunity_leave,
