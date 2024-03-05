@@ -129,7 +129,9 @@ class MemberAccountDetailInfo(BaseModel):
     winning: float | None
     bb_100_winning: float | None
     now_datestamp: float | None
-
+    rakeback_percentage: float | None = None
+    rakeback: float | None = None
+    commission: float | None = None
 
 class ChangeMembersData(BaseModel):
     user_id: int
@@ -772,20 +774,31 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
         # starting_date
         # end_date
 
-        date_now = str(datetime.datetime.now()).split(" ")[0]
+        # date_now = str(datetime.datetime.now()).split(" ")[0]
         table_types = []
         game_types = []
         game_subtype = []
         count_of_games_played = 0
 
+        #Todo это вариант решения с двумя датами, проработай еще вариант за все время
         for table_id in table_id_list:
-            for game in await db.statistics_of_games_played(table_id, date_now):
+            # for game in await db.statistics_of_games_played(table_id, date_now):
+            if start_time and end_time:
+                games = await db.game_statistics_for_a_certain_time(table_id, start_time, end_time)
+            else:
+                games = await db.get_game_statistics_for_table_and_user(table_id, user.id)
+                # print(games)
+            for game in games:
                 count_of_games_played += 1
                 table_types.append((await db.get_table(game.table_id)).table_type)
                 game_types.append(game.game_type)
                 game_subtype.append(game.game_subtype)
 
-        winning_row = await db.get_statistics_about_winning(account.id, date_now)
+        # winning_row = await db.get_statistics_about_winning(account.id, date_now)
+        if start_time and end_time:
+            winning_row = await db.get_statistics_about_winning(account.id, start_time, end_time)
+        else:
+            winning_row = await db.get_all_statistics_about_winning(account.id)
         sum_all_buyin = sum(
             [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']])
         sum_all_cashout = sum(
@@ -799,7 +812,11 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
         access_game_id = []
 
         for game_id in all_games_id:
-            game = await db.check_game_by_date(game_id, date_now)
+            # game = await db.check_game_by_date(game_id, date_now)
+            if start_time and end_time:
+                game = await db.check_game_by_date(game_id, start_time, end_time)
+            else:
+                game = await db.check_game_by_id(game_id)
             if game is not None:
                 access_games.append(game)
                 access_game_id.append(game.id)
