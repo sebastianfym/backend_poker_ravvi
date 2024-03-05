@@ -107,8 +107,16 @@ class AccountDetailInfo(BaseModel):
 
 class MemberAccountDetailInfo(BaseModel):
     join_datestamp: float | None
+    las_entrance_in_club: float | None
+    last_game: float | None
     timezone: str | None
     opportunity_leave: bool | None = True
+    nickname: str | None
+    country: str | None
+    user_role: str | None
+    club_comment: str | None
+    balance: float | None
+    balance_shared: float | None
     hands: float | None
     winning: float | None
     bb_100_winning: float | None
@@ -804,13 +812,33 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID)
             bb_100 = round(bb_100_winning, 2)
         except ZeroDivisionError:
             bb_100 = 0
+
+        last_login_id = (await db.get_last_user_login(user_id)).id
+        last_session = await db.get_last_user_session(last_login_id)
+        #Todo изменить значение у поля las_entrance_in_club на актуальную последнюю дату входа в клуб
+
+        user_profile = await db.get_user(id=user_id)
+        all_user_games_id = [game.game_id for game in (await db.get_games_player_through_user_id(user.id))]
+
+        if len(all_user_games_id) != 0:
+            last_game = max(await db.statistics_all_games_users_in_club(all_user_games_id, table_id_list),
+                            key=lambda x: x.id)
+            last_game_time = last_game.begin_ts.timestamp()
+        else:
+            last_game_time = None
+
         return MemberAccountDetailInfo(
             join_datestamp=unix_time,
             now_datestamp=now_datestamp,
             timezone=club.timezone,
-            # table_types=set(table_types),
-            # game_types=set(game_types),
-            # game_subtypes=set(game_subtype),
+            last_game=last_game_time,
+            las_entrance_in_club=last_session.created_ts.timestamp(),
+            nickname=account.nickname,
+            country=user_profile.country,
+            club_comment=account.club_comment,
+            user_role=account.user_role,
+            balance=account.balance,
+            balance_shared=account.balance_shared,
             opportunity_leave=opportunity_leave,
             hands=count_of_games_played,  # todo потом добавить триггеры
             winning=winning,
