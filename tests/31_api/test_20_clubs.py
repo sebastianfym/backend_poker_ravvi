@@ -689,16 +689,16 @@ def test_user_account(api_client: TestClient, api_guest: UserAccessProfile):
     response = api_client.post(f"/v1/clubs/{club.id}/profile/{user_id}", json=data)
     assert response.status_code == 200
 
-    response = api_client.post(f"/v1/clubs/{17031788}/profile/{user_id}")
+    response = api_client.post(f"/v1/clubs/{17031788}/profile/{user_id}", json=data)
     assert response.status_code == 404
+
+    response = api_client.post(f"/v1/clubs/{17031788}/profile/{user_id}")
+    assert response.status_code == 422
 
     response = api_client.post(f"/v1/clubs/{club.id}/user_account")
     assert response.status_code == 200
 
     response = api_client.post(f"/v1/clubs/{17031788}/user_account")
-    assert response.status_code == 422
-
-    response = api_client.post(f"/v1/clubs/{17031788}/user_account", json=data)
     assert response.status_code == 404
 
 
