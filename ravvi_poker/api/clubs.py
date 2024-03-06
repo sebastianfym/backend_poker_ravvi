@@ -27,7 +27,7 @@ class ClubProps(BaseModel):
     image_id: int | None = None
     timezone: str | None = None
 
-    automatic_confirmation: bool | None #Todo проверить, что при измении клуба не меняется этот параметр, если его не указать
+    automatic_confirmation: bool | None
 
 
 class ClubProfile(BaseModel):
@@ -47,7 +47,7 @@ class ClubProfile(BaseModel):
 
     timezone: str | None = None
 
-    automatic_confirmation: bool | None = False #Todo если тут True, то автодобавление влкючено
+    automatic_confirmation: bool | None = False
 
 
 class ClubMemberProfile(BaseModel):
