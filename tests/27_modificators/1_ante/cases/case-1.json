@@ -75,9 +75,17 @@
 
 
 
-    {"type": "GAME_CARDS", "cards": ["2♦", "J♠", "3♣"]},
-    {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "hand_type": "ONE_PAIR", "hand_cards": ["J♠", "7♠", "7♣", "3♣", "2♦"]},
-    {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "hand_type": "HIGH_CARD", "hand_cards": ["J♠", "8♣", "5♣", "3♣", "2♦"]},
+    {"type": "GAME_CARDS", "boards": [{"board_type": "board1", "cards": ["2♦", "J♠", "3♣"]}]},
+    {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false,
+      "hands": [
+                {"hand_belong": "board1", "hand_type": "ONE_PAIR", "hand_cards": ["J♠", "7♠", "7♣", "3♣", "2♦"]}
+            ]
+    },
+    {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false,
+      "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["J♠", "8♣", "5♣", "3♣", "2♦"]}
+            ]
+    },
 
     {"type": "GAME_PLAYER_MOVE", "user_id": 222, "options": ["FOLD", "CHECK", "RAISE", "ALLIN"],
             "call": null, "raise_min": 200, "raise_max": 1350},
@@ -91,8 +99,17 @@
 
     {"type": "GAME_ROUND", "banks": [1600], "bank_total": 1600},
 
-
-    {"type": "GAME_RESULT", "winners": [{"user_id": 222, "balance": 2650, "delta": 650}]},
+    {"type": "GAME_RESULT",
+            "rewards": [
+                {"type": "board1", "winners": [
+                    {"user_id": 222, "amount": 1600}
+                ]}
+            ],
+            "balances": [
+                {"user_id": 111, "balance": 350, "delta": -650},
+                {"user_id": 222, "balance": 2650, "delta": 650}
+            ]
+        },
     {"type": "GAME_END"}
   ]
 }
