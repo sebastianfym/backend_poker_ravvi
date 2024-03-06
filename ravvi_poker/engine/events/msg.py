@@ -109,8 +109,7 @@ class Message(dict):
                     cards = [0 for _ in cards]
                 props.update(cards=cards)
                 print(cards)
-                props.pop("hand_type", None)
-                props.pop("hand_cards", None)
+                props.pop("hands", None)
             if cards_open and user_id == for_user_id:
                 cards = props.get("cards", [])
                 props.update(visible_cards=cards, cards=cards)

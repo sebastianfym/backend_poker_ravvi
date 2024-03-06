@@ -42,8 +42,16 @@
     {"type": "GAME_ROUND", "banks": [100], "bank_total": 100},
 
 
-    {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["7♣", "7♠"], "hand_type": "ONE_PAIR",  "hand_cards": ["7♠","7♣"]},
-    {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["8♣", "5♣"], "hand_type": "HIGH_CARD", "hand_cards": ["8♣","5♣"]},
+    {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["7♣", "7♠"],
+      "hands": [
+                {"hand_belong": "board1", "hand_type": "ONE_PAIR", "hand_cards": ["7♠","7♣"]}
+            ]
+    },
+    {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["8♣", "5♣"],
+      "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["8♣","5♣"]}
+            ]
+    },
 
     {"type": "PLAYER_BET", "user_id": 111, "bet": "SMALL_BLIND", "delta": 100, "amount": 100, "balance": 850, "bank_total": 200},
     {"type": "PLAYER_BET", "user_id": 222, "bet": "BIG_BLIND", "delta": 200, "amount": 200, "balance": 1750, "bank_total": 400},
