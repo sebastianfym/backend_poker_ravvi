@@ -173,7 +173,7 @@ def test_21_club_join_approve(api_client: TestClient, api_guest: UserAccessProfi
     assert response.status_code == 403
 
     response = api_client_2.get(f"/v1/clubs/{club.id}/members/")
-    assert response.status_code == 200
+    assert response.status_code == 403
 
     response = api_client.get(f"/v1/clubs/{club.id}/members/requests")
     user_id = response.json()[0]['id']
@@ -181,6 +181,9 @@ def test_21_club_join_approve(api_client: TestClient, api_guest: UserAccessProfi
 
     data = {"user_role": "A"}
     response = api_client.put(f"/v1/clubs/{club.id}/members/{int(user_id)}", json=data)
+    assert response.status_code == 200
+
+    response = api_client_2.get(f"/v1/clubs/{club.id}/members/")
     assert response.status_code == 200
 
     data = {"id": (user_id), "accept": True}
@@ -527,7 +530,7 @@ async def test_giving_chips_to_the_user(api_client: TestClient, api_guest: UserA
     # создаем пользователя, которому будет начислять фишки и заводим его в клуб
     async with DBI() as dbi:
         user_profile_to_get_chips = await dbi.create_user()
-        user_account_to_get_chips = await dbi.create_club_member(club.id, user_profile_to_get_chips.id, "TEST_MEMBER")
+        user_account_to_get_chips = await dbi.create_club_member(club.id, user_profile_to_get_chips.id, "TEST_MEMBER", True)
 
     # начисляем фишки
     response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user",
@@ -706,8 +709,17 @@ def test_pick_up_or_give_out_chips(api_client: TestClient, api_guest: UserAccess
     request = api_client_2.post(f"/v1/clubs/{club.id}/members")
     assert request.status_code == 200
 
+    response = api_client.get(f"/v1/clubs/{club.id}/members/requests")
+    user_id = response.json()[0]['id']
+    assert response.status_code == 200
+
+    data = {"user_role": "A"}
+    response = api_client.put(f"/v1/clubs/{club.id}/members/{int(user_id)}", json=data)
+    assert response.status_code == 200
+
     request = api_client_2.get(f"/v1/clubs/{club.id}/members")
     assert request.status_code == 200
+
     second_account_id = request.json()[0].get('id')
     club.club_balance = 150000
 

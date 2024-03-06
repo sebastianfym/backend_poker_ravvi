@@ -27,7 +27,7 @@ class ClubProps(BaseModel):
     image_id: int | None = None
     timezone: str | None = None
 
-    automatic_confirmation: bool | None
+    automatic_confirmation: bool | None = False
 
 
 class ClubProfile(BaseModel):
