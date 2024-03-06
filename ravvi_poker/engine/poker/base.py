@@ -781,6 +781,9 @@ class PokerBase(Game):
                     amount = winners.get(p.user_id, 0)
                     winners[p.user_id] = amount + w_amount
 
+        # TODO переписать под несколько бордов
+        rewards_winners = []
+        rewards.append({"type": "board1", "winners": rewards_winners})
         for p in self.players:
             print(balances)
             balance = {
@@ -793,10 +796,9 @@ class PokerBase(Game):
                 balances.append(balance)
                 continue
             p.user.balance += amount
-            rewards.append(
+            rewards_winners.append(
                 {
                     # TODO переписать под несколько бордов
-                    "type": "board1",
                     "user_id": p.user_id,
                     "amount": amount
                 }

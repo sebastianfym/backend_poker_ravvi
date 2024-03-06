@@ -96,18 +96,19 @@ class Poker_NLH_3M1(Poker_NLH_X):
                 # TODO дописать обработку
                 player.cards.remove(card_for_drop)
                 # TODO дописать совместимость с double board
-                player.hand = self.get_best_hand(player.cards, self.cards)
+                player.hands = [self.get_best_hand(player.cards, board) for board in self.boards]
                 # TODO согласовать как мы оповестим о сброшенной карте
                 await self.broadcast_PLAYER_CARDS(db, player)
 
-    async def offer_card_for_drop(self, player, cards_on_table) -> tuple[int, int]:
+    async def offer_card_for_drop(self, player) -> tuple[int, int]:
         hands_combinations = []
-        for combination in combinations(player.cards, 2):
-            if cards_on_table:
-                combination = combination + tuple(cards_on_table)
-            hand = Hand(combination)
-            hand.rank = self.get_hand_rank(hand)
-            hands_combinations.append(hand)
+        for board in self.boards:
+            for combination in combinations(player.cards, 2):
+                if board.cards:
+                    combination = combination + tuple(board.cards)
+                hand = Hand(combination, board)
+                hand.rank = self.get_hand_rank(hand)
+                hands_combinations.append(hand)
 
         hands_combinations.sort(reverse=True, key=lambda x: x.rank)
         card_code_for_drop, card_index_for_drop = None, None
@@ -123,7 +124,7 @@ class Poker_NLH_3M1(Poker_NLH_X):
             if self.round is self.round_to_drop_card:
                 players_cards_map = {}
                 for player in self.players:
-                    card_code_for_drop, card_index_for_drop = await self.offer_card_for_drop(player, self.cards)
+                    card_code_for_drop, card_index_for_drop = await self.offer_card_for_drop(player)
                     players_cards_map[player.user_id] = card_code_for_drop
 
                     await super().emit_PROPOSED_CARD_DROP(db,
@@ -132,6 +133,7 @@ class Poker_NLH_3M1(Poker_NLH_X):
                                                           card_index=card_index_for_drop)
 
                 print("Начал спать")
+                # TODO заменить на проверку что все игроки сбросили карты с таймаутом
                 await asyncio.sleep(self.SLEEP_DROP_CARD)
                 print("Закончил спать")
 

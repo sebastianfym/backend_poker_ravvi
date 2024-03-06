@@ -46,7 +46,9 @@
 
         {"type": "GAME_RESULT",
             "rewards": [
-                {"type": "board1", "user_id": 222, "amount": 102}
+                {"type": "board1", "winners": [
+                    {"user_id": 222, "amount": 102}
+                ]}
             ],
             "balances": [
                 {"user_id": 111, "balance": 100, "delta": 0},
