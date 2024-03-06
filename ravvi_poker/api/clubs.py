@@ -769,18 +769,12 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
         unix_time = int(time.mktime(time_obj.timetuple()))
         now_datestamp = int(time.mktime(datetime.datetime.fromisoformat(str(datetime.datetime.utcnow())).timetuple()))
 
-        print(f"start: {start_time}, end: {end_time}")
-        # Если оба значения пустые, то выводим все
-        # starting_date
-        # end_date
-
         # date_now = str(datetime.datetime.now()).split(" ")[0]
         table_types = []
         game_types = []
         game_subtype = []
         count_of_games_played = 0
 
-        #Todo это вариант решения с двумя датами, проработай еще вариант за все время
         for table_id in table_id_list:
             # for game in await db.statistics_of_games_played(table_id, date_now):
             if start_time and end_time:
@@ -867,6 +861,10 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
         else:
             last_game_time = None
         ######################
+        if account.user_role not in ["A", "S"]:
+            balance_shared = None
+        else:
+            balance_shared = account.balance_shared
 
         return MemberAccountDetailInfo(
             id=user.id,
@@ -883,7 +881,7 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
             user_role=account.user_role,
             username=user.name,
             balance=account.balance,
-            balance_shared=account.balance_shared,
+            balance_shared=balance_shared,
             opportunity_leave=opportunity_leave,
             hands=count_of_games_played,  # todo потом добавить триггеры
             winning=winning,
