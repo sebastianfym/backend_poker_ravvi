@@ -73,6 +73,11 @@ class ClubMemberProfile(BaseModel):
     user_comment: str | None = None
 
 
+class SortingByDate(BaseModel):
+    starting_date: float | None = None
+    end_date: float | None = None
+
+
 class UserRequest(BaseModel):
     id: int | None
     txn_id: int | None
@@ -108,6 +113,29 @@ class AccountDetailInfo(BaseModel):
     bb_100_winning: float | None
     now_datestamp: float | None
 
+
+class MemberAccountDetailInfo(BaseModel):
+    id: int
+    join_datestamp: float | None
+    last_session: float | None
+    last_entrance_in_club: float | None
+    last_game: float | None
+    timezone: str | None
+    opportunity_leave: bool | None = True
+    nickname: str | None
+    country: str | None
+    username: str | None
+    user_role: str | None
+    club_comment: str | None
+    balance: float | None
+    balance_shared: float | None
+    hands: float | None
+    winning: float | None
+    bb_100_winning: float | None
+    now_datestamp: float | None
+    rakeback_percentage: float | None = None
+    rakeback: float | None = None
+    commission: float | None = None
 
 class ChangeMembersData(BaseModel):
     user_id: int
@@ -375,7 +403,7 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
             winning = sum_all_cashout - abs(sum_all_buyin)
 
             member = ClubMemberProfile(
-                id=member.id,  # user.id,
+                id=user.id, # member.id --- если нужно использовать старый функционал кассы
                 username=user.name,
                 image_id=user.image_id,
                 user_role=member.user_role,
@@ -718,7 +746,7 @@ async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
 
 @router.post("/{club_id}/profile/{user_id}", status_code=HTTP_200_OK,
              summary="Страница с информацией о конкретном участнике клуба для админа")
-async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID):
+async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID, sorting_date: SortingByDate):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
@@ -726,10 +754,13 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID)
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         owner = await db.find_account(user_id=user.id, club_id=club_id)
         account = await db.find_account(user_id=user_id, club_id=club_id)
+        if not account:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Such a user is not a member of the club")
         if user.id != user_id and owner is None:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You dont have permission")
         if user.id != user_id and owner.user_role not in ["O", "M"]:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You dont have permission")
+
         opportunity_leave = True
         if account.user_role == "O":
             opportunity_leave = False
@@ -738,24 +769,45 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID)
 
         table_id_list = [table.id for table in await db.get_club_tables(club_id)]
 
+        # Todo сортировка по дате
+        if sorting_date.starting_date:
+            start_time = datetime.datetime.fromtimestamp(sorting_date.starting_date).strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            start_time = None
+
+        if sorting_date.end_date:
+            end_time = datetime.datetime.fromtimestamp(sorting_date.end_date).strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            end_time = None
+
         time_obj = datetime.datetime.fromisoformat(str(account.created_ts))
         unix_time = int(time.mktime(time_obj.timetuple()))
         now_datestamp = int(time.mktime(datetime.datetime.fromisoformat(str(datetime.datetime.utcnow())).timetuple()))
 
-        date_now = str(datetime.datetime.now()).split(" ")[0]
+        # date_now = str(datetime.datetime.now()).split(" ")[0]
         table_types = []
         game_types = []
         game_subtype = []
         count_of_games_played = 0
 
         for table_id in table_id_list:
-            for game in await db.statistics_of_games_played(table_id, date_now):
+            # for game in await db.statistics_of_games_played(table_id, date_now):
+            if start_time and end_time:
+                games = await db.game_statistics_for_a_certain_time(table_id, start_time, end_time)
+            else:
+                games = await db.get_game_statistics_for_table_and_user(table_id, user.id)
+                # print(games)
+            for game in games:
                 count_of_games_played += 1
                 table_types.append((await db.get_table(game.table_id)).table_type)
                 game_types.append(game.game_type)
                 game_subtype.append(game.game_subtype)
 
-        winning_row = await db.get_statistics_about_winning(account.id, date_now)
+        # winning_row = await db.get_statistics_about_winning(account.id, date_now)
+        if start_time and end_time:
+            winning_row = await db.get_statistics_about_winning(account.id, start_time, end_time)
+        else:
+            winning_row = await db.get_all_statistics_about_winning(account.id)
         sum_all_buyin = sum(
             [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']])
         sum_all_cashout = sum(
@@ -769,7 +821,11 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID)
         access_game_id = []
 
         for game_id in all_games_id:
-            game = await db.check_game_by_date(game_id, date_now)
+            # game = await db.check_game_by_date(game_id, date_now)
+            if start_time and end_time:
+                game = await db.check_game_by_date(game_id, start_time, end_time)
+            else:
+                game = await db.check_game_by_id(game_id)
             if game is not None:
                 access_games.append(game)
                 access_game_id.append(game.id)
@@ -806,13 +862,41 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID)
             bb_100 = round(bb_100_winning, 2)
         except ZeroDivisionError:
             bb_100 = 0
-        return AccountDetailInfo(
+
+        last_login_id = (await db.get_last_user_login(user_id)).id
+        last_session = await db.get_last_user_session(last_login_id)
+
+        user_profile = await db.get_user(id=user_id)
+        all_user_games_id = [game.game_id for game in (await db.get_games_player_through_user_id(user.id))]
+
+        if len(all_user_games_id) != 0:
+            last_game = max(await db.statistics_all_games_users_in_club(all_user_games_id, table_id_list),
+                            key=lambda x: x.id)
+            last_game_time = last_game.begin_ts.timestamp()
+        else:
+            last_game_time = None
+        ######################
+        if account.user_role not in ["A", "S"]:
+            balance_shared = None
+        else:
+            balance_shared = account.balance_shared
+
+        return MemberAccountDetailInfo(
+            id=user.id,
             join_datestamp=unix_time,
             now_datestamp=now_datestamp,
             timezone=club.timezone,
-            table_types=set(table_types),
-            game_types=set(game_types),
-            game_subtypes=set(game_subtype),
+            last_game=last_game_time,
+            last_session=last_session.created_ts.timestamp(),
+            # Todo изменить значение у поля las_entrance_in_club на актуальную последнюю дату входа в клуб
+            last_entrance_in_club=last_session.created_ts.timestamp(),
+            nickname=account.nickname,
+            country=user_profile.country,
+            club_comment=account.club_comment,
+            user_role=account.user_role,
+            username=user.name,
+            balance=account.balance,
+            balance_shared=balance_shared,
             opportunity_leave=opportunity_leave,
             hands=count_of_games_played,  # todo потом добавить триггеры
             winning=winning,
@@ -854,7 +938,7 @@ async def v1_detail_account(club_id: int, session_uuid: SessionUUID):
                 game_types.append(game.game_type)
                 game_subtype.append(game.game_subtype)
 
-        winning_row = await db.get_statistics_about_winning(account.id, date_now)
+        winning_row = await db.get_statistics_about_winning_for_today(account.id, date_now)
         sum_all_buyin = sum(
             [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']])
         sum_all_cashout = sum(
