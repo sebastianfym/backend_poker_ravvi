@@ -403,7 +403,7 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
             winning = sum_all_cashout - abs(sum_all_buyin)
 
             member = ClubMemberProfile(
-                id=user.id, # member.id --- если нужно использовать старый функционал кассы
+                id=user.id, #member.id,  #
                 username=user.name,
                 image_id=user.image_id,
                 user_role=member.user_role,
@@ -673,8 +673,9 @@ async def v1_club_giving_chips_to_the_user(club_id: int, request: Annotated[
     UserChipsValue, Depends(check_compatibility_recipient_and_balance_type)],
                                            users=Depends(check_rights_user_club_owner)):
     async with DBI() as db:
-        await db.giving_chips_to_the_user(request.amount, request.account_id, request.balance, users[0].id)
-
+        member = await db.find_account(user_id=request.account_id, club_id=club_id)
+        # await db.giving_chips_to_the_user(request.amount, request.account_id, request.balance, users[0].id)
+        await db.giving_chips_to_the_user(request.amount, member.id, request.balance, users[0].id)
 
 @router.post("/{club_id}/delete_chips_from_the_user", status_code=HTTP_200_OK,
              summary="Owner take away chips from the club's user")
@@ -682,13 +683,16 @@ async def v1_club_delete_chips_from_the_user(club_id: int, request: Annotated[
     UserChipsValue, Depends(check_compatibility_recipient_and_balance_type)],
                                              users=Depends(check_rights_user_club_owner)):
     async with DBI() as db:
+        member = await db.find_account(user_id=request.account_id, club_id=club_id)
         if request.balance == "balance":
-            await db.delete_chips_from_the_account_balance(request.amount, request.account_id, users[0].id)
+            # await db.delete_chips_from_the_account_balance(request.amount, request.account_id, users[0].id)
+            await db.delete_chips_from_the_account_balance(request.amount, member.id, users[0].id)
         else:
-            await db.delete_chips_from_the_agent_balance(request.amount, request.account_id, users[0].id)
+            # await db.delete_chips_from_the_agent_balance(request.amount, request.account_id, users[0].id)
+            await db.delete_chips_from_the_agent_balance(request.amount, member.id, users[0].id)
 
 
-@router.post("/{club_id}/request_chips", status_code=HTTP_200_OK, summary="The user requests chips from the club")
+@router.post("/{club_id}/request_chips", status_code=HTTP_200_OK, summary="Пользователь запрашивает фишки у клуба")
 async def v1_requesting_chips_from_the_club(club_id: int, session_uuid: SessionUUID, request: Request):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -1049,7 +1053,7 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
                 user = await db.get_user(id=member.user_id)
                 result_dict['users_requests'].append(
                     UserRequest(
-                        id=member.id,
+                        id=user.id, #member.id,
                         txn_id=txn.id,
                         username=user.name,
                         nickname=member.nickname,
@@ -1083,9 +1087,10 @@ async def v1_action_with_user_request(club_id: int, request_for_chips: ChipReque
             txn = await db.get_specific_txn(request_for_chips['id'])
             if club_balance - txn.txn_value < 0:
                 raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Club balance cannot be less than 0')
+            # member = await db.find_account(user_id=txn.account_id, club_id=club_id)
+            await db.giving_chips_to_the_user(txn.txn_value, txn.account_id, txn.props["balance"], club_owner_account.id)
+            # await db.giving_chips_to_the_user(txn.txn_value, member.id, txn.props["balance"], club_owner_account.id)
 
-            await db.giving_chips_to_the_user(txn.txn_value, txn.account_id, txn.props["balance"],
-                                              club_owner_account.id)
             await db.update_status_txn(txn.id, "approve")
             await db.refresh_club_balance(club_id, txn.txn_value, "give_out")
         elif request_for_chips["operation"] == "reject":
@@ -1153,43 +1158,47 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
         if mode == 'pick_up':
             if amount == "all":
                 for member in members_list:
+                    account = await db.find_account(user_id=member['id'], club_id=club_id)
                     if member['balance'] is None and member['balance_shared'] is None:
                         continue
                     elif member['balance'] is None and (member['balance_shared'] or member["balance_shared"] == 0):
-                        balance_shared = await db.delete_all_chips_from_the_agent_balance(member['id'],
-                                                                                          club_owner_account.id)
+                        # balance_shared = await db.delete_all_chips_from_the_agent_balance(member['id'], club_owner_account.id)
+                        balance_shared = await db.delete_all_chips_from_the_agent_balance(account.id, club_owner_account.id)
                         await db.refresh_club_balance(club_id, balance_shared.balance_shared, mode)
 
                     elif (member['balance'] or member["balance"] == 0) and member['balance_shared'] is None:
-                        balance = await db.delete_all_chips_from_the_account_balance(member['id'],
-                                                                                     club_owner_account.id)
+                        # balance = await db.delete_all_chips_from_the_account_balance(member['id'], club_owner_account.id)
+                        balance = await db.delete_all_chips_from_the_account_balance(account.id, club_owner_account.id)
                         await db.refresh_club_balance(club_id, balance.balance, mode)
+
                     elif (member['balance'] or member["balance"] == 0) and (
                             member['balance_shared'] or member["balance_shared"] == 0):
-                        balance_shared = await db.delete_all_chips_from_the_agent_balance(member['id'],
-                                                                                          club_owner_account.id)
-                        balance = await db.delete_all_chips_from_the_account_balance(member['id'],
-                                                                                     club_owner_account.id)
+                        # balance_shared = await db.delete_all_chips_from_the_agent_balance(member['id'],club_owner_account.id)
+                        # balance = await db.delete_all_chips_from_the_account_balance(member['id'],club_owner_account.id)
+                        balance_shared = await db.delete_all_chips_from_the_agent_balance(account.id,club_owner_account.id)
+                        balance = await db.delete_all_chips_from_the_account_balance(account.id,club_owner_account.id)
                         await db.refresh_club_balance(club_id, balance.balance + balance_shared.balance_shared, mode)
             else:
                 amount = round(decimal.Decimal(amount / len(members_list)), 2)
                 for member in members_list:
+                    account = await db.find_account(user_id=member['id'], club_id=club_id)
                     if member['balance'] is None and member['balance_shared'] is None:
                         continue
                     elif member['balance'] is None and (member['balance_shared'] or member["balance_shared"] == 0):
-                        balance_shared = await db.delete_chips_from_the_agent_balance(amount, member['id'],
-                                                                                      club_owner_account.id)
+                        # balance_shared = await db.delete_chips_from_the_agent_balance(amount, member['id'],club_owner_account.id)
+                        balance_shared = await db.delete_chips_from_the_agent_balance(amount, account.id, club_owner_account.id)
                         await db.refresh_club_balance(club_id, balance_shared.balance_shared, mode)
+
                     elif (member['balance'] or member["balance"] == 0) and member['balance_shared'] is None:
-                        balance = await db.delete_chips_from_the_account_balance(amount, member['id'],
-                                                                                 club_owner_account.id)
+                        # balance = await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
+                        balance = await db.delete_chips_from_the_account_balance(amount, account.id, club_owner_account.id)
                         await db.refresh_club_balance(club_id, balance.balance, mode)
-                    elif (member['balance'] or member["balance"] == 0) and (
-                            member['balance_shared'] or member["balance_shared"] == 0):
-                        balance = await db.delete_chips_from_the_account_balance(amount, member['id'],
-                                                                                 club_owner_account.id)
-                        balance_shared = await db.delete_chips_from_the_agent_balance(amount, member['id'],
-                                                                                      club_owner_account.id)
+
+                    elif (member['balance'] or member["balance"] == 0) and (member['balance_shared'] or member["balance_shared"] == 0):
+                        # balance = await db.delete_chips_from_the_account_balance(amount, member['id'],club_owner_account.id)
+                        # balance_shared = await db.delete_chips_from_the_agent_balance(amount, member['id'],club_owner_account.id)
+                        balance = await db.delete_chips_from_the_account_balance(amount, account.id, club_owner_account.id)
+                        balance_shared = await db.delete_chips_from_the_agent_balance(amount, account.id, club_owner_account.id)
                         await db.refresh_club_balance(club_id, balance.balance + balance_shared.balance_shared, mode)
             return HTTP_200_OK
 
@@ -1208,22 +1217,25 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
                     balance_shared_count += 1
 
             if (club.club_balance < amount) or (club.club_balance - amount < 0):
-                raise HTTPException(status_code=HTTP_400_BAD_REQUEST,
-                                    detail='Club balance cannot be less than request amount')
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Club balance cannot be less than request amount')
             amount = round(decimal.Decimal(amount / len(members_list)), 2)
             for member in members_list:
+                account = await db.find_account(user_id=member['id'], club_id=club_id)
                 if member['balance'] is None and member['balance_shared'] is None:
                     continue
                 elif member['balance'] is None and (member['balance_shared'] or member["balance_shared"] == 0):
-                    await db.giving_chips_to_the_user(amount, member['id'], "balance_shared", club_owner_account.id)
+                    # await db.giving_chips_to_the_user(amount, member['id'], "balance_shared", club_owner_account.id)
+                    await db.giving_chips_to_the_user(amount, account.id, "balance_shared", club_owner_account.id)
                     await db.refresh_club_balance(club_id, amount, mode)
                 elif (member['balance'] or member["balance"] == 0) and member['balance_shared'] is None:
-                    await db.giving_chips_to_the_user(amount, member['id'], "balance", club_owner_account.id)
+                    # await db.giving_chips_to_the_user(amount, member['id'], "balance", club_owner_account.id)
+                    await db.giving_chips_to_the_user(amount, account.id, "balance", club_owner_account.id)
                     await db.refresh_club_balance(club_id, amount, mode)
-                elif (member['balance'] or member["balance"] == 0) and (
-                        member['balance_shared'] or member["balance_shared"] == 0):
-                    await db.giving_chips_to_the_user(amount, member['id'], "balance", club_owner_account.id)
-                    await db.giving_chips_to_the_user(amount, member['id'], "balance_shared", club_owner_account.id)
+                elif (member['balance'] or member["balance"] == 0) and (member['balance_shared'] or member["balance_shared"] == 0):
+                    # await db.giving_chips_to_the_user(amount, member['id'], "balance", club_owner_account.id)
+                    # await db.giving_chips_to_the_user(amount, member['id'], "balance_shared", club_owner_account.id)
+                    await db.giving_chips_to_the_user(amount, account.id, "balance", club_owner_account.id)
+                    await db.giving_chips_to_the_user(amount, account.id, "balance_shared", club_owner_account.id)
                     await db.refresh_club_balance(club_id, amount * 2, mode)
             return HTTP_200_OK
 
@@ -1234,26 +1246,33 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
 @router.get("/{club_id}/club_txn_history", status_code=HTTP_200_OK, summary='Get club transaction history')
 async def v1_club_txn_history(club_id: int, request: Request, users=Depends(check_rights_user_club_owner_or_manager)):
     async with DBI() as db:
-        all_club_members_id = [member.id for member in await db.get_club_members(club_id)]
-        if len(all_club_members_id) == 0:
+        # all_club_members_id = [member.id for member in await db.get_club_members(club_id)]
+        # if len(all_club_members_id) == 0:
+        all_club_members = [member for member in await db.get_club_members(club_id)]
+        if len(all_club_members) == 0:
             return []
         result_list = []
-        for member_id in all_club_members_id:
-            all_member_txns = await db.get_all_account_txn(member_id)  # Возвращает список id транзакций
-            recipient = await db.get_club_member(member_id)
+        # for member_id in all_club_members_id:
+        for member in all_club_members:
+            # all_member_txns = await db.get_all_account_txn(member_id)  # Возвращает список id транзакций
+            # recipient = await db.get_club_member(member_id)
+            all_member_txns = await db.get_all_account_txn(member.id)  # Возвращает список id транзакций
+            recipient = await db.get_club_member(member.id)
+
             member_user_profile = await db.get_user(recipient.user_id)
+
             for txn in all_member_txns:
                 if txn.txn_type in ["CASHOUT", "BUYIN"]:
                     continue
                 try:
                     sender = await db.get_club_member(txn.sender_id)
                     sender_user_profile = await db.get_user(sender.user_id)
-
+                    member_user = await db.get_user(id=member.user_id)
                     txn_model = ClubHistoryTransaction(
                         txn_type=txn.txn_type,
                         txn_value=-txn.txn_value,
                         txn_time=txn.created_ts.timestamp(),
-                        recipient_id=member_id,
+                        recipient_id=member_user.id,
                         recipient_name=member_user_profile.name,
                         recipient_nickname=recipient.nickname,
                         recipient_country=member_user_profile.country,
