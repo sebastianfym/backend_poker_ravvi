@@ -173,7 +173,7 @@ def test_21_club_join_approve(api_client: TestClient, api_guest: UserAccessProfi
     assert response.status_code == 403
 
     response = api_client_2.get(f"/v1/clubs/{club.id}/members/")
-    assert response.status_code == 200
+    assert response.status_code == 403
 
     response = api_client.get(f"/v1/clubs/{club.id}/members/requests")
     user_id = response.json()[0]['id']
@@ -181,6 +181,9 @@ def test_21_club_join_approve(api_client: TestClient, api_guest: UserAccessProfi
 
     data = {"user_role": "A"}
     response = api_client.put(f"/v1/clubs/{club.id}/members/{int(user_id)}", json=data)
+    assert response.status_code == 200
+
+    response = api_client_2.get(f"/v1/clubs/{club.id}/members/")
     assert response.status_code == 200
 
     data = {"id": (user_id), "accept": True}
@@ -577,42 +580,42 @@ def test_get_requests_for_chips(api_client: TestClient,
     assert isinstance(response.json(), dict)
 
 
-def test_pick_up_or_give_out_chips(api_client: TestClient,
-                                   api_guest: UserAccessProfile):  # TODO эти тесты перенести в тесты, которые создают запрос на получение фишек
-    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
-
-    club = create_club(api_client)
-
-    data = {
-        "mode": "give_out",
-        "amount": 10.00,
-        "club_members": [
-            {
-                "id": 1001,
-                "username": "u1000",
-                "balance": True,
-                "balance_shared": True
-            },
-            {
-                "id": 1002,
-                "username": "u1001",
-                "balance": False,
-                "balance_shared": False
-            }
-        ]
-    }
-
-    response = api_client.post(f"/v1/clubs/{club.id}/pick_up_or_give_out_chips", json=data)
-    assert response.status_code == 200
-
-    data = {
-        "mode": "give_out",
-        "amount": 10.00,
-        "club_members": []
-    }
-
-    response = api_client.post(f"/v1/clubs/{club.id}/pick_up_or_give_out_chips", json=data)
-    assert response.status_code == 400
+# def test_pick_up_or_give_out_chips(api_client: TestClient,
+#                                    api_guest: UserAccessProfile):  # TODO эти тесты перенести в тесты, которые создают запрос на получение фишек
+#     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+#
+#     club = create_club(api_client)
+#
+#     data = {
+#         "mode": "give_out",
+#         "amount": 10.00,
+#         "club_members": [
+#             {
+#                 "id": 1001,
+#                 "username": "u1000",
+#                 "balance": True,
+#                 "balance_shared": True
+#             },
+#             {
+#                 "id": 1002,
+#                 "username": "u1001",
+#                 "balance": False,
+#                 "balance_shared": False
+#             }
+#         ]
+#     }
+#
+#     response = api_client.post(f"/v1/clubs/{club.id}/pick_up_or_give_out_chips", json=data)
+#     assert response.status_code == 200
+#
+#     data = {
+#         "mode": "give_out",
+#         "amount": 10.00,
+#         "club_members": []
+#     }
+#
+#     response = api_client.post(f"/v1/clubs/{club.id}/pick_up_or_give_out_chips", json=data)
+#     assert response.status_code == 400
 
 
 def test_owner_set_user_data(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
@@ -684,18 +687,24 @@ def test_user_account(api_client: TestClient, api_guest: UserAccessProfile):
     assert response.status_code == 200
     user_id = response.json()[0]['username'].split('u')[1]
 
-    response = api_client.post(f"/v1/clubs/{club.id}/profile/{user_id}")
+    data = {
+        "starting_date": None,
+        "end_date":  None
+    }
+    response = api_client.post(f"/v1/clubs/{club.id}/profile/{user_id}", json=data)
     assert response.status_code == 200
 
-    response = api_client.post(f"/v1/clubs/{17031788}/profile/{user_id}")
+    response = api_client.post(f"/v1/clubs/{17031788}/profile/{user_id}", json=data)
     assert response.status_code == 404
+
+    response = api_client.post(f"/v1/clubs/{17031788}/profile/{user_id}")
+    assert response.status_code == 422
 
     response = api_client.post(f"/v1/clubs/{club.id}/user_account")
     assert response.status_code == 200
 
     response = api_client.post(f"/v1/clubs/{17031788}/user_account")
     assert response.status_code == 404
-
 
 
 def test_pick_up_or_give_out_chips(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
@@ -708,8 +717,17 @@ def test_pick_up_or_give_out_chips(api_client: TestClient, api_guest: UserAccess
     request = api_client_2.post(f"/v1/clubs/{club.id}/members")
     assert request.status_code == 200
 
+    response = api_client.get(f"/v1/clubs/{club.id}/members/requests")
+    user_id = response.json()[0]['id']
+    assert response.status_code == 200
+
+    data = {"user_role": "A"}
+    response = api_client.put(f"/v1/clubs/{club.id}/members/{int(user_id)}", json=data)
+    assert response.status_code == 200
+
     request = api_client_2.get(f"/v1/clubs/{club.id}/members")
     assert request.status_code == 200
+
     second_account_id = request.json()[0].get('id')
     club.club_balance = 150000
 

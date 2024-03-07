@@ -66,7 +66,7 @@ async def test_club_member(club_and_owner, user):
 
     #log.info('create club %s member %s', club.id, user.id)
     async with DBI() as db:
-        member = await db.create_club_member(club.id, user.id, 'user comment')
+        member = await db.create_club_member(club.id, user.id, 'user comment', False)
     assert member
     assert member.id
     assert member.club_id == club.id
