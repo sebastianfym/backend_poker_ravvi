@@ -1,0 +1,1 @@
+ALTER TABLE club_profile ADD COLUMN automatic_confirmation BOOLEAN;

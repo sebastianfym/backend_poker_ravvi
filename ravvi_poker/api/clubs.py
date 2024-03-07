@@ -27,6 +27,8 @@ class ClubProps(BaseModel):
     image_id: int | None = None
     timezone: str | None = None
 
+    automatic_confirmation: bool | None = False
+
 
 class ClubProfile(BaseModel):
     id: int
@@ -44,6 +46,8 @@ class ClubProfile(BaseModel):
     service_balance: float | None = 0.00
 
     timezone: str | None = None
+
+    automatic_confirmation: bool | None = False
 
 
 class ClubMemberProfile(BaseModel):
@@ -230,7 +234,7 @@ async def v1_create_club(params: ClubProps, session_uuid: SessionUUID):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.create_club(user_id=user.id, name=params.name, description=params.description,
-                                    image_id=params.image_id, timezone=params.timezone)
+                                    image_id=params.image_id, timezone=params.timezone, )
     club_profile = ClubProfile(
         id=club.id,
         name=club.name,
@@ -294,7 +298,8 @@ async def v1_get_club(club_id: int, session_uuid: SessionUUID):
             user_balance=await db.get_user_balance_in_club(club_id=club.id, user_id=user.id),
             agents_balance=await db.get_balance_shared_in_club(club_id=club.id, user_id=user.id),
             service_balance=await db.get_service_balance_in_club(club_id=club.id, user_id=user.id),
-            timezone=club.timezone
+            timezone=club.timezone,
+            automatic_confirmation=club.automatic_confirmation
         )
 
 
@@ -320,7 +325,8 @@ async def v1_update_club(club_id: int, params: ClubProps, session_uuid: SessionU
         description=club.description,
         image_id=club.image_id,
         user_role=account.user_role,
-        user_approved=account.approved_ts is not None
+        user_approved=account.approved_ts is not None,
+        automatic_confirmation=club.automatic_confirmation
     )
 
 
@@ -332,6 +338,9 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
         result_list = []
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+        member_account = await db.find_account(user_id=user.id, club_id=club_id)
+        if member_account.approved_ts is None:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Your account has not been verified")
         members = await db.get_club_members(club_id=club.id)
         for member in members:
             if member.closed_ts is not None or member.approved_ts is None:
@@ -397,7 +406,13 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID, request: Request
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
         if not account:
-            account = await db.create_club_member(club.id, user.id, user_comment)
+
+            if club.automatic_confirmation:
+                print(club.automatic_confirmation, 'part 1 ')
+                account = await db.create_club_member(club.id, user.id, user_comment, True)
+            else:
+                print(club.automatic_confirmation, 'part 2 ')
+                account = await db.create_club_member(club.id, user.id, user_comment, False)
         elif account.closed_ts is not None and account.club_id == club_id:
             await db.refresh_member_in_club(account.id, user_comment)
 
@@ -459,7 +474,6 @@ async def v1_reject_join_request(club_id: int, user_id: int, users=Depends(check
             summary="Отображение всех заявок на вступление в клуб")
 async def v1_requests_to_join_in_club(club_id: int, users=Depends(check_rights_user_club_owner)):
     result_list = []
-
     async with DBI() as db:
         not_approved_members = await db.requests_to_join_in_club(users[2].id)
         for member in not_approved_members:
@@ -531,9 +545,10 @@ async def v1_get_club_tables(club_id: int, session_uuid: SessionUUID):
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
-        # TODO исключенному игроку показываем столы?
         if not account:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
+        if account.approved_ts is None:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Your account has not been verified")
         tables = await db.get_club_tables(club_id=club_id)
     result = []
     for row in tables:

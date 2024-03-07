@@ -363,10 +363,10 @@ class DBI:
     # CLUB
 
     async def create_club(self, *, user_id, name=None, description=None, image_id=None, timezone=None):
-        club_sql = "INSERT INTO club_profile (name, description, image_id, timezone) VALUES (%s,%s,%s,%s) RETURNING *"
+        club_sql = "INSERT INTO club_profile (name, description, image_id, timezone, automatic_confirmation) VALUES (%s,%s,%s,%s,%s) RETURNING *"
         member_sql = "INSERT INTO user_account (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,%s,now_utc(),0)"
         async with self.cursor() as cursor:
-            await cursor.execute(club_sql, (name, description, image_id, timezone))
+            await cursor.execute(club_sql, (name, description, image_id, timezone, False))
             club = await cursor.fetchone()
             await cursor.execute(member_sql, (club.id, user_id, "O"))
         return club
@@ -400,12 +400,17 @@ class DBI:
         return row
     # USER ACCOUNT
 
-    async def create_club_member(self, club_id, user_id, user_comment):
-        sql = "INSERT INTO user_account (club_id, user_id, user_comment) VALUES (%s,%s,%s) RETURNING *"
-        #         sql = "INSERT INTO user_account (club_id, user_id, user_comment, approved_ts) VALUES (%s,%s,%s,%s) RETURNING *"
+    async def create_club_member(self, club_id, user_id, user_comment, automatic_confirmation):
+        # sql = "INSERT INTO user_account (club_id, user_id, user_comment) VALUES (%s,%s,%s) RETURNING *"
+        sql = "INSERT INTO user_account (club_id, user_id, user_comment, approved_ts) VALUES (%s,%s,%s,%s) RETURNING *"
+        if automatic_confirmation:
+            approved_ts = datetime.datetime.now()#.strftime("%Y-%m-%d %H:%M:%S.%f")
+        else:
+            approved_ts = None
+
         async with self.cursor() as cursor:
             # await cursor.execute(sql, (club_id, user_id, user_comment, datetime.datetime.now()))
-            await cursor.execute(sql, (club_id, user_id, user_comment))
+            await cursor.execute(sql, (club_id, user_id, user_comment, approved_ts))
             row = await cursor.fetchone()
         return row
 
