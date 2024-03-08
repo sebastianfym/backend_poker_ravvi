@@ -5,12 +5,11 @@ import os
 import json
 import base64
 import psycopg
-import psycopg_pool
 from psycopg.rows import namedtuple_row, dict_row
 from psycopg.connection import Notify
+from .pool import DBIPool
 
 logger = logging.getLogger(__name__)
-
 
 class DBI:
     DB_HOST = os.getenv("RAVVI_POKER_DB_HOST", "localhost")
@@ -18,13 +17,13 @@ class DBI:
     DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "develop")
     DB_USER = os.getenv("RAVVI_POKER_DB_USER", "postgres")
     DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
+    POOL_LIMIT = int(os.getenv("RAVVI_POKER_DB_POOL_LIMIT", "10"))
     APPLICATION_NAME = 'CPS'
     CONNECT_TIMEOUT = 15
 
     pool = None
 
     OperationalError = psycopg.OperationalError
-    PoolTimeout = psycopg_pool.PoolTimeout
     ForeignKeyViolation = psycopg.errors.ForeignKeyViolation
 
     @classmethod
@@ -42,12 +41,13 @@ class DBI:
 
     @classmethod
     async def pool_open(cls):
-        cls.pool = psycopg_pool.AsyncConnectionPool(conninfo=cls.conninfo(), open=False)
-        await cls.pool.open()
+        cls.pool = DBIPool(conninfo=cls.conninfo(), limit=cls.POOL_LIMIT)
         logger.debug("pool: ready")
 
     @classmethod
     async def pool_close(cls):
+        if not cls.pool:
+            return
         await cls.pool.close()
         cls.pool = None
         logger.debug("pool: closed")
@@ -59,13 +59,13 @@ class DBI:
 
     async def connect(self):
         if self.dbi_pool:
-            self.dbi = await self.dbi_pool.getconn(timeout=self.CONNECT_TIMEOUT)
+            self.dbi = await self.dbi_pool.getconn()
         else:
             self.dbi = await psycopg.AsyncConnection.connect(self.conninfo())
 
-    async def close(self):
+    async def close(self, exc_type=None):
         if self.dbi_pool:
-            await self.dbi_pool.putconn(self.dbi)
+            await self.dbi_pool.putconn(self.dbi, exc_type)
         else:
             await self.dbi.close()
         self.dbi = None
@@ -99,7 +99,6 @@ class DBI:
             await self.commit()
         else:
             await self.rollback()
-            self.dbi_pool = None
         await self.close()
 
     def use_id_or_uuid(self, id, uuid):
