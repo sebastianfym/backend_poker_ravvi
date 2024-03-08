@@ -38,11 +38,11 @@ class X_CaseMixIn:
     def __init__(self, table, _users, _deck, _moves, **kwargs) -> None:
         super().__init__(table, x_users(_users), **kwargs)
         self.game_id = 1
-        print(_deck)
         self._deck = [Card(x).code for x in _deck]
         self._check_steps = list(enumerate(_moves, 1))
 
     def setup_boards(self):
+        print(123123)
         super().setup_boards()
         self.deck = X_Deck(self._deck)
 
@@ -103,21 +103,34 @@ class X_CaseMixIn:
                 ev = Bet.decode(ev)
                 rv = Bet.decode(rv)
             elif k == 'hands':
+                print("********************************************")
+                print(ev)
+                print(rv)
                 if len(ev) == 1:
+                    # REGULAR games
                     ev[0]["hand_cards"] = [Card(x).code for x in ev[0]["hand_cards"]]
                     ev[0]["hand_type"] = HandType.decode(ev[0]["hand_type"])
                     rv[0]["hand_type"] = HandType.decode(rv[0]["hand_type"])
-                elif isinstance(ev, list):
-                    if self.is_low_hand(ev[1]):
-                        ev_decode, rv_decode = [], []
-                        ev_decode.append(HandType.decode(ev[0]))
-                        rv_decode.append(HandType.decode(rv[0]))
-                        ev_decode.append(LowHandType.decode(ev[1]))
-                        rv_decode.append(LowHandType.decode(rv[1]))
-                        ev, rv = ev_decode, rv_decode
-                    else:
-                        ev = [HandType.decode(ev_item) for ev_item in ev]
-                        rv = [HandType.decode(rv_item) for rv_item in rv]
+                else:
+                    print("_______________________________")
+                    print(ev)
+                    print(rv)
+                    for i in range(len(ev)):
+                        ev[i]["hand_cards"] = [Card(x).code for x in ev[i]["hand_cards"]]
+                        ev[i]["hand_type"] = HandType.decode(ev[i]["hand_type"])
+                        rv[i]["hand_type"] = HandType.decode(rv[i]["hand_type"])
+
+                # elif isinstance(ev, list):
+                #     if self.is_low_hand(ev[1]):
+                #         ev_decode, rv_decode = [], []
+                #         ev_decode.append(HandType.decode(ev[0]))
+                #         rv_decode.append(HandType.decode(rv[0]))
+                #         ev_decode.append(LowHandType.decode(ev[1]))
+                #         rv_decode.append(LowHandType.decode(rv[1]))
+                #         ev, rv = ev_decode, rv_decode
+                #     else:
+                #         ev = [HandType.decode(ev_item) for ev_item in ev]
+                #         rv = [HandType.decode(rv_item) for rv_item in rv]
             assert ev == rv, f"{step_msg} - {k}: {ev} / {rv}"
 
         if task:

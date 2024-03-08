@@ -5,7 +5,7 @@ from itertools import groupby, combinations
 from typing import List, Tuple
 
 from .bet import Bet
-from .board import Board
+from .board import Board, BoardType
 from .hands import Hand, HandType, LowHand, LowHandType
 from .multibank import get_banks
 from .player import User, Player, PlayerRole
@@ -569,16 +569,19 @@ class PokerBase(Game):
 
         self.players_to_role(PlayerRole.DEALER)
         self.players_rotate()
-        print([card for card in self.deck.cards])
         for _ in range(self.PLAYER_CARDS_FREFLOP):
             for p in self.players:
                 p.cards.append(self.deck.get_next())
-                print(p.cards)
         self.deck.get_next()
 
         async with self.DBI() as db:
             for p in self.players:
+                print(self.boards)
                 p.hands = [self.get_best_hand(p.cards, board) for board in self.boards]
+                print("!!!!!!!!!!!!!")
+                print(p.hands)
+                for hand in p.hands:
+                    print(hand)
                 await self.broadcast_PLAYER_CARDS(db, p)
 
             self.bet_level = 0
@@ -768,7 +771,6 @@ class PokerBase(Game):
                 w_amount += bank_amount
             winners[p.user_id] = w_amount
         else:
-            # TODO временно для одной руки
             rankKey = lambda x: x.hands[0].rank
             for amount, bank_players in self.banks:
                 bank_players.sort(key=rankKey)
@@ -781,11 +783,9 @@ class PokerBase(Game):
                     amount = winners.get(p.user_id, 0)
                     winners[p.user_id] = amount + w_amount
 
-        # TODO переписать под несколько бордов
         rewards_winners = []
         rewards.append({"type": "board1", "winners": rewards_winners})
         for p in self.players:
-            print(balances)
             balance = {
                 "user_id": p.user_id,
                 "balance": p.user.balance,
@@ -798,7 +798,6 @@ class PokerBase(Game):
             p.user.balance += amount
             rewards_winners.append(
                 {
-                    # TODO переписать под несколько бордов
                     "user_id": p.user_id,
                     "amount": amount
                 }
@@ -806,7 +805,9 @@ class PokerBase(Game):
             balance["balance"] = p.user.balance
             balance["delta"] = round(p.balance - p.balance_0, 2)
             balances.append(balance)
+        # TODO это можно перенести в модуль тестов
         balances.sort(key=lambda x: x["user_id"])
+        [rewards_list["winners"].sort(key=lambda x: x["user_id"]) for rewards_list in rewards]
 
         # winners_info = []
         # for p in players:

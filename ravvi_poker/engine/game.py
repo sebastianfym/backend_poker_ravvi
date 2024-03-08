@@ -25,7 +25,7 @@ class Game:
         self.players = [self.player_factory(u) for u in users]
         self.dealer_id = None
         self.deck = None
-        self.boards_types: list[BoardType] = [BoardType.BOARD1]
+        self.boards_types: list[BoardType] | None = None
         self.boards: list[Board] | None = None
 
     def player_factory(self, user) -> Player:
@@ -62,11 +62,15 @@ class Game:
     def setup_boards(self):
         # deck
         self.deck = Deck(self.GAME_DECK)
+        self.get_boards()
         self.boards = [Board(board_type) for board_type in self.boards_types]
         # players
         for p in self.players:
             p.cards = []
             p.cards_open = False
+
+    def get_boards(self):
+        self.boards_types = [BoardType.BOARD1]
 
     # PLAYERS
 
