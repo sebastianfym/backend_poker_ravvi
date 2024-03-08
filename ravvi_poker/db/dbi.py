@@ -362,10 +362,10 @@ class DBI:
     # CLUB
 
     async def create_club(self, *, user_id, name=None, description=None, image_id=None, timezone=None):
-        club_sql = "INSERT INTO club_profile (name, description, image_id, timezone) VALUES (%s,%s,%s,%s) RETURNING *"
+        club_sql = "INSERT INTO club_profile (name, description, image_id, timezone, automatic_confirmation) VALUES (%s,%s,%s,%s,%s) RETURNING *"
         member_sql = "INSERT INTO user_account (club_id, user_id, user_role, approved_ts, approved_by) VALUES (%s,%s,%s,now_utc(),0)"
         async with self.cursor() as cursor:
-            await cursor.execute(club_sql, (name, description, image_id, timezone))
+            await cursor.execute(club_sql, (name, description, image_id, timezone, False))
             club = await cursor.fetchone()
             await cursor.execute(member_sql, (club.id, user_id, "O"))
         return club
@@ -399,12 +399,17 @@ class DBI:
         return row
     # USER ACCOUNT
 
-    async def create_club_member(self, club_id, user_id, user_comment):
-        sql = "INSERT INTO user_account (club_id, user_id, user_comment) VALUES (%s,%s,%s) RETURNING *"
-        #         sql = "INSERT INTO user_account (club_id, user_id, user_comment, approved_ts) VALUES (%s,%s,%s,%s) RETURNING *"
+    async def create_club_member(self, club_id, user_id, user_comment, automatic_confirmation):
+        # sql = "INSERT INTO user_account (club_id, user_id, user_comment) VALUES (%s,%s,%s) RETURNING *"
+        sql = "INSERT INTO user_account (club_id, user_id, user_comment, approved_ts) VALUES (%s,%s,%s,%s) RETURNING *"
+        if automatic_confirmation:
+            approved_ts = datetime.datetime.now()#.strftime("%Y-%m-%d %H:%M:%S.%f")
+        else:
+            approved_ts = None
+
         async with self.cursor() as cursor:
             # await cursor.execute(sql, (club_id, user_id, user_comment, datetime.datetime.now()))
-            await cursor.execute(sql, (club_id, user_id, user_comment))
+            await cursor.execute(sql, (club_id, user_id, user_comment, approved_ts))
             row = await cursor.fetchone()
         return row
 
@@ -944,7 +949,7 @@ class DBI:
         return row
         # ACCOUNT STATISTICS
 
-    async def statistics_of_games_played(self, table_id, date):
+    async def statistics_of_games_played(self, table_id, date): #Todo проверить и удалить
         date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
         tomorrow = date_now + datetime.timedelta(days=1)
         sql = "SELECT * FROM public.game_profile WHERE table_id = %s AND end_ts >= %s AND end_ts < %s"
@@ -953,6 +958,23 @@ class DBI:
             row = await cursor.fetchall()
         return row
 
+    async def game_statistics_for_a_certain_time(self, table_id, date_start, date_end):
+        sql = "SELECT * FROM public.game_profile WHERE table_id = %s AND begin_ts >= %s AND end_ts < %s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (table_id, date_start, date_end,))
+            row = await cursor.fetchall()
+        return row
+
+    async def get_game_statistics_for_table_and_user(self, table_id, user_id):
+        sql = "SELECT gp.id AS game_id, gp.begin_ts, gp.table_id, gp.game_type, gp.game_subtype, gp.end_ts " \
+              "FROM public.game_profile gp " \
+              "JOIN public.game_player gpl ON gp.id = gpl.game_id " \
+              "WHERE gp.table_id = %s AND gpl.user_id = %s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (table_id, user_id))
+            rows = await cursor.fetchall()
+        return rows
+
     async def statistics_all_games_users_in_club(self, game_list, table_list):
         sql = f"SELECT * FROM game_profile WHERE id IN ({','.join(map(str, game_list))}) AND table_id IN ({','.join(map(str, table_list))});"
         async with self.cursor() as cursor:
@@ -960,12 +982,26 @@ class DBI:
             row = await cursor.fetchall()
         return row
 
-    async def get_statistics_about_winning(self, account_id, date):
+    async def get_statistics_about_winning_for_today(self, account_id, date): #Todo проверить и удалить
         sql = "SELECT * FROM user_account_txn WHERE account_id=%s AND created_ts >= %s AND created_ts < %s"
         date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
         tomorrow = date_now + datetime.timedelta(days=1)
         async with self.cursor() as cursor:
             await cursor.execute(sql, (account_id, date_now, tomorrow))
+            row = await cursor.fetchall()
+        return row
+
+    async def get_statistics_about_winning(self, account_id, date_start, date_end):
+        sql = "SELECT * FROM user_account_txn WHERE account_id=%s AND created_ts >= %s AND created_ts < %s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (account_id, date_start, date_end))
+            row = await cursor.fetchall()
+        return row
+
+    async def get_all_statistics_about_winning(self, account_id):
+        sql = "SELECT * FROM user_account_txn WHERE account_id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (account_id,))
             row = await cursor.fetchall()
         return row
 
@@ -976,11 +1012,26 @@ class DBI:
             row = await cursor.fetchall()
         return row
 
-    async def check_game_by_date(self, game_id, date):
-        date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
-        sql = "SELECT * FROM game_profile WHERE id=%s AND CAST(end_ts AS DATE) = %s"
+    # async def check_game_by_date(self, game_id, date): #Todo проверить и удалить
+    #     date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+    #     sql = "SELECT * FROM game_profile WHERE id=%s AND CAST(end_ts AS DATE) = %s"
+    #     async with self.cursor() as cursor:
+    #         await cursor.execute(sql, (game_id, date_now))
+    #         row = await cursor.fetchone()
+    #     return row
+
+    async def check_game_by_date(self, game_id, date_start, date_end):
+        # date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+        sql = "SELECT * FROM game_profile WHERE id=%s AND CAST(begin_ts AS DATE) >= %s AND CAST(end_ts AS DATE) <= %s"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (game_id, date_now))
+            await cursor.execute(sql, (game_id, date_start, date_end))
+            row = await cursor.fetchone()
+        return row
+
+    async def check_game_by_id(self, game_id):
+        sql = "SELECT * FROM game_profile WHERE id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (game_id,))
             row = await cursor.fetchone()
         return row
 
