@@ -63,7 +63,7 @@ class DBI:
         else:
             self.dbi = await psycopg.AsyncConnection.connect(self.conninfo())
 
-    async def close(self, exc_type=None):
+    async def close(self, *, exc_type=None):
         if self.dbi_pool:
             await self.dbi_pool.putconn(self.dbi, exc_type)
         else:
@@ -99,7 +99,7 @@ class DBI:
             await self.commit()
         else:
             await self.rollback()
-        await self.close()
+        await self.close(exc_type=exc_type)
 
     def use_id_or_uuid(self, id, uuid):
         if id is not None:
