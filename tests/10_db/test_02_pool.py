@@ -34,6 +34,7 @@ async def test_dbi_stress_with_pool(dbi_pool):
     values = range(1000)
     requests = [run_db_query(x) for x in values]
     results = await asyncio.gather(*requests, return_exceptions=True)
-
+    # check result
     for x, y in zip(values,results):
         assert x == y
+    # all requests should be executed w/o errors
