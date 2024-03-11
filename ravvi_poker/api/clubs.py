@@ -749,7 +749,7 @@ async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
         return HTTP_200_OK
 
 
-@router.post("/{club_id}/profile/{user_id}", status_code=HTTP_200_OK,
+@router.post("/{club_id}/profile/{user_id}", status_code=HTTP_200_OK,  # todo тут не тот юзер
              summary="Страница с информацией о конкретном участнике клуба для админа")
 async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID, sorting_date: SortingByDate):
     async with DBI() as db:
@@ -759,6 +759,7 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         owner = await db.find_account(user_id=user.id, club_id=club_id)
         account = await db.find_account(user_id=user_id, club_id=club_id)
+
         if not account:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Such a user is not a member of the club")
         if user.id != user_id and owner is None:
@@ -766,6 +767,8 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
         if user.id != user_id and owner.user_role not in ["O", "M"]:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You dont have permission")
 
+        player_user = await db.get_user(id=user_id)
+        print('player_user: ', player_user)
         opportunity_leave = True
         if account.user_role == "O":
             opportunity_leave = False
@@ -800,7 +803,7 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
             if start_time and end_time:
                 games = await db.game_statistics_for_a_certain_time(table_id, start_time, end_time)
             else:
-                games = await db.get_game_statistics_for_table_and_user(table_id, user.id)
+                games = await db.get_game_statistics_for_table_and_user(table_id, player_user.id)
                 # print(games)
             for game in games:
                 count_of_games_played += 1
@@ -821,7 +824,7 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
 
         bb_100_winning = 0
 
-        all_games_id = [id.game_id for id in await db.all_players_games(user.id)]  # user.id
+        all_games_id = [id.game_id for id in await db.all_players_games(player_user.id)]  # user.id
         access_games = []
         access_game_id = []
 
@@ -837,7 +840,7 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
 
         game_props_list = []
         for game_id in access_game_id:
-            balance_data = await db.get_balance_begin_and_end_from_game(game_id, user.id)  #
+            balance_data = await db.get_balance_begin_and_end_from_game(game_id, player_user.id)  #
             game_data = await db.get_game_and_players(game_id)
             if balance_data.balance_end:
                 balance_end = balance_data.balance_end
@@ -872,7 +875,7 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
         last_session = await db.get_last_user_session(last_login_id)
 
         user_profile = await db.get_user(id=user_id)
-        all_user_games_id = [game.game_id for game in (await db.get_games_player_through_user_id(user.id))]
+        all_user_games_id = [game.game_id for game in (await db.get_games_player_through_user_id(player_user.id))]
 
         if len(all_user_games_id) != 0:
             last_game = max(await db.statistics_all_games_users_in_club(all_user_games_id, table_id_list),
@@ -887,7 +890,7 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
             balance_shared = account.balance_shared
 
         return MemberAccountDetailInfo(
-            id=user.id,
+            id=player_user.id,
             join_datestamp=unix_time,
             now_datestamp=now_datestamp,
             timezone=club.timezone,
