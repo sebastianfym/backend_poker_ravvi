@@ -576,12 +576,7 @@ class PokerBase(Game):
 
         async with self.DBI() as db:
             for p in self.players:
-                print(self.boards)
                 p.hands = [self.get_best_hand(p.cards, board) for board in self.boards]
-                print("!!!!!!!!!!!!!")
-                print(p.hands)
-                for hand in p.hands:
-                    print(hand)
                 await self.broadcast_PLAYER_CARDS(db, p)
 
             self.bet_level = 0
@@ -714,14 +709,14 @@ class PokerBase(Game):
         self.log.info("SHOWDOWN end")
 
     async def run_SEVEN_DEUCE(self, winners_info):
-        bank_seven_deuce, winners_seven_deuce_info = await self.table.seven_deuce.handle_winners(winners_info,
-                                                                                                 self.players)
+        bank_seven_deuce, rewards, balances = await self.table.seven_deuce.handle_winners(winners_info,
+                                                                                          self.players)
         if bank_seven_deuce:
             async with self.DBI(log=self.log) as db:
                 await self.broadcast_GAME_ROUND_END(db, [bank_seven_deuce], bank_seven_deuce)
                 # модификатор не должен перехватить управление (к примеру double board рассчитан список списков,
                 # а у нас список словарей
-                await super().broadcast_GAME_RESULT(db, winners_seven_deuce_info)
+                await super().broadcast_GAME_RESULT(db, rewards, balances)
 
     def append_cards(self, cards_num):
         for board in self.boards:
@@ -769,7 +764,8 @@ class PokerBase(Game):
             w_amount = 0
             for bank_amount, _ in self.banks:
                 w_amount += bank_amount
-            winners[p.user_id] = w_amount
+                # TODO округление
+            winners[p.user_id] = round(w_amount, 2)
         else:
             rankKey = lambda x: x.hands[0].rank
             for amount, bank_players in self.banks:
@@ -781,7 +777,8 @@ class PokerBase(Game):
                 w_amount = round(amount / len(bank_winners), 2)
                 for p in bank_winners:
                     amount = winners.get(p.user_id, 0)
-                    winners[p.user_id] = amount + w_amount
+                    # TODO округление
+                    winners[p.user_id] = round(amount + w_amount, 2)
 
         rewards_winners = []
         rewards.append({"type": "board1", "winners": rewards_winners})
@@ -802,7 +799,8 @@ class PokerBase(Game):
                     "amount": amount
                 }
             )
-            balance["balance"] = p.user.balance
+            # TODO округление
+            balance["balance"] = round(p.user.balance, 2)
             balance["delta"] = round(p.balance - p.balance_0, 2)
             balances.append(balance)
         # TODO это можно перенести в модуль тестов

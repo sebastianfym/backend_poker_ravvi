@@ -65,7 +65,7 @@ class BombPotMixin:
                 await self.broadcast_PLAYER_BET(db, p)
 
             for p in self.players:
-                p.hand = self.get_best_hand(p.cards, self.cards)
+                p.hands = [self.get_best_hand(p.cards, board) for board in self.boards]
                 await self.broadcast_PLAYER_CARDS(db, p)
 
         self.update_status()

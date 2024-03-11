@@ -955,9 +955,9 @@ class DBI:
         return row
 
     async def statistics_all_games_users_in_club(self, game_list, table_list):
-        sql = f"SELECT * FROM game_profile WHERE id IN ({','.join(map(str, game_list))}) AND table_id IN ({','.join(map(str, table_list))});"
         async with self.cursor() as cursor:
-            await cursor.execute(sql)
+            await cursor.execute("SELECT * FROM game_profile WHERE id = ANY(%s) AND table_id = ANY(%s)",
+                                 (game_list, table_list))
             row = await cursor.fetchall()
         return row
 
