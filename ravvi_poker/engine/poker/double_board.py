@@ -36,6 +36,7 @@ class MixinMeta(type):
 
 
 class DoubleBoardMixin:
+    SLEEP_GAME_END = 8
     # TODO понадобится для переписывания на статическое наследование
     # def __init__(self, *args, **kwargs):
     #     super().__init__(*args, **kwargs)
