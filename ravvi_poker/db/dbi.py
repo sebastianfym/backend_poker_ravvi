@@ -976,10 +976,17 @@ class DBI:
             rows = await cursor.fetchall()
         return rows
 
-    async def statistics_all_games_users_in_club(self, game_list, table_list):
-        sql = f"SELECT * FROM game_profile WHERE id IN ({','.join(map(str, game_list))}) AND table_id IN ({','.join(map(str, table_list))});"
+    async def statistics_all_games_users_in_club(self, user_id, club_id):
+        sql = """
+            SELECT game_profile.id
+            FROM game_profile
+            INNER JOIN game_player ON game_profile.id = game_player.game_id
+            INNER JOIN table_profile ON game_profile.table_id = table_profile.id
+            WHERE game_player.user_id = %s
+            AND table_profile.club_id = %s;
+        """
         async with self.cursor() as cursor:
-            await cursor.execute(sql)
+            await cursor.execute(sql, (user_id, club_id,))
             row = await cursor.fetchall()
         return row
 
