@@ -137,8 +137,9 @@ class MemberAccountDetailInfo(BaseModel):
     rakeback: float | None = None
     commission: float | None = None
 
+
 class ChangeMembersData(BaseModel):
-    user_id: int
+    id: int
     nickname: str | None = None
     club_comment: str | None = None
     user_role: str | None = None
@@ -1294,16 +1295,16 @@ async def v1_club_txn_history(club_id: int, request: Request, users=Depends(chec
 
 @router.patch("/{club_id}/set_user_data", status_code=HTTP_200_OK, summary="Set a user nickname and comment")
 async def v1_set_user_data(club_id: int, params: ChangeMembersData, users=Depends(check_rights_user_club_owner_or_manager)):
-    user_id = params.user_id
+    user_id = params.id
     nickname = params.nickname
     club_comment = params.club_comment
     user_role = params.user_role
 
     async with DBI() as db:
-        account = await db.find_account(user_id=params.user_id, club_id=club_id)
+        account = await db.find_account(user_id=params.id, club_id=club_id)
         if user_id is None:
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail='User id is not specified')
-        if club_comment is None and nickname is None:
+        if club_comment is None and nickname is None and user_role is None:
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail='You not specified any params')
         if account is None:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail='No such account was found')
