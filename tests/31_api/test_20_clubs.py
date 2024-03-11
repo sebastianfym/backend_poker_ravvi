@@ -627,15 +627,25 @@ def test_owner_set_user_data(api_client: TestClient, api_guest: UserAccessProfil
 
     request = api_client_2.post(f"/v1/clubs/{club.id}/members")
     assert request.status_code == 200
+
+    request = api_client.get(f"/v1/clubs/{club.id}/members/requests")
+    assert request.status_code == 200
+
+    data = {
+        "rakeback": None,
+        "agent_id": None,
+        "nickname": "nickname",
+        "comment": "CommenTMyS",
+        "user_role": "P"
+    }
+    request = api_client.put(f"/v1/clubs/{club.id}/members/{int(request.json()[0].get('username').split('u')[1])}", json=data)
+    assert request.status_code == 200
+
     request = api_client.get(f"/v1/clubs/{club.id}/members")
     assert request.status_code == 200
-    # data = {
-    #     "account_id": request.json()[0].get("id"),
-    #     "nickname": "nickname",
-    #     "club_comment": "club_comment"
-    # }
+
     data = {
-        "user_id": int(request.json()[0].get('username').split('u')[1]),
+        "id": int(request.json()[1].get('username').split('u')[1]),
         "nickname": "NickName",
         "club_comment": "...",
         "user_role": "P"
@@ -651,7 +661,7 @@ def test_owner_set_user_data(api_client: TestClient, api_guest: UserAccessProfil
         "club_comment": "club_comment"
     }
     request = api_client.patch(f"/v1/clubs/{club.id}/set_user_data", json=data)
-    assert request.status_code == 403
+    assert request.status_code == 422
 
 
 
