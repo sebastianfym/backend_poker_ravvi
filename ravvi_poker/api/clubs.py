@@ -383,17 +383,24 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
             last_login_id = (await db.get_last_user_login(member.user_id)).id
             last_session = await db.get_last_user_session(last_login_id)
 
-            table_id_list = [table.id for table in await db.get_club_tables(club_id)]
+            # table_id_list = [table.id for table in await db.get_club_tables(club_id)]
+            # all_user_games_id = [game.game_id for game in (await db.get_games_player_through_user_id(user.id))]
+            # if len(all_user_games_id) != 0 and len(table_id_list) != 0:
+            #     statistics_of_all_player_games_in_the_club = await db.statistics_all_games_users_in_club(user.id, club_id)
+            #     hands = len(statistics_of_all_player_games_in_the_club)
+            #     last_game = await db.get_game_and_players(statistics_of_all_player_games_in_the_club[-1].id)
+            #     last_game_time=last_game[0].begin_ts.timestamp()
+            # else:
+            #     hands = 0
+            #     last_game_time = 0
 
-            all_user_games_id = [game.game_id for game in (await db.get_games_player_through_user_id(user.id))]
-
-            if len(all_user_games_id) != 0:
-                hands = len(await db.statistics_all_games_users_in_club(all_user_games_id, table_id_list))
-                last_game = max(await db.statistics_all_games_users_in_club(all_user_games_id, table_id_list), key=lambda x: x.id)
-                last_game_time=last_game.begin_ts.timestamp()
-            else:
-                hands = 0
-                last_game_time = 0
+            statistics_of_all_player_games_in_the_club = await db.statistics_all_games_users_in_club(user.id, club_id)
+            hands = len(statistics_of_all_player_games_in_the_club)
+            try:
+                last_game = await db.get_game_and_players(statistics_of_all_player_games_in_the_club[-1].id)
+                last_game_time = last_game[0].begin_ts.timestamp()
+            except IndexError:
+                last_game_time = None
 
             winning_row = await db.get_all_account_txns(member.id)
 
@@ -768,7 +775,6 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You dont have permission")
 
         player_user = await db.get_user(id=user_id)
-        print('player_user: ', player_user)
         opportunity_leave = True
         if account.user_role == "O":
             opportunity_leave = False
@@ -806,7 +812,7 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
                 games = await db.get_game_statistics_for_table_and_user(table_id, player_user.id)
                 # print(games)
             for game in games:
-                count_of_games_played += 1
+                # count_of_games_played += 1
                 table_types.append((await db.get_table(game.table_id)).table_type)
                 game_types.append(game.game_type)
                 game_subtype.append(game.game_subtype)
@@ -815,6 +821,7 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
         if start_time and end_time:
             winning_row = await db.get_statistics_about_winning(account.id, start_time, end_time)
         else:
+            print(account)
             winning_row = await db.get_all_statistics_about_winning(account.id)
         sum_all_buyin = sum(
             [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']])
@@ -847,6 +854,7 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
             game_props_list.append({'game_id': game_id, 'balance_begin': balance_data.balance_begin,
                                     'balance_end': balance_end,
                                     'big_blind': game_data[0].props['blind_big']})
+
         blind_big_dict = {}
         for item in game_props_list:
             big_blind = item['big_blind']
@@ -875,15 +883,23 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
         last_session = await db.get_last_user_session(last_login_id)
 
         user_profile = await db.get_user(id=user_id)
-        all_user_games_id = [game.game_id for game in (await db.get_games_player_through_user_id(player_user.id))]
+        # all_user_games_id = [game.game_id for game in (await db.get_games_player_through_user_id(player_user.id))]
 
-        if len(all_user_games_id) != 0:
-            last_game = max(await db.statistics_all_games_users_in_club(all_user_games_id, table_id_list),
-                            key=lambda x: x.id)
-            last_game_time = last_game.begin_ts.timestamp()
-        else:
+        # if len(all_user_games_id) != 0 and len(table_id_list) != 0:
+        #     last_game = max(await db.statistics_all_games_users_in_club(all_user_games_id, table_id_list),
+        #                     key=lambda x: x.id)
+        #     last_game_time = last_game.begin_ts.timestamp()
+        # else:
+        #     last_game_time = None
+
+        statistics_of_all_player_games_in_the_club = await db.statistics_all_games_users_in_club(user.id, club_id)
+        hands = len(statistics_of_all_player_games_in_the_club)
+        try:
+            last_game = await db.get_game_and_players(statistics_of_all_player_games_in_the_club[-1].id)
+            last_game_time = last_game[0].begin_ts.timestamp()
+        except IndexError:
             last_game_time = None
-        ######################
+
         if account.user_role not in ["A", "S"]:
             balance_shared = None
         else:
@@ -906,7 +922,8 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
             balance=account.balance,
             balance_shared=balance_shared,
             opportunity_leave=opportunity_leave,
-            hands=count_of_games_played,  # todo потом добавить триггеры
+            # hands=count_of_games_played,  # todo потом добавить триггеры
+            hands=hands,
             winning=winning,
             bb_100_winning=bb_100
         )
