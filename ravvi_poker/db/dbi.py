@@ -486,6 +486,12 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def update_member_agent(self, account_id, agent_id):
+        sql = "UPDATE user_account SET agent_id=%s WHERE id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (agent_id, account_id))
+        return
+
     async def requests_to_join_in_club(self, club_id):
         sql = "SELECT * FROM user_account WHERE club_id=%s AND approved_ts IS NULL AND approved_by IS NULL AND closed_ts IS NULL AND closed_by IS NULL"
         async with self.cursor() as cursor:

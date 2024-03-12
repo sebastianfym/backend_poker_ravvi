@@ -72,6 +72,7 @@ class ClubMemberProfile(BaseModel):
     hands: float | None = 00.00
     user_comment: str | None = None
 
+    agent_id: int | None = None
 
 class SortingByDate(BaseModel):
     starting_date: float | None = None
@@ -149,6 +150,11 @@ class ChangeMembersData(BaseModel):
         if value not in ['O', 'M', 'A', 'P', 'S']:
             raise ValueError('Operation must be either "approve" or "reject"')
         return value
+
+
+class ChangeMembersAgent(BaseModel):
+    # id: int
+    agent_id: int | None = None
 
 
 class ClubChipsValue(BaseModel):
@@ -749,7 +755,7 @@ async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
         return HTTP_200_OK
 
 
-@router.post("/{club_id}/profile/{user_id}", status_code=HTTP_200_OK,  # todo тут не тот юзер
+@router.post("/{club_id}/profile/{user_id}", status_code=HTTP_200_OK,
              summary="Страница с информацией о конкретном участнике клуба для админа")
 async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID, sorting_date: SortingByDate):
     async with DBI() as db:
@@ -1295,7 +1301,6 @@ async def v1_club_txn_history(club_id: int, request: Request, users=Depends(chec
     return result_list
 
 
-
 @router.patch("/{club_id}/set_user_data", status_code=HTTP_200_OK, summary="Set a user nickname and comment")
 async def v1_set_user_data(club_id: int, params: ChangeMembersData, users=Depends(check_rights_user_club_owner_or_manager)):
     user_id = params.id
@@ -1313,6 +1318,49 @@ async def v1_set_user_data(club_id: int, params: ChangeMembersData, users=Depend
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail='No such account was found')
         await db.club_owner_update_user_account(account.id, nickname=nickname, club_comment=club_comment, user_role=user_role)
     return HTTP_200_OK
+
+
+#
+@router.put("/{club_id}/members/{user_id}/agents", status_code=HTTP_200_OK, summary="Установить или убрать агента для пользователя/агента")
+async def v1_set_user_agent(club_id: int, user_id: int, params: ChangeMembersAgent, users=Depends(check_rights_user_club_owner_or_manager)):
+    _, _, _ = users
+    """
+    {
+        agent_id : number | None
+    }
+    """
+    async with DBI() as db:
+        member = await db.find_account(user_id=user_id, club_id=club_id)
+        agent = await db.find_account(user_id=params.agent_id, club_id=club_id)
+        if params.agent_id is not None:
+            if member is None:
+                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member with this id not found")
+            elif agent is None:
+                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Agent with this id not found")
+            if member.user_role in ["O", "M"]:
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="The owner and manager cannot set up agents")
+            if member.user_role == "A" and agent.user_role != "S":
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Only a super agent can be assigned to an agent")
+            elif member.user_role == "S" and agent.user_role == "A":
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Only a super agent can be assigned to an super agent")
+            await db.update_member_agent(member.id, params.agent_id) #Todo уточнить какой именно мы тут передаем id агента (аккаунта или пользователя)
+        else:
+            await db.update_member_agent(member.id, None)
+
+        user = await db.get_user(member.user_id)
+        member = ClubMemberProfile(
+                id=member.user_id,
+                username=user.name,
+                image_id=user.image_id,
+                user_role=member.user_role,
+                country=user.country,
+                nickname=member.nickname,
+                balance=member.balance,
+                balance_shared=member.balance_shared,
+                join_in_club=member.approved_ts.timestamp(),
+                agent_id=member.agent_id
+            )
+        return member
 
 
 @router.get("/{club_id}/members/agents", status_code=HTTP_200_OK, summary="Страница возвращающая всех агентов и суперагентов в клубе")
@@ -1335,6 +1383,8 @@ async def v1_club_agents(club_id: int, users=Depends(check_rights_user_club_owne
         leave_from_club: float | None = None
     
         user_comment=: str | None = None
+        
+        agent_id: int | None = None
     """
     agents_list = []
     async with DBI() as db:
@@ -1349,7 +1399,9 @@ async def v1_club_agents(club_id: int, users=Depends(check_rights_user_club_owne
                 nickname=agent.nickname,
                 balance=agent.balance,
                 balance_shared=agent.balance_shared,
-                join_in_club=agent.approved_ts.timestamp()
+                join_in_club=agent.approved_ts.timestamp(),
+                agent_id=agent.agent_id
             )
             agents_list.append(agent)
     return agents_list
+

@@ -576,46 +576,7 @@ def test_get_requests_for_chips(api_client: TestClient,
 
     response = api_client.get(f"/v1/clubs/{club.id}/requests_chip_replenishment")
     assert response.status_code == 200
-    print(f'648 str, {response.json()}')
     assert isinstance(response.json(), dict)
-
-
-# def test_pick_up_or_give_out_chips(api_client: TestClient,
-#                                    api_guest: UserAccessProfile):  # TODO эти тесты перенести в тесты, которые создают запрос на получение фишек
-#     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
-#
-#     club = create_club(api_client)
-#
-#     data = {
-#         "mode": "give_out",
-#         "amount": 10.00,
-#         "club_members": [
-#             {
-#                 "id": 1001,
-#                 "username": "u1000",
-#                 "balance": True,
-#                 "balance_shared": True
-#             },
-#             {
-#                 "id": 1002,
-#                 "username": "u1001",
-#                 "balance": False,
-#                 "balance_shared": False
-#             }
-#         ]
-#     }
-#
-#     response = api_client.post(f"/v1/clubs/{club.id}/pick_up_or_give_out_chips", json=data)
-#     assert response.status_code == 200
-#
-#     data = {
-#         "mode": "give_out",
-#         "amount": 10.00,
-#         "club_members": []
-#     }
-#
-#     response = api_client.post(f"/v1/clubs/{club.id}/pick_up_or_give_out_chips", json=data)
-#     assert response.status_code == 400
 
 
 def test_owner_set_user_data(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
@@ -975,12 +936,35 @@ def test_actions_with_users_requests(api_client: TestClient, api_guest: UserAcce
     request = api_client.post(f"/v1/clubs/{club.id}/general_action_with_user_request", json=params)
     assert request.status_code == 200
 
+@pytest.fixture
+def client_new(request, api_client: TestClient, api_guest: UserAccessProfile,
+           api_client_2: TestClient, api_guest_2: UserAccessProfile,
+           api_client_3: TestClient, api_guest_3: UserAccessProfile):
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+    if request.__dict__["param"] == "get_authorize_client":
+        api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+        yield api_client
+    elif request.__dict__["param"] == "get_two_clients":
+        api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
+        yield [api_client, api_client_2]
+    elif request.__dict__["param"] == "get_three_clients":
+        api_client_3.headers = {"Authorization": "Bearer " + api_guest_3.access_token}
+        yield [api_client, api_client_2, api_client_3]
 
-def test_agents_in_club(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
-                                   api_guest_2: UserAccessProfile):
+
+@pytest.mark.parametrize("client_new",
+                         [
+                             ["get_authorize_client", 100],
+                             ["get_two_clients", 100],
+                             ["get_three_clients", 100]
+                         ],
+                         indirect=["client_new"])
+def test_agents_in_club(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient, api_guest_2: UserAccessProfile,
+                        api_client_3: TestClient, api_guest_3: UserAccessProfile):
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
     api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
-
+    api_client_3.headers = {"Authorization": "Bearer " + api_guest_3.access_token}
+    print(f'CLIENT ::: {client}')
     params = {
         "name": "Test club",
         "description": "Test club 1",
@@ -995,16 +979,28 @@ def test_agents_in_club(api_client: TestClient, api_guest: UserAccessProfile, ap
     response = api_client_2.post(f"/v1/clubs/{club.id}/members")
     assert response.status_code == 200
 
+    response = api_client_3.post(f"/v1/clubs/{club.id}/members")
+    assert response.status_code == 200
+
     response = api_client.get(f"/v1/clubs/{club.id}/members/requests")
     assert response.status_code == 200
 
     response = api_client.get(f"/v1/clubs/{club.id}/members/requests")
-    user_id = response.json()[0]['id']
+    user_id_first = response.json()[0]['id']
+    user_id_second = response.json()[1]['id']
+    assert response.status_code == 200
+
+    data = {"user_role": "S"}
+    response = api_client.put(f"/v1/clubs/{club.id}/members/{user_id_first}", json=data)
     assert response.status_code == 200
 
     data = {"user_role": "A"}
-    response = api_client.put(f"/v1/clubs/{club.id}/members/{user_id}", json=data)
+    response = api_client.put(f"/v1/clubs/{club.id}/members/{user_id_second}", json=data)
+    assert response.status_code == 200
+
+    response = api_client.put(f"/v1/clubs/{club.id}/members/{user_id_second}/agents")
     assert response.status_code == 200
 
     response = api_client.get(f"/v1/clubs/{club.id}/members/agents")
+    print(response.json())
     assert response.status_code == 200
