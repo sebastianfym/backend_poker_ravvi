@@ -697,7 +697,7 @@ class PokerBase(Game):
         for p in players:
             p.hands = [self.get_best_hand(p.cards, board) for board in self.boards]
             self.log.info("player %s hand: %s %s", p.user_id, p.hands, ",".join([str(hand.type) for hand in p.hands
-                                                                                if hand is not None]))
+                                                                                 if hand is not None]))
             if p.bet_type == Bet.ALLIN:
                 open_all = True
         self.log.info("open all: %s", open_all)
@@ -713,9 +713,10 @@ class PokerBase(Game):
                                                                                           self.players)
         if bank_seven_deuce:
             async with self.DBI(log=self.log) as db:
-                winners = [reward["winners"] for reward in rewards if reward["type"] == "seven_deuce"]
+                winners_user_id = [winner["user_id"] for reward in rewards for winner in reward["winners"]
+                                   if reward["type"] == "seven_deuce"]
                 for player in self.players:
-                    if player.user_id in [winner["user_id"] for winner in winners] and not player.cards_open:
+                    if player.user_id in winners_user_id and not player.cards_open:
                         player.cards_open = True
                         await self.broadcast_PLAYER_CARDS(db, player)
 

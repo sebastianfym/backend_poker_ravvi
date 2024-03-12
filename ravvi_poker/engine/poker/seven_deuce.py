@@ -23,6 +23,9 @@ class SevenDeuceController:
             winners_seven_deuce_user_id.extend(winners_seven_deuce_user_id_delta)
 
         rewards, balances = await self.form_rewards_and_balances(players, winners_seven_deuce_user_id, bank_seven_deuce)
+        # TODO это можно перенести в модуль тестов
+        balances.sort(key=lambda x: x["user_id"])
+        [rewards_list["winners"].sort(key=lambda x: x["user_id"]) for rewards_list in rewards]
 
         return bank_seven_deuce, rewards, balances
 
@@ -41,7 +44,9 @@ class SevenDeuceController:
                     if player_for_collect_sd.balance >= self.each_prize:
                         bank_seven_deuce += self.each_prize
                         player_for_collect_sd.bet_delta += self.each_prize
-                        player_for_collect_sd.user.balance -= self.each_prize
+                        # TODO округление
+                        player_for_collect_sd.user.balance = round(player_for_collect_sd.user.balance -
+                                                                   self.each_prize, 2)
                     else:
                         bank_seven_deuce += player_for_collect_sd.user.balance
                         player_for_collect_sd.bet_delta += player_for_collect_sd.user.balance
@@ -62,7 +67,8 @@ class SevenDeuceController:
                 delta = round(
                     bank_seven_deuce / len(winners_seven_deuce_user_id) *
                     winners_seven_deuce_user_id.count(player.user_id), 2)
-                player.user.balance += delta
+                # TODO округление
+                player.user.balance = round(player.user.balance + delta, 2)
                 winners.append(
                     {"user_id": player.user_id, "amount": delta}
                 )

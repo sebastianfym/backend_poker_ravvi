@@ -39,7 +39,7 @@
 
         {"type": "GAME_ROUND", "banks": [8], "bank_total": 8},
 // FLOP
-        {"type": "GAME_CARDS", "cards": ["2♦", "J♠", "3♣"]},
+        {"type": "GAME_CARDS", "boards": [{"board_type": "board1", "cards": ["2♦", "J♠", "3♣"]}]},
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false,
             "hands": [
                 {"hand_belong": "board1", "hand_type": "ONE_PAIR", "hand_cards": ["J♠", "7♣", "3♣","2♣","2♦"]}
@@ -63,7 +63,7 @@
 
         {"type": "GAME_ROUND", "banks": [24], "bank_total": 24},
 // TERN
-        {"type": "GAME_CARDS", "cards": ["2♦", "J♠", "3♣", "J♦"]},
+        {"type": "GAME_CARDS", "boards": [{"board_type": "board1", "cards": ["2♦", "J♠", "3♣", "J♦"]}]},
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false,
             "hands": [
                 {"hand_belong": "board1", "hand_type": "TWO_PAIRS", "hand_cards": ["J♠","J♦","7♣","2♣","2♦"]}
@@ -121,6 +121,7 @@
 
         {"type": "GAME_ROUND", "banks": [43], "bank_total": 43},
 // SHOWDOWN
+
 
         {"type": "GAME_RESULT",
             "rewards": [
