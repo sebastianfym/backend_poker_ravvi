@@ -713,6 +713,12 @@ class PokerBase(Game):
                                                                                           self.players)
         if bank_seven_deuce:
             async with self.DBI(log=self.log) as db:
+                winners = [reward["winners"] for reward in rewards if reward["type"] == "seven_deuce"]
+                for player in self.players:
+                    if player.user_id in [winner["user_id"] for winner in winners] and not player.cards_open:
+                        player.cards_open = True
+                        await self.broadcast_PLAYER_CARDS(db, player)
+
                 await self.broadcast_GAME_ROUND_END(db, [bank_seven_deuce], bank_seven_deuce)
                 # модификатор не должен перехватить управление (к примеру double board рассчитан список списков,
                 # а у нас список словарей
