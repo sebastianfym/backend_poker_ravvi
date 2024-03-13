@@ -20,7 +20,8 @@ class MessageType(IntEnum):
     GAME_CARDS = 303
     GAME_PLAYER_MOVE = 304
     GAME_PROPOSED_CARD_DROP = 310
-    GAME_RESULT = 390
+    ROUND_RESULT = 390
+    GAME_RESULT = 391
     GAME_END = 399
 
     @classmethod

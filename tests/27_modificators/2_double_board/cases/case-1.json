@@ -231,21 +231,26 @@
     },
 
 
-    {"type": "GAME_RESULT",
-            "rewards": [
-                {"type": "board1", "winners": [
-                    {"user_id": 333, "amount": 7.5}
+    {"type": "ROUND_RESULT",
+            "rewards": {"type": "board1", "winners": [
+                    {"user_id": 333, "amount": 7.5, "balance": 19}
                 ]},
-                {"type": "board2", "winners": [
-                    {"user_id": 333, "amount": 7.5}
-                ]}
-            ],
-            "balances": [
-                {"user_id": 111, "balance": 20.28, "delta": -5.5},
-                {"user_id": 222, "balance": 13, "delta": -4},
-                {"user_id": 333, "balance": 26.5, "delta": 9.5}
-            ]
+            "banks": [7.5],
+            "bank_total": 7.5
         },
+    {"type": "ROUND_RESULT",
+      "rewards": {"type": "board2", "winners": [
+                    {"user_id": 333, "amount": 7.5, "balance": 26.5}
+                ]},
+      "banks": [],
+      "bank_total": 0
+    },
+    {"type": "GAME_RESULT",
+      "balances": [
+                  {"user_id": 111, "balance": 20.28, "delta": -5.5},
+                  {"user_id": 222, "balance": 13, "delta": -4},
+                  {"user_id": 333, "balance": 26.5, "delta": 9.5}
+              ]},
     {"type": "GAME_END"}
   ]
 }

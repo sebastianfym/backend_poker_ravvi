@@ -121,12 +121,14 @@
         {"type": "GAME_ROUND", "banks": [43], "bank_total": 43}, 
 // SHOWDOWN
 
+        {"type": "ROUND_RESULT",
+            "rewards": {"type": "board1", "winners": [
+                    {"user_id": 222, "amount": 43, "balance": 60}
+                ]},
+            "banks": [],
+            "bank_total": 0
+        },
         {"type": "GAME_RESULT",
-            "rewards": [
-                {"type": "board1", "winners": [
-                    {"user_id": 222, "amount": 43}
-                ]}
-            ],
             "balances": [
                 {"user_id": 111, "balance": 20, "delta": -20},
                 {"user_id": 222, "balance": 60, "delta": 20}

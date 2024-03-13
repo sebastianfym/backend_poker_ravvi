@@ -36,7 +36,6 @@ class MixinMeta(type):
 
 
 class DoubleBoardMixin:
-    SLEEP_GAME_END = 8
     # TODO понадобится для переписывания на статическое наследование
     # def __init__(self, *args, **kwargs):
     #     super().__init__(*args, **kwargs)
@@ -45,7 +44,7 @@ class DoubleBoardMixin:
     def get_boards(self):
         self.boards_types = [BoardType.BOARD1, BoardType.BOARD2]
 
-    def get_winners(self):
+    def get_rounds_results(self):
         rewards, balances = [], []
         # делим каждый банк на две части
         banks = [[], []]
@@ -86,6 +85,18 @@ class DoubleBoardMixin:
             {"type": "board1", "winners": rewards_winners[0]},
             {"type": "board2", "winners": rewards_winners[1]},
         ]
+        rounds_results = [
+            {
+                "rewards": rewards[0],
+                "banks": [bank[0] for bank in banks[1]],
+                "bank_total": round(sum([bank[0] for bank in banks[1]]), 2)
+            },
+            {
+                "rewards": rewards[1],
+                "banks": [],
+                "bank_total": 0
+            },
+        ]
         for p in self.players:
             balance = {
                 "user_id": p.user_id,
@@ -97,19 +108,22 @@ class DoubleBoardMixin:
             if amount_board_1 == 0 and amount_board_2 == 0:
                 balances.append(balance)
                 continue
-            p.user.balance += amount_board_1 + amount_board_2
+            p.user.balance += amount_board_1
             if amount_board_1 != 0:
                 rewards_winners[0].append(
                     {
                         "user_id": p.user_id,
-                        "amount": amount_board_1
+                        "amount": amount_board_1,
+                        "balance": p.user.balance
                     }
                 )
+            p.user.balance += amount_board_2
             if amount_board_2 != 0:
                 rewards_winners[1].append(
                     {
                         "user_id": p.user_id,
-                        "amount": amount_board_2
+                        "amount": amount_board_2,
+                        "balance": p.user.balance
                     }
                 )
             balance["balance"] = p.user.balance
@@ -119,7 +133,7 @@ class DoubleBoardMixin:
         balances.sort(key=lambda x: x["user_id"])
         [rewards_list["winners"].sort(key=lambda x: x["user_id"]) for rewards_list in rewards]
 
-        return rewards, balances
+        return rounds_results, balances
 
     async def open_cards_in_game_end(self, players, open_all):
         best_hand = [None, None]

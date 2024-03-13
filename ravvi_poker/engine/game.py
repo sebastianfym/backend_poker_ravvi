@@ -137,8 +137,12 @@ class Game:
         msg = Message(msg_type=Message.Type.GAME_ROUND, banks=banks, bank_total=bank_total)
         await self.emit_msg(db, msg)
 
-    async def broadcast_GAME_RESULT(self, db, rewards, balances):
-        msg = Message(msg_type=Message.Type.GAME_RESULT, rewards=rewards, balances=balances)
+    async def broadcast_ROUND_RESULT(self, db, rewards, banks, bank_total):
+        msg = Message(msg_type=Message.Type.ROUND_RESULT, rewards=rewards, banks=banks, bank_total=bank_total)
+        await self.emit_msg(db, msg)
+
+    async def broadcast_GAME_RESULT(self, db, balances):
+        msg = Message(msg_type=Message.Type.GAME_RESULT, balances=balances)
         await self.emit_msg(db, msg)
 
     async def broadcast_GAME_END(self, db):

@@ -99,17 +99,18 @@
 
     {"type": "GAME_ROUND", "banks": [1600], "bank_total": 1600},
 
+    {"type": "ROUND_RESULT",
+      "rewards": {"type": "board1", "winners": [
+        {"user_id": 222, "amount": 1600, "balance": 2650}
+                ]},
+      "banks": [],
+      "bank_total": 0
+    },
     {"type": "GAME_RESULT",
-            "rewards": [
-                {"type": "board1", "winners": [
-                    {"user_id": 222, "amount": 1600}
-                ]}
-            ],
-            "balances": [
-                {"user_id": 111, "balance": 350, "delta": -650},
-                {"user_id": 222, "balance": 2650, "delta": 650}
-            ]
-        },
+      "balances": [
+                  {"user_id": 111, "balance": 350, "delta": -650},
+                  {"user_id": 222, "balance": 2650, "delta": 650}
+              ]},
     {"type": "GAME_END"}
   ]
 }

@@ -497,15 +497,18 @@ class PokerBase(Game):
         await self.run_SHOWDOWN()
 
         # winners
-        rewards, balances = self.get_winners()
+        rounds_results, balances = self.get_rounds_results()
         async with self.DBI(log=self.log) as db:
-            await self.broadcast_GAME_RESULT(db, rewards, balances)
+            for round_result in rounds_results:
+                await self.broadcast_ROUND_RESULT(db, **round_result)
+                # TODO добавить переменную
+                await asyncio.sleep(4)
 
         self.showdown_is_end = True
 
         # если включен режим seven deuce сформируем новый банк и распределим его
         if self.table.seven_deuce:
-            await self.run_SEVEN_DEUCE(rewards)
+            await self.run_SEVEN_DEUCE(rounds_results)
 
         # TODO тут вызовем показ карт
         logger.info("Показываем")
@@ -513,6 +516,8 @@ class PokerBase(Game):
 
         await asyncio.sleep(self.SLEEP_GAME_END)
         async with self.DBI(log=self.log) as db:
+            await self.broadcast_GAME_RESULT(db, balances)
+            await asyncio.sleep(0.1)
             await self.broadcast_GAME_END(db)
 
         # если включен режим ante_up за столом, то передадим тип последнего раунда в игре, чтобы обработать новое
@@ -723,7 +728,7 @@ class PokerBase(Game):
                 await self.broadcast_GAME_ROUND_END(db, [bank_seven_deuce], bank_seven_deuce)
                 # модификатор не должен перехватить управление (к примеру double board рассчитан список списков,
                 # а у нас список словарей
-                await super().broadcast_GAME_RESULT(db, rewards, balances)
+                await super().broadcast_ROUND_RESULT(db, rewards, balances)
 
     def append_cards(self, cards_num):
         for board in self.boards:
@@ -761,7 +766,7 @@ class PokerBase(Game):
                     await self.broadcast_PLAYER_CARDS_ON_REQUEST(db, p)
                     self.log.info("player %s: open cards on request %s", p.user_id, p.cards_open_on_request)
 
-    def get_winners(self):
+    def get_rounds_results(self):
         rewards, balances = [], []
 
         winners = {}
@@ -788,7 +793,12 @@ class PokerBase(Game):
                     winners[p.user_id] = round(amount + w_amount, 2)
 
         rewards_winners = []
-        rewards.append({"type": "board1", "winners": rewards_winners})
+        rewards = {"type": "board1", "winners": rewards_winners}
+        rounds_results = [{
+            "rewards": rewards,
+            "banks": [],
+            "bank_total": 0
+        }]
         for p in self.players:
             balance = {
                 "user_id": p.user_id,
@@ -803,7 +813,8 @@ class PokerBase(Game):
             rewards_winners.append(
                 {
                     "user_id": p.user_id,
-                    "amount": amount
+                    "amount": amount,
+                    "balance": p.user.balance
                 }
             )
             # TODO округление
@@ -812,7 +823,7 @@ class PokerBase(Game):
             balances.append(balance)
         # TODO это можно перенести в модуль тестов
         balances.sort(key=lambda x: x["user_id"])
-        [rewards_list["winners"].sort(key=lambda x: x["user_id"]) for rewards_list in rewards]
+        rewards_winners.sort(key=lambda x: x["user_id"])
 
         # winners_info = []
         # for p in players:
@@ -830,7 +841,7 @@ class PokerBase(Game):
         #     self.log.info("winner: %s %s %s", p.user_id, p.balance, delta)
         #     winners_info.append(info)
 
-        return rewards, balances
+        return rounds_results, balances
 
     async def collect_ante(self, db):
         for p in self.players:
