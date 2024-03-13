@@ -500,6 +500,7 @@ class PokerBase(Game):
         rounds_results, balances = self.get_rounds_results()
         async with self.DBI(log=self.log) as db:
             for round_result in rounds_results:
+                print(f"Отправил {time.time()}")
                 await self.broadcast_ROUND_RESULT(db, **round_result)
                 # TODO добавить переменную
                 await asyncio.sleep(4)
@@ -809,7 +810,8 @@ class PokerBase(Game):
             if not amount:
                 balances.append(balance)
                 continue
-            p.user.balance += amount
+            # TODO округление
+            p.user.balance = round(p.user.balance + amount, 2)
             rewards_winners.append(
                 {
                     "user_id": p.user_id,

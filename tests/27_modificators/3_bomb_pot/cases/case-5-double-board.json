@@ -205,24 +205,30 @@
 
     {"type": "GAME_ROUND", "banks": [39, 14.56, 5.85], "bank_total": 59.41},
 
-    {"type": "GAME_RESULT",
-            "rewards": [
+    {"type": "ROUND_RESULT",
+            "rewards":
                 {"type": "board1", "winners": [
-                    {"user_id": 111, "amount": 19.5},
-                    {"user_id": 222, "amount": 2.92},
-                    {"user_id": 333, "amount": 7.28}
+                    {"user_id": 111, "amount": 19.5, "balance": 19.5},
+                    {"user_id": 222, "amount": 2.92, "balance": 2.92},
+                    {"user_id": 333, "amount": 7.28, "balance": 7.28}
                 ]},
-                {"type": "board2", "winners": [
-                    {"user_id": 222, "amount": 2.92},
-                    {"user_id": 333, "amount": 26.78}
-                ]}
-            ],
-            "balances": [
+            "banks": [19.5, 7.28, 2.92],
+            "bank_total": 29.7
+        },
+    {"type": "ROUND_RESULT",
+      "rewards": {"type": "board2", "winners": [
+                    {"user_id": 222, "amount": 2.92, "balance": 5.84},
+                    {"user_id": 333, "amount": 26.78, "balance": 34.06}
+                ]},
+      "banks": [],
+      "bank_total": 0
+    },
+    {"type": "GAME_RESULT",
+      "balances": [
                 {"user_id": 111, "balance": 19.5, "delta": 6.5},
                 {"user_id": 222, "balance": 5.84, "delta": -20.29},
                 {"user_id": 333, "balance": 34.06, "delta": 13.78}
-            ]
-        },
+            ]},
 
     {"type": "GAME_END"}
   ]
