@@ -86,7 +86,7 @@ class PokerBase(Game):
         info |= self.game_props
         # TODO поменять
         info.update(
-            boards=self.boards
+            boards=[board.board_type.value for board in self.boards]
         )
         banks_info = []
         for b in (self.banks or []):
