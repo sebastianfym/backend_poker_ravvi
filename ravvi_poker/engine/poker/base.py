@@ -498,12 +498,13 @@ class PokerBase(Game):
 
         # winners
         rounds_results, balances = self.get_rounds_results()
-        async with self.DBI(log=self.log) as db:
-            for round_result in rounds_results:
+        for round_result in rounds_results:
+            async with self.DBI(log=self.log) as db:
+                print(round_result)
                 print(f"Отправил {time.time()}")
                 await self.broadcast_ROUND_RESULT(db, **round_result)
-                # TODO добавить переменную
-                await asyncio.sleep(4)
+            # TODO добавить переменную
+            await asyncio.sleep(4)
 
         self.showdown_is_end = True
 
