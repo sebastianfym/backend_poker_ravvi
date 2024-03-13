@@ -1,4 +1,5 @@
 import pytest
+from ravvi_poker.engine.poker.board import Board, BoardType
 
 from ravvi_poker.engine.poker.hands import Hand, LowHand
 
@@ -11,8 +12,9 @@ from ravvi_poker.engine.poker.plo import Poker_PLO_4
 
 @pytest.mark.asyncio
 async def test_low_combinations():
+    board = Board(BoardType.BOARD1)
     cards = ["5♠", "4♠", "3♠", "2♠", "A♣"]
-    hand = LowHand(cards)
+    hand = LowHand(cards, board)
     assert hand.get_type() is not None
 
 

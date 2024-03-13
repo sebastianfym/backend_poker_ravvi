@@ -14,11 +14,23 @@
     "moves": [
         {"type": "GAME_BEGIN", "game_type": "PLO", "game_subtype": "PLO4"},
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["Q♦","3♥","7♠","4♦"],
-            "hand_type": ["HIGH_CARD", null], "hand_cards": [["Q♦","7♠"], []]},
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["Q♦","7♠"]},
+                {"hand_belong": "low", "hand_type": null, "hand_cards": []}
+            ]
+        },
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["5♦","Q♣","6♣","6♦"],
-            "hand_type": ["ONE_PAIR", null],  "hand_cards": [["6♣","6♦"], []]},
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "ONE_PAIR", "hand_cards": ["6♣","6♦"]},
+                {"hand_belong": "low", "hand_type": null, "hand_cards": []}
+            ]
+        },
         {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": false, "cards": ["7♣","9♠","3♣","4♣"],
-            "hand_type": ["HIGH_CARD", null], "hand_cards": [["9♠","7♣"], []]},
+            "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["9♠","7♣"]},
+                {"hand_belong": "low", "hand_type": null, "hand_cards": []}
+            ]
+        },
 // 1
         {"type": "PLAYER_BET", "user_id": 111, "bet": "SMALL_BLIND", "delta": 1, "amount": 1, "balance": 354},
 // 2

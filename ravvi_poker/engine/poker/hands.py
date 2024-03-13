@@ -296,8 +296,8 @@ class Hand:
 
 
 class LowHand(Hand):
-    def __init__(self, cards):
-        super().__init__(cards)
+    def __init__(self, cards, board: Board):
+        super().__init__(cards, board)
 
     def get_type(self, deck36=False):
         # проверяем есть ли вообще смысл считать low_type
