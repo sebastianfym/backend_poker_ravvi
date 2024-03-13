@@ -1,4 +1,5 @@
 from ravvi_poker.engine.cards import Card
+from ravvi_poker.engine.poker.bet import Bet
 from ravvi_poker.engine.poker.hands import Hand
 from ravvi_poker.engine.poker.player import Player
 
@@ -7,27 +8,26 @@ class SevenDeuceController:
     def __init__(self, seven_prize: int):
         self.each_prize: int = seven_prize
 
-    async def handle_winners(self, winners_info: dict, players: list[Player]):
+    async def handle_winners(self, rounds_results: dict, players: list[Player]):
         bank_seven_deuce = 0
         winners_seven_deuce_user_id = []
 
         # обнуляем bet_delta у игроков
         for player in players:
             player.bet_delta = 0
+            player.bet_amount = 0
 
         # собираем банк и победителей по seven deuce
-        for winners_board in winners_info:
+        for board_results in rounds_results:
             bank_seven_deuce_delta, winners_seven_deuce_user_id_delta = \
-                await self.collect_winners(winners_board, players)
+                await self.collect_winners(board_results["rewards"], players)
             bank_seven_deuce += bank_seven_deuce_delta
             winners_seven_deuce_user_id.extend(winners_seven_deuce_user_id_delta)
 
-        rewards, balances = await self.form_rewards_and_balances(players, winners_seven_deuce_user_id, bank_seven_deuce)
-        # TODO это можно перенести в модуль тестов
-        balances.sort(key=lambda x: x["user_id"])
-        [rewards_list["winners"].sort(key=lambda x: x["user_id"]) for rewards_list in rewards]
+        round_result, balances = await self.form_result_and_balances(players, winners_seven_deuce_user_id,
+                                                                     bank_seven_deuce)
 
-        return bank_seven_deuce, rewards, balances
+        return bank_seven_deuce, round_result, balances
 
     async def collect_winners(self, winners_board: dict, players: list[Player]):
         bank_seven_deuce = 0
@@ -44,23 +44,30 @@ class SevenDeuceController:
                     if player_for_collect_sd.balance >= self.each_prize:
                         bank_seven_deuce += self.each_prize
                         player_for_collect_sd.bet_delta += self.each_prize
+                        player_for_collect_sd.bet_amount += self.each_prize
+                        player_for_collect_sd.bet_type = Bet.SEVEN_DEUCE
                         # TODO округление
                         player_for_collect_sd.user.balance = round(player_for_collect_sd.user.balance -
                                                                    self.each_prize, 2)
                     else:
                         bank_seven_deuce += player_for_collect_sd.user.balance
                         player_for_collect_sd.bet_delta += player_for_collect_sd.user.balance
+                        player_for_collect_sd.bet_amount += player_for_collect_sd.user.balance
+                        player_for_collect_sd.bet_type = Bet.SEVEN_DEUCE
                         player_for_collect_sd.user.balance = 0
 
         return bank_seven_deuce, winners_seven_deuce_user_id
 
-    async def form_rewards_and_balances(self, players: list[Player], winners_seven_deuce_user_id: list,
-                                        bank_seven_deuce: float):
+    async def form_result_and_balances(self, players: list[Player], winners_seven_deuce_user_id: list,
+                                       bank_seven_deuce: float):
         winners = []
-        rewards = [
-            {"type": "seven_deuce", "winners": winners}
-        ]
+        rewards = {"type": "seven_deuce", "winners": winners}
         balances = []
+        round_result = {
+            "rewards": rewards,
+            "banks": [],
+            "bank_total": 0
+        }
 
         for player in players:
             if player.user_id in set(winners_seven_deuce_user_id):
@@ -70,18 +77,21 @@ class SevenDeuceController:
                 # TODO округление
                 player.user.balance = round(player.user.balance + delta, 2)
                 winners.append(
-                    {"user_id": player.user_id, "amount": delta}
+                    {"user_id": player.user_id, "amount": delta, "balance": player.user.balance}
                 )
                 balances.append({
                     "user_id": player.user_id,
                     "balance": player.user.balance,
-                    "delta": delta - player.bet_delta
+                    "delta": round(player.user.balance - player.balance_0, 2)
                 })
             else:
                 balances.append({
                     "user_id": player.user_id,
                     "balance": player.user.balance,
-                    "delta": player.bet_delta * (-1)
+                    "delta": round(player.user.balance - player.balance_0, 2)
                 })
+        # TODO это можно перенести в модуль тестов
+        balances.sort(key=lambda x: x["user_id"])
+        winners.sort(key=lambda x: x["user_id"])
 
-        return rewards, balances
+        return round_result, balances

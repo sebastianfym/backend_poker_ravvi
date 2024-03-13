@@ -497,6 +497,7 @@ class PokerBase(Game):
         await self.run_SHOWDOWN()
 
         # winners
+        # TODO вынести balances в отдельную функцию перед GAME_END
         rounds_results, balances = self.get_rounds_results()
         for round_result in rounds_results:
             async with self.DBI(log=self.log) as db:
@@ -510,7 +511,8 @@ class PokerBase(Game):
 
         # если включен режим seven deuce сформируем новый банк и распределим его
         if self.table.seven_deuce:
-            await self.run_SEVEN_DEUCE(rounds_results)
+            # TODO вынести balances в отдельную функцию перед GAME_END
+            balances = await self.run_SEVEN_DEUCE(rounds_results)
 
         # TODO тут вызовем показ карт
         logger.info("Показываем")
@@ -715,22 +717,31 @@ class PokerBase(Game):
         await asyncio.sleep(self.SLEEP_ROUND_END)
         self.log.info("SHOWDOWN end")
 
-    async def run_SEVEN_DEUCE(self, winners_info):
-        bank_seven_deuce, rewards, balances = await self.table.seven_deuce.handle_winners(winners_info,
+    async def run_SEVEN_DEUCE(self, rounds_results):
+        bank_seven_deuce, round_result, balances = await self.table.seven_deuce.handle_winners(rounds_results,
                                                                                           self.players)
         if bank_seven_deuce:
             async with self.DBI(log=self.log) as db:
-                winners_user_id = [winner["user_id"] for reward in rewards for winner in reward["winners"]
-                                   if reward["type"] == "seven_deuce"]
+                # открываем карты игроков если они выиграли по 7-2 и их карты закрыты
+                winners_user_id = [winners["user_id"] for winners in round_result["rewards"]["winners"]]
                 for player in self.players:
                     if player.user_id in winners_user_id and not player.cards_open:
                         player.cards_open = True
                         await self.broadcast_PLAYER_CARDS(db, player)
+                        await db.commit()
+
+                # отображаем ставки
+                for player in self.players:
+                    if player.bet_type is Bet.SEVEN_DEUCE:
+                        await self.broadcast_PLAYER_BET(db, player)
+                        await db.commit()
 
                 await self.broadcast_GAME_ROUND_END(db, [bank_seven_deuce], bank_seven_deuce)
-                # модификатор не должен перехватить управление (к примеру double board рассчитан список списков,
-                # а у нас список словарей
-                await super().broadcast_ROUND_RESULT(db, rewards, balances)
+                await db.commit()
+                await super().broadcast_ROUND_RESULT(db, **round_result)
+                await db.commit()
+
+            return balances
 
     def append_cards(self, cards_num):
         for board in self.boards:

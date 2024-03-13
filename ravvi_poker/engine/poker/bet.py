@@ -10,6 +10,7 @@ class Bet(IntEnum):
     RAISE = 30
     ANTE = 40
     BOMBPOT_ANTE = 41
+    SEVEN_DEUCE = 42
     ALLIN = 99
 
     @classmethod

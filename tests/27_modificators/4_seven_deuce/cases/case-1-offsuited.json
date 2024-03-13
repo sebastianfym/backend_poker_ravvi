@@ -122,16 +122,13 @@
         {"type": "GAME_ROUND", "banks": [43], "bank_total": 43},
 // SHOWDOWN
 
-        {"type": "GAME_RESULT",
-            "rewards": [
+        {"type": "ROUND_RESULT",
+            "rewards":
                 {"type": "board1", "winners": [
-                    {"user_id": 222, "amount": 43}
-                ]}
-            ],
-            "balances": [
-                {"user_id": 111, "balance": 20, "delta": -20},
-                {"user_id": 222, "balance": 60, "delta": 20}
-            ]
+                    {"user_id": 222, "amount": 43, "balance": 60}
+                ]},
+            "banks": [],
+            "bank_total": 0
         },
 
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": true,
@@ -139,18 +136,22 @@
                 {"hand_belong": "board1", "hand_type": "TWO_PAIRS", "hand_cards": ["J♠","J♦","7♣","2♠","2♦"]}
             ]
         },
+        {"type": "PLAYER_BET", "user_id": 111, "bet": "SEVEN_DEUCE", "delta": 3, "amount": 3, "balance": 17},
         {"type": "GAME_ROUND", "banks": [3], "bank_total": 3},
-        {"type": "GAME_RESULT",
-            "rewards": [
+        {"type": "ROUND_RESULT",
+            "rewards":
                 {"type": "seven_deuce", "winners": [
-                    {"user_id": 222, "amount": 3}
-                ]}
-            ],
-            "balances": [
-                {"user_id": 111, "balance": 17, "delta": -3},
-                {"user_id": 222, "balance": 63, "delta": 3}
-            ]
+                    {"user_id": 222, "amount": 3.0, "balance": 63.0}
+                ]},
+            "banks": [],
+            "bank_total": 0
         },
+
+        {"type": "GAME_RESULT",
+            "balances": [
+                {"user_id": 111, "balance": 17, "delta": -23},
+                {"user_id": 222, "balance": 63, "delta": 23}
+            ]},
 
         {"type": "GAME_END"}
     ]
