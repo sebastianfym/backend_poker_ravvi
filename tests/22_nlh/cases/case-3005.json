@@ -107,17 +107,19 @@
         {"type": "GAME_ROUND", "banks": [243, 10], "bank_total": 253},
 // SHOWDOWN
 
+        {"type": "ROUND_RESULT",
+            "rewards": {"type": "board1", "winners": [
+                    {"user_id": 333, "amount": 253, "balance": 401}
+                ]},
+            "banks": [],
+            "bank_total": 0
+        },
         {"type": "GAME_RESULT",
-            "rewards": [
-                {"type": "board1", "winners": [
-                    {"user_id": 333, "amount": 253}
-                ]}
-            ],
             "balances": [
-                {"user_id": 111, "balance": 0, "delta": -81},
-                {"user_id": 222, "balance": 0, "delta": -86},
-                {"user_id": 333, "balance": 401, "delta": 167}
-            ]
+                    {"user_id": 111, "balance": 0, "delta": -81},
+                    {"user_id": 222, "balance": 0, "delta": -86},
+                    {"user_id": 333, "balance": 401, "delta": 167}
+                ]
         },
         {"type": "GAME_END"}
 ]

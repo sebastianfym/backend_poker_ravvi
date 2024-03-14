@@ -1,5 +1,5 @@
 {
-    "_comment": "Сброс карт на PREFLOP. Ручной сброс для всех игроков по timeout",
+    "_comment": "Сброс карт на PREFLOP. Автоматический сброс для первого игрока по timeout",
     "blind_small": 1,
     "blind_big": 2,
     "drop_card_round": "PREFLOP",
@@ -30,15 +30,12 @@
 
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["7♠", "2♣"],
             "hands": [
-                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["7♠","2♣"]}
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD",  "hand_cards": ["7♠","2♣"]}
             ]
         },
-
-        {"user_id": 111, "type": "CMD_PLAYER_DROP_CARD", "card": 17},
-
-        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["8♣", "2♥"],
+        {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["8♣", "5♣"],
             "hands": [
-                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["8♣","2♥"]}
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["8♣","5♣"]}
             ]
         },
 
@@ -67,7 +64,7 @@
         },
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false,
             "hands": [
-                {"hand_belong": "board1", "hand_type": "ONE_PAIR", "hand_cards": ["J♠", "8♣", "3♣", "2♦", "2♥"]}
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["J♠", "8♣", "5♣", "3♣", "2♦"]}
             ]
         },
 
@@ -91,7 +88,7 @@
         },
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false,
             "hands": [
-                {"hand_belong": "board1", "hand_type": "TWO_PAIRS", "hand_cards": ["J♠","J♦","8♣","2♦","2♥"]}
+                {"hand_belong": "board1", "hand_type": "ONE_PAIR", "hand_cards": ["J♠","J♦","8♣","5♣","3♣"]}
             ]
         },
 
@@ -107,7 +104,7 @@
 
         {"type": "GAME_ROUND", "banks": [28], "bank_total": 28},
 // RIVER
-        {"type": "GAME_CARDS", "boards": [{"board_type": "board1", "cards": ["2♦","J♠","3♣","J♦", "5♥"]}]},
+        {"type": "GAME_CARDS", "boards": [{"board_type": "board1", "cards": ["2♦","J♠","3♣","J♦","5♥"]}]},
         {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false,
             "hands": [
                 {"hand_belong": "board1", "hand_type": "TWO_PAIRS", "hand_cards": ["J♠","J♦","7♠","2♣","2♦"]}
@@ -115,7 +112,7 @@
         },
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false,
             "hands": [
-                {"hand_belong": "board1", "hand_type": "TWO_PAIRS", "hand_cards": ["J♠","J♦","8♣","2♦","2♥"]}
+                {"hand_belong": "board1", "hand_type": "TWO_PAIRS", "hand_cards": ["J♠","J♦","8♣","5♣","5♥"]}
             ]
         },
 
@@ -142,13 +139,15 @@
         {"type": "GAME_ROUND", "banks": [43], "bank_total": 43},
 // SHOWDOWN
 
+        {"type": "ROUND_RESULT",
+            "rewards": {"type": "board1", "winners": [
+                    {"user_id": 222, "amount": 43, "balance": 60}
+                ]},
+            "banks": [],
+            "bank_total": 0
+        },
         {"type": "GAME_RESULT",
-            "rewards": [
-                {"type": "board1", "winners": [
-                    {"user_id": 222, "amount": 43}
-                ]}
-            ],
-            "balances": [
+        "balances": [
                 {"user_id": 111, "balance": 20, "delta": -20},
                 {"user_id": 222, "balance": 60, "delta": 20}
             ]

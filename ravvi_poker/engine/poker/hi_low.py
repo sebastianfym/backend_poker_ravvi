@@ -184,6 +184,6 @@ class HiLowMixin:
     #                                                         hand_type=[hand_type_high.value, hand_type_low],
     #                                                         hand_cards=[high_hand_cards, low_hand_cards])
 
-    async def broadcast_GAME_RESULT(self, db, winners):
-        for winner_message in winners:
-            await super().broadcast_GAME_RESULT(db, winner_message)
+    # async def broadcast_GAME_RESULT(self, db, winners):
+    #     for winner_message in winners:
+    #         await super().broadcast_GAME_RESULT(db, winner_message)

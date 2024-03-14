@@ -30,6 +30,7 @@ class PokerBase(Game):
 
     SLEEP_ROUND_BEGIN = 1.5
     SLEEP_ROUND_END = 2
+    SLEEP_ROUND_RESULT = 4
     SLEEP_SHOWDOWN_CARDS = 1.5
     SLEEP_GAME_END = 4
 
@@ -499,28 +500,25 @@ class PokerBase(Game):
         await self.run_SHOWDOWN()
 
         # winners
-        # TODO вынести balances в отдельную функцию перед GAME_END
-        rounds_results, balances = self.get_rounds_results()
+        rounds_results = self.get_rounds_results()
         for round_result in rounds_results:
             async with self.DBI(log=self.log) as db:
-                print(round_result)
-                print(f"Отправил {time.time()}")
                 await self.broadcast_ROUND_RESULT(db, **round_result)
-            # TODO добавить переменную
-            await asyncio.sleep(4)
+            await asyncio.sleep(self.SLEEP_ROUND_RESULT)
 
         self.showdown_is_end = True
 
         # если включен режим seven deuce сформируем новый банк и распределим его
         if self.table.seven_deuce:
-            # TODO вынести balances в отдельную функцию перед GAME_END
-            balances = await self.run_SEVEN_DEUCE(rounds_results)
+            await self.run_SEVEN_DEUCE(rounds_results)
 
         await self.open_cards_on_request()
 
         await asyncio.sleep(self.SLEEP_GAME_END)
         async with self.DBI(log=self.log) as db:
+            balances = await self.get_balances()
             await self.broadcast_GAME_RESULT(db, balances)
+            await db.commit()
             await asyncio.sleep(0.1)
             await self.broadcast_GAME_END(db)
 
@@ -718,8 +716,8 @@ class PokerBase(Game):
         self.log.info("SHOWDOWN end")
 
     async def run_SEVEN_DEUCE(self, rounds_results):
-        bank_seven_deuce, round_result, balances = await self.table.seven_deuce.handle_winners(rounds_results,
-                                                                                          self.players)
+        bank_seven_deuce, round_result = await self.table.seven_deuce.handle_winners(rounds_results,
+                                                                                               self.players)
         if bank_seven_deuce:
             async with self.DBI(log=self.log) as db:
                 # открываем карты игроков если они выиграли по 7-2 и их карты закрыты
@@ -740,8 +738,6 @@ class PokerBase(Game):
                 await db.commit()
                 await super().broadcast_ROUND_RESULT(db, **round_result)
                 await db.commit()
-
-            return balances
 
     def append_cards(self, cards_num):
         for board in self.boards:
@@ -779,9 +775,7 @@ class PokerBase(Game):
                     await self.broadcast_PLAYER_CARDS_ON_REQUEST(db, p)
                     self.log.info("player %s: open cards on request %s", p.user_id, p.cards_open_on_request)
 
-    def get_rounds_results(self):
-        rewards, balances = [], []
-
+    def get_rounds_results(self) -> list[dict]:
         winners = {}
         players = [p for p in self.players if p.in_the_game]
         if len(players) == 1:
@@ -813,14 +807,8 @@ class PokerBase(Game):
             "bank_total": 0
         }]
         for p in self.players:
-            balance = {
-                "user_id": p.user_id,
-                "balance": p.user.balance,
-                "delta": round(p.balance - p.balance_0, 2)
-            }
             amount = winners.get(p.user_id, None)
             if not amount:
-                balances.append(balance)
                 continue
             # TODO округление
             p.user.balance = round(p.user.balance + amount, 2)
@@ -831,12 +819,6 @@ class PokerBase(Game):
                     "balance": p.user.balance
                 }
             )
-            # TODO округление
-            balance["balance"] = round(p.user.balance, 2)
-            balance["delta"] = round(p.balance - p.balance_0, 2)
-            balances.append(balance)
-        # TODO это можно перенести в модуль тестов
-        balances.sort(key=lambda x: x["user_id"])
         rewards_winners.sort(key=lambda x: x["user_id"])
 
         # winners_info = []
@@ -855,7 +837,20 @@ class PokerBase(Game):
         #     self.log.info("winner: %s %s %s", p.user_id, p.balance, delta)
         #     winners_info.append(info)
 
-        return rounds_results, balances
+        return rounds_results
+
+    async def get_balances(self) -> list[dict]:
+        balances = []
+        for p in self.players:
+            balance = {
+                "user_id": p.user_id,
+                "balance": p.user.balance,
+                "delta": round(p.balance - p.balance_0, 2)
+            }
+            balances.append(balance)
+        # TODO это можно перенести в модуль тестов
+        balances.sort(key=lambda x: x["user_id"])
+        return balances
 
     async def collect_ante(self, db):
         for p in self.players:

@@ -44,8 +44,7 @@ class DoubleBoardMixin:
     def get_boards(self):
         self.boards_types = [BoardType.BOARD1, BoardType.BOARD2]
 
-    def get_rounds_results(self):
-        rewards, balances = [], []
+    def get_rounds_results(self) -> list[dict]:
         # делим каждый банк на две части
         banks = [[], []]
         for num in range(len(self.banks)):
@@ -98,15 +97,9 @@ class DoubleBoardMixin:
             },
         ]
         for p in self.players:
-            balance = {
-                "user_id": p.user_id,
-                "balance": p.user.balance,
-                "delta": round(p.balance - p.balance_0, 2)
-            }
             amount_board_1 = winners[0].get(p.user_id, 0)
             amount_board_2 = winners[1].get(p.user_id, 0)
             if amount_board_1 == 0 and amount_board_2 == 0:
-                balances.append(balance)
                 continue
             p.user.balance += amount_board_1
             if amount_board_1 != 0:
@@ -126,14 +119,10 @@ class DoubleBoardMixin:
                         "balance": p.user.balance
                     }
                 )
-            balance["balance"] = p.user.balance
-            balance["delta"] = round(p.balance - p.balance_0, 2)
-            balances.append(balance)
         # TODO это можно перенести в модуль тестов
-        balances.sort(key=lambda x: x["user_id"])
         [rewards_list["winners"].sort(key=lambda x: x["user_id"]) for rewards_list in rewards]
 
-        return rounds_results, balances
+        return rounds_results
 
     async def open_cards_in_game_end(self, players, open_all):
         best_hand = [None, None]

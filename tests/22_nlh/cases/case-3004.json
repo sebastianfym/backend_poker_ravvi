@@ -176,17 +176,19 @@
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": ["A♦", "T♣"]},
 
 
+        {"type": "ROUND_RESULT",
+            "rewards": {"type": "board1", "winners": [
+                    {"user_id": 111, "amount": 42, "balance": 234}
+                ]},
+            "banks": [],
+            "bank_total": 0
+        },
         {"type": "GAME_RESULT",
-            "rewards": [
-                {"type": "board1", "winners": [
-                    {"user_id": 111, "amount": 42}
-                ]}
-            ],
             "balances": [
-                {"user_id": 111, "balance": 234, "delta": 28},
-                {"user_id": 222, "balance": 81, "delta": -14},
-                {"user_id": 333, "balance": 86, "delta": -14}
-            ]
+                    {"user_id": 111, "balance": 234, "delta": 28},
+                    {"user_id": 222, "balance": 81, "delta": -14},
+                    {"user_id": 333, "balance": 86, "delta": -14}
+                ]
         },
         {"type": "GAME_END"}
     ]

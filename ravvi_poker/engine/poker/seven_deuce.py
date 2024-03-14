@@ -24,10 +24,10 @@ class SevenDeuceController:
             bank_seven_deuce += bank_seven_deuce_delta
             winners_seven_deuce_user_id.extend(winners_seven_deuce_user_id_delta)
 
-        round_result, balances = await self.form_result_and_balances(players, winners_seven_deuce_user_id,
-                                                                     bank_seven_deuce)
+        round_result = await self.form_result_and_balances(players, winners_seven_deuce_user_id,
+                                                           bank_seven_deuce)
 
-        return bank_seven_deuce, round_result, balances
+        return bank_seven_deuce, round_result
 
     async def collect_winners(self, winners_board: dict, players: list[Player]):
         bank_seven_deuce = 0
@@ -59,10 +59,9 @@ class SevenDeuceController:
         return bank_seven_deuce, winners_seven_deuce_user_id
 
     async def form_result_and_balances(self, players: list[Player], winners_seven_deuce_user_id: list,
-                                       bank_seven_deuce: float):
+                                       bank_seven_deuce: float) -> dict:
         winners = []
         rewards = {"type": "seven_deuce", "winners": winners}
-        balances = []
         round_result = {
             "rewards": rewards,
             "banks": [],
@@ -79,19 +78,7 @@ class SevenDeuceController:
                 winners.append(
                     {"user_id": player.user_id, "amount": delta, "balance": player.user.balance}
                 )
-                balances.append({
-                    "user_id": player.user_id,
-                    "balance": player.user.balance,
-                    "delta": round(player.user.balance - player.balance_0, 2)
-                })
-            else:
-                balances.append({
-                    "user_id": player.user_id,
-                    "balance": player.user.balance,
-                    "delta": round(player.user.balance - player.balance_0, 2)
-                })
         # TODO это можно перенести в модуль тестов
-        balances.sort(key=lambda x: x["user_id"])
         winners.sort(key=lambda x: x["user_id"])
 
-        return round_result, balances
+        return round_result

@@ -153,18 +153,20 @@
 
     {"type": "GAME_ROUND", "banks": [4.6], "bank_total": 4.6},
 
-    {"type": "GAME_RESULT",
-            "rewards": [
-                {"type": "board1", "winners": [
-                    {"user_id": 333, "amount": 4.6}
-                ]}
-            ],
-            "balances": [
-                {"user_id": 111, "balance": 102.74, "delta": -0.6},
-                {"user_id": 222, "balance": 10, "delta": -2},
-                {"user_id": 333, "balance": 4.6, "delta": 2.6}
-            ]
+    {"type": "ROUND_RESULT",
+            "rewards": {"type": "board1", "winners": [
+                    {"user_id": 333, "amount": 4.6, "balance": 4.6}
+                ]},
+            "banks": [],
+            "bank_total": 0
         },
+    {"type": "GAME_RESULT",
+      "balances": [
+                  {"user_id": 111, "balance": 102.74, "delta": -0.6},
+                  {"user_id": 222, "balance": 10, "delta": -2},
+                  {"user_id": 333, "balance": 4.6, "delta": 2.6}
+              ]
+    },
     {"type": "GAME_END"}
   ]
 }
