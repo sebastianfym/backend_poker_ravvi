@@ -136,12 +136,12 @@
                 {"hand_belong": "board1", "hand_type": "TWO_PAIRS", "hand_cards": ["J♠","J♦","7♣","2♠","2♦"]}
             ]
         },
-        {"type": "PLAYER_BET", "user_id": 111, "bet": "SEVEN_DEUCE", "delta": 3, "amount": 3, "balance": 17},
-        {"type": "GAME_ROUND", "banks": [3], "bank_total": 3},
+        {"type": "PLAYER_BET", "user_id": 111, "bet": "SEVEN_DEUCE", "delta": 6, "amount": 6, "balance": 14},
+        {"type": "GAME_ROUND", "banks": [6], "bank_total": 6},
         {"type": "ROUND_RESULT",
             "rewards":
                 {"type": "72", "winners": [
-                    {"user_id": 222, "amount": 3.0, "balance": 63.0}
+                    {"user_id": 222, "amount": 6.0, "balance": 66.0}
                 ]},
             "banks": [],
             "bank_total": 0
@@ -149,8 +149,8 @@
 
         {"type": "GAME_RESULT",
             "balances": [
-                {"user_id": 111, "balance": 17, "delta": -23},
-                {"user_id": 222, "balance": 63, "delta": 23}
+                {"user_id": 111, "balance": 14, "delta": -26},
+                {"user_id": 222, "balance": 66, "delta": 26}
             ]},
 
         {"type": "GAME_END"}

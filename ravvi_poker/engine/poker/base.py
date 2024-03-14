@@ -716,7 +716,7 @@ class PokerBase(Game):
 
     async def run_SEVEN_DEUCE(self, rounds_results):
         bank_seven_deuce, round_result = await self.table.seven_deuce.handle_winners(rounds_results,
-                                                                                               self.players)
+                                                                                     self.players)
         if bank_seven_deuce:
             async with self.DBI(log=self.log) as db:
                 # открываем карты игроков если они выиграли по 7-2 и их карты закрыты

@@ -4,8 +4,9 @@ from ravvi_poker.engine.poker.player import Player
 
 
 class SevenDeuceController:
-    def __init__(self, seven_prize: int):
-        self.each_prize: int = seven_prize
+    def __init__(self, seven_prize: int, big_blind: float):
+        # TODO округление
+        self.each_prize_value = round(seven_prize * big_blind, 2)
 
     async def handle_winners(self, rounds_results: dict, players: list[Player]):
         bank_seven_deuce = 0
@@ -40,14 +41,14 @@ class SevenDeuceController:
                 winners_seven_deuce_user_id.append(player.user_id)
 
                 for player_for_collect_sd in [p for p in players if p.user.id != player.user_id]:
-                    if player_for_collect_sd.balance >= self.each_prize:
-                        bank_seven_deuce += self.each_prize
-                        player_for_collect_sd.bet_delta += self.each_prize
-                        player_for_collect_sd.bet_amount += self.each_prize
+                    if player_for_collect_sd.balance >= self.each_prize_value:
+                        bank_seven_deuce += self.each_prize_value
+                        player_for_collect_sd.bet_delta += self.each_prize_value
+                        player_for_collect_sd.bet_amount += self.each_prize_value
                         player_for_collect_sd.bet_type = Bet.SEVEN_DEUCE
                         # TODO округление
                         player_for_collect_sd.user.balance = round(player_for_collect_sd.user.balance -
-                                                                   self.each_prize, 2)
+                                                                   self.each_prize_value, 2)
                     else:
                         bank_seven_deuce += player_for_collect_sd.user.balance
                         player_for_collect_sd.bet_delta += player_for_collect_sd.user.balance

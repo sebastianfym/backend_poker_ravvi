@@ -21,7 +21,7 @@ class TestSevenDeuce_NLX_RG:
         name, kwargs = game_case
 
         mocked_table = MockedTable(
-            seven_deuce=SevenDeuceController(3)
+            seven_deuce=SevenDeuceController(3, game_case[1]["blind_big"])
         )
         game = X_Game(mocked_table, **kwargs)
         if "double-board" in game_case[0]:
