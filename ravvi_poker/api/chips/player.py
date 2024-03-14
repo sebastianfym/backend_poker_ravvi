@@ -21,35 +21,35 @@ from .router import router
                  409: {"model": ErrorException, "detail": "Invalid amount value"},
                  404: {"model": ErrorException, "detail": "Club or user not found"},
              },
-             summary="Add/remove chips to/from the player")
+             summary="Пополнить или списать фишки с баланса пользователя/ей")
 async def v1_club_chips(club_id: int, params: ChipsParamsForMembers, users=Depends(check_rights_user_club_owner_or_manager)): #-> ChipsTxnItem: # user_id: int,
     """
     Пополнение или списание фишек с баланса пользователей на баланс клуба.
 
     Ожидаемое тело запроса:
 
-    {
+        {
 
-        "mode": "pick_up" | "give_out"
+            "mode": "pick_up" | "give_out"
 
-        "amount": number, [значение amount не может быть <= 0]
+            "amount": number, [значение amount не может быть <= 0]
 
-        "club_member": [ []
+            "club_member": list [
 
-            {
-                "id": 1001,
-                "balance": 1000,
-                "balance_shared": null
-            },
-            {
-                "id": 1002,
-                "balance": 1000,
-                "balance_shared": null
-            }
+                {
+                    "id": number,
+                    "balance": number | null,
+                    "balance_shared": number | null
+                },
+                {
+                    "id": number,
+                    "balance": number | null,
+                    "balance_shared": number | null
+                }
 
-        ]
+            ]
 
-    }
+        }
 
     Возвращает status code == 200
     """
@@ -99,7 +99,7 @@ async def v1_club_chips(club_id: int, params: ChipsParamsForMembers, users=Depen
                         continue
                     elif member['balance'] is None and (member['balance_shared'] or member["balance_shared"] == 0):
                         balance_shared = await db.delete_chips_from_the_agent_balance(amount, account.id, user.id)
-                        await db.refresh_club_balance(club_id, balance_shared.balance_shared, mode)
+                        await db.refresh_club_balance(club_id, balance_shared[0].balance_shared, mode)
 
                     elif (member['balance'] or member["balance"] == 0) and member['balance_shared'] is None:
                         balance = await db.delete_chips_from_the_account_balance(amount, account.id, user.id)
@@ -108,7 +108,7 @@ async def v1_club_chips(club_id: int, params: ChipsParamsForMembers, users=Depen
                     elif (member['balance'] or member["balance"] == 0) and (member['balance_shared'] or member["balance_shared"] == 0):
                         balance = await db.delete_chips_from_the_account_balance(amount, account.id, user.id)
                         balance_shared = await db.delete_chips_from_the_agent_balance(amount, account.id, user.id)
-                        await db.refresh_club_balance(club_id, balance.balance + balance_shared.balance_shared, mode)
+                        await db.refresh_club_balance(club_id, balance.balance + balance_shared[0].balance_shared, mode)
             return HTTP_200_OK
 
         elif mode == 'give_out':
@@ -149,13 +149,7 @@ async def v1_club_chips(club_id: int, params: ChipsParamsForMembers, users=Depen
 
     # created_ts = DateTime.utcnow().replace(microsecond=0).timestamp() #Todo посмотрим, мб это вернуть
 
-    # return ChipsTxnItem(id=1,
-    #                     created_ts=created_ts,
-    #                     created_by=user.id,
-    #                     txn_type='CASHIN' if params.amount > 0 else 'CASHOUT',
-    #                     amount=-params.amount,
-    #                     balance=params.amount
-    #                     )
+
 
 
 @router.post("/{club_id}/players/rakeback/{user_id}", status_code=HTTP_201_CREATED,

@@ -32,6 +32,7 @@ def create_club(client: list[TestClient] | TestClient):
 
     return club
 
+
 # @pytest.mark.parametrize("client", [["get_two_clients", 100]], indirect=["client"])
 def test_txns_in_club(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
                             api_guest_2: UserAccessProfile):

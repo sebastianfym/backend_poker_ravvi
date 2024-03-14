@@ -68,7 +68,7 @@ class ChipsTxnItem(BaseModel):
     created_by: int
     txn_type: str
     amount: Decimal
-    balance: Decimal
+    balance: Decimal | None = None
     ref_user_id: int | None = None
     ref_agent_id: int | None = None
 
@@ -83,9 +83,8 @@ class ChipsRequestItem(BaseModel):
     created_by: int
     txn_type: str
     amount: Decimal
-    txn_id: int
-    closed_ts: float
-    closed_by: int
+    closed_ts: float | None = None
+    closed_by: int | None = None
 
 
 class UserRequest(BaseModel):

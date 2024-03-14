@@ -23,17 +23,20 @@ from .router import router
                  403: {"model": ErrorException, "description": "You don't have enough permissions"},
                  404: {"model": ErrorException, "description": "Club or member not found"},
              },
-             summary="Send request for chashin/cashout")
+             summary="Отправить запрос на пополнение баланса")
 async def v1_chips_requests_post(club_id: int, params: ChipsRequestParams,
-                                 session_uuid: SessionUUID): #-> ChipsRequestItem:
+                                 session_uuid: SessionUUID) -> ChipsRequestItem:
     """
     Отправляет запрос от лица пользователя в адрес клуба на пополнение баланса.
 
     Ожидаемое тело запроса:
-    {
-        "amount": number, [amount может быть только больше 0]
-        "agent": boolean
-    }
+
+        {
+
+            "amount": number, [amount может быть только больше 0]
+
+            "agent": boolean
+        }
 
     Возвращает status code = 200
     """
@@ -78,16 +81,15 @@ async def v1_chips_requests_post(club_id: int, params: ChipsRequestParams,
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You don't have enough permissions to work "
                                                                        "with agent balance")
 
-        await db.send_request_for_replenishment_of_chips(account_id=account.id, amount=amount, balance=balance)
-        #Todo тут  получить последний запрос и вернуть его в return
-    return HTTP_200_OK
-    # return ChipsRequestItem(id=1,
-    #                         created_ts=created_ts,
-    #                         created_by=user.id,
-    #                         txn_type='CHIPSIN' if params.amount > 0 else 'CHIPSOUT',
-    #                         amount=params.amount,
-    #                         balance=params.amount
-    #                         )
+        row = await db.send_request_for_replenishment_of_chips(account_id=account.id, amount=amount, balance=balance)
+
+    return ChipsRequestItem(
+                id=row.id,
+                created_ts=created_ts,
+                created_by=user.id,
+                txn_type=row.txn_type,
+                amount=row.txn_value
+                            )
 
 
 # GET CHIPS REQUESTS
@@ -103,25 +105,43 @@ async def v1_chips_requests_get(club_id: int, users=Depends(check_rights_user_cl
     Страница служит для получения всех запросов от пользователей на пополнение баланса
 
     Возвращает словарь со следующим содержанием:
-    {
-        "sum_txn_value": "1500.0000",
-        "users_requests": [
-            {
-                "id": 1002,
-                "txn_id": 1044,
-                "username": "u1002",
-                "image_id": null,
-                "user_role": "A",
-                "nickname": "nickname",
-                "txn_value": 1500.0,
-                "txn_type": "REPLENISHMENT",
-                "balance_type": "balance_shared",
-                "join_in_club": 1710307485.459794,
-                "leave_from_club": null,
-                "country": null
-            }
-        ]
-    }
+
+        {
+
+            "sum_txn_value": number >= 1,
+
+            "users_requests": [
+
+                {
+                    "id": number,
+
+                    "txn_id": number,
+
+                    "username": string,
+
+                    "image_id": number | null,
+
+                    "user_role": string,
+
+                    "nickname": string | null,
+
+                    "txn_value": number >= 1,
+
+                    "txn_type": string,
+
+                    "balance_type": string, ["balance_shared" | "balance"]
+
+                    "join_in_club": timestamp,
+
+                    "leave_from_club": timestamp | null,
+
+                    "country": string | null
+
+                }
+
+            ]
+
+        }
 
     """
     sum_txn_value = 0
@@ -182,9 +202,15 @@ async def v1_chips_requests_put(club_id: int, request_id: int, users=Depends(che
         await db.giving_chips_to_the_user(txn.txn_value, txn.account_id, txn.props["balance"], user.id)
                                           # club_owner_account.id)
 
-        await db.update_status_txn(txn.id, "approve")
+        txn = await db.update_status_txn(txn.id, "approve")
         await db.refresh_club_balance(club_id, txn.txn_value, "give_out")
-    return HTTP_200_OK
+    return ChipsRequestItem(
+                id=txn.id,
+                created_ts=txn.created_ts.utcnow().replace(microsecond=0).timestamp(),
+                created_by=txn.account_id,
+                txn_type=txn.txn_type,
+                amount=txn.txn_value,
+                            )
 
 
 @router.post("/{club_id}/requests/chips/all", status_code=HTTP_200_OK,
@@ -202,9 +228,12 @@ async def v1_accept_all_chips_requests(club_id: int, params: ChipRequestForm, us
     Служит для обработки ВСЕХ запросов на пополнение баланса от пользователей
 
     Ожидаемое тело запроса:
-    {
-        "operation": string ["approve", "reject"]
-    }
+
+        {
+
+            "operation": string ["approve", "reject"]
+
+        }
 
     Возвращает status code = 200
     """
@@ -236,6 +265,7 @@ async def v1_accept_all_chips_requests(club_id: int, params: ChipRequestForm, us
     return HTTP_200_OK
 # REJECT CHIPS REQUEST
 
+
 @router.delete("/{club_id}/requests/chips/{request_id}", status_code=HTTP_200_OK,
                responses={
                    403: {"model": ErrorException, "description": "No access for requested operation"},
@@ -244,7 +274,9 @@ async def v1_accept_all_chips_requests(club_id: int, params: ChipRequestForm, us
                summary="Отклонить заявку на пополнение баланса")
 async def v1_chips_requests_delete(club_id: int, request_id: int, users=Depends(check_rights_user_club_owner)):# -> ChipsRequestItem:
     """
-    Ожидаемое тело запроса: {}
+    Ожидаемое тело запроса:
+
+    {    }
 
     Возвращает status code = 200
     """
@@ -252,6 +284,11 @@ async def v1_chips_requests_delete(club_id: int, request_id: int, users=Depends(
     async with DBI() as db:
         txn = await db.get_specific_txn(request_id)
         await db.update_status_txn(txn.id, "reject")
-        return HTTP_200_OK
-    # return []
+    return ChipsRequestItem(
+        id=txn.id,
+        created_ts=txn.created_ts.utcnow().replace(microsecond=0).timestamp(),
+        created_by=txn.account_id,
+        txn_type=txn.txn_type,
+        amount=txn.txn_value,
+    )
 

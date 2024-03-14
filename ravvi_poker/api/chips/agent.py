@@ -19,26 +19,47 @@ from .router import router
              },
              summary="Добавить или списать фишки с агентов")
 async def v1_club_chips(club_id: int, user_id: int, params: ChipsParamsForAgents,
-                        users=Depends(check_rights_user_club_owner_or_manager)):# -> ChipsTxnItem:
+                        users=Depends(check_rights_user_club_owner_or_manager)) -> ChipsTxnItem:
     """
     Добавить или списать фишки с агентов
 
-    {
-        "mode": string, ["pick_up", "give_out"]
-        "amount": number, [значение amount не может быть <= 0]
-    }
+        {
+
+            "mode": string, ["pick_up", "give_out"]
+
+            "amount": number, [значение amount не может быть <= 0]
+
+        }
 
     """
     async with DBI() as db:
         club_owner_account, user, club = users
         created_ts = DateTime.utcnow().replace(microsecond=0).timestamp()
         if params.mode == "give_out":
-            await db.giving_chips_to_the_user(params.amount, user_id, "balance_shared", user.id)
+            row = await db.giving_chips_to_the_user(params.amount, user_id, "balance_shared", user.id)
+            txn_model = ChipsTxnItem(
+                id=row.id,
+                created_ts=created_ts,
+                created_by=row.sender_id,
+                # txn_type='MOVEIN' if params.amount > 0 else 'MOVEOUT',
+                txn_type=row.txn_type,
+                amount=row.txn_value,
+                balance=row.total_balance
+            )
         elif params.mode == "pick_up":
-            await db.delete_chips_from_the_agent_balance(params.amount, user_id, club_owner_account.id)
+            row = await db.delete_chips_from_the_agent_balance(params.amount, user_id, club_owner_account.id)
+            txn_model = ChipsTxnItem(
+                    id=row[1].id,
+                    created_ts=created_ts,
+                    created_by=row[1].sender_id,
+                    # txn_type='MOVEIN' if params.amount > 0 else 'MOVEOUT',
+                    txn_type=row[1].txn_type,
+                    amount=row[1].txn_value,
+                    balance=row[1].total_balance
+                )
         else:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Possible options: pick_up | give_out")
-        return HTTP_200_OK
+        return txn_model
     # return ChipsTxnItem(id=1,
     #                     created_ts=created_ts,
     #                     created_by=user.id,

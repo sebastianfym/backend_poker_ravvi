@@ -1209,7 +1209,7 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
                     elif member['balance'] is None and (member['balance_shared'] or member["balance_shared"] == 0):
                         # balance_shared = await db.delete_chips_from_the_agent_balance(amount, member['id'],club_owner_account.id)
                         balance_shared = await db.delete_chips_from_the_agent_balance(amount, account.id, club_owner_account.id)
-                        await db.refresh_club_balance(club_id, balance_shared.balance_shared, mode)
+                        await db.refresh_club_balance(club_id, balance_shared[0].balance_shared, mode)
 
                     elif (member['balance'] or member["balance"] == 0) and member['balance_shared'] is None:
                         # balance = await db.delete_chips_from_the_account_balance(amount, member['id'], club_owner_account.id)
@@ -1221,7 +1221,7 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
                         # balance_shared = await db.delete_chips_from_the_agent_balance(amount, member['id'],club_owner_account.id)
                         balance = await db.delete_chips_from_the_account_balance(amount, account.id, club_owner_account.id)
                         balance_shared = await db.delete_chips_from_the_agent_balance(amount, account.id, club_owner_account.id)
-                        await db.refresh_club_balance(club_id, balance.balance + balance_shared.balance_shared, mode)
+                        await db.refresh_club_balance(club_id, balance.balance + balance_shared[0].balance_shared, mode)
             return HTTP_200_OK
 
         elif mode == 'give_out':
