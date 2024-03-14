@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # statup begin
     logger.info("api startup")
-    #await DBI.pool_open()
+    await DBI.pool_open()
     await engine.mamager.start()
     await ws.manager.start()
     # statup end
@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
     # shutdown begin
     await ws.manager.stop()
     await engine.mamager.stop()
-    #await DBI.pool_close()
+    await DBI.pool_close()
     logger.info("api stopped")
     # shutdown end
 

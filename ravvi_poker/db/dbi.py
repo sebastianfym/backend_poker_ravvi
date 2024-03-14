@@ -12,7 +12,7 @@ from .pool import DBIPool
 logger = logging.getLogger(__name__)
 
 class DBI:
-    DB_HOST = os.getenv("RAVVI_POKER_DB_HOST", "localhost")
+    DB_HOST = os.getenv("RAVVI_POKER_DB_HOST", "127.0.0.1")
     DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "15432"))
     DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "develop")
     DB_USER = os.getenv("RAVVI_POKER_DB_USER", "postgres")
