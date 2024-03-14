@@ -40,37 +40,6 @@ class PokerClient:
             await self.session.close()
             self.session = None
 
-    async def _get_result(self, response):
-        payload = None
-        if response.ok:
-            payload = await response.json()
-        return response.status, payload
-
-    async def auth_register(self, *, device_token=None, device_props=None):
-        body = dict(device_token=device_token, device_props=device_props or {})
-        response = await self.session.post('/v1/auth/register', json=body)
-        status, payload = await self._get_result(response)
-        if status == 200:
-            self.access_profile = UserAccessProfile(**payload)
-            self.session.headers["Authorization"] = "Bearer " + self.access_profile.access_token
-
-    async def auth_logout(self):
-        response = await self.session.post('/v1/auth/logout')
-        await self._get_result(response)
-        self.access_profile = None
-        self.session.headers.popall("Authorization",None)
-
-    # USER
-        
-    async def get_user_profile(self):
-        user_profile = None
-        response = await self.session.get('/v1/user/profile')
-        status, payload = await self._get_result(response)
-        if status == 200:
-            user_profile = UserPrivateProfile(**payload)
-            self.access_profile.user = user_profile
-        return user_profile
-    
     # WS
     
     async def ws_connect(self):
@@ -103,6 +72,41 @@ class PokerClient:
         logger.info('cmd: %s', kwargs)
         await self.ws.send_json(kwargs)
 
+    # HELPERS
+            
+    async def _get_result(self, response):
+        payload = None
+        if response.ok:
+            payload = await response.json()
+        return response.status, payload
+
+    # AUTH
+    
+    async def auth_register(self, *, device_token=None, device_props=None):
+        body = dict(device_token=device_token, device_props=device_props or {})
+        response = await self.session.post('/v1/auth/register', json=body)
+        status, payload = await self._get_result(response)
+        if status == 200:
+            self.access_profile = UserAccessProfile(**payload)
+            self.session.headers["Authorization"] = "Bearer " + self.access_profile.access_token
+
+    async def auth_logout(self):
+        response = await self.session.post('/v1/auth/logout')
+        await self._get_result(response)
+        self.access_profile = None
+        self.session.headers.popall("Authorization",None)
+
+    # USER
+        
+    async def get_user_profile(self):
+        user_profile = None
+        response = await self.session.get('/v1/user/profile')
+        status, payload = await self._get_result(response)
+        if status == 200:
+            user_profile = UserPrivateProfile(**payload)
+            self.access_profile.user = user_profile
+        return user_profile
+    
     # PLAY
 
     async def join_table(self, table_id, take_seat, table_msg_handler):
@@ -117,14 +121,16 @@ class PokerClient:
         await self.ws_send(cmd_type=CommandType.EXIT)
         del self.table_handlers[table_id]
 
+    # BASIC SIMPLE PLAY STRATEGIES
+
     async def play_fold_always(self, msg: Message):
         if msg.msg_type == MessageType.GAME_PLAYER_MOVE and msg.user_id == self.user_id:
-            logger.info("%s: got bet options %s", msg.table_id, msg.options)
+            logger.info("%s: bet options %s", msg.table_id, msg.options)
             await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=1)
 
     async def play_check_or_fold(self, msg: Message):
         if msg.msg_type == MessageType.GAME_PLAYER_MOVE and msg.user_id == self.user_id:
-            logger.info("%s: got bet options %s", msg.table_id, msg.options)
+            logger.info("%s: bet options %s", msg.table_id, msg.options)
             if Bet.CHECK in msg.options:
                 await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
             else:
