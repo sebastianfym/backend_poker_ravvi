@@ -2,7 +2,7 @@ import datetime
 from decimal import Decimal
 from datetime import datetime as DateTime
 from fastapi import HTTPException, Depends
-from starlette.status import HTTP_200_OK, HTTP_201_CREATED
+from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_409_CONFLICT
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY, HTTP_400_BAD_REQUEST
 from pydantic import BaseModel, Field, field_validator, validator
 
@@ -10,7 +10,7 @@ from ..clubs import check_rights_user_club_owner
 from ...db import DBI
 from ..utils import SessionUUID, get_session_and_user
 # from ..types import HTTPError
-from .types import ChipsRequestParams, ChipsRequestItem, UserRequest, ChipRequestForm
+from .types import ChipsRequestParams, ChipsRequestItem, UserRequest, ChipRequestForm, ErrorException
 
 from .router import router
 
@@ -18,11 +18,11 @@ from .router import router
 # CREATE CHIPS REQUEST
 
 @router.post("/{club_id}/requests/chips", status_code=HTTP_201_CREATED,
-             # responses={
-             #     400: {"model": HTTPError, "description": "Invalid params values"},
-             #     403: {"model": HTTPError, "description": "No access for requested operation"},
-             #     404: {"model": HTTPError, "description": "Club not found"},
-             # },
+             responses={
+                 400: {"model": ErrorException, "description": "Your request is still under consideration"},
+                 403: {"model": ErrorException, "description": "You don't have enough permissions"},
+                 404: {"model": ErrorException, "description": "Club or member not found"},
+             },
              summary="Send request for chashin/cashout")
 async def v1_chips_requests_post(club_id: int, params: ChipsRequestParams,
                                  session_uuid: SessionUUID): #-> ChipsRequestItem:
@@ -45,7 +45,7 @@ async def v1_chips_requests_post(club_id: int, params: ChipsRequestParams,
         account = await db.find_account(club_id=club_id, user_id=user.id)
 
         if not account:
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Member not found")
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member not found")
 
         created_ts = DateTime.utcnow().replace(microsecond=0).timestamp()
 
@@ -163,10 +163,11 @@ async def v1_chips_requests_get(club_id: int, users=Depends(check_rights_user_cl
 # APPROVE CHIPS REQUEST
 
 @router.put("/{club_id}/requests/chips/{request_id}", status_code=HTTP_200_OK,
-            # responses={
-            #     403: {"model": HTTPError, "description": "No access for requested operation"},
-            #     404: {"model": HTTPError, "description": "Club not found"},
-            # },
+            responses={
+                400: {"model": ErrorException, "detail": "Club balance cannot be less than 0"},
+                403: {"model": ErrorException, "description": "No access for requested operation"},
+                404: {"model": ErrorException, "detail": "Club not found"},
+            },
             summary="Подтвердить заявку на пополнение баланса")
 async def v1_chips_requests_put(club_id: int, request_id: int, users=Depends(check_rights_user_club_owner)): #-> ChipsRequestItem:
     """
@@ -187,10 +188,14 @@ async def v1_chips_requests_put(club_id: int, request_id: int, users=Depends(che
 
 
 @router.post("/{club_id}/requests/chips/all", status_code=HTTP_200_OK,
-            # responses={
-            #     403: {"model": HTTPError, "description": "No access for requested operation"},
-            #     404: {"model": HTTPError, "description": "Club not found"},
-            # },
+            responses={
+                400: {"model": ErrorException, "detail": "Club balance cannot be less than 0"},
+                403: {"model": ErrorException, "description": "No access for requested operation"},
+                404: {"model": ErrorException, "detail": "Club not found"},
+                409: {"model": ErrorException, "detail": "Invalid mode value",
+                      "message": "Invalid value. Operation must be 'approve' or 'reject"}
+
+            },
             summary="Подтвердить или отклонить ВСЕ запросы")
 async def v1_accept_all_chips_requests(club_id: int, params: ChipRequestForm, users=Depends(check_rights_user_club_owner)):
     """
@@ -226,16 +231,16 @@ async def v1_accept_all_chips_requests(club_id: int, params: ChipRequestForm, us
             elif params.operation == "reject":
                 await db.update_status_txn(txn.id, "reject")
             else:
-                raise HTTPException(status_code=HTTP_400_BAD_REQUEST,
+                raise HTTPException(status_code=HTTP_409_CONFLICT,
                                     detail="Invalid value. Operation must be 'approve' or 'reject")
     return HTTP_200_OK
 # REJECT CHIPS REQUEST
 
 @router.delete("/{club_id}/requests/chips/{request_id}", status_code=HTTP_200_OK,
-               # responses={
-               #     403: {"model": HTTPError, "description": "No access for requested operation"},
-               #     404: {"model": HTTPError, "description": "Club not found"},
-               # },
+               responses={
+                   403: {"model": ErrorException, "description": "No access for requested operation"},
+                   404: {"model": ErrorException, "description": "Club not found"},
+               },
                summary="Отклонить заявку на пополнение баланса")
 async def v1_chips_requests_delete(club_id: int, request_id: int, users=Depends(check_rights_user_club_owner)):# -> ChipsRequestItem:
     """

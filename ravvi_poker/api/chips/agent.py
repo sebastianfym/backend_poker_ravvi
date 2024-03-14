@@ -9,19 +9,17 @@ from .utilities import check_rights_user_club_owner_or_manager
 from ...db import DBI
 from ..utils import SessionUUID, get_session_and_user
 # from ..types import HTTPError
-from .types import ChipsParams, ChipsTxnItem, ChipsParamsForAgents
+from .types import ChipsParams, ChipsTxnItem, ChipsParamsForAgents, ErrorException
 from .router import router
 
 
 @router.post("/{club_id}/agents/chips/{user_id}", status_code=HTTP_201_CREATED,
-             # responses={
-             #     400: {"model": HTTPError, "description": "Invalid params values"},
-             #     403: {"model": HTTPError, "description": "No access for requested operation"},
-             #     404: {"model": HTTPError, "description": "Club or user not found"},
-             # },
+             responses={
+                 400: {"model": ErrorException, "detail": "Invalid mode values", "message": "Possible options: pick_up | give_out"}
+             },
              summary="Добавить или списать фишки с агентов")
 async def v1_club_chips(club_id: int, user_id: int, params: ChipsParamsForAgents,
-                        users=Depends(check_rights_user_club_owner_or_manager)) -> ChipsTxnItem:
+                        users=Depends(check_rights_user_club_owner_or_manager)):# -> ChipsTxnItem:
     """
     Добавить или списать фишки с агентов
 

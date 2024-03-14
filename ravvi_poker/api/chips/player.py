@@ -2,7 +2,7 @@ import decimal
 from decimal import Decimal
 from datetime import datetime as DateTime
 from fastapi import APIRouter, Request, Depends, HTTPException, Response
-from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_418_IM_A_TEAPOT
+from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_409_CONFLICT
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 from pydantic import BaseModel, Field, field_validator, validator
 
@@ -10,19 +10,19 @@ from .utilities import check_rights_user_club_owner_or_manager
 from ...db import DBI
 from ..utils import SessionUUID, get_session_and_user
 # from ..types import HTTPError
-from .types import ChipsParams, ChipsTxnItem, ChipsParamsForMembers
+from .types import ChipsParams, ChipsTxnItem, ChipsParamsForMembers, ErrorException
 
 from .router import router
 
 
 @router.post("/{club_id}/players/chips", status_code=HTTP_201_CREATED,
-             # responses={
-             #     400: {"model": HTTPError, "description": "Invalid params values"},
-             #     403: {"model": HTTPError, "description": "No access for requested operation"},
-             #     404: {"model": HTTPError, "description": "Club or user not found"},
-             # },
+             responses={
+                 400: {"model": ErrorException, "detail": "Quantity club members for action is invalid"},
+                 409: {"model": ErrorException, "detail": "Invalid amount value"},
+                 404: {"model": ErrorException, "detail": "Club or user not found"},
+             },
              summary="Add/remove chips to/from the player")
-async def v1_club_chips(club_id: int, params: ChipsParamsForMembers, users=Depends(check_rights_user_club_owner_or_manager)) -> ChipsTxnItem: # user_id: int,
+async def v1_club_chips(club_id: int, params: ChipsParamsForMembers, users=Depends(check_rights_user_club_owner_or_manager)): #-> ChipsTxnItem: # user_id: int,
     """
     Пополнение или списание фишек с баланса пользователей на баланс клуба.
 
@@ -60,15 +60,15 @@ async def v1_club_chips(club_id: int, params: ChipsParamsForMembers, users=Depen
 
     amount = params.amount  #(await request.json())['amount']
     if isinstance(amount, str) and amount != 'all':
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid amount value')
+        raise HTTPException(status_code=HTTP_409_CONFLICT, detail='Invalid amount value')
 
     if mode != 'pick_up' and amount != 'all':
         try:
             amount = decimal.Decimal(amount)
             if amount <= 0 or isinstance(amount, decimal.Decimal) is False:
-                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid amount value')
+                raise HTTPException(status_code=HTTP_409_CONFLICT, detail='Invalid amount value')
         except decimal.InvalidOperation:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid amount value')
+            raise HTTPException(status_code=HTTP_409_CONFLICT, detail='Invalid amount value')
 
     async with DBI() as db:
         club_owner_account, user, club = users

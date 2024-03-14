@@ -5,6 +5,15 @@ from pydantic import BaseModel, field_validator
 from fastapi import HTTPException
 from starlette.status import HTTP_400_BAD_REQUEST
 
+from pydantic.dataclasses import dataclass as pydantic_dataclass
+
+
+@pydantic_dataclass
+class ErrorException(Exception):
+    status_code: int
+    detail: str
+    message: str
+
 
 class ChipsParams(BaseModel):
     amount: Decimal | str

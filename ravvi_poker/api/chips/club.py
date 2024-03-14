@@ -35,10 +35,7 @@ async def v1_add_club_chips(club_id: int, params: ChipsParams, users=Depends(che
     async with DBI() as db:
         club_owner_account, user, club = users
 
-        #Todo  тут нужно условие при котором будет удаление или пополнение
         await db.txn_with_chip_on_club_balance(club_id, params.amount, "CASHIN", club_owner_account.id, user.id)
-        # await db.txn_with_chip_on_club_balance(club_id, params.amount, "REMOVE", club_owner_account.id, user.id)
-
 
         created_ts = DateTime.utcnow().replace(microsecond=0).timestamp()
         return HTTP_200_OK
@@ -75,7 +72,6 @@ async def v1_remove_club_chips(club_id: int, params: ChipsParams, users=Depends(
         club_owner_account, user, club = users
 
         await db.txn_with_chip_on_club_balance(club_id, params.amount, "REMOVE", club_owner_account.id, user.id)
-
 
         created_ts = DateTime.utcnow().replace(microsecond=0).timestamp()
     return HTTP_200_OK
