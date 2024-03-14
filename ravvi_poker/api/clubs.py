@@ -1388,19 +1388,19 @@ async def v1_club_agents(club_id: int, users=Depends(check_rights_user_club_owne
     """
     agents_list = []
     async with DBI() as db:
-        for agent in await db.club_agents(club.id):
-            user = await db.get_user(agent.user_id)
+        for member in await db.club_agents(club.id):
+            user = await db.get_user(member.user_id)
             agent = ClubMemberProfile(
                 id=user.id,
                 username=user.name,
                 image_id=user.image_id,
-                user_role=agent.user_role,
+                user_role=member.user_role,
                 country=user.country,
-                nickname=agent.nickname,
-                balance=agent.balance,
-                balance_shared=agent.balance_shared,
-                join_in_club=agent.approved_ts.timestamp(),
-                agent_id=agent.agent_id
+                nickname=member.nickname,
+                balance=member.balance,
+                balance_shared=member.balance_shared,
+                join_in_club=member.approved_ts.timestamp(),
+                agent_id=member.agent_id
             )
             agents_list.append(agent)
     return agents_list

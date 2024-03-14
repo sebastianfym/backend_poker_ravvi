@@ -941,30 +941,28 @@ def client_new(request, api_client: TestClient, api_guest: UserAccessProfile,
            api_client_2: TestClient, api_guest_2: UserAccessProfile,
            api_client_3: TestClient, api_guest_3: UserAccessProfile):
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+    print(request.__dict__["param"])
     if request.__dict__["param"] == "get_authorize_client":
         api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
         yield api_client
     elif request.__dict__["param"] == "get_two_clients":
         api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
         yield [api_client, api_client_2]
-    elif request.__dict__["param"] == "get_three_clients":
+    elif request.__dict__["param"][0] == "get_three_clients":
+        api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
         api_client_3.headers = {"Authorization": "Bearer " + api_guest_3.access_token}
         yield [api_client, api_client_2, api_client_3]
 
 
 @pytest.mark.parametrize("client_new",
                          [
-                             ["get_authorize_client", 100],
-                             ["get_two_clients", 100],
                              ["get_three_clients", 100]
                          ],
                          indirect=["client_new"])
-def test_agents_in_club(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient, api_guest_2: UserAccessProfile,
+def test_agents_in_club(client_new,
+                        api_client: TestClient, api_guest: UserAccessProfile,
+                        api_client_2: TestClient, api_guest_2: UserAccessProfile,
                         api_client_3: TestClient, api_guest_3: UserAccessProfile):
-    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
-    api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
-    api_client_3.headers = {"Authorization": "Bearer " + api_guest_3.access_token}
-    print(f'CLIENT ::: {client}')
     params = {
         "name": "Test club",
         "description": "Test club 1",
@@ -998,9 +996,8 @@ def test_agents_in_club(api_client: TestClient, api_guest: UserAccessProfile, ap
     response = api_client.put(f"/v1/clubs/{club.id}/members/{user_id_second}", json=data)
     assert response.status_code == 200
 
-    response = api_client.put(f"/v1/clubs/{club.id}/members/{user_id_second}/agents")
+    response = api_client.put(f"/v1/clubs/{club.id}/members/{user_id_second}/agents", json={"agent_id":user_id_first})
     assert response.status_code == 200
 
     response = api_client.get(f"/v1/clubs/{club.id}/members/agents")
-    print(response.json())
     assert response.status_code == 200
