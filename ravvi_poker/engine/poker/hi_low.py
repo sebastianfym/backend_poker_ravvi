@@ -4,7 +4,7 @@ from ravvi_poker.engine.poker.hands import Hand, LowHand
 
 
 class HiLowMixin:
-    def get_best_hand(self, player_cards, board) -> list[Hand, LowHand | None]:
+    def get_best_hand(self, player_cards, board) -> list[Hand, LowHand]:
         print("______________________________________________________")
         print("Вызвали команду получения лучшей руки")
         print(board)
@@ -37,15 +37,42 @@ class HiLowMixin:
         results.sort(reverse=True, key=lambda x: x.rank)
         return results[0]
 
+    async def prepare_hands(self, player) -> list[dict]:
+        hands = []
+        for player_hand in player.hands:
+            if player_hand is not None:
+                if isinstance(player_hand, LowHand):
+                    hand = {
+                        "hand_belong": "low",
+                    }
+                else:
+                    hand = {
+                        "hand_belong": player_hand.board.board_type.value,
+                    }
+                hand_info = {
+                    "hand_type": player_hand.type[0].value,
+                    "hand_cards": [c.code for c in player_hand.cards]
+                }
+                hand |= hand_info
+            else:
+                hand = {
+                    "hand_belong": "low",
+                    "hand_type": None,
+                    "hand_cards": []
+                }
+            hands.append(hand)
 
-    def get_winners(self):
+        return hands
+
+
+    def get_round_results(self):
+        players = [p for p in self.players if p.in_the_game]
         # проверяем есть ли вообще победители по low
-        if any([p.hand[1] for p in self.players]):
+        if any([p.hand[1] for p in players]):
             # делим каждый банк на две части
             banks = self.split_banks()
 
             winners = [{}, {}]
-            players = [p for p in self.players if p.in_the_game]
             if len(players) == 1:
                 p = players[0]
                 for num in range(2):

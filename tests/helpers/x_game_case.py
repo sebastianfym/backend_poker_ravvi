@@ -103,22 +103,28 @@ class X_CaseMixIn:
                 ev = Bet.decode(ev)
                 rv = Bet.decode(rv)
             elif k == 'hands':
-                print("********************************************")
-                print(ev)
-                print(rv)
                 if len(ev) == 1:
                     # REGULAR games
                     ev[0]["hand_cards"] = [Card(x).code for x in ev[0]["hand_cards"]]
                     ev[0]["hand_type"] = HandType.decode(ev[0]["hand_type"])
                     rv[0]["hand_type"] = HandType.decode(rv[0]["hand_type"])
                 else:
-                    print("_______________________________")
-                    print(ev)
-                    print(rv)
                     for i in range(len(ev)):
-                        ev[i]["hand_cards"] = [Card(x).code for x in ev[i]["hand_cards"]]
-                        ev[i]["hand_type"] = HandType.decode(ev[i]["hand_type"])
-                        rv[i]["hand_type"] = HandType.decode(rv[i]["hand_type"])
+                        # Low hand in Hi-Low
+                        if ev[i]["hand_belong"] == "low":
+                            if ev[i]["hand_type"] is not None:
+                                ev[i]["hand_cards"] = [Card(x).code for x in ev[i]["hand_cards"]]
+                                ev[i]["hand_type"] = LowHandType.decode(ev[i]["hand_type"])
+                                rv[i]["hand_type"] = LowHandType.decode(rv[i]["hand_type"])
+                            else:
+                                ev[i]["hand_cards"] = []
+                                ev[i]["hand_type"] = None
+                                rv[i]["hand_type"] = None
+                        # DoubleBoard|2-3
+                        else:
+                            ev[i]["hand_cards"] = [Card(x).code for x in ev[i]["hand_cards"]]
+                            ev[i]["hand_type"] = HandType.decode(ev[i]["hand_type"])
+                            rv[i]["hand_type"] = HandType.decode(rv[i]["hand_type"])
 
                 # elif isinstance(ev, list):
                 #     if self.is_low_hand(ev[1]):

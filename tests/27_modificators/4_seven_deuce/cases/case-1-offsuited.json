@@ -140,7 +140,7 @@
         {"type": "GAME_ROUND", "banks": [3], "bank_total": 3},
         {"type": "ROUND_RESULT",
             "rewards":
-                {"type": "seven_deuce", "winners": [
+                {"type": "72", "winners": [
                     {"user_id": 222, "amount": 3.0, "balance": 63.0}
                 ]},
             "banks": [],

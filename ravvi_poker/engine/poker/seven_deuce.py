@@ -1,6 +1,5 @@
 from ravvi_poker.engine.cards import Card
 from ravvi_poker.engine.poker.bet import Bet
-from ravvi_poker.engine.poker.hands import Hand
 from ravvi_poker.engine.poker.player import Player
 
 
@@ -61,7 +60,7 @@ class SevenDeuceController:
     async def form_result_and_balances(self, players: list[Player], winners_seven_deuce_user_id: list,
                                        bank_seven_deuce: float) -> dict:
         winners = []
-        rewards = {"type": "seven_deuce", "winners": winners}
+        rewards = {"type": "72", "winners": winners}
         round_result = {
             "rewards": rewards,
             "banks": [],

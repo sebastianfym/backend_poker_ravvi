@@ -168,7 +168,6 @@ class PokerBase(Game):
     async def prepare_hands(self, player) -> list[dict]:
         hands = []
         for player_hand in player.hands:
-            print(player_hand)
             hand = {
                 "hand_belong": player_hand.board.board_type.value,
             }
@@ -583,7 +582,7 @@ class PokerBase(Game):
 
         async with self.DBI() as db:
             for p in self.players:
-                p.hands = [self.get_best_hand(p.cards, board) for board in self.boards]
+                p.fill_player_hands(self.get_best_hand, self.boards)
                 await self.broadcast_PLAYER_CARDS(db, p)
 
             self.bet_level = 0
@@ -645,7 +644,7 @@ class PokerBase(Game):
             self.players_to_role(PlayerRole.DEALER)
             self.players_rotate()
             for p in self.players:
-                p.hands = [self.get_best_hand(p.cards, board) for board in self.boards]
+                p.fill_player_hands(self.get_best_hand, self.boards)
                 await self.broadcast_PLAYER_CARDS(db, p)
 
         await self.run_round(PlayerRole.DEALER)
@@ -663,7 +662,7 @@ class PokerBase(Game):
             self.players_to_role(PlayerRole.DEALER)
             self.players_rotate()
             for p in self.players:
-                p.hands = [self.get_best_hand(p.cards, board) for board in self.boards]
+                p.fill_player_hands(self.get_best_hand, self.boards)
                 await self.broadcast_PLAYER_CARDS(db, p)
 
         await self.run_round(PlayerRole.DEALER)
@@ -681,7 +680,7 @@ class PokerBase(Game):
             self.players_to_role(PlayerRole.DEALER)
             self.players_rotate()
             for p in self.players:
-                p.hands = [self.get_best_hand(p.cards, board) for board in self.boards]
+                p.fill_player_hands(self.get_best_hand, self.boards)
                 await self.broadcast_PLAYER_CARDS(db, p)
 
         await self.run_round(PlayerRole.DEALER)
@@ -702,7 +701,7 @@ class PokerBase(Game):
         # get players hands
         open_all = False
         for p in players:
-            p.hands = [self.get_best_hand(p.cards, board) for board in self.boards]
+            p.fill_player_hands(self.get_best_hand, self.boards)
             self.log.info("player %s hand: %s %s", p.user_id, p.hands, ",".join([str(hand.type) for hand in p.hands
                                                                                  if hand is not None]))
             if p.bet_type == Bet.ALLIN:

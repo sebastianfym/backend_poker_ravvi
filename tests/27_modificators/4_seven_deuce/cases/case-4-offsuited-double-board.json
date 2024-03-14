@@ -256,7 +256,7 @@
     {"type": "PLAYER_BET", "user_id": 333, "bet": "SEVEN_DEUCE", "delta": 5.5, "amount": 5.5, "balance": 0},
     {"type": "GAME_ROUND", "banks": [11.5], "bank_total": 11.5},
     {"type": "ROUND_RESULT",
-            "rewards": {"type": "seven_deuce", "winners": [
+            "rewards": {"type": "72", "winners": [
                     {"user_id": 222, "amount": 11.5, "balance": 39.5}
                 ]},
             "banks": [],

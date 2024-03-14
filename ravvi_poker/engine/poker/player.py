@@ -1,5 +1,7 @@
-from typing import List, Tuple
+from typing import List, Tuple, Callable
 from enum import IntFlag
+
+from ravvi_poker.engine.poker.board import Board
 
 from .hands import Hand, LowHand
 from ..user import User
@@ -42,3 +44,12 @@ class Player(PlayerBase):
     @property
     def has_bet_opions(self) -> bool:
         return self.in_the_game and self.bet_type != Bet.ALLIN
+
+    def fill_player_hands(self, func_fill: Callable, boards: list[Board]) -> None:
+        self.hands = []
+        for board in boards:
+            if isinstance(result := func_fill(self.cards, board), list):
+                # hi-low возвращает сразу две руки
+                self.hands.extend(result)
+            else:
+                self.hands.append(result)
