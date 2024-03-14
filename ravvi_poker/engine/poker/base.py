@@ -84,9 +84,11 @@ class PokerBase(Game):
     def get_info(self, users_info: dict = None, user_id: int = None):
         info = super().get_info()
         info |= self.game_props
-        # TODO поменять
         info.update(
-            boards=[board.board_type.value for board in self.boards]
+            boards=[{
+                "board_type": board.board_type.value,
+                "cards": board.cards
+            } for board in self.boards]
         )
         banks_info = []
         for b in (self.banks or []):
@@ -514,8 +516,6 @@ class PokerBase(Game):
             # TODO вынести balances в отдельную функцию перед GAME_END
             balances = await self.run_SEVEN_DEUCE(rounds_results)
 
-        # TODO тут вызовем показ карт
-        logger.info("Показываем")
         await self.open_cards_on_request()
 
         await asyncio.sleep(self.SLEEP_GAME_END)
