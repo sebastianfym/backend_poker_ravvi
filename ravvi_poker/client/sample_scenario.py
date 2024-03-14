@@ -18,7 +18,7 @@ async def sample_scenario():
     async with client:
         # регистрируемся в приложении
         await client.auth_register()
-        # открываем стол
+        # открываем стол (произвольный для примера)
         await client.join_table(13, True, strategy)
         # и играем 5 мин
         await asyncio.sleep(5*60)
