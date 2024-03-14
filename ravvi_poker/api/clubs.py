@@ -685,6 +685,7 @@ async def v1_club_giving_chips_to_the_user(club_id: int, request: Annotated[
         # await db.giving_chips_to_the_user(request.amount, request.account_id, request.balance, users[0].id)
         await db.giving_chips_to_the_user(request.amount, member.id, request.balance, users[0].id)
 
+
 @router.post("/{club_id}/delete_chips_from_the_user", status_code=HTTP_200_OK,
              summary="Owner take away chips from the club's user")
 async def v1_club_delete_chips_from_the_user(club_id: int, request: Annotated[
