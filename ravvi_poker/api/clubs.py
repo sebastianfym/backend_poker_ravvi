@@ -3,7 +3,7 @@ import decimal
 import json
 import time
 from decimal import Decimal
-from typing import Annotated, Any, List
+from typing import Annotated, Any, List, Optional
 from logging import getLogger
 from fastapi import APIRouter, Request, Depends
 from fastapi.exceptions import HTTPException
@@ -11,7 +11,7 @@ from psycopg.rows import Row
 from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_418_IM_A_TEAPOT
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 from pydantic import BaseModel, Field, field_validator, validator
-
+from pydantic.dataclasses import dataclass as pydantic_dataclass
 from ..db import DBI
 from .utils import SessionUUID, get_session_and_user
 from .tables import TableParams, TableProfile
@@ -19,6 +19,13 @@ from .tables import TableParams, TableProfile
 log = getLogger(__name__)
 
 router = APIRouter(prefix="/clubs", tags=["clubs"])
+
+
+@pydantic_dataclass
+class ErrorException(Exception):
+    status_code: int
+    detail: str
+    message: str
 
 
 class ClubProps(BaseModel):
@@ -155,6 +162,20 @@ class ChangeMembersData(BaseModel):
 class ChangeMembersAgent(BaseModel):
     # id: int
     agent_id: int | None = None
+
+
+class ClubAgentProfile(BaseModel): #Todo изменить
+    id: int | None = None
+    username: str | None = None
+    image_id: int | None = None
+    user_role: str | None = None
+    country: str | None = None
+    nickname: str | None = None
+
+    agent_id: int | None = None
+    agents_count: int | None = None
+    super_agents_count: int | None = None
+    players: int | None = 0
 
 
 class ClubChipsValue(BaseModel):
@@ -1363,44 +1384,55 @@ async def v1_set_user_agent(club_id: int, user_id: int, params: ChangeMembersAge
         return member
 
 
-@router.get("/{club_id}/members/agents", status_code=HTTP_200_OK, summary="Страница возвращающая всех агентов и суперагентов в клубе")
-async def v1_club_agents(club_id: int, users=Depends(check_rights_user_club_owner_or_manager)):
-    # club_owner_account, user, club
+@router.get("/{club_id}/members/agents", status_code=HTTP_200_OK,
+            responses={
+                403: {
+                    "model": ErrorException,
+                    "detail": "You don't have enough rights to perform this action",
+                    "message": "You don't have enough rights to perform this action"
+                }
+            },
+            summary="Страница возвращающая всех агентов и суперагентов в клубе")
+async def v1_club_agents(club_id: int, users=Depends(check_rights_user_club_owner_or_manager)) -> Optional[List[ClubAgentProfile]]:
+    """
+    Возвращает список состоящий из агентов и супер-агентов
+
+
+    - **id**: id
+    - **username**: имя пользователя
+    - **image_id**: image_id пользователя
+    - **user_role**: роль пользователя в клубе
+    - **country**: страна пользователя
+    - **nickname**: никнейм игрока внутри самого клуба
+    - **agent_id**: id агента к которому привязан пользователь
+    - **agents_count**: количество агентов которые привязаны к пользователю
+    - **super_agents_count**: количество супер-агентов которые привязаны к пользователю
+    - **players**: количество игроков которые привязаны к пользователю
+
+    """
     owner, _, club = users
-    """
-    ClubMemberProfile(BaseModel):
-        id: int | None = None
-        username=: str | None = None
-        image_id=: int | None = None
-        user_role=: str | None = None
-        user_approved: bool | None = None
-        country=: str | None = None
-        nickname=: str | None = None
-        balance=: float | None = 00.00
-        balance_shared=: float | None = 00.00
-    
-        join_in_club=: float | None = None
-        leave_from_club: float | None = None
-    
-        user_comment=: str | None = None
-        
-        agent_id: int | None = None
-    """
     agents_list = []
     async with DBI() as db:
-        for member in await db.club_agents(club.id):
+        for member in await db.club_agents(club_id):
             user = await db.get_user(member.user_id)
-            agent = ClubMemberProfile(
+            s_agents_under_agent, agents_under_agent, players_under_agent = await db.members_under_agent(club_id, member.user_id)
+
+            if member.user_role != "S":
+                s_agents_under_agent = None
+            else:
+                s_agents_under_agent = len(s_agents_under_agent)
+
+            agent = ClubAgentProfile(
                 id=user.id,
                 username=user.name,
                 image_id=user.image_id,
                 user_role=member.user_role,
                 country=user.country,
                 nickname=member.nickname,
-                balance=member.balance,
-                balance_shared=member.balance_shared,
-                join_in_club=member.approved_ts.timestamp(),
-                agent_id=member.agent_id
+                agent_id=member.agent_id,
+                agents_count=len(agents_under_agent),
+                super_agents_count=s_agents_under_agent,
+                players=len(players_under_agent)
             )
             agents_list.append(agent)
     return agents_list

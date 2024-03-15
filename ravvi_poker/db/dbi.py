@@ -398,6 +398,21 @@ class DBI:
             await cursor.execute(sql, (['A', 'S'], club_id))
             row = await cursor.fetchall()
         return row
+
+    async def members_under_agent(self, club_id, agent_user_profile_id):
+        sql = "SELECT * FROM user_account WHERE user_role = %s AND club_id = %s AND agent_id = %s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, ('S', club_id, agent_user_profile_id))
+            members_S = await cursor.fetchall()
+
+            await cursor.execute(sql, ('A', club_id, agent_user_profile_id))
+            members_A = await cursor.fetchall()
+
+            await cursor.execute(sql, ('P', club_id, agent_user_profile_id))
+            members_P = await cursor.fetchall()
+
+        return members_S, members_A, members_P
+
     # USER ACCOUNT
 
     async def create_club_member(self, club_id, user_id, user_comment, automatic_confirmation):
