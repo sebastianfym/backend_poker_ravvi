@@ -29,16 +29,8 @@ async def v1_chips_requests_post(club_id: int, params: ChipsRequestParams,
     """
     Отправляет запрос от лица пользователя в адрес клуба на пополнение баланса.
 
-    Ожидаемое тело запроса:
-
-        {
-
-            "amount": number, [amount может быть только больше 0]
-
-            "agent": boolean
-        }
-
-    Возвращает status code = 200
+    - **amount**: number >= 1
+    - **agent**: number
     """
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
@@ -104,44 +96,29 @@ async def v1_chips_requests_get(club_id: int, users=Depends(check_rights_user_cl
     """
     Страница служит для получения всех запросов от пользователей на пополнение баланса
 
-    Возвращает словарь со следующим содержанием:
+    - **id**: number,
 
-        {
+    - **txn_id**: number,
 
-            "sum_txn_value": number >= 1,
+    - **username**: string,
 
-            "users_requests": [
+    - **image_id**: number | null,
 
-                {
-                    "id": number,
+    - **user_role**: string,
 
-                    "txn_id": number,
+    - **nickname**: string | null,
 
-                    "username": string,
+    - **txn_value**: number >= 1,
 
-                    "image_id": number | null,
+    - **txn_type**: string,
 
-                    "user_role": string,
+    - **balance_type**: string, ["balance_shared" | "balance"]
 
-                    "nickname": string | null,
+    - **join_in_club**: timestamp,
 
-                    "txn_value": number >= 1,
+    - **leave_from_club**: timestamp | null,
 
-                    "txn_type": string,
-
-                    "balance_type": string, ["balance_shared" | "balance"]
-
-                    "join_in_club": timestamp,
-
-                    "leave_from_club": timestamp | null,
-
-                    "country": string | null
-
-                }
-
-            ]
-
-        }
+    - **country**: string | null
 
     """
     sum_txn_value = 0
@@ -227,15 +204,8 @@ async def v1_accept_all_chips_requests(club_id: int, params: ChipRequestForm, us
     """
     Служит для обработки ВСЕХ запросов на пополнение баланса от пользователей
 
-    Ожидаемое тело запроса:
+    - **operation**: string ["approve", "reject"]
 
-        {
-
-            "operation": string ["approve", "reject"]
-
-        }
-
-    Возвращает status code = 200
     """
     club_owner_account, user, club = users
     club_balance = club.club_balance

@@ -26,30 +26,16 @@ async def v1_club_chips(club_id: int, params: ChipsParamsForMembers, users=Depen
     """
     Пополнение или списание фишек с баланса пользователей на баланс клуба.
 
-    Ожидаемое тело запроса:
-
+    - **mode**: "pick_up" | "give_out"
+    - **amount**: number >= 1
+    - **club_member**: list
+    [
         {
-
-            "mode": "pick_up" | "give_out"
-
-            "amount": number, [значение amount не может быть <= 0]
-
-            "club_member": list [
-
-                {
-                    "id": number,
-                    "balance": number | null,
-                    "balance_shared": number | null
-                },
-                {
-                    "id": number,
-                    "balance": number | null,
-                    "balance_shared": number | null
-                }
-
-            ]
-
+            - **id**: number
+            - **balance**: number | null
+            - **balance_shared**: number | null
         }
+    ]
 
     Возвращает status code == 200
     """

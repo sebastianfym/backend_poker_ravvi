@@ -25,15 +25,7 @@ async def v1_add_club_chips(club_id: int, params: ChipsParams, users=Depends(che
     """
     Добавить определенное значение фишек на баланса клуба.
 
-    Ожидаемое тело запроса:
-
-        {
-
-            "amount": number [значение amount не может быть <= 0]
-
-        }
-
-    Возвращает status code = 200
+    - **amount**: number >= 1
     """
     async with DBI() as db:
         club_owner_account, user, club = users
@@ -65,15 +57,7 @@ async def v1_remove_club_chips(club_id: int, params: ChipsParams, users=Depends(
     """
     Удалить определенное значение фишек с баланса клуба.
 
-    Ожидаемое тело запроса:
-
-        {
-
-            "amount": number [значение amount не может быть <= 0]
-
-        }
-
-    Возвращает status code = 200
+    - **amount**: number >= 1
     """
     async with DBI() as db:
         club_owner_account, user, club = users

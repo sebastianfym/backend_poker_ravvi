@@ -23,14 +23,8 @@ async def v1_club_chips(club_id: int, user_id: int, params: ChipsParamsForAgents
     """
     Добавить или списать фишки с агентов
 
-        {
-
-            "mode": string, ["pick_up", "give_out"]
-
-            "amount": number, [значение amount не может быть <= 0]
-
-        }
-
+    - **mode**: "pick_up" | "give_out"
+    - **amount**: number >= 1
     """
     async with DBI() as db:
         club_owner_account, user, club = users
