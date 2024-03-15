@@ -96,6 +96,9 @@ class Table:
         from ..poker.bomb_pot import BombPotMixin
         from ..poker.hi_low import HiLowMixin
 
+        # обновляем значение анте для RG игр, если включен режим анте
+        if self.ante:
+            self.game_props.update(ante=self.ante.current_ante_value)
         self.log.info("game_factory(%s, %s, %s)", self.game_type, self.game_subtype, self.game_props)
         game_class = get_game_class(self.game_type, self.game_subtype)
 
