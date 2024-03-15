@@ -26,7 +26,7 @@ class Table_RG(Table):
             self.bombpot = BombPotController(bompot_settings)
             # TODO согласовать что отправлять
         if seven_deuce := getattr(self, "game_modes_config").seven_deuce:
-            self.seven_deuce = SevenDeuceController(seven_deuce)
+            self.seven_deuce = SevenDeuceController(seven_deuce, self.game_props.get("blind_big"))
             # TODO согласовать что отправлять
 
     @property

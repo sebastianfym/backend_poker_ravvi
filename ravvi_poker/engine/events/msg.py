@@ -20,7 +20,8 @@ class MessageType(IntEnum):
     GAME_CARDS = 303
     GAME_PLAYER_MOVE = 304
     GAME_PROPOSED_CARD_DROP = 310
-    GAME_RESULT = 390
+    ROUND_RESULT = 390
+    GAME_RESULT = 391
     GAME_END = 399
 
     @classmethod
@@ -109,8 +110,7 @@ class Message(dict):
                     cards = [0 for _ in cards]
                 props.update(cards=cards)
                 print(cards)
-                props.pop("hand_type", None)
-                props.pop("hand_cards", None)
+                props.pop("hands", None)
             if cards_open and user_id == for_user_id:
                 cards = props.get("cards", [])
                 props.update(visible_cards=cards, cards=cards)

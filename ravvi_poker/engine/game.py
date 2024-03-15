@@ -1,13 +1,11 @@
 import logging
 
-from .tables.configs import configCls
-from ..logging import ObjectLoggerAdapter
-from ..db import DBI
-
 from .cards import Deck
-from .user import User
-from .player import Player
 from .events import Message, Command
+from .player import Player
+from .poker.board import Board, BoardType
+from ..db import DBI
+from ..logging import ObjectLoggerAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +25,8 @@ class Game:
         self.players = [self.player_factory(u) for u in users]
         self.dealer_id = None
         self.deck = None
-        self.cards = None
+        self.boards_types: list[BoardType] | None = None
+        self.boards: list[Board] | None = None
 
     def player_factory(self, user) -> Player:
         return Player(user)
@@ -60,14 +59,18 @@ class Game:
 
     # CARDS
 
-    def setup_cards(self):
+    def setup_boards(self):
         # deck
         self.deck = Deck(self.GAME_DECK)
-        self.cards = []
+        self.get_boards()
+        self.boards = [Board(board_type) for board_type in self.boards_types]
         # players
         for p in self.players:
             p.cards = []
             p.cards_open = False
+
+    def get_boards(self):
+        self.boards_types = [BoardType.BOARD1]
 
     # PLAYERS
 
@@ -92,7 +95,9 @@ class Game:
         await self.emit_msg(db, msg)
 
     async def broadcast_GAME_CARDS(self, db):
-        msg = Message(msg_type=Message.Type.GAME_CARDS, cards=self.cards)
+        msg = Message(msg_type=Message.Type.GAME_CARDS, boards=[
+            {"board_type": board.board_type.value, "cards": board.cards} for board in self.boards
+        ])
         await self.emit_msg(db, msg)
 
     async def broadcast_PLAYER_CARDS(self, db, player, **kwargs):
@@ -132,8 +137,12 @@ class Game:
         msg = Message(msg_type=Message.Type.GAME_ROUND, banks=banks, bank_total=bank_total)
         await self.emit_msg(db, msg)
 
-    async def broadcast_GAME_RESULT(self, db, winners):
-        msg = Message(msg_type=Message.Type.GAME_RESULT, winners=winners)
+    async def broadcast_ROUND_RESULT(self, db, rewards, banks, bank_total):
+        msg = Message(msg_type=Message.Type.ROUND_RESULT, rewards=rewards, banks=banks, bank_total=bank_total)
+        await self.emit_msg(db, msg)
+
+    async def broadcast_GAME_RESULT(self, db, balances):
+        msg = Message(msg_type=Message.Type.GAME_RESULT, balances=balances)
         await self.emit_msg(db, msg)
 
     async def broadcast_GAME_END(self, db):

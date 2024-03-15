@@ -1,19 +1,17 @@
-import time
-from typing import List, Tuple, Deque
 import asyncio
-from itertools import zip_longest, groupby, combinations
-
-from ...logging import getLogger
+import time
+from enum import IntEnum, unique
+from itertools import groupby, combinations
+from typing import List, Tuple
 
 from .bet import Bet
+from .board import Board, BoardType
 from .hands import Hand, HandType, LowHand, LowHandType
-from .player import User, Player, PlayerRole
 from .multibank import get_banks
-
-from ..game import Game
+from .player import User, Player, PlayerRole
 from ..events import Command
-
-from enum import IntEnum, unique
+from ..game import Game
+from ...logging import getLogger
 
 logger = getLogger(__name__)
 
@@ -32,8 +30,9 @@ class PokerBase(Game):
 
     SLEEP_ROUND_BEGIN = 1.5
     SLEEP_ROUND_END = 2
+    SLEEP_ROUND_RESULT = 4
     SLEEP_SHOWDOWN_CARDS = 1.5
-    SLEEP_GAME_END = 4
+    SLEEP_GAME_END = 1
 
     def __init__(self, table, users: List[User],
                  *, blind_small: float = 0.01, blind_big: float = 0.02, bet_timeout=30,
@@ -42,7 +41,9 @@ class PokerBase(Game):
         self.log.logger = logger
         self.round = None
         self.deck = None
-        self.cards = None
+        # TODO удалить
+        # self.boards_types: list[BoardType] = [BoardType.BOARD1]
+        # self.boards = None
         self.bank_total = None
         self.banks = None
 
@@ -85,7 +86,10 @@ class PokerBase(Game):
         info = super().get_info()
         info |= self.game_props
         info.update(
-            cards=self.cards if self.cards else [],
+            boards=[{
+                "board_type": board.board_type.value,
+                "cards": board.cards
+            } for board in self.boards]
         )
         banks_info = []
         for b in (self.banks or []):
@@ -148,26 +152,33 @@ class PokerBase(Game):
     # MSG
 
     async def broadcast_PLAYER_CARDS(self, db, player):
-        hand_type, hand_cards = None, None
-        if player.hand:
-            hand_type = player.hand.type[0]
-            hand_cards = [c.code for c in player.hand.cards]
-        await super().broadcast_PLAYER_CARDS(db, player, hand_type=hand_type.value, hand_cards=hand_cards)
+        hands = await self.prepare_hands(player)
+        await super().broadcast_PLAYER_CARDS(db, player, hands=hands)
 
     async def broadcast_PLAYER_CARDS_ON_REQUEST(self, db, player):
-        hand_type, hand_cards = None, None
-        if player.hand:
-            hand_type = player.hand.type[0]
-            hand_cards = [c.code for c in player.hand.cards]
-
+        hands = await self.prepare_hands(player)
         visible_cards: list = []
         for card in player.cards:
             if card in player.cards_open_on_request:
                 visible_cards.append(card)
             else:
                 visible_cards.append(0)
-        await super().broadcast_PLAYER_CARDS(db, player, hand_type=hand_type.value, hand_cards=hand_cards,
-                                             visible_cards=visible_cards)
+        await super().broadcast_PLAYER_CARDS(db, player, hands=hands, visible_cards=visible_cards)
+
+    async def prepare_hands(self, player) -> list[dict]:
+        hands = []
+        for player_hand in player.hands:
+            hand = {
+                "hand_belong": player_hand.board.board_type.value,
+            }
+            hand_info = {
+                "hand_type": player_hand.type[0].value,
+                "hand_cards": [c.code for c in player_hand.cards]
+            }
+            hand |= hand_info
+            hands.append(hand)
+
+        return hands
 
     async def broadcast_PLAYER_MOVE(self, db, player, options, **kwargs):
         await super().broadcast_PLAYER_MOVE(db, player,
@@ -375,11 +386,11 @@ class PokerBase(Game):
         cards = player_cards + game_cards
         return combinations(cards, min(5, len(cards)))
 
-    def get_best_hand(self, player_cards, game_cards):
+    def get_best_hand(self, player_cards, board: Board) -> Hand | None:
         deck36 = (self.GAME_DECK == 36)
         results = []
-        for h in self.iter_player_hands_combinations(player_cards, game_cards):
-            hand = Hand(h, deck36=deck36)
+        for h in self.iter_player_hands_combinations(player_cards, board.cards):
+            hand = Hand(h, board, deck36=deck36)
             hand.rank = self.get_hand_rank(hand)
             results.append(hand)
         if not results:
@@ -474,7 +485,7 @@ class PokerBase(Game):
         self.bank_total = 0
 
         self.setup_players_roles()
-        self.setup_cards()
+        self.setup_boards()
 
         async with self.DBI(log=self.log) as db:
             await self.broadcast_GAME_BEGIN(db)
@@ -488,21 +499,25 @@ class PokerBase(Game):
         await self.run_SHOWDOWN()
 
         # winners
-        winners_info = self.get_winners()
-        async with self.DBI(log=self.log) as db:
-            await self.broadcast_GAME_RESULT(db, winners_info)
+        rounds_results = self.get_rounds_results()
+        for round_result in rounds_results:
+            async with self.DBI(log=self.log) as db:
+                await self.broadcast_ROUND_RESULT(db, **round_result)
+            await asyncio.sleep(self.SLEEP_ROUND_RESULT)
 
         self.showdown_is_end = True
 
         # если включен режим seven deuce сформируем новый банк и распределим его
         if self.table.seven_deuce:
-            await self.run_SEVEN_DEUCE(winners_info)
+            await self.run_SEVEN_DEUCE(rounds_results)
 
-        # TODO тут вызовем показ карт
-        logger.info("Показываем")
         await self.open_cards_on_request()
 
         await asyncio.sleep(self.SLEEP_GAME_END)
+        async with self.DBI(log=self.log) as db:
+            balances = await self.get_balances()
+            await self.broadcast_GAME_RESULT(db, balances)
+        await asyncio.sleep(0.1)
         async with self.DBI(log=self.log) as db:
             await self.broadcast_GAME_END(db)
 
@@ -567,7 +582,7 @@ class PokerBase(Game):
 
         async with self.DBI() as db:
             for p in self.players:
-                p.hand = self.get_best_hand(p.cards, self.cards)
+                p.fill_player_hands(self.get_best_hand, self.boards)
                 await self.broadcast_PLAYER_CARDS(db, p)
 
             self.bet_level = 0
@@ -629,7 +644,7 @@ class PokerBase(Game):
             self.players_to_role(PlayerRole.DEALER)
             self.players_rotate()
             for p in self.players:
-                p.hand = self.get_best_hand(p.cards, self.cards)
+                p.fill_player_hands(self.get_best_hand, self.boards)
                 await self.broadcast_PLAYER_CARDS(db, p)
 
         await self.run_round(PlayerRole.DEALER)
@@ -647,7 +662,7 @@ class PokerBase(Game):
             self.players_to_role(PlayerRole.DEALER)
             self.players_rotate()
             for p in self.players:
-                p.hand = self.get_best_hand(p.cards, self.cards)
+                p.fill_player_hands(self.get_best_hand, self.boards)
                 await self.broadcast_PLAYER_CARDS(db, p)
 
         await self.run_round(PlayerRole.DEALER)
@@ -665,7 +680,7 @@ class PokerBase(Game):
             self.players_to_role(PlayerRole.DEALER)
             self.players_rotate()
             for p in self.players:
-                p.hand = self.get_best_hand(p.cards, self.cards)
+                p.fill_player_hands(self.get_best_hand, self.boards)
                 await self.broadcast_PLAYER_CARDS(db, p)
 
         await self.run_round(PlayerRole.DEALER)
@@ -686,14 +701,9 @@ class PokerBase(Game):
         # get players hands
         open_all = False
         for p in players:
-            p.hand = self.get_best_hand(p.cards, self.cards)
-            print("Тут ошибка")
-            print(p.hand)
-            if isinstance(p.hand, list):
-                self.log.info("player %s hand: %s %s", p.user_id, p.hand, ",".join([str(hand.type) for hand in p.hand
-                                                                                    if hand is not None]))
-            else:
-                self.log.info("player %s hand: %s %s", p.user_id, p.hand, p.hand.type)
+            p.fill_player_hands(self.get_best_hand, self.boards)
+            self.log.info("player %s hand: %s %s", p.user_id, p.hands, ",".join([str(hand.type) for hand in p.hands
+                                                                                 if hand is not None]))
             if p.bet_type == Bet.ALLIN:
                 open_all = True
         self.log.info("open all: %s", open_all)
@@ -704,26 +714,42 @@ class PokerBase(Game):
         await asyncio.sleep(self.SLEEP_ROUND_END)
         self.log.info("SHOWDOWN end")
 
-    async def run_SEVEN_DEUCE(self, winners_info):
-        bank_seven_deuce, winners_seven_deuce_info = await self.table.seven_deuce.handle_winners(winners_info,
-                                                                                                 self.players)
+    async def run_SEVEN_DEUCE(self, rounds_results):
+        bank_seven_deuce, round_result = await self.table.seven_deuce.handle_winners(rounds_results,
+                                                                                     self.players)
         if bank_seven_deuce:
             async with self.DBI(log=self.log) as db:
+                # открываем карты игроков если они выиграли по 7-2 и их карты закрыты
+                winners_user_id = [winners["user_id"] for winners in round_result["rewards"]["winners"]]
+                for player in self.players:
+                    if player.user_id in winners_user_id and not player.cards_open:
+                        player.cards_open = True
+                        await self.broadcast_PLAYER_CARDS(db, player)
+                        await db.commit()
+
+                # отображаем ставки
+                for player in self.players:
+                    if player.bet_type is Bet.SEVEN_DEUCE:
+                        await self.broadcast_PLAYER_BET(db, player)
+                        await db.commit()
+
                 await self.broadcast_GAME_ROUND_END(db, [bank_seven_deuce], bank_seven_deuce)
-                # модификатор не должен перехватить управление (к примеру double board рассчитан список списков,
-                # а у нас список словарей
-                await super().broadcast_GAME_RESULT(db, winners_seven_deuce_info)
+                await db.commit()
+                await super().broadcast_ROUND_RESULT(db, **round_result)
+                await db.commit()
 
     def append_cards(self, cards_num):
-        for _ in range(cards_num):
-            self.cards.append(self.deck.get_next())
+        for board in self.boards:
+            for _ in range(cards_num):
+                board.append_card(self.deck.get_next())
 
     async def open_cards_in_game_end(self, players, open_all):
         best_hand = None
         async with self.DBI() as db:
             for p in players:
-                if not best_hand or best_hand.rank <= p.hand.rank:
-                    best_hand = p.hand
+                # TODO временно для одной руки
+                if not best_hand or best_hand.rank <= p.hands[0].rank:
+                    best_hand = p.hands[0]
                 elif open_all:
                     pass
                 else:
@@ -732,7 +758,8 @@ class PokerBase(Game):
                     continue
                 p.cards_open = True
                 await self.broadcast_PLAYER_CARDS(db, p)
-                self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand, p.hand.type)
+                # TODO временно для одной руки
+                self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hands, p.hands[0].type)
 
     async def open_cards_on_request(self):
         print("_______________________")
@@ -747,7 +774,7 @@ class PokerBase(Game):
                     await self.broadcast_PLAYER_CARDS_ON_REQUEST(db, p)
                     self.log.info("player %s: open cards on request %s", p.user_id, p.cards_open_on_request)
 
-    def get_winners(self):
+    def get_rounds_results(self) -> list[dict]:
         winners = {}
         players = [p for p in self.players if p.in_the_game]
         if len(players) == 1:
@@ -755,9 +782,10 @@ class PokerBase(Game):
             w_amount = 0
             for bank_amount, _ in self.banks:
                 w_amount += bank_amount
-            winners[p.user_id] = w_amount
+                # TODO округление
+            winners[p.user_id] = round(w_amount, 2)
         else:
-            rankKey = lambda x: x.hand.rank
+            rankKey = lambda x: x.hands[0].rank
             for amount, bank_players in self.banks:
                 bank_players.sort(key=rankKey)
                 bank_winners = []
@@ -767,24 +795,61 @@ class PokerBase(Game):
                 w_amount = round(amount / len(bank_winners), 2)
                 for p in bank_winners:
                     amount = winners.get(p.user_id, 0)
-                    winners[p.user_id] = amount + w_amount
-        winners_info = []
-        for p in players:
+                    # TODO округление
+                    winners[p.user_id] = round(amount + w_amount, 2)
+
+        rewards_winners = []
+        rewards = {"type": "board1", "winners": rewards_winners}
+        rounds_results = [{
+            "rewards": rewards,
+            "banks": [],
+            "bank_total": 0
+        }]
+        for p in self.players:
             amount = winners.get(p.user_id, None)
             if not amount:
                 continue
-            p.user.balance += amount
             # TODO округление
-            delta = round(p.balance - p.balance_0, 2)
-            info = dict(
-                user_id=p.user_id,
-                balance=p.balance,
-                delta=delta
+            p.user.balance = round(p.user.balance + amount, 2)
+            rewards_winners.append(
+                {
+                    "user_id": p.user_id,
+                    "amount": amount,
+                    "balance": p.user.balance
+                }
             )
-            self.log.info("winner: %s %s %s", p.user_id, p.balance, delta)
-            winners_info.append(info)
+        rewards_winners.sort(key=lambda x: x["user_id"])
 
-        return winners_info
+        # winners_info = []
+        # for p in players:
+        #     amount = winners.get(p.user_id, None)
+        #     if not amount:
+        #         continue
+        #     p.user.balance += amount
+        #     # TODO округление
+        #     delta = round(p.balance - p.balance_0, 2)
+        #     info = dict(
+        #         user_id=p.user_id,
+        #         balance=p.balance,
+        #         delta=delta
+        #     )
+        #     self.log.info("winner: %s %s %s", p.user_id, p.balance, delta)
+        #     winners_info.append(info)
+
+        return rounds_results
+
+    async def get_balances(self) -> list[dict]:
+        balances = []
+        for p in self.players:
+            balance = {
+                "user_id": p.user_id,
+                "balance": p.user.balance,
+                "delta": round(p.balance - p.balance_0, 2)
+            }
+            balances.append(balance)
+        # TODO это можно перенести в модуль тестов
+        balances.sort(key=lambda x: x["user_id"])
+        return balances
 
     async def collect_ante(self, db):
         for p in self.players:

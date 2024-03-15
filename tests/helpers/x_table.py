@@ -1,14 +1,11 @@
-import logging
 import asyncio
+import logging
 
-from ravvi_poker.engine.user import User
-from ravvi_poker.engine.events import Command, Message
-from ravvi_poker.engine.tables import Table
 from ravvi_poker.engine.game import Game
-
-from .x_utils import check_func_args
+from ravvi_poker.engine.tables import Table
+from ravvi_poker.engine.user import User
 from .x_dbi import X_DBI
-
+from .x_utils import check_func_args
 
 logger = logging.getLogger(__name__)
 

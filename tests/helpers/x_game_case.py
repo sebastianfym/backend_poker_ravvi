@@ -9,6 +9,7 @@ from ravvi_poker.engine.poker.hands import HandType, LowHandType
 
 logger = logging.getLogger(__name__)
 
+
 def x_users(_users):
     users = []
     for x in _users:
@@ -19,11 +20,14 @@ def x_users(_users):
         users.append(u)
     return users
 
+
 class X_Deck:
     def __init__(self, cards):
         self.cards = cards
+
     def get_next(self):
         return self.cards.pop(0)
+
 
 class X_CaseMixIn:
     SLEEP_ROUND_BEGIN = 0
@@ -37,8 +41,9 @@ class X_CaseMixIn:
         self._deck = [Card(x).code for x in _deck]
         self._check_steps = list(enumerate(_moves, 1))
 
-    def setup_cards(self):
-        super().setup_cards()
+    def setup_boards(self):
+        print(123123)
+        super().setup_boards()
         self.deck = X_Deck(self._deck)
 
     async def emit_msg(self, db, msg: Message):
@@ -75,39 +80,64 @@ class X_CaseMixIn:
             msg_type = expected.pop('type')
 
         expected['msg_type'] = Message.Type.decode(msg_type)
-        cmp = [(k, v, getattr(msg, k, None))for k, v in expected.items()]
-        #self.log.info("%s msg: %s", step_num, msg.props)
-        #self.log.info("%s expected: %s", step_num, cmp)
+        cmp = [(k, v, getattr(msg, k, None)) for k, v in expected.items()]
+        # self.log.info("%s msg: %s", step_num, msg.props)
+        # self.log.info("%s expected: %s", step_num, cmp)
         for k, ev in expected.items():
             rv = getattr(msg, k, None)
-            if k in ('cards','hand_cards') and ev:
+            if k == 'cards':
+                # TODO посмотреть зачем тут list
                 if isinstance(ev[0], str):
                     ev = [Card(x).code for x in ev]
                 elif isinstance(ev[0], list):
                     ev = [[Card(x).code for x in ev_item] for ev_item in ev]
-            elif k=='options' and ev:
+            elif k == 'boards':
+                ev = [{"board_type": board["board_type"], "cards": [Card(x).code for x in board["cards"]]}
+                      for board in ev]
+                rv = [{"board_type": board["board_type"], "cards": [Card(x).code for x in board["cards"]]}
+                      for board in rv]
+            elif k == 'options' and ev:
                 ev = [Bet.decode(x) for x in ev]
                 rv = [Bet.decode(x) for x in rv]
-            elif k=='bet':
+            elif k == 'bet':
                 ev = Bet.decode(ev)
                 rv = Bet.decode(rv)
-            elif k=='hand_type':
-                if isinstance(ev, str):
-                    ev = HandType.decode(ev)
-                    rv = HandType.decode(rv)
-                elif isinstance(ev, list):
-                    if self.is_low_hand(ev[1]):
-                        ev_decode, rv_decode = [], []
-                        ev_decode.append(HandType.decode(ev[0]))
-                        rv_decode.append(HandType.decode(rv[0]))
-                        ev_decode.append(LowHandType.decode(ev[1]))
-                        rv_decode.append(LowHandType.decode(rv[1]))
-                        ev, rv = ev_decode, rv_decode
-                    else:
-                        ev = [HandType.decode(ev_item) for ev_item in ev]
-                        rv = [HandType.decode(rv_item) for rv_item in rv]
-            assert ev == rv, f"{step_msg} - {k}: {ev} / {rv}"
+            elif k == 'hands':
+                if len(ev) == 1:
+                    # REGULAR games
+                    ev[0]["hand_cards"] = [Card(x).code for x in ev[0]["hand_cards"]]
+                    ev[0]["hand_type"] = HandType.decode(ev[0]["hand_type"])
+                    rv[0]["hand_type"] = HandType.decode(rv[0]["hand_type"])
+                else:
+                    for i in range(len(ev)):
+                        # Low hand in Hi-Low
+                        if ev[i]["hand_belong"] == "low":
+                            if ev[i]["hand_type"] is not None:
+                                ev[i]["hand_cards"] = [Card(x).code for x in ev[i]["hand_cards"]]
+                                ev[i]["hand_type"] = LowHandType.decode(ev[i]["hand_type"])
+                                rv[i]["hand_type"] = LowHandType.decode(rv[i]["hand_type"])
+                            else:
+                                ev[i]["hand_cards"] = []
+                                ev[i]["hand_type"] = None
+                                rv[i]["hand_type"] = None
+                        # DoubleBoard|2-3
+                        else:
+                            ev[i]["hand_cards"] = [Card(x).code for x in ev[i]["hand_cards"]]
+                            ev[i]["hand_type"] = HandType.decode(ev[i]["hand_type"])
+                            rv[i]["hand_type"] = HandType.decode(rv[i]["hand_type"])
 
+                # elif isinstance(ev, list):
+                #     if self.is_low_hand(ev[1]):
+                #         ev_decode, rv_decode = [], []
+                #         ev_decode.append(HandType.decode(ev[0]))
+                #         rv_decode.append(HandType.decode(rv[0]))
+                #         ev_decode.append(LowHandType.decode(ev[1]))
+                #         rv_decode.append(LowHandType.decode(rv[1]))
+                #         ev, rv = ev_decode, rv_decode
+                #     else:
+                #         ev = [HandType.decode(ev_item) for ev_item in ev]
+                #         rv = [HandType.decode(rv_item) for rv_item in rv]
+            assert ev == rv, f"{step_msg} - {k}: {ev} / {rv}"
 
         if task:
             await task
@@ -130,7 +160,7 @@ class X_CaseMixIn:
             # do nothing
             return
         cmd_type = cmd.pop('type')
-        cmd_type = Command.Type.BET if cmd_type=='CMD_PLAYER_BET' else Command.Type.decode(cmd_type)
+        cmd_type = Command.Type.BET if cmd_type == 'CMD_PLAYER_BET' else Command.Type.decode(cmd_type)
         assert cmd_type == Command.Type.BET, step_msg
         cmd['bet'] = Bet.decode(cmd['bet'])
         cmd = Command(table_id=-1, client_id=-1, cmd_type=cmd_type, **cmd)
@@ -155,33 +185,37 @@ class X_CaseMixIn:
         async with self.DBI() as db:
             await self.handle_cmd(db, cmd.user_id, cmd.client_id, cmd.cmd_type, cmd.props)
 
+
 def create_game_case(base):
-# creating class dynamically 
+    # creating class dynamically
     name = f"X_{base.__name__}"
     cls = type(name, (X_CaseMixIn, base), {})
     return cls
 
+
 import os
 import json
 
+
 def load_game_cases(test_file):
-    test_dir = os.path.dirname(os.path.abspath(test_file))    
-    data_dir = os.path.join(test_dir,'cases')
+    test_dir = os.path.dirname(os.path.abspath(test_file))
+    data_dir = os.path.join(test_dir, 'cases')
     cases = []
     for name in os.listdir(data_dir):
-       if name[:5] != 'case-' or name[-5:]!='.json':
-          continue
-       cases.append(name)
+        if name[:5] != 'case-' or name[-5:] != '.json':
+            continue
+        cases.append(name)
     cases.sort()
     cases = [(name, load_case_data(data_dir, name)) for name in cases]
     return cases
 
+
 def load_case_data(data_dir, case_file):
     path = os.path.join(data_dir, case_file)
-    with open(path,'r') as f:
-        lines = [l for l in f.readlines() if l[:2]!='//']
+    with open(path, 'r') as f:
+        lines = [l for l in f.readlines() if l[:2] != '//']
         case_data = json.loads(''.join(lines))
-    case_data['_users'] = case_data.pop('users',None)
-    case_data['_deck'] = case_data.pop('deck',None)
-    case_data['_moves'] = case_data.pop('moves',None)
+    case_data['_users'] = case_data.pop('users', None)
+    case_data['_deck'] = case_data.pop('deck', None)
+    case_data['_moves'] = case_data.pop('moves', None)
     return case_data

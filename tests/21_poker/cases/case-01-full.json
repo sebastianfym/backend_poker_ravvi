@@ -109,6 +109,7 @@
         {"type": "PLAYER_CARDS"}, 
         {"type": "PLAYER_CARDS"},
 
+        {"type": "ROUND_RESULT"},
         {"type": "GAME_RESULT"},
         {"type": "GAME_END"}
     ]

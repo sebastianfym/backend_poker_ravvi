@@ -1,6 +1,15 @@
 from enum import Enum, unique
 
+from .board import Board
 from ..cards import Card
+
+
+@unique
+class HandBelong(Enum):
+    BOARD1 = "board1"
+    BOARD2 = "board2"
+    BOARD3 = "board3"
+    LOW = "low"
 
 
 @unique
@@ -177,7 +186,7 @@ low_hands_hashes = {
 
 
 class Hand:
-    def __init__(self, cards, deck36=False) -> None:
+    def __init__(self, cards, board: Board, deck36=False) -> None:
         self.cards = [x if isinstance(x, Card) else Card(x) for x in cards]
         self.cards.sort(key=lambda x: (-x.rank, x.suit))
         self.mask = 0
@@ -186,6 +195,7 @@ class Hand:
         self.type = self.get_type(deck36) if self.cards else None
         self.rank = None
         self.value = 0
+        self.board = board
 
     def __str__(self) -> str:
         s = " ".join([str(c) for c in self.cards])
@@ -286,8 +296,8 @@ class Hand:
 
 
 class LowHand(Hand):
-    def __init__(self, cards):
-        super().__init__(cards)
+    def __init__(self, cards, board: Board):
+        super().__init__(cards, board)
 
     def get_type(self, deck36=False):
         # проверяем есть ли вообще смысл считать low_type

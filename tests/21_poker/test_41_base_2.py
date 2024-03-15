@@ -1,4 +1,6 @@
 import pytest
+from ravvi_poker.engine.poker.board import BoardType
+
 from ravvi_poker.engine.poker.base import PokerBase, User, PlayerRole
 
 
@@ -14,7 +16,7 @@ async def test_41_poker_base_2_players():
     for p, u in zip(game.players, users):
         assert p.user is u
     assert game.deck is None
-    assert game.cards is None
+    assert game.boards is None
     assert game.banks is None
 
     game.setup_players_roles()
@@ -44,9 +46,9 @@ async def test_41_poker_base_2_players():
     game.players_to_role(PlayerRole.DEALER)
     assert game.current_player.user_id == 111
 
-    game.setup_cards()
+    game.setup_boards()
     assert game.deck
-    assert game.cards == []
+    assert len(game.boards) == 1 and game.boards[0].board_type == BoardType.BOARD1 and game.boards[0].cards == []
     for p in game.players:
         assert p.cards == []
         assert p.cards_open == False

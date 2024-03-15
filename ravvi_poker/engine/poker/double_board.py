@@ -1,5 +1,6 @@
-from copy import copy, deepcopy
 from itertools import groupby
+
+from ravvi_poker.engine.poker.board import BoardType
 
 
 class MixinMeta(type):
@@ -32,24 +33,16 @@ class MixinMeta(type):
             raise ValueError(f"game with type {cls.__name__} not support mode {mixin.__name__}")
 
 
-
 class DoubleBoardMixin:
-    def setup_cards(self):
-        super().setup_cards()
-        self.cards = [[], []]
+    # TODO понадобится для переписывания на статическое наследование
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     self.board_types: list[BoardType] = [BoardType.BOARD1, BoardType.BOARD2]
 
-    def append_cards(self, cards_num):
-        for num in range(cards_num * 2):
-            self.cards[num // cards_num].append(self.deck.get_next())
+    def get_boards(self):
+        self.boards_types = [BoardType.BOARD1, BoardType.BOARD2]
 
-    def get_best_hand(self, player_cards, game_cards) -> list:
-        if len(game_cards) == 0:
-            return [super().get_best_hand(player_cards, game_cards), super().get_best_hand(player_cards, game_cards)]
-        else:
-            return [super().get_best_hand(player_cards, game_cards[0]),
-                    super().get_best_hand(player_cards, game_cards[1])]
-
-    def get_winners(self):
+    def get_rounds_results(self) -> list[dict]:
         # делим каждый банк на две части
         banks = [[], []]
         for num in range(len(self.banks)):
@@ -72,7 +65,7 @@ class DoubleBoardMixin:
                 winners[num][p.user_id] = w_amount
         else:
             for num in range(2):
-                rankKey = lambda x: x.hand[num].rank
+                rankKey = lambda x: x.hands[num].rank
                 for amount, bank_players in banks[num]:
                     bank_players.sort(key=rankKey)
                     bank_winners = []
@@ -84,24 +77,50 @@ class DoubleBoardMixin:
                         amount = winners[num].get(p.user_id, 0)
                         winners[num][p.user_id] = amount + w_amount
 
-        winners_info = [[], []]
-        for num in range(2):
-            for p in players:
-                amount = winners[num].get(p.user_id, None)
-                if not amount:
-                    continue
-                p.user.balance += amount
-                delta = round(p.balance - p.balance_0, 2)
-                # на первый список победителей не меняем баланс и дельту для фронтенда
-                info = dict(
-                    user_id=p.user_id,
-                    balance=p.balance,
-                    delta=delta
+        rewards_winners = [[], []]
+        rewards = [
+            {"type": "board1", "winners": rewards_winners[0]},
+            {"type": "board2", "winners": rewards_winners[1]},
+        ]
+        rounds_results = [
+            {
+                "rewards": rewards[0],
+                "banks": [bank[0] for bank in banks[1]],
+                "bank_total": round(sum([bank[0] for bank in banks[1]]), 2)
+            },
+            {
+                "rewards": rewards[1],
+                "banks": [],
+                "bank_total": 0
+            },
+        ]
+        for p in self.players:
+            amount_board_1 = winners[0].get(p.user_id, 0)
+            amount_board_2 = winners[1].get(p.user_id, 0)
+            if amount_board_1 == 0 and amount_board_2 == 0:
+                continue
+            p.user.balance += amount_board_1
+            if amount_board_1 != 0:
+                rewards_winners[0].append(
+                    {
+                        "user_id": p.user_id,
+                        "amount": amount_board_1,
+                        "balance": p.user.balance
+                    }
                 )
-                self.log.info("winner: %s %s %s", p.user_id, p.balance, delta)
-                winners_info[num].append(info)
+            p.user.balance += amount_board_2
+            if amount_board_2 != 0:
+                rewards_winners[1].append(
+                    {
+                        "user_id": p.user_id,
+                        "amount": amount_board_2,
+                        "balance": p.user.balance
+                    }
+                )
+        # TODO это можно перенести в модуль тестов
+        [rewards_list["winners"].sort(key=lambda x: x["user_id"]) for rewards_list in rewards]
 
-        return winners_info
+        return rounds_results
 
     async def open_cards_in_game_end(self, players, open_all):
         best_hand = [None, None]
@@ -110,8 +129,8 @@ class DoubleBoardMixin:
             players_to_open_cards = []
             for num in range(2):
                 for p in players:
-                    if not best_hand[num] or best_hand[num].rank <= p.hand[num].rank:
-                        best_hand[num] = p.hand[num]
+                    if not best_hand[num] or best_hand[num].rank <= p.hands[num].rank:
+                        best_hand[num] = p.hands[num]
                     elif open_all:
                         pass
                     else:
@@ -125,30 +144,8 @@ class DoubleBoardMixin:
 
             for p in players_to_open_cards:
                 await self.broadcast_PLAYER_CARDS(db, p)
-                self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand,
-                              ",".join([str(hand.type) for hand in p.hand]))
-
-    async def broadcast_PLAYER_CARDS(self, db, player):
-        from ravvi_poker.engine.poker.base import PokerBase
-
-        self.log.info("Broadcasting Player Cards for Double Board")
-        hand_types_list, hand_cards_list = [], []
-        if player.hand:
-            for hand in player.hand:
-                hand_cards_list.append([c.code for c in hand.cards])
-                hand_types_list.append(hand.type[0])
-        # TODO для PokerBase(PokerClassic работать будет), далее необходимо находить в MRO необходимый класс или
-        # TODO задать миксину класс родителя при инициализации
-        await super(PokerBase, self).broadcast_PLAYER_CARDS(db, player,
-                                                            hand_type=[hand_type.value for hand_type in hand_types_list]
-                                                            if len(hand_types_list) != 0 else None,
-                                                            hand_cards=[hand_cards for hand_cards in hand_cards_list]
-                                                            if len(hand_cards_list) != 0 else None)
-
-    async def broadcast_GAME_RESULT(self, db, winners):
-        for winner_message in winners:
-            await super().broadcast_GAME_RESULT(db, winner_message)
-
+                self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hands,
+                              ",".join([str(hand.type) for hand in p.hands]))
 
 # def extend_game_with_double_board(obj):
 #     obj.__class__ = type(obj.__class__.__name__, (DoubleBoardMixin, obj.__class__), {})

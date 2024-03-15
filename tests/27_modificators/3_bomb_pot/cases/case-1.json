@@ -39,14 +39,30 @@
     {"type": "PLAYER_BET", "user_id": 222, "bet": "BOMBPOT_ANTE", "delta": 600, "amount": 600, "balance": 1400, "bank_total": 600},
     {"type": "PLAYER_BET", "user_id": 111, "bet": "BOMBPOT_ANTE", "delta": 600, "amount": 600, "balance": 400, "bank_total": 1200},
 
-    {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["7♣", "7♠"], "hand_type": "ONE_PAIR",  "hand_cards": ["7♠","7♣"]},
-    {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["8♣", "5♣"], "hand_type": "HIGH_CARD", "hand_cards": ["8♣","5♣"]},
+    {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "cards": ["7♣", "7♠"],
+      "hands": [
+                {"hand_belong": "board1", "hand_type": "ONE_PAIR",  "hand_cards": ["7♠","7♣"]}
+            ]
+    },
+    {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "cards": ["8♣", "5♣"],
+      "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["8♣","5♣"]}
+            ]
+    },
 
     {"type": "GAME_ROUND", "banks": [1200], "bank_total": 1200},
 
-    {"type": "GAME_CARDS", "cards": ["2♦", "J♠", "3♣"]},
-    {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false, "hand_type": "ONE_PAIR", "hand_cards": ["J♠", "7♠", "7♣", "3♣", "2♦"]},
-    {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false, "hand_type": "HIGH_CARD", "hand_cards": ["J♠", "8♣", "5♣", "3♣", "2♦"]},
+    {"type": "GAME_CARDS", "boards": [{"board_type": "board1", "cards": ["2♦", "J♠", "3♣"]}]},
+    {"type": "PLAYER_CARDS", "user_id": 222, "cards_open": false,
+      "hands": [
+                {"hand_belong": "board1", "hand_type": "ONE_PAIR", "hand_cards": ["J♠", "7♠", "7♣", "3♣", "2♦"]}
+            ]
+    },
+    {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": false,
+      "hands": [
+                {"hand_belong": "board1", "hand_type": "HIGH_CARD", "hand_cards": ["J♠", "8♣", "5♣", "3♣", "2♦"]}
+            ]
+    },
 
     {"type": "GAME_PLAYER_MOVE", "user_id": 222, "options": ["FOLD", "CHECK", "RAISE", "ALLIN"],
             "call": null, "raise_min": 200, "raise_max": 1400},
@@ -61,7 +77,19 @@
     {"type": "GAME_ROUND", "banks": [1500], "bank_total": 1500},
 
 
-    {"type": "GAME_RESULT", "winners": [{"user_id": 222, "balance": 2600, "delta": 600}]},
+    {"type": "ROUND_RESULT",
+            "rewards":
+                {"type": "board1", "winners": [
+                    {"user_id": 222, "amount": 1500, "balance": 2600}
+                ]},
+        "banks": [],
+        "bank_total": 0
+        },
+    {"type": "GAME_RESULT",
+      "balances": [
+                  {"user_id": 111, "balance": 400, "delta": -600},
+                  {"user_id": 222, "balance": 2600, "delta": 600}
+              ]},
     {"type": "GAME_END"}
   ]
 }

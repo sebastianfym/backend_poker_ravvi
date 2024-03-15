@@ -18,7 +18,7 @@ async def test_31_bet_timeout():
     game.banks =[]
     game.bank_total = 0
     game.setup_players_roles()
-    game.setup_cards()
+    game.setup_boards()
     #await game.broadcast_GAME_BEGIN()
     await game.run_PREFLOP()
 
