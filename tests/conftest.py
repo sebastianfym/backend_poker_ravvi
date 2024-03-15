@@ -11,11 +11,11 @@ from ravvi_poker.engine.jwt import jwt_encode
 #    yield loop
 #    loop.close()
 
-#@pytest_asyncio.fixture(autouse=True)
-#async def dbi_pool():
-#    await DBI.pool_open()
-#    yield
-#    await DBI.pool_close()
+@pytest_asyncio.fixture()
+async def dbi_pool():
+    await DBI.pool_open()
+    yield
+    await DBI.pool_close()
 
 
 @pytest_asyncio.fixture
