@@ -40,7 +40,7 @@
 
         {"type": "GAME_ROUND", "banks": [4000], "bank_total": 4000},
 
-        {"type": "GAME_CARDS", "cards": ["J♠", "Q♠", "K♠"]}, 
+        {"type": "GAME_CARDS", "boards": [{"board_type": "board1", "cards": ["J♠", "Q♠", "K♠"]}]},
         {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": true, "cards": [1,5]}, 
         {"type": "PLAYER_CARDS", "user_id": 444, "cards_open": true, "cards": [2,6]}, 
         {"type": "PLAYER_CARDS", "user_id": 777, "cards_open": true, "cards": [3,7]}, 
@@ -48,20 +48,21 @@
 
         {"type": "GAME_ROUND", "banks": [4000], "bank_total": 4000},
 
-        {"type": "GAME_CARDS", "cards": ["J♠", "Q♠", "K♠", "A♠"]}, 
+        {"type": "GAME_CARDS", "boards": [{"board_type": "board1", "cards": ["J♠", "Q♠", "K♠", "A♠"]}]},
         {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": true, "cards": [1,5]}, 
         {"type": "PLAYER_CARDS", "user_id": 444, "cards_open": true, "cards": [2,6]}, 
         {"type": "PLAYER_CARDS", "user_id": 777, "cards_open": true, "cards": [3,7]}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": [4,8]}, 
         {"type": "GAME_ROUND", "banks": [4000], "bank_total": 4000},
 
-        {"type": "GAME_CARDS", "cards": ["J♠", "Q♠", "K♠", "A♠", 14]}, 
+        {"type": "GAME_CARDS", "boards": [{"board_type": "board1", "cards": ["J♠", "Q♠", "K♠", "A♠", 14]}]},
         {"type": "PLAYER_CARDS", "user_id": 333, "cards_open": true, "cards": [1,5]}, 
         {"type": "PLAYER_CARDS", "user_id": 444, "cards_open": true, "cards": [2,6]}, 
         {"type": "PLAYER_CARDS", "user_id": 777, "cards_open": true, "cards": [3,7]}, 
         {"type": "PLAYER_CARDS", "user_id": 111, "cards_open": true, "cards": [4,8]}, 
         {"type": "GAME_ROUND", "banks": [4000], "bank_total": 4000},
 
+        {"type": "ROUND_RESULT"},
         {"type": "GAME_RESULT"},
         {"type": "GAME_END"}
     ]

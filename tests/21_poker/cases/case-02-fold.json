@@ -31,6 +31,7 @@
 
         {"type": "GAME_ROUND", "banks": [3]}, 
 
+        {"type": "ROUND_RESULT"},
         {"type": "GAME_RESULT"},
         {"type": "GAME_END"}
     ]

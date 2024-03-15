@@ -1,7 +1,5 @@
-from copy import copy, deepcopy
 from itertools import groupby
 
-from ravvi_poker.engine.poker.base import PokerBase
 from ravvi_poker.engine.poker.board import BoardType
 
 

@@ -32,7 +32,7 @@ class PokerBase(Game):
     SLEEP_ROUND_END = 2
     SLEEP_ROUND_RESULT = 4
     SLEEP_SHOWDOWN_CARDS = 1.5
-    SLEEP_GAME_END = 4
+    SLEEP_GAME_END = 1
 
     def __init__(self, table, users: List[User],
                  *, blind_small: float = 0.01, blind_big: float = 0.02, bet_timeout=30,
@@ -517,8 +517,8 @@ class PokerBase(Game):
         async with self.DBI(log=self.log) as db:
             balances = await self.get_balances()
             await self.broadcast_GAME_RESULT(db, balances)
-            await db.commit()
-            await asyncio.sleep(0.1)
+        await asyncio.sleep(0.1)
+        async with self.DBI(log=self.log) as db:
             await self.broadcast_GAME_END(db)
 
         # если включен режим ante_up за столом, то передадим тип последнего раунда в игре, чтобы обработать новое

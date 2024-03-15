@@ -8,10 +8,10 @@ logger = logging.getLogger(__name__)
 from ravvi_poker.engine.events import Command, Message
 
 from helpers.x_dbi import X_DBI
+from helpers.x_table import X_Table, X_Game
 
 @pytest.mark.dependency()
 def test_x_classes():
-    from helpers.x_table import X_Table, X_Game
     X_DBI.check_methods_compatibility()
     X_Table.check_methods_compatibility()
     X_Game.check_methods_compatibility()
