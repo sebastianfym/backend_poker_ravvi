@@ -765,12 +765,12 @@ class DBI:
         return row
 
     async def txn_with_chip_on_club_balance(self, club_id, amount, mode, account_id, sender_id):
-        if mode == 'CASHIN':
+        if mode == 'CHIPSIN':
             sql = "UPDATE club_profile SET club_balance = club_balance + %s WHERE id=%s RETURNING club_balance"
-        elif mode == 'REMOVE':
+        elif mode == 'CHIPSOUT':
             sql = "UPDATE club_profile SET club_balance = club_balance - %s WHERE id=%s  RETURNING club_balance"
         async with self.cursor() as cursor:
-            if mode == 'REMOVE':
+            if mode == 'CHIPSOUT':
                 check_sql = "SELECT club_balance FROM club_profile WHERE id=%s"
                 await cursor.execute(check_sql, (club_id,))
                 club_balance = await cursor.fetchone()
@@ -780,7 +780,7 @@ class DBI:
                     await cursor.execute(reset_balance_sql, (club_id,))
                     sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
                     amount = -amount
-                    await cursor.execute(sql, (account_id, f"CLUB_{mode}", amount, 0, sender_id))
+                    await cursor.execute(sql, (account_id, mode, amount, 0, sender_id))
                     row = await cursor.fetchone()
                     return row
 
@@ -788,7 +788,7 @@ class DBI:
             row = await cursor.fetchone()
             # amount = -amount
             sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id) VALUES (%s, %s, %s, %s, %s) RETURNING *"
-            await cursor.execute(sql, (account_id, f"CLUB_{mode}", amount, row.club_balance, sender_id))
+            await cursor.execute(sql, (account_id, mode, amount, row.club_balance, sender_id))
             row = await cursor.fetchone()
         return row
 
@@ -849,15 +849,29 @@ class DBI:
     async def giving_chips_to_the_user(self, amount, user_account_id, balance, sender_id):
         if balance == "balance":
             sql = "UPDATE user_account SET balance = balance + %s WHERE id = %s RETURNING balance"
+            txn_type = "CASHIN"
         elif balance == "balance_shared":
             sql = "UPDATE user_account SET balance_shared = balance_shared + %s WHERE id = %s RETURNING balance"
+            txn_type = "MOVEIN"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (amount, user_account_id))
             row = await cursor.fetchone()
             props = json.dumps({"balance_type": balance})
             # amount = -amount
             sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
-            await cursor.execute(sql, (user_account_id, "CASHIN", amount, row.balance, sender_id, props))
+            await cursor.execute(sql, (user_account_id, txn_type, amount, row.balance, sender_id, props))
+            row = await cursor.fetchone()
+            return row
+
+    async def giving_chips_to_agent(self, amount, account_id, user_id):
+        sql = "UPDATE user_account SET balance_shared = balance_shared + %s WHERE id = %s RETURNING balance"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (amount, account_id))
+            row = await cursor.fetchone()
+            props = json.dumps({"balance_type": 'balance_shared'})
+            # amount = -amount
+            sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
+            await cursor.execute(sql, (account_id, "MOVEIN", amount, row.balance, user_id, props))
             row = await cursor.fetchone()
             return row
 
@@ -882,7 +896,7 @@ class DBI:
             props = json.dumps({"balance_type": "balance_shared"})
             sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
             amount = -amount
-            await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance_shared, sender_id, props))
+            await cursor.execute(sql, (account_id, "MOVEOUT", amount, row.balance_shared, sender_id, props))
             row = await cursor.fetchone()
         return balance_shared, row
 
@@ -895,7 +909,7 @@ class DBI:
             await cursor.execute(get_balance_shared_sql, (account_id,))
             row = await cursor.fetchone()
             await cursor.execute(reset_balance_shared_sql, (0, account_id))
-            await cursor.execute(txn_sql, (account_id, "REMOVE", -row.balance_shared, 0, sender_id, props))
+            await cursor.execute(txn_sql, (account_id, "MOVEOUT", -row.balance_shared, 0, sender_id, props))
         return row
 
     async def delete_all_chips_from_the_account_balance(self, account_id, sender_id):
@@ -908,7 +922,7 @@ class DBI:
             await cursor.execute(get_balance_sql, (account_id,))
             row = await cursor.fetchone()
             await cursor.execute(reset_balance_sql, (0, account_id))
-            await cursor.execute(txn_sql, (account_id, "REMOVE", -row.balance, 0, sender_id, props))
+            await cursor.execute(txn_sql, (account_id, "CASHOUT", -row.balance, 0, sender_id, props))
         return row
 
     async def delete_chips_from_the_account_balance(self, amount, account_id, sender_id):
@@ -933,7 +947,7 @@ class DBI:
             props = json.dumps({"balance_type": "balance"})
             sql = "INSERT INTO user_account_txn (account_id, txn_type, txn_value, total_balance, sender_id, props) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *"
             amount = -amount
-            await cursor.execute(sql, (account_id, "REMOVE", amount, row.balance, sender_id, props))
+            await cursor.execute(sql, (account_id, "CASHOUT", amount, row.balance, sender_id, props))
         return balance
 
 
