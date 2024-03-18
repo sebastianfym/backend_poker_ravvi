@@ -191,6 +191,13 @@ class ChipRequestForm(BaseModel):
         return value
 
 
+class ClubBalance(BaseModel):
+        club_balance: float | None
+        members_balance: float | None
+        agents_balance: float | None
+        total_balance: float | None
+
+
 class ClubHistoryTransaction(BaseModel):
     txn_type: str | None
     txn_value: float | None
@@ -1016,7 +1023,7 @@ async def v1_detail_account(club_id: int, session_uuid: SessionUUID):
 
 @router.get("/{club_id}/club_balance", status_code=HTTP_200_OK,
             summary="Получить все допустимые типы балансов (суммарные) для клуба: агентский баланс, баланс пользователей, баланс клуба")
-async def v1_get_all_club_balance(club_id: int, users=Depends(check_rights_user_club_owner_or_manager)):
+async def v1_get_all_club_balance(club_id: int, users=Depends(check_rights_user_club_owner_or_manager)) -> ClubBalance:
     async with DBI() as db:
         _, _, club = users
         club_balance = club.club_balance
@@ -1036,12 +1043,18 @@ async def v1_get_all_club_balance(club_id: int, users=Depends(check_rights_user_
         shared_balance = sum(user.balance_shared for user in club_members if user.balance_shared is not None)
         total_balance = members_balance + shared_balance
 
-    return {
-        "club_balance": club_balance,
-        "members_balance": members_balance,
-        "agents_balance": shared_balance,
-        "total_balance": total_balance,
-    }
+    return ClubBalance(
+        club_balance=club_balance,
+        members_balance=members_balance,
+        agents_balance=shared_balance,
+        total_balance=total_balance,
+    )
+    #     {
+    #     "club_balance": club_balance,
+    #     "members_balance": members_balance,
+    #     "agents_balance": shared_balance,
+    #     "total_balance": total_balance,
+    # }
 
 
 @router.get("/{club_id}/requests_chip_replenishment", status_code=HTTP_200_OK,

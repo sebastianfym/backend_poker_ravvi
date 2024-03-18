@@ -6,7 +6,8 @@ import websockets
 from fastapi import HTTPException
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 from ravvi_poker.api.auth import UserAccessProfile
-from ravvi_poker.api.clubs import ClubProfile, ClubMemberProfile
+from ravvi_poker.api.clubs import ClubProfile, ClubMemberProfile, MemberAccountDetailInfo, AccountDetailInfo, \
+    ClubBalance
 from ravvi_poker.api.images import ImageProfile
 from ravvi_poker.api.tables import TableProfile
 from ravvi_poker.api.types import UserPublicProfile
@@ -278,6 +279,44 @@ class PokerClient:
         else:
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
 
+    async def leave_from_club(self, club_id):
+        response = await self.session.post(f"/v1/clubs/{club_id}/leave_from_club", json={})
+        status, payload = await self._get_result(response)
+        if status == 200:
+            return status
+        elif status == 403:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+        elif status == 404:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club with this id not found")
+        else:
+            raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
+
+    async def get_member_info_for_owner(self, club_id, user_id):
+        response = await self.session.post(f"/v1/clubs/{club_id}/profile/{user_id}", json={})
+        status, payload = await self._get_result(response)
+        if status == 200:
+            return MemberAccountDetailInfo(**payload)
+        elif status == 403:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+        elif status == 404:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club or user with this id not found")
+        else:
+            raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
+
+    async def get_detail_member_info(self, club_id):
+        response = await self.session.post(f"/v1/clubs/{club_id}/user_account", json={})
+        status, payload = await self._get_result(response)
+        if status == 200:
+            return AccountDetailInfo(**payload)
+        elif status == 403:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+        elif status == 404:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club or user with this id not found")
+        else:
+            raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
     # TABLE
 
     async def create_table(self, club_id=None, table_type=None, table_name=None, table_seats=None, game_type=None,
@@ -308,12 +347,97 @@ class PokerClient:
         response = await self.session.get(f'/v1/clubs/{club_id}/tables')
         status, payload = await self._get_result(response)
         if status == 200:
-            return TableProfile(**payload)
+            result_list = []
+            for table in payload:
+                result_list.append(TableProfile(**table))
+            return result_list
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
                                 detail="You don't have enough rights to perform this action")
         elif status == 404:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club with this id not found")
+        else:
+            raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
+
+    # TXN CHIPS
+
+    async def get_club_balance(self, club_id):
+        response = await self.session.get(f"/v1/clubs/{club_id}/club_balance")
+        status, payload = await self._get_result(response)
+        if status == 200:
+            return ClubBalance(**payload)
+        elif status == 403:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+        elif status == 404:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club with this id not found")
+        else:
+            raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
+
+    async def get_club_chips_requests(self, club_id):
+        response = await self.session.get(f"/v1/clubs/{club_id}/requests_chip_replenishment")
+        status, payload = await self._get_result(response)
+        if status == 200:
+            return payload
+        elif status == 403:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+        elif status == 404:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club with this id not found")
+        else:
+            raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
+
+    async def get_club_txn_history(self, club_id):
+        response = await self.session.get(f"/v1/info/{club_id}/history")
+        status, payload = await self._get_result(response)
+        if status == 200:
+            return payload
+        elif status == 403:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+        elif status == 404:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club with this id not found")
+        else:
+            raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
+
+    # INFO
+
+    async def levels_schedule(self, table_type):
+        response = await self.session.get(f"/v1/info/levels_schedule/{table_type}")
+        status, payload = await self._get_result(response)
+        if status == 200:
+            return payload
+        elif status == 403:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+        elif status == 404:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Page not found")
+        else:
+            raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
+
+    async def rewards_distribution(self):
+        response = await self.session.get(f"/v1/info/rewards_distribution")
+        status, payload = await self._get_result(response)
+        if status == 200:
+            return payload
+        elif status == 403:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+        elif status == 404:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Page not found")
+        else:
+            raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
+
+    async def countries(self, language):
+        response = await self.session.get(f"/v1/info/countries/{language}")
+        status, payload = await self._get_result(response)
+        if status == 200:
+            return payload
+        elif status == 403:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                                detail="You don't have enough rights to perform this action")
+        elif status == 404:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Page not found")
         else:
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
 
