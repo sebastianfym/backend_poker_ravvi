@@ -383,17 +383,6 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
             last_login_id = (await db.get_last_user_login(member.user_id)).id
             last_session = await db.get_last_user_session(last_login_id)
 
-            # table_id_list = [table.id for table in await db.get_club_tables(club_id)]
-            # all_user_games_id = [game.game_id for game in (await db.get_games_player_through_user_id(user.id))]
-            # if len(all_user_games_id) != 0 and len(table_id_list) != 0:
-            #     statistics_of_all_player_games_in_the_club = await db.statistics_all_games_users_in_club(user.id, club_id)
-            #     hands = len(statistics_of_all_player_games_in_the_club)
-            #     last_game = await db.get_game_and_players(statistics_of_all_player_games_in_the_club[-1].id)
-            #     last_game_time=last_game[0].begin_ts.timestamp()
-            # else:
-            #     hands = 0
-            #     last_game_time = 0
-
             statistics_of_all_player_games_in_the_club = await db.statistics_all_games_users_in_club(user.id, club_id)
             hands = len(statistics_of_all_player_games_in_the_club)
             try:
@@ -444,10 +433,8 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID, request: Request
         if not account:
 
             if club.automatic_confirmation:
-                print(club.automatic_confirmation, 'part 1 ')
                 account = await db.create_club_member(club.id, user.id, user_comment, True)
             else:
-                print(club.automatic_confirmation, 'part 2 ')
                 account = await db.create_club_member(club.id, user.id, user_comment, False)
         elif account.closed_ts is not None and account.club_id == club_id:
             await db.refresh_member_in_club(account.id, user_comment)
