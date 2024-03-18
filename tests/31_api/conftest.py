@@ -26,6 +26,11 @@ def api_client_2():
     yield client
 
 @pytest.fixture
+def api_client_3():
+    client = TestClient(app)
+    yield client
+
+@pytest.fixture
 def api_guest_2(api_client: TestClient):
     response = api_client.post("/v1/auth/register", json={})
     assert response.status_code == 200

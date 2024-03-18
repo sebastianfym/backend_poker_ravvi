@@ -397,6 +397,21 @@ class DBI:
             await cursor.execute(sql, (['A', 'S'], club_id))
             row = await cursor.fetchall()
         return row
+
+    async def members_under_agent(self, club_id, agent_user_profile_id):
+        sql = "SELECT * FROM user_account WHERE user_role = %s AND club_id = %s AND agent_id = %s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, ('S', club_id, agent_user_profile_id))
+            members_S = await cursor.fetchall()
+
+            await cursor.execute(sql, ('A', club_id, agent_user_profile_id))
+            members_A = await cursor.fetchall()
+
+            await cursor.execute(sql, ('P', club_id, agent_user_profile_id))
+            members_P = await cursor.fetchall()
+
+        return members_S, members_A, members_P
+
     # USER ACCOUNT
 
     async def create_club_member(self, club_id, user_id, user_comment, automatic_confirmation):
@@ -484,6 +499,12 @@ class DBI:
             await cursor.execute(sql, values)
             row = await cursor.fetchone()
         return row
+
+    async def update_member_agent(self, account_id, agent_id):
+        sql = "UPDATE user_account SET agent_id=%s WHERE id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (agent_id, account_id))
+        return
 
     async def requests_to_join_in_club(self, club_id):
         sql = "SELECT * FROM user_account WHERE club_id=%s AND approved_ts IS NULL AND approved_by IS NULL AND closed_ts IS NULL AND closed_by IS NULL"

@@ -3,7 +3,7 @@ import decimal
 import json
 import time
 from decimal import Decimal
-from typing import Annotated, Any, List
+from typing import Annotated, Any, List, Optional
 from logging import getLogger
 from fastapi import APIRouter, Request, Depends
 from fastapi.exceptions import HTTPException
@@ -11,7 +11,7 @@ from psycopg.rows import Row
 from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_418_IM_A_TEAPOT
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 from pydantic import BaseModel, Field, field_validator, validator
-
+from pydantic.dataclasses import dataclass as pydantic_dataclass
 from ..db import DBI
 from .utils import SessionUUID, get_session_and_user
 from .tables import TableParams, TableProfile
@@ -19,6 +19,13 @@ from .tables import TableParams, TableProfile
 log = getLogger(__name__)
 
 router = APIRouter(prefix="/clubs", tags=["clubs"])
+
+
+@pydantic_dataclass
+class ErrorException(Exception):
+    status_code: int
+    detail: str
+    message: str
 
 
 class ClubProps(BaseModel):
@@ -72,6 +79,7 @@ class ClubMemberProfile(BaseModel):
     hands: float | None = 00.00
     user_comment: str | None = None
 
+    agent_id: int | None = None
 
 class SortingByDate(BaseModel):
     starting_date: float | None = None
@@ -149,6 +157,25 @@ class ChangeMembersData(BaseModel):
         if value not in ['O', 'M', 'A', 'P', 'S']:
             raise ValueError('Operation must be either "approve" or "reject"')
         return value
+
+
+class ChangeMembersAgent(BaseModel):
+    # id: int
+    agent_id: int | None = None
+
+
+class ClubAgentProfile(BaseModel): #Todo изменить
+    id: int | None = None
+    username: str | None = None
+    image_id: int | None = None
+    user_role: str | None = None
+    country: str | None = None
+    nickname: str | None = None
+
+    agent_id: int | None = None
+    agents_count: int | None = None
+    super_agents_count: int | None = None
+    players: int | None = 0
 
 
 class ClubChipsValue(BaseModel):
@@ -746,7 +773,7 @@ async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
         return HTTP_200_OK
 
 
-@router.post("/{club_id}/profile/{user_id}", status_code=HTTP_200_OK,  # todo тут не тот юзер
+@router.post("/{club_id}/profile/{user_id}", status_code=HTTP_200_OK,
              summary="Страница с информацией о конкретном участнике клуба для админа")
 async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID, sorting_date: SortingByDate):
     async with DBI() as db:
@@ -1302,7 +1329,6 @@ async def v1_club_txn_history(club_id: int, request: Request, users=Depends(chec
     return result_list
 
 
-
 @router.patch("/{club_id}/set_user_data", status_code=HTTP_200_OK, summary="Set a user nickname and comment")
 async def v1_set_user_data(club_id: int, params: ChangeMembersData, users=Depends(check_rights_user_club_owner_or_manager)):
     user_id = params.id
@@ -1322,41 +1348,99 @@ async def v1_set_user_data(club_id: int, params: ChangeMembersData, users=Depend
     return HTTP_200_OK
 
 
-@router.get("/{club_id}/members/agents", status_code=HTTP_200_OK, summary="Страница возвращающая всех агентов и суперагентов в клубе")
-async def v1_club_agents(club_id: int, users=Depends(check_rights_user_club_owner_or_manager)):
-    # club_owner_account, user, club
+#
+@router.put("/{club_id}/members/{user_id}/agents", status_code=HTTP_200_OK, summary="Установить или убрать агента для пользователя/агента")
+async def v1_set_user_agent(club_id: int, user_id: int, params: ChangeMembersAgent, users=Depends(check_rights_user_club_owner_or_manager)):
+    _, _, _ = users
+    """
+    {
+        agent_id : number | None
+    }
+    """
+    async with DBI() as db:
+        member = await db.find_account(user_id=user_id, club_id=club_id)
+        agent = await db.find_account(user_id=params.agent_id, club_id=club_id)
+        if params.agent_id is not None:
+            if member is None:
+                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Member with this id not found")
+            elif agent is None:
+                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Agent with this id not found")
+            if member.user_role in ["O", "M"]:
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="The owner and manager cannot set up agents")
+            if member.user_role == "A" and agent.user_role != "S":
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Only a super agent can be assigned to an agent")
+            elif member.user_role == "S" and agent.user_role == "A":
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Only a super agent can be assigned to an super agent")
+            await db.update_member_agent(member.id, params.agent_id) #Todo уточнить какой именно мы тут передаем id агента (аккаунта или пользователя)
+        else:
+            await db.update_member_agent(member.id, None)
+
+        user = await db.get_user(member.user_id)
+        member = ClubMemberProfile(
+                id=member.user_id,
+                username=user.name,
+                image_id=user.image_id,
+                user_role=member.user_role,
+                country=user.country,
+                nickname=member.nickname,
+                balance=member.balance,
+                balance_shared=member.balance_shared,
+                join_in_club=member.approved_ts.timestamp(),
+                agent_id=member.agent_id
+            )
+        return member
+
+
+@router.get("/{club_id}/members/agents", status_code=HTTP_200_OK,
+            responses={
+                403: {
+                    "model": ErrorException,
+                    "detail": "You don't have enough rights to perform this action",
+                    "message": "You don't have enough rights to perform this action"
+                }
+            },
+            summary="Страница возвращающая всех агентов и суперагентов в клубе")
+async def v1_club_agents(club_id: int, users=Depends(check_rights_user_club_owner_or_manager)) -> Optional[List[ClubAgentProfile]]:
+    """
+    Возвращает список состоящий из агентов и супер-агентов
+
+
+    - **id**: id
+    - **username**: имя пользователя
+    - **image_id**: image_id пользователя
+    - **user_role**: роль пользователя в клубе
+    - **country**: страна пользователя
+    - **nickname**: никнейм игрока внутри самого клуба
+    - **agent_id**: id агента к которому привязан пользователь
+    - **agents_count**: количество агентов которые привязаны к пользователю
+    - **super_agents_count**: количество супер-агентов которые привязаны к пользователю
+    - **players**: количество игроков которые привязаны к пользователю
+
+    """
     owner, _, club = users
-    """
-    ClubMemberProfile(BaseModel):
-        id: int | None = None
-        username=: str | None = None
-        image_id=: int | None = None
-        user_role=: str | None = None
-        user_approved: bool | None = None
-        country=: str | None = None
-        nickname=: str | None = None
-        balance=: float | None = 00.00
-        balance_shared=: float | None = 00.00
-    
-        join_in_club=: float | None = None
-        leave_from_club: float | None = None
-    
-        user_comment=: str | None = None
-    """
     agents_list = []
     async with DBI() as db:
-        for agent in await db.club_agents(club.id):
-            user = await db.get_user(agent.user_id)
-            agent = ClubMemberProfile(
+        for member in await db.club_agents(club_id):
+            user = await db.get_user(member.user_id)
+            s_agents_under_agent, agents_under_agent, players_under_agent = await db.members_under_agent(club_id, member.user_id)
+
+            if member.user_role != "S":
+                s_agents_under_agent = None
+            else:
+                s_agents_under_agent = len(s_agents_under_agent)
+
+            agent = ClubAgentProfile(
                 id=user.id,
                 username=user.name,
                 image_id=user.image_id,
-                user_role=agent.user_role,
+                user_role=member.user_role,
                 country=user.country,
-                nickname=agent.nickname,
-                balance=agent.balance,
-                balance_shared=agent.balance_shared,
-                join_in_club=agent.approved_ts.timestamp()
+                nickname=member.nickname,
+                agent_id=member.agent_id,
+                agents_count=len(agents_under_agent),
+                super_agents_count=s_agents_under_agent,
+                players=len(players_under_agent)
             )
             agents_list.append(agent)
     return agents_list
+
