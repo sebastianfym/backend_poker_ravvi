@@ -1059,3 +1059,14 @@ def test_new_actions_with_chips(api_client: TestClient, api_guest: UserAccessPro
     data = {"amount": 250, "mode": "give_out", "club_member": [{"id": user_id, "balance": 100, "balance_shared": 100}]}
     response = api_client.post(f"/v1/chips/{club.id}/players/chips", json=data)
     assert response.status_code == 201
+
+    data = {"amount": 250, "agent": False}
+    response = api_client.post(f"/v1/chips/{club.id}/requests/chips", json=data)
+    assert response.status_code == 201
+
+    response = api_client.get(f"/v1/chips/{club.id}/requests/chips")
+    assert response.status_code == 200
+
+    data = {"operation": "approve"}
+    response = api_client.post(f"/v1/chips/{club.id}/requests/chips/all", json=data)
+    assert response.status_code == 200
