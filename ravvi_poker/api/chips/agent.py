@@ -29,19 +29,20 @@ async def v1_club_chips(club_id: int, user_id: int, params: ChipsParamsForAgents
     async with DBI() as db:
         club_owner_account, user, club = users
         created_ts = DateTime.utcnow().replace(microsecond=0).timestamp()
+        account = await db.find_account(user_id=user_id, club_id=club_id)
         if params.mode == "give_out":
-            row = await db.giving_chips_to_the_user(params.amount, user_id, "balance_shared", user.id)
+            # row = await db.giving_chips_to_the_user(params.amount, user_id, "balance_shared", user.id)
+            row = await db.giving_chips_to_agent(params.amount, account.id, user.id)
             txn_model = ChipsTxnItem(
                 id=row.id,
                 created_ts=created_ts,
                 created_by=row.sender_id,
-                # txn_type='MOVEIN' if params.amount > 0 else 'MOVEOUT',
                 txn_type=row.txn_type,
                 amount=row.txn_value,
                 balance=row.total_balance
             )
         elif params.mode == "pick_up":
-            row = await db.delete_chips_from_the_agent_balance(params.amount, user_id, club_owner_account.id)
+            row = await db.delete_chips_from_the_agent_balance(params.amount, account.id, club_owner_account.id)
             txn_model = ChipsTxnItem(
                     id=row[1].id,
                     created_ts=created_ts,

@@ -154,7 +154,6 @@ def test_21_club_join_approve(api_client: TestClient, api_guest: UserAccessProfi
     clubs = response.json()
     assert clubs
 
-    print(club.id)
     response = api_client.get(f"/v1/clubs/{club.id}/members")
     assert response.status_code == 200
 

@@ -30,7 +30,7 @@ async def v1_add_club_chips(club_id: int, params: ChipsParams, users=Depends(che
     async with DBI() as db:
         club_owner_account, user, club = users
 
-        row = await db.txn_with_chip_on_club_balance(club_id, params.amount, "CASHIN", club_owner_account.id, user.id)
+        row = await db.txn_with_chip_on_club_balance(club_id, params.amount, "CHIPSIN", club_owner_account.id, user.id)
 
         created_ts = DateTime.utcnow().replace(microsecond=0).timestamp()
         # return HTTP_200_OK
@@ -38,7 +38,7 @@ async def v1_add_club_chips(club_id: int, params: ChipsParams, users=Depends(che
                         created_ts=created_ts,
                         created_by=user.id,
                         # txn_type='CHIPSIN' if params.amount > 0 else 'CHIPSOUT',
-                        txn_type='CLUB_CASHIN',
+                        txn_type='CHIPSIN',
                         amount=params.amount,
                         # balance=params.amount,
                         ref_user_id=user.id,
@@ -62,13 +62,13 @@ async def v1_remove_club_chips(club_id: int, params: ChipsParams, users=Depends(
     async with DBI() as db:
         club_owner_account, user, club = users
 
-        row = await db.txn_with_chip_on_club_balance(club_id, params.amount, "REMOVE", club_owner_account.id, user.id)
+        row = await db.txn_with_chip_on_club_balance(club_id, params.amount, "CHIPSOUT", club_owner_account.id, user.id)
         created_ts = DateTime.utcnow().replace(microsecond=0).timestamp()
     return ChipsTxnItem(id=row.id,  # Todo
                         created_ts=created_ts,
                         created_by=user.id,
                         # txn_type='CHIPSIN' if params.amount > 0 else 'CHIPSOUT',
-                        txn_type='CLUB_REMOVE',
+                        txn_type='CHIPSOUT',
                         amount=params.amount,
                         # balance=params.amount,
                         ref_user_id=user.id,
