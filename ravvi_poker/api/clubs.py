@@ -191,6 +191,17 @@ class ChipRequestForm(BaseModel):
         return value
 
 
+class ChipsTxnItem(BaseModel):
+    id: int
+    created_ts: float
+    created_by: int
+    txn_type: str
+    amount: Decimal
+    balance: Decimal | None = None
+    ref_user_id: int | None = None
+    ref_agent_id: int | None = None
+
+
 class ClubBalance(BaseModel):
         club_balance: float | None
         members_balance: float | None
