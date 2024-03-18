@@ -79,7 +79,7 @@ def test_countries_list(api_client: TestClient, api_guest: UserAccessProfile):
     assert response.status_code == 200
 
     response = api_client.get("/v1/info/countries/tg/")
-    assert response.status_code == 400
+    assert response.status_code == 200
 
     response = api_client.get("/v1/info/countries/ru/")
     assert list(response.json().values())[0] == "Абхазия"

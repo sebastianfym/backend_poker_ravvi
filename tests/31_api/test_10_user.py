@@ -51,6 +51,22 @@ def test_user(api_client: TestClient, api_guest: UserAccessProfile, api_client_2
     assert user_1.has_password == False
     assert user_1.email is None
 
+    params = {'country': 'Российская Федерация'}
+    response = api_client.patch("/v1/user/profile", json=params)
+    assert response.status_code == 400
+
+    params = {'country': 'zxcvbn'}
+    response = api_client.patch("/v1/user/profile", json=params)
+    assert response.status_code == 400
+
+    params = {'country': 'RU'}
+    response = api_client.patch("/v1/user/profile", json=params)
+    assert response.status_code == HTTP_200_OK
+    user_1 = UserPrivateProfile(**response.json())
+    assert user_1.id == api_guest.user.id
+    assert user_1.country == 'RU'
+
+
     params = {}
     response = api_client.patch("/v1/user/profile", json=params)
     assert response.status_code == HTTP_200_OK
@@ -60,6 +76,11 @@ def test_user(api_client: TestClient, api_guest: UserAccessProfile, api_client_2
     assert user_1.image_id == 11
     assert user_1.has_password == False
     assert user_1.email is None
+    assert user_1.country == 'RU'
+
+    params = {'country': '4040'}
+    response = api_client.patch("/v1/user/profile", json=params)
+    assert response.status_code == 400
 
     response = api_client_2.get(f"/v1/user/{api_guest.user.id}")
     assert response.status_code == HTTP_200_OK

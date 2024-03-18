@@ -83,10 +83,9 @@ async def v1_get_countries(session_uuid: SessionUUID, language: str):
         case "en":
             file_name = 'countries_en'
         case _:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid language code")
+            file_name = 'countries_en'
 
     try:
-
         relative_path = f'engine/data/{file_name}.json'
         absolute_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', relative_path))
 
