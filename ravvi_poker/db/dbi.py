@@ -800,8 +800,6 @@ class DBI:
         async with self.cursor() as cursor:
             await cursor.execute(sql, (amount, club_id))
 
-
-
     async def send_request_for_replenishment_of_chips(self, account_id, amount, balance):
         sql = "INSERT INTO public.user_account_txn (account_id, txn_type, txn_value, props) VALUES (%s, %s, %s, %s::jsonb) RETURNING *"
         txn_type = "REPLENISHMENT"
