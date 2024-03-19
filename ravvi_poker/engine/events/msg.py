@@ -6,6 +6,7 @@ import copy
 class MessageType(IntEnum):
     TABLE_INFO = 101
     TABLE_ERROR = 102
+    TABLE_JOIN_OFFER = 103
     TABLE_NEXT_LEVEL_INFO = 110
     TABLE_CLOSED = 199
 

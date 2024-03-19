@@ -1,3 +1,4 @@
+import time
 from typing import List, Mapping
 import asyncio
 import inspect
@@ -135,8 +136,16 @@ class Table:
         self.log.debug("on_user_join(%s)", user.id if user else None)
 
     async def on_player_enter(self, db, user, seat_idx):
-        # TODO buyin
+        offer_closed_at = time.time() + 60
+        print("При входе на стол")
+        print(user)
+        async with DBI() as db:
+            # TODO временно только buyin
+            # TODO временно только range (нужна реализация ratholing)
+            await self.emit_TABLE_JOIN_OFFER(db, offer_type="buyin", table_id=self.table_id, user_balance=user.balance,
+                                             closed_at=offer_closed_at, buyin_range=[10, 20])
         user.balance = 1
+        await asyncio.sleep(60)
         return True
 
     async def on_player_exit(self, db, user, seat_idx):
@@ -160,6 +169,10 @@ class Table:
 
     async def broadcast_TABLE_NEXT_LEVEL_INFO(self, db, **kwargs):
         msg = Message(msg_type=Message.Type.TABLE_NEXT_LEVEL_INFO, **kwargs)
+        await self.emit_msg(db, msg)
+
+    async def emit_TABLE_JOIN_OFFER(self, db, **kwargs):
+        msg = Message(msg_type=Message.Type.TABLE_JOIN_OFFER, **kwargs)
         await self.emit_msg(db, msg)
 
     async def broadcast_TABLE_CLOSED(self, db):
@@ -476,6 +489,7 @@ class Table:
             self.game = await self.create_game(users)
         try:
             await self.game.run()
+            # TODO сюда можно перенести обновление параметров счетчика bompot и ante, чтобы игра ничего не знала о столе
         except Exception as e:
             self.log.exception("%s", str(e))
 
