@@ -112,6 +112,7 @@ class AccountDetailInfo(BaseModel):
     winning: float | None
     bb_100_winning: float | None
     now_datestamp: float | None
+    balance: float | None = None
 
 
 class MemberAccountDetailInfo(BaseModel):
@@ -1029,7 +1030,8 @@ async def v1_detail_account(club_id: int, session_uuid: SessionUUID):
             opportunity_leave=opportunity_leave,
             hands=count_of_games_played,  # todo потом добавить триггеры
             winning=winning,
-            bb_100_winning=bb_100
+            bb_100_winning=bb_100,
+            balance=account.balance
         )
 
 @router.get("/{club_id}/club_balance", status_code=HTTP_200_OK,

@@ -1,3 +1,4 @@
+import datetime
 import logging
 import asyncio
 
@@ -27,6 +28,7 @@ class PokerClient:
         self.ws = None
         self.access_profile = None
         self.table_handlers = {}
+        self.device_token = None
 
     @property
     def user_id(self):
@@ -95,11 +97,13 @@ class PokerClient:
         response = await self.session.post('/v1/auth/register', json=body)
         status, payload = await self._get_result(response)
         if status == 200:
+            logger.info(f"Register new user: {datetime.datetime.now()}")
             self.access_profile = UserAccessProfile(**payload)
             self.session.headers["Authorization"] = "Bearer " + self.access_profile.access_token
 
     async def auth_logout(self):
         response = await self.session.post('/v1/auth/logout')
+        logger.info(f"User has logout: {datetime.datetime.now()}")
         await self._get_result(response)
         self.access_profile = None
         self.session.headers.popall("Authorization",None)
@@ -111,6 +115,7 @@ class PokerClient:
         response = await self.session.get('/v1/user/profile')
         status, payload = await self._get_result(response)
         if status == 200:
+            logger.info(f"Get user profile: {datetime.datetime.now()}")
             user_profile = UserPrivateProfile(**payload)
             self.access_profile.user = user_profile
         return user_profile
@@ -123,6 +128,7 @@ class PokerClient:
         response = await self.session.patch('/v1/user/profile', json=data)
         status, payload = await self._get_result(response)
         if status == 200:
+            logger.info(f"User update account: {datetime.datetime.now()}")
             user_profile = UserPrivateProfile(**payload)
             self.access_profile.user = user_profile
             return user_profile
@@ -133,13 +139,42 @@ class PokerClient:
         response = await self.session.get(f'/v1/user/{id}')
         status, payload = await self._get_result(response)
         if status == 200:
+            logger.info(f"Open user account by id: {datetime.datetime.now()}")
             user_profile = UserPublicProfile(**payload)
             return user_profile
         elif status == 404:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="User with this id not found")
 
-    # IMAGES
+    async def login_with_username_and_password(self, username, password):
+        data = {
+            "username":  username,
+            "password": password
+        }
+        response = await self.session.post(f'/v1/auth/login', json=data)
+        status, payload = await self._get_result(response)
+        if status == 200:
+            logger.info(f"User login with username/password: {datetime.datetime.now()}")
+            user_profile = UserPrivateProfile(**payload)
+            self.access_profile.user = user_profile
+            return user_profile
+        else:
+            raise "Check the correctness of the data"
 
+    async def password_update(self, current_password, new_password):
+        data = {
+           "current_password": current_password,
+           "new_password": new_password
+        }
+        response = await self.session.post(f'/v1/auth/password', json=data)
+        status, payload = await self._get_result(response)
+        if status == 200:
+            logger.info(f"User update password: {datetime.datetime.now()}")
+            return status
+        else:
+            raise "Check the correctness username or password"
+
+
+    # IMAGES
     async def get_available_images(self):
         response = await self.session.get('/v1/images')
         status, payload = await self._get_result(response)
@@ -165,6 +200,7 @@ class PokerClient:
         response = await self.session.post('/v1/clubs', json=data)
         status, payload = await self._get_result(response)
         if status == 201:
+            logger.info(f"Owner create club: {datetime.datetime.now()}")
             return ClubProfile(**payload)
         else:
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
@@ -173,6 +209,7 @@ class PokerClient:
         response = await self.session.get(f'/v1/clubs/{club_id}')
         status, payload = await self._get_result(response)
         if status == 200:
+            logger.info(f"Get club by id: {datetime.datetime.now()}")
             return ClubProfile(**payload)
         elif status == 404:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club with this id not found")
@@ -190,6 +227,7 @@ class PokerClient:
         response = await self.session.patch(f'/v1/clubs/{club_id}', json=data)
         status, payload = await self._get_result(response)
         if status == 200:
+            logger.info(f"Owner update club: {datetime.datetime.now()}")
             return ClubProfile(**payload)
         elif status == 404:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club with this id not found")
@@ -203,6 +241,7 @@ class PokerClient:
             club_list = []
             for club in payload:
                 club_list.append(ClubProfile(**club))
+            logger.info(f"Get club list: {datetime.datetime.now()}")
             return club_list
         else:
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
@@ -214,6 +253,7 @@ class PokerClient:
             members_list = []
             for member in payload:
                 members_list.append(ClubMemberProfile(**member))
+            logger.info(f"Owner get list with members: {datetime.datetime.now()}")
             return members_list
         elif status == 404:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club with this id not found")
@@ -224,6 +264,7 @@ class PokerClient:
         response = await self.session.post(f'/v1/clubs/{club_id}/members', json={"user_comment":user_comment})
         status, payload = await self._get_result(response)
         if status == 200:
+            logger.info(f"User send req for update balance: {datetime.datetime.now()}")
             return ClubProfile(**payload)
         elif status == 404:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club with this id not found")
@@ -237,6 +278,7 @@ class PokerClient:
             requests_list = []
             for member_req in payload:
                 requests_list.append(ClubMemberProfile(**member_req))
+            logger.info(f"Owner get list with all chips requests: {datetime.datetime.now()}")
             return requests_list
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -257,6 +299,7 @@ class PokerClient:
         response = await self.session.put(f'/v1/clubs/{club_id}/members/{user_id}', json=data)
         status, payload = await self._get_result(response)
         if status == 200:
+            logger.info(f"Accept new member in club: {datetime.datetime.now()}")
             return ClubMemberProfile(**payload)
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -270,6 +313,7 @@ class PokerClient:
         response = await self.session.delete(f'/v1/clubs/{club_id}/members/{user_id}', json={})
         status, payload = await self._get_result(response)
         if status == 200:
+            logger.info(f"Reject member request to join: {datetime.datetime.now()}")
             return status
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -283,6 +327,7 @@ class PokerClient:
         response = await self.session.post(f"/v1/clubs/{club_id}/leave_from_club", json={})
         status, payload = await self._get_result(response)
         if status == 200:
+            logger.info(f"Member leave from club: {datetime.datetime.now()}")
             return status
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -296,6 +341,7 @@ class PokerClient:
         response = await self.session.post(f"/v1/clubs/{club_id}/profile/{user_id}", json={})
         status, payload = await self._get_result(response)
         if status == 200:
+            logger.info(f"Owner get info about member: {datetime.datetime.now()}")
             return MemberAccountDetailInfo(**payload)
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -309,6 +355,7 @@ class PokerClient:
         response = await self.session.post(f"/v1/clubs/{club_id}/user_account", json={})
         status, payload = await self._get_result(response)
         if status == 200:
+            logger.info(f"Get info about member: {datetime.datetime.now()}")
             return AccountDetailInfo(**payload)
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -334,6 +381,7 @@ class PokerClient:
         response = await self.session.post(f'/v1/clubs/{club_id}/tables', json=data)
         status, payload = await self._get_result(response)
         if status == 201:
+            logger.info(f"Create new table: {datetime.datetime.now()}")
             return TableProfile(**payload)
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -350,6 +398,7 @@ class PokerClient:
             result_list = []
             for table in payload:
                 result_list.append(TableProfile(**table))
+            logger.info(f"Get all tables: {datetime.datetime.now()}")
             return result_list
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -360,11 +409,11 @@ class PokerClient:
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
 
     # TXN CHIPS
-
     async def get_club_balance(self, club_id):
         response = await self.session.get(f"/v1/clubs/{club_id}/club_balance")
         status, payload = await self._get_result(response)
         if status == 200:
+            logger.info(f"Owner get club balance: {datetime.datetime.now()}")
             return ClubBalance(**payload)
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -378,6 +427,7 @@ class PokerClient:
         response = await self.session.get(f"/v1/clubs/{club_id}/requests_chip_replenishment")
         status, payload = await self._get_result(response)
         if status == 200:
+            logger.info(f"Owner get requests on chips: {datetime.datetime.now()}")
             return payload
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -391,6 +441,7 @@ class PokerClient:
         response = await self.session.get(f"/v1/info/{club_id}/history")
         status, payload = await self._get_result(response)
         if status == 200:
+            logger.info(f"Owner get txns info: {datetime.datetime.now()}")
             return payload
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -404,6 +455,7 @@ class PokerClient:
         response = await self.session.post(f"/v1/chips/{club_id}/club/chips", json={"amount": amount})
         status, payload = await self._get_result(response)
         if status == 201:
+            logger.info(f"Owner update club balance: {datetime.datetime.now()}")
             return ChipsTxnItem(**payload)
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -417,6 +469,7 @@ class PokerClient:
         response = await self.session.delete(f"/v1/chips/{club_id}/club/chips", json={"amount": amount})
         status, payload = await self._get_result(response)
         if status == 201:
+            logger.info(f"Owner debited balance: {datetime.datetime.now()}")
             return ChipsTxnItem(**payload)
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -430,6 +483,7 @@ class PokerClient:
         response = await self.session.post(f"/v1/chips/{club_id}/agents/chips/{user_id}", json={"amount": amount, "mode": "give_out"})
         status, payload = await self._get_result(response)
         if status == 201:
+            logger.info(f"Owner update agent balance: {datetime.datetime.now()}")
             return ChipsTxnItem(**payload)
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -443,6 +497,7 @@ class PokerClient:
         response = await self.session.post(f"/v1/chips/{club_id}/agents/chips/{user_id}", json={"amount": amount, "mode": "pick_up"})
         status, payload = await self._get_result(response)
         if status == 201:
+            logger.info(f"Owner debited agent balance: {datetime.datetime.now()}")
             return ChipsTxnItem(**payload)
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -454,13 +509,13 @@ class PokerClient:
 
     async def up_user_balance(self, club_id, amount, user_list):
         data = {
-            "mode": "give_out",
             "amount": amount,
             "club_member": user_list
         }
         response = await self.session.post(f"/v1/chips/{club_id}/players/chips", json=data)
         status, payload = await self._get_result(response)
         if status == 201:
+            logger.info(f"Owner update user balance: {datetime.datetime.now()}")
             return status
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -479,6 +534,7 @@ class PokerClient:
         response = await self.session.post(f"/v1/chips/{club_id}/players/chips", json=data)
         status, payload = await self._get_result(response)
         if status == 201:
+            logger.info(f"Owner debited user balance: {datetime.datetime.now()}")
             return status
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -492,6 +548,7 @@ class PokerClient:
         response = await self.session.post(f"/v1/chips/{club_id}/requests/chips", json={"amount":amount, "agent": False})
         status, payload = await self._get_result(response)
         if status == 201:
+            logger.info(f"member send request to update balance: {datetime.datetime.now()}")
             return status
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -505,6 +562,7 @@ class PokerClient:
         response = await self.session.post(f"/v1/chips/{club_id}/requests/chips", json={"amount":amount, "agent": True})
         status, payload = await self._get_result(response)
         if status == 201:
+            logger.info(f"member send request to update agent balance: {datetime.datetime.now()}")
             return status
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -519,6 +577,7 @@ class PokerClient:
                                            json={"operation": "accept"})
         status, payload = await self._get_result(response)
         if status == 201:
+            logger.info(f"Owner accept all chips requests: {datetime.datetime.now()}")
             return status
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
@@ -533,6 +592,7 @@ class PokerClient:
                                            json={"operation": "reject"})
         status, payload = await self._get_result(response)
         if status == 201:
+            logger.info(f"Owner reject all chips requests: {datetime.datetime.now()}")
             return status
         elif status == 403:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,

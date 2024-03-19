@@ -13,6 +13,7 @@ class MyVerySmartCustomPokerStrategy:
         # обработка игровых событий
         await self.client.play_check_or_fold(msg)
 
+
 async def sample_scenario():
     client = PokerClient()
     strategy = MyVerySmartCustomPokerStrategy(client)
