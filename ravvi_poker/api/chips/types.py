@@ -24,8 +24,8 @@ class ChipsParams(BaseModel):
             return value
         else:
             value = round(value, 2)
-            if value <= 0:
-                raise HTTPException(HTTP_400_BAD_REQUEST, "Invalid value")
+            # if value <= 0:
+            #     raise HTTPException(HTTP_400_BAD_REQUEST, "Invalid value")
             return value
 
 
@@ -34,32 +34,32 @@ class BalanceMode(str, Enum):
     GIVE_OUT = "give_out"
 
 
-class ChipsParamsForAgents(ChipsParams):
-    mode: BalanceMode
-
-    @field_validator("mode")
-    def only_two_choice(cls, mode: str):
-        match mode:
-            case "pick_up":
-                return mode
-            case "give_out":
-                return mode
-            case _:
-                raise ValueError(f'Possible options: pick_up | give_out')
+# class ChipsParamsForAgents(ChipsParams):
+#     mode: BalanceMode
+#
+#     @field_validator("mode")
+#     def only_two_choice(cls, mode: str):
+#         match mode:
+#             case "pick_up":
+#                 return mode
+#             case "give_out":
+#                 return mode
+#             case _:
+#                 raise ValueError(f'Possible options: pick_up | give_out')
 
 class ChipsParamsForMembers(ChipsParams):
-    mode: str
+    # mode: str
     club_member: list
 
-    @field_validator("mode")
-    def only_two_choice(cls, mode: str):
-        match mode:
-            case "pick_up":
-                return mode
-            case "give_out":
-                return mode
-            case _:
-                raise ValueError(f'Possible options: pick_up | give_out')
+    # @field_validator("mode")
+    # def only_two_choice(cls, mode: str):
+    #     match mode:
+    #         case "pick_up":
+    #             return mode
+    #         case "give_out":
+    #             return mode
+    #         case _:
+    #             raise ValueError(f'Possible options: pick_up | give_out')
 
 
 class ChipsTxnItem(BaseModel):
@@ -85,6 +85,19 @@ class ChipsRequestItem(BaseModel):
     amount: Decimal
     closed_ts: float | None = None
     closed_by: int | None = None
+
+
+class ChipsRequestAction(BaseModel):
+    action: str
+
+    @field_validator("action")
+    def check_value(cls, action: str) -> str:
+        if action == "approve":
+            return action
+        elif action == "reject":
+            return action
+        else:
+            raise ValueError("Action must  be only: approve, reject")
 
 
 class UserRequest(BaseModel):
