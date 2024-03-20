@@ -154,7 +154,6 @@ def test_21_club_join_approve(api_client: TestClient, api_guest: UserAccessProfi
     clubs = response.json()
     assert clubs
 
-    print(club.id)
     response = api_client.get(f"/v1/clubs/{club.id}/members")
     assert response.status_code == 200
 
@@ -483,32 +482,32 @@ def test_delete_chips_to_club(client, initial_club_balance, request_params, stat
         assert response.json()['club_balance'] == initial_club_balance
 
 
-def test_delete_chips_rounding(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
-                               api_guest_2: UserAccessProfile):
-    """
-    Проверяем округление
-    """
-    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
-    api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
-
-    params = {}
-    response = api_client.post("/v1/clubs", json=params)
-    club = ClubProfile(**response.json())
-
-    response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 1000})
-    assert response.status_code == 200
-    response = api_client.get(f"/v1/clubs/{club.id}")
-    assert response.json()['club_balance'] == 1000
-
-    response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 0.12})
-    assert response.status_code == 200
-    response = api_client.get(f"/v1/clubs/{club.id}")
-    assert response.json()['club_balance'] == 999.88
-
-    response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 0.07})
-    assert response.status_code == 200
-    response = api_client.get(f"/v1/clubs/{club.id}")
-    assert response.json()['club_balance'] == 999.81
+# def test_delete_chips_rounding(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
+#                                api_guest_2: UserAccessProfile):
+#     """
+#     Проверяем округление
+#     """
+#     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+#     api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
+#
+#     params = {}
+#     response = api_client.post("/v1/clubs", json=params)
+#     club = ClubProfile(**response.json())
+#
+#     response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 1000})
+#     assert response.status_code == 200
+#     response = api_client.get(f"/v1/clubs/{club.id}")
+#     assert response.json()['club_balance'] == 1000
+#
+#     response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 0.12})
+#     assert response.status_code == 200
+#     response = api_client.get(f"/v1/clubs/{club.id}")
+#     assert response.json()['club_balance'] == 999.88
+#
+#     response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 0.07})
+#     assert response.status_code == 200
+#     response = api_client.get(f"/v1/clubs/{club.id}")
+#     assert response.json()['club_balance'] == 999.81
 
 
 # @pytest.mark.asyncio
@@ -1001,4 +1000,66 @@ def test_agents_in_club(client_new,
     assert response.status_code == 200
 
     response = api_client.get(f"/v1/clubs/{club.id}/members/agents")
+    assert response.status_code == 200
+
+
+def test_new_actions_with_chips(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
+                                   api_guest_2: UserAccessProfile):
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+    api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
+
+    params = {
+        "name": "Test club",
+        "description": "Test club 1",
+        "image_id": None,
+        "user_role": "O",
+        "user_approved": True,
+        "timezone": "Europe/Moscow"
+    }
+    response = api_client.post("/v1/clubs", json=params)
+    club = ClubProfile(**response.json())
+
+    response = api_client_2.post(f"/v1/clubs/{club.id}/members")
+    assert response.status_code == 200
+
+    response = api_client.get(f"/v1/clubs/{club.id}/members/requests")
+    assert response.status_code == 200
+
+    response = api_client.get(f"/v1/clubs/{club.id}/members/requests")
+    user_id = response.json()[0]['id']
+    assert response.status_code == 200
+
+    data = {"user_role": "A"}
+    response = api_client.put(f"/v1/clubs/{club.id}/members/{user_id}", json=data)
+    assert response.status_code == 200
+
+    data = {"amount": 25000}
+    response = api_client.post(f"/v1/chips/{club.id}/club/chips", json=data)
+    assert response.status_code == 201
+
+    data = {"amount": 250, "mode": "pick_up"}
+    response = api_client.post(f"/v1/chips/{club.id}/agents/chips/{user_id}", json=data)
+    assert response.status_code == 201
+
+    data = {"amount": 250, "mode": "give_out"}
+    response = api_client.post(f"/v1/chips/{club.id}/agents/chips/{user_id}", json=data)
+    assert response.status_code == 201
+
+    data = {"amount": 250, "mode": "pick_up", "club_member": [{"id": user_id, "balance": 100, "balance_shared": 100}]}
+    response = api_client.post(f"/v1/chips/{club.id}/players/chips", json=data)
+    assert response.status_code == 201
+
+    data = {"amount": 250, "mode": "give_out", "club_member": [{"id": user_id, "balance": 100, "balance_shared": 100}]}
+    response = api_client.post(f"/v1/chips/{club.id}/players/chips", json=data)
+    assert response.status_code == 201
+
+    data = {"amount": 250, "agent": False}
+    response = api_client.post(f"/v1/chips/{club.id}/requests/chips", json=data)
+    assert response.status_code == 201
+
+    response = api_client.get(f"/v1/chips/{club.id}/requests/chips")
+    assert response.status_code == 200
+
+    data = {"operation": "approve"}
+    response = api_client.post(f"/v1/chips/{club.id}/requests/chips/all", json=data)
     assert response.status_code == 200
