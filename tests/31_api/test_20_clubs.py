@@ -576,7 +576,6 @@ def test_get_requests_for_chips(api_client: TestClient,
 
     response = api_client.get(f"/v1/clubs/{club.id}/requests_chip_replenishment")
     assert response.status_code == 200
-    print(f'648 str, {response.json()}')
     assert isinstance(response.json(), dict)
 
 

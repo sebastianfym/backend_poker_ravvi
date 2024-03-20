@@ -651,7 +651,7 @@ async def v1_add_chip_on_club_balance(club_id: int, chips_value: ClubChipsValue,
                                       users=Depends(check_rights_user_club_owner)):
     club_owner_account, user, _ = users
     async with DBI() as db:
-        await db.txn_with_chip_on_club_balance(club_id, chips_value.amount, "CASHIN", club_owner_account.id, user.id)
+        await db.txn_with_chip_on_club_balance(club_id, chips_value.amount, "CHIPSIN", club_owner_account.id, user.id)
 
 
 @router.post("/{club_id}/delete_chip_from_club_balance", status_code=HTTP_200_OK,
@@ -660,7 +660,7 @@ async def v1_delete_chip_from_club_balance(club_id: int, chips_value: ClubChipsV
                                            users=Depends(check_rights_user_club_owner)):
     club_owner_account, user = users[0], users[1]
     async with DBI() as db:
-        await db.txn_with_chip_on_club_balance(club_id, chips_value.amount, "REMOVE", club_owner_account.id, user.id)
+        await db.txn_with_chip_on_club_balance(club_id, chips_value.amount, "CHIPSOUT", club_owner_account.id, user.id)
 
 
 async def check_compatibility_recipient_and_balance_type(club_id: int, request: UserChipsValue):
