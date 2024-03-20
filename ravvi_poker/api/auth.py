@@ -50,7 +50,7 @@ async def v1_register(params: DeviceProps, request: Request) -> UserAccessProfil
             device_token=device_token, 
             login_token=login_token,
             access_token=access_token,
-            user = UserPrivateProfile.from_row(user)
+            user=UserPrivateProfile.from_row(user)
         )
     return response
 
@@ -94,10 +94,11 @@ async def v1_device(params: DeviceLoginProps, request: Request) -> UserAccessPro
         device_token=device_token, 
         login_token=login_token,
         access_token=access_token, 
-        user = UserPrivateProfile.from_row(user) if user else None
+        user=UserPrivateProfile.from_row(user) if user else None
         )
     return response
-  
+
+
 async def handle_login(device_uuid, username, password):
     if not username or not password:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Missing username or password")
@@ -139,6 +140,7 @@ async def handle_login(device_uuid, username, password):
 @router.post("/login", responses={400: {}, 401: {}, 403: {}})
 async def v1_login(params: UserLoginProps, request: Request):
     """Login API with username / password"""
+    print(params)
     device_uuid = jwt_get(params.device_token, "device_uuid")
     return await handle_login(device_uuid, params.username, params.password)
 
