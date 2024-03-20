@@ -120,6 +120,7 @@ class AccountDetailInfo(BaseModel):
     winning: float | None
     bb_100_winning: float | None
     now_datestamp: float | None
+    balance: float | None = None
 
 
 class MemberAccountDetailInfo(BaseModel):
@@ -216,6 +217,24 @@ class ChipRequestForm(BaseModel):
         if value not in ["approve", "reject"]:
             raise ValueError('Operation must be either "approve" or "reject"')
         return value
+
+
+class ChipsTxnItem(BaseModel):
+    id: int
+    created_ts: float
+    created_by: int
+    txn_type: str
+    amount: Decimal
+    balance: Decimal | None = None
+    ref_user_id: int | None = None
+    ref_agent_id: int | None = None
+
+
+class ClubBalance(BaseModel):
+        club_balance: float | None
+        members_balance: float | None
+        agents_balance: float | None
+        total_balance: float | None
 
 
 class ClubHistoryTransaction(BaseModel):
@@ -461,10 +480,8 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID, request: Request
         if not account:
 
             if club.automatic_confirmation:
-                print(club.automatic_confirmation, 'part 1 ')
                 account = await db.create_club_member(club.id, user.id, user_comment, True)
             else:
-                print(club.automatic_confirmation, 'part 2 ')
                 account = await db.create_club_member(club.id, user.id, user_comment, False)
         elif account.closed_ts is not None and account.club_id == club_id:
             await db.refresh_member_in_club(account.id, user_comment)
@@ -1041,12 +1058,13 @@ async def v1_detail_account(club_id: int, session_uuid: SessionUUID):
             opportunity_leave=opportunity_leave,
             hands=count_of_games_played,  # todo потом добавить триггеры
             winning=winning,
-            bb_100_winning=bb_100
+            bb_100_winning=bb_100,
+            balance=account.balance
         )
 
 @router.get("/{club_id}/club_balance", status_code=HTTP_200_OK,
             summary="Получить все допустимые типы балансов (суммарные) для клуба: агентский баланс, баланс пользователей, баланс клуба")
-async def v1_get_all_club_balance(club_id: int, users=Depends(check_rights_user_club_owner_or_manager)):
+async def v1_get_all_club_balance(club_id: int, users=Depends(check_rights_user_club_owner_or_manager)) -> ClubBalance:
     async with DBI() as db:
         _, _, club = users
         club_balance = club.club_balance
@@ -1066,12 +1084,18 @@ async def v1_get_all_club_balance(club_id: int, users=Depends(check_rights_user_
         shared_balance = sum(user.balance_shared for user in club_members if user.balance_shared is not None)
         total_balance = members_balance + shared_balance
 
-    return {
-        "club_balance": club_balance,
-        "members_balance": members_balance,
-        "agents_balance": shared_balance,
-        "total_balance": total_balance,
-    }
+    return ClubBalance(
+        club_balance=club_balance,
+        members_balance=members_balance,
+        agents_balance=shared_balance,
+        total_balance=total_balance,
+    )
+    #     {
+    #     "club_balance": club_balance,
+    #     "members_balance": members_balance,
+    #     "agents_balance": shared_balance,
+    #     "total_balance": total_balance,
+    # }
 
 
 @router.get("/{club_id}/requests_chip_replenishment", status_code=HTTP_200_OK,

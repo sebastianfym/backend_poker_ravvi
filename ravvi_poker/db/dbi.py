@@ -21,6 +21,7 @@ class DBI:
     APPLICATION_NAME = 'CPS'
     CONNECT_TIMEOUT = 15
 
+
     pool = None
 
     OperationalError = psycopg.OperationalError
