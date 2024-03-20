@@ -75,7 +75,7 @@ class TableParams(BaseModel):
     ev_chop: bool | None = False
     ratholing: int | None = None
     withdrawals: bool | None = None
-    drop_card_round: Optional[str] | None = None
+    drop_card_round: Optional[str] = None
 
 
     @field_validator('table_type')

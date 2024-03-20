@@ -366,7 +366,8 @@ class PokerClient:
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
     # TABLE
 
-    async def create_table(self, club_id=None, table_type=None, table_name=None, table_seats=None, game_type=None,
+    async def create_table(self, buyin_min, buyin_max, action_time, blind_small, blind_big,
+                           club_id=None, table_type=None, table_name=None, table_seats=None, game_type=None,
                            game_subtype=None, buyin_cost=None):
 
         data = {
