@@ -16,7 +16,7 @@ class DBI:
     DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "15432"))
     DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "develop")
     DB_USER = os.getenv("RAVVI_POKER_DB_USER", "postgres")
-    DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "postgres")
+    DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
     POOL_LIMIT = int(os.getenv("RAVVI_POKER_DB_POOL_LIMIT", "10"))
     APPLICATION_NAME = 'CPS'
     CONNECT_TIMEOUT = 15
@@ -196,9 +196,10 @@ class DBI:
         return row
 
     async def check_uniq_username(self, name):
-        sql = "SELECT name FROM user_profile WHERE name = %s;"
+        name_lower = name.lower()
+        sql = "SELECT name FROM user_profile WHERE LOWER(name) = %s;"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (name,))
+            await cursor.execute(sql, (name_lower,))
             row = await cursor.fetchone()
         return row
 
@@ -419,6 +420,14 @@ class DBI:
             members_P = await cursor.fetchall()
 
         return members_S, members_A, members_P
+
+    async def check_uniq_club_name(self, name):
+        name_lower = name.lower()
+        sql = "SELECT name FROM club_profile WHERE LOWER(name) = %s;"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (name_lower,))
+            row = await cursor.fetchone()
+        return row
 
     # USER ACCOUNT
 

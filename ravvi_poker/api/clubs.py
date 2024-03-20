@@ -13,7 +13,7 @@ from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UN
 from pydantic import BaseModel, Field, field_validator, validator
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 from ..db import DBI
-from .utils import SessionUUID, get_session_and_user
+from .utils import SessionUUID, get_session_and_user, check_club_name
 from .tables import TableParams, TableProfile
 
 log = getLogger(__name__)
@@ -390,9 +390,11 @@ async def v1_update_club(club_id: int, params: ClubProps, session_uuid: SessionU
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
         club_params = params.model_dump(exclude_unset=True)
         if club_params:
-            # image = db.get_user_images(user.id, id=params.image_id) if params.image_id else None
-            # if params.image_id is not None and not image:
-            #    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Image not found")
+            if 'name' in club_params.keys():
+                club_name = club_params['name']
+                if await db.check_uniq_club_name(club_name) is not None:
+                    raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="This name is already taken")
+                check_club_name(club_name, club_id)
             club = await db.update_club(club_id, **club_params)
     return ClubProfile(
         id=club.id,
