@@ -668,7 +668,7 @@ async def check_compatibility_recipient_and_balance_type(club_id: int, request: 
         user_account = await db.find_account(user_id=request.account_id, club_id=club_id)
     try:
         if user_account.user_role not in ["A", "S"] and request.balance == "balance_shared":
-            raise ValueError
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='User has not agent balance')
         request.user_account = user_account
         return request
     except AttributeError:
@@ -757,7 +757,7 @@ async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
         return HTTP_200_OK
 
 
-@router.post("/{club_id}/profile/{user_id}", status_code=HTTP_200_OK,  # todo тут не тот юзер
+@router.post("/{club_id}/profile/{user_id}", status_code=HTTP_200_OK,
              summary="Страница с информацией о конкретном участнике клуба для админа")
 async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID, sorting_date: SortingByDate):
     async with DBI() as db:
@@ -1098,8 +1098,7 @@ async def v1_get_requests_for_chips(club_id: int, users=Depends(check_rights_use
 
 @router.post("/{club_id}/action_with_user_request", status_code=HTTP_200_OK,
              summary='Подтвердить или отклонить пользовательские запросы на пополнение баланса')
-async def v1_action_with_user_request(club_id: int, request_for_chips: ChipRequestForm,
-                                      users=Depends(check_rights_user_club_owner)):
+async def v1_action_with_user_request(club_id: int, request_for_chips: ChipRequestForm, users=Depends(check_rights_user_club_owner)):
     club_owner_account = users[0]
     club = users[2]
     club_balance = club.club_balance
