@@ -1,3 +1,4 @@
+import asyncio
 from typing import Set
 
 
@@ -11,6 +12,8 @@ class User:
         self.table_session_id = None
         self.balance = None
         self.clients = set()
+
+        self.buyin_event: asyncio.Event = asyncio.Event()
 
     @property
     def connected(self) -> bool:

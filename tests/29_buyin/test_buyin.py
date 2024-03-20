@@ -1,0 +1,2 @@
+class TestBuyin:
+    pass

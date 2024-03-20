@@ -14,6 +14,7 @@ class MessageType(IntEnum):
     PLAYER_SEAT = 202
     PLAYER_CARDS = 203
     PLAYER_BET = 204
+    PLAYER_BALANCE = 205
     PLAYER_EXIT = 299
 
     GAME_BEGIN = 301

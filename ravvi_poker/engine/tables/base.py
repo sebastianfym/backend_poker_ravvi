@@ -1,15 +1,12 @@
-import time
-from typing import List, Mapping
 import asyncio
-import inspect
-import contextlib
+from typing import List, Mapping
 
 from .configs import configCls
-from ...logging import getLogger, ObjectLoggerAdapter
-from ...db import DBI
-from ..user import User
-from ..events import Command, Message
 from .status import TableStatus
+from ..events import Command, Message
+from ..user import User
+from ...db import DBI
+from ...logging import getLogger, ObjectLoggerAdapter
 
 logger = getLogger(__name__)
 
@@ -135,18 +132,9 @@ class Table:
     async def on_user_join(self, db, user):
         self.log.debug("on_user_join(%s)", user.id if user else None)
 
-    async def on_player_enter(self, db, user, seat_idx):
-        offer_closed_at = time.time() + 60
-        print("При входе на стол")
-        print(user)
-        async with DBI() as db:
-            # TODO временно только buyin
-            # TODO временно только range (нужна реализация ratholing)
-            await self.emit_TABLE_JOIN_OFFER(db, offer_type="buyin", table_id=self.table_id, user_balance=user.balance,
-                                             closed_at=offer_closed_at, buyin_range=[10, 20])
-        user.balance = 1
-        await asyncio.sleep(60)
-        return True
+    async def on_player_enter(self, db, cmd_id, client_id, user, seat_idx):
+        # TODO вернуть старый код
+        raise NotImplementedError("on_player_enter() is not implemented")
 
     async def on_player_exit(self, db, user, seat_idx):
         # TODO return table balance to user
@@ -172,6 +160,7 @@ class Table:
         await self.emit_msg(db, msg)
 
     async def emit_TABLE_JOIN_OFFER(self, db, **kwargs):
+        # TODO перенести в RG
         msg = Message(msg_type=Message.Type.TABLE_JOIN_OFFER, **kwargs)
         await self.emit_msg(db, msg)
 
@@ -186,6 +175,10 @@ class Table:
 
     async def broadcast_PLAYER_SEAT(self, db, user_id, seat_idx):
         msg = Message(msg_type=Message.Type.PLAYER_SEAT, user_id=user_id, seat_id=seat_idx)
+        await self.emit_msg(db, msg)
+
+    async def broadcast_PLAYER_BALANCE(self, db, user_id, balance):
+        msg = Message(msg_type=Message.Type.PLAYER_BALANCE, user_id=user_id, balance=balance)
         await self.emit_msg(db, msg)
 
     async def broadcast_PLAYER_EXIT(self, db, user_id):
@@ -241,8 +234,13 @@ class Table:
                 await self.handle_cmd_join(db, cmd_id=cmd_id, client_id=client_id, user_id=user_id, club_id=club_id,
                                            take_seat=take_seat)
             elif cmd_type == Command.Type.TAKE_SEAT:
+                # TODO seat_idx не может быть None в данной реализации
                 seat_idx = props.get("seat_idx", None)
-                await self.handle_cmd_take_seat(db, user_id=user_id, seat_idx=seat_idx)
+                await self.handle_cmd_take_seat(db, cmd_id=cmd_id, client_id=client_id, user_id=user_id,
+                                                seat_idx=seat_idx)
+            elif cmd_type == Command.Type.OFFER_RESULT:
+                buyin_value = props.get("buyin_value", 0)
+                await self.handle_cmd_offer_result(db, user_id=user_id, buyin_value=buyin_value)
             elif cmd_type == Command.Type.EXIT:
                 await self.handle_cmd_exit(db, user_id=user_id)
             elif self.game:
@@ -279,7 +277,7 @@ class Table:
             # allocate seat
             new_seat_idx = seats_available.pop(0)
             # check user can take seat
-            if await self.on_player_enter(db, user, new_seat_idx):
+            if await self.on_player_enter(db, cmd_id, client_id, user, new_seat_idx):
                 self.seats[new_seat_idx] = user
                 user_info = user.get_info()
                 await self.broadcast_PLAYER_ENTER(db, user_info, new_seat_idx)
@@ -289,7 +287,7 @@ class Table:
         await self.emit_TABLE_INFO(db, cmd_id=cmd_id, client_id=client_id, table_info=table_info)
         self.log.debug("handle_cmd_join: done")
 
-    async def handle_cmd_take_seat(self, db, *, user_id: int, seat_idx: int):
+    async def handle_cmd_take_seat(self, db, *, cmd_id, client_id, user_id: int, seat_idx: int):
         # check seats allocation
         user, old_seat_idx, seats_available = self.find_user(user_id)
         self.log.info("handle_cmd_take_seat: %s, %s, %s", user, old_seat_idx, seats_available)
@@ -300,7 +298,7 @@ class Table:
         if old_seat_idx is None:
             if not self.user_enter_enabled:
                 return False
-            if not await self.on_player_enter(db, user, seat_idx):
+            if not await self.on_player_enter(db, cmd_id, client_id, user, seat_idx):
                 return False
             self.seats[seat_idx] = user
             user_info = user.get_info()
@@ -406,6 +404,7 @@ class Table:
 
     async def run_table(self):
         self.log.info("%s", self.status)
+        # основной цикл
         while self.status == TableStatus.OPEN:
             await self.sleep(self.NEW_GAME_DELAY)
             #self.log.info("try start game")

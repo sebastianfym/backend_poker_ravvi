@@ -1,12 +1,11 @@
-from typing import List, Tuple, Callable
 from enum import IntFlag
+from typing import Callable
 
 from ravvi_poker.engine.poker.board import Board
-
-from .hands import Hand, LowHand
-from ..user import User
-from ..player import Player as PlayerBase
 from .bet import Bet
+from .hands import Hand, LowHand
+from ..player import Player as PlayerBase
+from ..user import User
 
 
 class PlayerRole(IntFlag):
