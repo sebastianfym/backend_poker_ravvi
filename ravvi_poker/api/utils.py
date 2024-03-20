@@ -49,10 +49,13 @@ def get_country_code(country):
 
 
 def check_username(name, user_id):
-    pattern = fr'^u\d+$'
+    if name.isdigit():
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Name should not consist only of digits")
+
+    pattern = fr'^[uU]\d+$'
     match = re.match(pattern, name)
     if match:
-        pattern = fr'^u{user_id}$'
+        pattern = fr'^[uU]{user_id}$'
         match = re.match(pattern, name)
         if match is None:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid name")

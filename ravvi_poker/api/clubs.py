@@ -918,14 +918,6 @@ async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID,
         last_session = await db.get_last_user_session(last_login_id)
 
         user_profile = await db.get_user(id=user_id)
-        # all_user_games_id = [game.game_id for game in (await db.get_games_player_through_user_id(player_user.id))]
-
-        # if len(all_user_games_id) != 0 and len(table_id_list) != 0:
-        #     last_game = max(await db.statistics_all_games_users_in_club(all_user_games_id, table_id_list),
-        #                     key=lambda x: x.id)
-        #     last_game_time = last_game.begin_ts.timestamp()
-        # else:
-        #     last_game_time = None
 
         statistics_of_all_player_games_in_the_club = await db.statistics_all_games_users_in_club(user.id, club_id)
         hands = len(statistics_of_all_player_games_in_the_club)
@@ -1091,12 +1083,6 @@ async def v1_get_all_club_balance(club_id: int, users=Depends(check_rights_user_
         agents_balance=shared_balance,
         total_balance=total_balance,
     )
-    #     {
-    #     "club_balance": club_balance,
-    #     "members_balance": members_balance,
-    #     "agents_balance": shared_balance,
-    #     "total_balance": total_balance,
-    # }
 
 
 @router.get("/{club_id}/requests_chip_replenishment", status_code=HTTP_200_OK,

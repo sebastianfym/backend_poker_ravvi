@@ -44,6 +44,7 @@ class UserPrivateProfile(UserPublicProfile):
             country=row.country
             )
 
+
 class UserMutableProps(BaseModel):
     name: str | None = None
     image_id: int | None = None
