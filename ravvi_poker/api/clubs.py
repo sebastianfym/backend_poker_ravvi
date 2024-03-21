@@ -390,7 +390,7 @@ async def v1_update_club(club_id: int, params: ClubProps, session_uuid: SessionU
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Permission denied")
         club_params = params.model_dump(exclude_unset=True)
         if club_params:
-            if 'name' in club_params.keys():
+            if 'name' in club_params.keys() and club_params['name'] is not None:
                 club_name = club_params['name']
                 if await db.check_uniq_club_name(club_name) is not None:
                     raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="This name is already taken")
