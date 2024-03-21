@@ -146,7 +146,6 @@ async def v1_login(params: UserLoginProps, request: Request):
     if params.username:
         return await handle_login(device_uuid=device_uuid, username=params.username, password=params.password)
     elif params.id:
-        print(2)
         return await handle_login(device_uuid=device_uuid, id=params.id, password=params.password)
     elif params.email:
         return await handle_login(device_uuid=device_uuid, email=params.email, password=params.password)
@@ -155,7 +154,7 @@ async def v1_login(params: UserLoginProps, request: Request):
 async def v1_login_form(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     """Login Form with username / password"""
     device_uuid = jwt_get(form_data.client_id, "device_uuid") if form_data.client_id else None
-    return await handle_login(device_uuid, form_data.username, form_data.password)
+    return await handle_login(device_uuid, username=form_data.username, password=form_data.password)
 
 
 class UserChangePassword(BaseModel):

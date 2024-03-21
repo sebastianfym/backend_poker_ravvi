@@ -24,7 +24,7 @@ def test_auth_login(api_client: TestClient, api_guest: UserAccessProfile):
     api_client.headers = None
 
     # try user id
-    params = dict(username=str(api_guest.user.id), password="test", device_token=api_guest.device_token, device_props={})
+    params = dict(username=str(api_guest.user.name), password="test", device_token=api_guest.device_token, device_props={})
     logging.info("%s", params)
     response = api_client.post("/v1/auth/login", json=params)
     assert response.status_code == 200
@@ -70,7 +70,7 @@ def test_auth_login_form(api_client: TestClient, api_guest: UserAccessProfile):
     api_client.headers = None
 
     # try user id
-    params = dict(username=str(api_guest.user.id), password="test", client_id=api_guest.device_token)
+    params = dict(username=str(api_guest.user.name), password="test", client_id=api_guest.device_token)
     logging.info("%s", params)
     response = api_client.post("/v1/auth/login_form", data=params)
     assert response.status_code == 200
