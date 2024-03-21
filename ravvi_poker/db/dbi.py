@@ -195,6 +195,14 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def check_uniq_username(self, name):
+        name_lower = name.lower()
+        sql = "SELECT name FROM user_profile WHERE LOWER(name) = %s;"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (name_lower,))
+            row = await cursor.fetchone()
+        return row
+
     # LOGIN
 
     async def create_login(self, device_id, user_id):
@@ -412,6 +420,14 @@ class DBI:
             members_P = await cursor.fetchall()
 
         return members_S, members_A, members_P
+
+    async def check_uniq_club_name(self, name):
+        name_lower = name.lower()
+        sql = "SELECT name FROM club_profile WHERE LOWER(name) = %s;"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (name_lower,))
+            row = await cursor.fetchone()
+        return row
 
     # USER ACCOUNT
 
