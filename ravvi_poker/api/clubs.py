@@ -986,6 +986,8 @@ async def v1_detail_account(club_id: int, session_uuid: SessionUUID):
         now_datestamp = int(time.mktime(datetime.datetime.fromisoformat(str(datetime.datetime.utcnow())).timetuple()))
 
         date_now = str(datetime.datetime.now()).split(" ")[0]
+        # date_now = str(datetime.datetime.now())
+        print(date_now)
         table_types = []
         game_types = []
         game_subtype = []
@@ -1012,7 +1014,7 @@ async def v1_detail_account(club_id: int, session_uuid: SessionUUID):
         access_game_id = []
 
         for game_id in all_games_id:
-            game = await db.check_game_by_date(game_id, date_now)
+            game = await db.check_game_by_date(game_id, date_now, date_end=date_now) #Todo подумать над корректным значением для date_end
             if game is not None:
                 access_games.append(game)
                 access_game_id.append(game.id)
@@ -1058,7 +1060,7 @@ async def v1_detail_account(club_id: int, session_uuid: SessionUUID):
             game_subtypes=set(game_subtype),
             opportunity_leave=opportunity_leave,
             hands=count_of_games_played,  # todo потом добавить триггеры
-            winning=winning,
+            winning=round(winning, 2),
             bb_100_winning=bb_100,
             balance=account.balance
         )
