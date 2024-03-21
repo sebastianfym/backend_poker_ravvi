@@ -108,7 +108,6 @@ async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
             if txn.txn_value == 00.00:
                 continue
             txn = txn._asdict()
-
             sender_account = await db.get_club_member(member_id=txn['sender_id'])
             if txn['txn_type'] not in ["REPLENISHMENT", "CHIPSIN", "CHIPSOUT"]: #"CASHOUT", "BUYIN",
                 try:
@@ -150,4 +149,4 @@ async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
                     txn_list.append(txn_table)
                 except AttributeError:
                     continue
-        return txn_list
+        return txn_list #TODO Ввод/Вывод = CASHIN/CASHOUT

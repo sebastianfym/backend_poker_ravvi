@@ -1326,7 +1326,7 @@ async def v1_club_txn_history(club_id: int, request: Request, users=Depends(chec
             member_user_profile = await db.get_user(recipient.user_id)
 
             for txn in all_member_txns:
-                if txn.txn_type in ["CASHOUT", "BUYIN"]:
+                if txn.txn_type in ["REWARD", "BUYIN"]:
                     continue
                 try:
                     sender = await db.get_club_member(txn.sender_id)

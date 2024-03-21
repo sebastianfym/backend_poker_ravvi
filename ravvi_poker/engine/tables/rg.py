@@ -61,7 +61,7 @@ class Table_RG(Table):
             # TODO: точность и округление
             new_account_balance = float(account.balance) + user.balance
             self.log.info("user %s exit %s -> balance %s", user.id, user.balance, new_account_balance)
-            await db.create_account_txn(user.account_id, "CASHOUT", user.balance, sender_id=self.table_id, table_id=self.table_id)
+            await db.create_account_txn(user.account_id, "REWARD", user.balance, sender_id=self.table_id, table_id=self.table_id)
             user.balance = None
         if user.table_session_id:
             await db.close_table_session(user.table_session_id)
