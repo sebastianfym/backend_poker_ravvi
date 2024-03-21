@@ -162,6 +162,20 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def get_user_by_name(self, name):
+        sql = "SELECT *  FROM user_profile WHERE name =%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (name,))
+            row = await cursor.fetchone()
+        return row
+
+    async def get_user_by_email(self, email):
+        sql = "SELECT *  FROM user_profile WHERE email =%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (email,))
+            row = await cursor.fetchone()
+        return row
+
     async def update_user(self, id, **kwargs):
         if kwargs:
             params = ", ".join([f"{key}=%s" for key in kwargs])

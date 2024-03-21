@@ -7,8 +7,11 @@ class DeviceProps(BaseModel):
 class DeviceLoginProps(DeviceProps):
     login_token: str  | None = None
 
+
 class UserLoginProps(DeviceProps):
-    username: str
+    username: str | None = None
+    id: int | None = None
+    email: str | None = None
     password: str
 
 class UserPublicProfile(BaseModel):
@@ -47,6 +50,7 @@ class UserPrivateProfile(UserPublicProfile):
 
 class UserMutableProps(BaseModel):
     name: str | None = None
+    email: str | None = None
     image_id: int | None = None
     country: str | None = None
 

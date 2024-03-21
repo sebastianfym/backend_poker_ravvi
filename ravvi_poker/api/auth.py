@@ -99,14 +99,7 @@ async def v1_device(params: DeviceLoginProps, request: Request) -> UserAccessPro
     return response
 
 
-async def handle_login(device_uuid, username, password):
-    if not username or not password:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Missing username or password")
-    try:
-        user_id = int(username)
-    except ValueError:
-        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
-    
+async def handle_login(device_uuid, username=None, password=None, id=None, email=None):
     async with DBI() as db:
         device = await db.get_device(uuid=device_uuid) if device_uuid else None
         if not device:
@@ -114,7 +107,16 @@ async def handle_login(device_uuid, username, password):
             device_token = jwt_encode(device_uuid=str(device.uuid))
         #if login_uuid:
         #    dbi.close_user_login(uuid=login_uuid)
-        user = await db.get_user(user_id)
+        if id:
+            user_id = int(id)
+            user = await db.get_user(user_id)
+        elif username:
+            user = await db.get_user_by_name(username)
+        elif email:
+            user = await db.get_user_by_email(email)
+        else:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Missing username or password")
+
         if not user:
             raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
         if user.closed_ts:
@@ -140,16 +142,19 @@ async def handle_login(device_uuid, username, password):
 @router.post("/login", responses={400: {}, 401: {}, 403: {}})
 async def v1_login(params: UserLoginProps, request: Request):
     """Login API with username / password"""
-    print(params)
     device_uuid = jwt_get(params.device_token, "device_uuid")
-    return await handle_login(device_uuid, params.username, params.password)
-
+    if params.username:
+        return await handle_login(device_uuid=device_uuid, username=params.username, password=params.password)
+    elif params.id:
+        return await handle_login(device_uuid=device_uuid, id=params.id, password=params.password)
+    elif params.email:
+        return await handle_login(device_uuid=device_uuid, email=params.email, password=params.password)
 
 @router.post("/login_form", responses={400: {}, 401: {}, 403: {}})
 async def v1_login_form(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     """Login Form with username / password"""
     device_uuid = jwt_get(form_data.client_id, "device_uuid") if form_data.client_id else None
-    return await handle_login(device_uuid, form_data.username, form_data.password)
+    return await handle_login(device_uuid, username=form_data.username, password=form_data.password)
 
 
 class UserChangePassword(BaseModel):

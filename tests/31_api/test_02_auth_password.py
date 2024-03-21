@@ -61,3 +61,38 @@ def test_change_password_negative(api_client: TestClient, api_guest: UserAccessP
     # logout
     response = api_client.post("/v1/auth/logout")
     assert response.status_code == 200
+
+
+def test_auth_different_authorization_methods_and_password(api_client: TestClient, api_guest: UserAccessProfile):
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+
+    params = dict(new_password="test")
+    response = api_client.post("/v1/auth/password", json=params)
+    assert response.status_code == 200
+
+    params = {
+        "username": api_guest.user.name,
+        "password": "test"
+    }
+    response = api_client.post(f'/v1/auth/login', json=params)
+    assert response.status_code == 200
+
+    params = {
+        "id": api_guest.user.id,
+        "password": "test"
+    }
+    response = api_client.post(f'/v1/auth/login', json=params)
+    assert response.status_code == 200
+
+    params = {
+        "email": "test@mail.ru"
+    }
+    response = api_client.patch(f'/v1/user/profile', json=params)
+    assert response.status_code == 200
+
+    params = {
+        "email": "test@mail.ru",
+        "password": "test"
+    }
+    response = api_client.post(f'/v1/auth/login', json=params)
+    assert response.status_code == 200
