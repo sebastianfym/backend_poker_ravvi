@@ -198,7 +198,7 @@ class UserChipsValue(ClubChipsValue):
     balance: str
     # ID аккаунта внутри клуба
     account_id: int
-    user_account: Row | None = Field(default=None)
+    club_member: Row | None = Field(default=None)
 
     @field_validator("balance", mode="before")
     @classmethod
@@ -701,11 +701,11 @@ async def v1_delete_chip_from_club_balance(club_id: int, chips_value: ClubChipsV
 
 async def check_compatibility_recipient_and_balance_type(club_id: int, request: UserChipsValue):
     async with DBI() as db:
-        user_account = await db.find_account(user_id=request.account_id, club_id=club_id)
+        club_member = await db.find_account(user_id=request.account_id, club_id=club_id)
     try:
-        if user_account.user_role not in ["A", "S"] and request.balance == "balance_shared":
+        if club_member.user_role not in ["A", "S"] and request.balance == "balance_shared":
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='User has not agent balance')
-        request.user_account = user_account
+        request.club_member = club_member
         return request
     except AttributeError:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='User account not found in club')
@@ -795,7 +795,7 @@ async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
 
 @router.post("/{club_id}/profile/{user_id}", status_code=HTTP_200_OK,
              summary="Страница с информацией о конкретном участнике клуба для админа")
-async def v1_user_account(club_id: int, user_id: int, session_uuid: SessionUUID, sorting_date: SortingByDate):
+async def v1_club_member(club_id: int, user_id: int, session_uuid: SessionUUID, sorting_date: SortingByDate):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
@@ -1358,7 +1358,7 @@ async def v1_set_user_data(club_id: int, params: ChangeMembersData, users=Depend
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail='You not specified any params')
         if account is None:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail='No such account was found')
-        await db.club_owner_update_user_account(account.id, nickname=nickname, club_comment=club_comment, user_role=user_role)
+        await db.club_owner_update_club_member(account.id, nickname=nickname, club_comment=club_comment, user_role=user_role)
     return HTTP_200_OK
 
 
