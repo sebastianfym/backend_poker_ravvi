@@ -67,7 +67,7 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_c
     assert club2.user_approved is True
 
     # get club2 by new user
-    response = api_client_2.post(f"/v1/clubs/{club2.id}/members")
+    response = api_client_2.post(f"/v1/clubs/{club2.id}/members", json={})
     assert response.status_code == 200
     response = api_client_2.get(f"/v1/clubs/{club2.id}")
     assert response.status_code == 403
@@ -140,7 +140,7 @@ def test_21_club_join_approve(api_client: TestClient, api_guest: UserAccessProfi
     assert response.status_code == 201
     club = ClubProfile(**response.json())
 
-    response = api_client_2.post(f"/v1/clubs/{club.id}/members")
+    response = api_client_2.post(f"/v1/clubs/{club.id}/members", json={})
     assert response.status_code == 200
     club_2 = ClubProfile(**response.json())
     assert club_2.id
@@ -191,12 +191,12 @@ def test_21_club_join_approve(api_client: TestClient, api_guest: UserAccessProfi
     assert response.status_code == 403
 
     response = api_client.post(
-        f"/v1/clubs/{23131232141241212512512125125551525252152151251252151554554765634353534534}/members")
+        f"/v1/clubs/{23131232141241212512512125125551525252152151251252151554554765634353534534}/members", json={})
     assert response.status_code == 404
     assert response.json() == {"detail": "Club not found"}
 
     response = api_client.post(
-        f"/v1/clubs/{23131232141241212512512125125551525252152151251252151554554765634353534534}/members")
+        f"/v1/clubs/{23131232141241212512512125125551525252152151251252151554554765634353534534}/members", json={})
     assert response.status_code == 404
     assert response.json() == {"detail": "Club not found"}
 
@@ -218,7 +218,7 @@ def test_22_club_join_reject(api_client: TestClient, api_guest: UserAccessProfil
         assert response.status_code == 201
         club = ClubProfile(**response.json())
 
-        response = api_client_2.post(f"/v1/clubs/{club.id}/members/")
+        response = api_client_2.post(f"/v1/clubs/{club.id}/members/", json={})
         assert response.status_code == 200
 
         response = api_client.get(f"/v1/clubs/{club.id}/members/requests")
@@ -586,7 +586,7 @@ def test_owner_set_user_data(api_client: TestClient, api_guest: UserAccessProfil
 
     club = create_club(api_client)
 
-    request = api_client_2.post(f"/v1/clubs/{club.id}/members")
+    request = api_client_2.post(f"/v1/clubs/{club.id}/members", json={})
     assert request.status_code == 200
 
     request = api_client.get(f"/v1/clubs/{club.id}/members/requests")
@@ -634,19 +634,19 @@ def test_leave_from_club(api_client: TestClient, api_guest: UserAccessProfile, a
 
     club = create_club(api_client)
 
-    request = api_client_2.post(f"/v1/clubs/{club.id}/members")
+    request = api_client_2.post(f"/v1/clubs/{club.id}/members", json={})
     assert request.status_code == 200
 
-    request = api_client.post(f"/v1/clubs/{club.id}/members")
+    request = api_client.post(f"/v1/clubs/{club.id}/members", json={})
     assert request.status_code == 200
 
-    request = api_client_2.post(f"/v1/clubs/{club.id}/leave_from_club")
+    request = api_client_2.post(f"/v1/clubs/{club.id}/leave_from_club", json={})
     assert request.status_code == 200
 
-    request = api_client_2.post(f"/v1/clubs/{17031788}/leave_from_club")
+    request = api_client_2.post(f"/v1/clubs/{17031788}/leave_from_club", json={})
     assert request.status_code == 404
 
-    request = api_client.post(f"/v1/clubs/{club.id}/leave_from_club")
+    request = api_client.post(f"/v1/clubs/{club.id}/leave_from_club", json={})
     assert request.status_code == 403
 
 
@@ -685,7 +685,7 @@ def test_pick_up_or_give_out_chips(api_client: TestClient, api_guest: UserAccess
 
     club = create_club(api_client)
 
-    request = api_client_2.post(f"/v1/clubs/{club.id}/members")
+    request = api_client_2.post(f"/v1/clubs/{club.id}/members", json={})
     assert request.status_code == 200
 
     response = api_client.get(f"/v1/clubs/{club.id}/members/requests")
@@ -974,10 +974,10 @@ def test_agents_in_club(client_new,
     response = api_client.post("/v1/clubs", json=params)
     club = ClubProfile(**response.json())
 
-    response = api_client_2.post(f"/v1/clubs/{club.id}/members")
+    response = api_client_2.post(f"/v1/clubs/{club.id}/members", json={})
     assert response.status_code == 200
 
-    response = api_client_3.post(f"/v1/clubs/{club.id}/members")
+    response = api_client_3.post(f"/v1/clubs/{club.id}/members", json={})
     assert response.status_code == 200
 
     response = api_client.get(f"/v1/clubs/{club.id}/members/requests")
@@ -1019,7 +1019,7 @@ def test_new_actions_with_chips(api_client: TestClient, api_guest: UserAccessPro
     response = api_client.post("/v1/clubs", json=params)
     club = ClubProfile(**response.json())
 
-    response = api_client_2.post(f"/v1/clubs/{club.id}/members")
+    response = api_client_2.post(f"/v1/clubs/{club.id}/members", json={})
     assert response.status_code == 200
 
     response = api_client.get(f"/v1/clubs/{club.id}/members/requests")

@@ -509,7 +509,7 @@ class DBI:
             rows = await cursor.fetchall()
         return rows
 
-    async def club_owner_update_user_account(self, account_id, nickname=None, club_comment=None, user_role=None):
+    async def club_owner_update_member_account(self, account_id, nickname=None, club_comment=None, user_role=None):
         params = []
         values = []
 

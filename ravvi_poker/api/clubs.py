@@ -109,6 +109,10 @@ class UnionProfile(BaseModel):
     """По мере прогресса раширить модель"""
 
 
+class MemberApplicationForMembership(BaseModel):
+    user_comment: str | None = None
+
+
 class AccountDetailInfo(BaseModel):
     join_datestamp: float | None
     timezone: str | None
@@ -358,6 +362,8 @@ async def v1_get_club(club_id: int, session_uuid: SessionUUID):
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
+        if not account:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You are not a member in this club")
         if account.approved_ts is None:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Your account not been approved")
         return ClubProfile(
@@ -468,19 +474,16 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID):
 
 
 @router.post("/{club_id}/members", summary="Submit join request")
-async def v1_join_club(club_id: int, session_uuid: SessionUUID, request: Request):
+async def v1_join_club(club_id: int, session_uuid: SessionUUID, params: MemberApplicationForMembership):
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
-        try:
-            user_comment = (await request.json())['user_comment']
-        except json.decoder.JSONDecodeError:
-            user_comment = None
+
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
+        user_comment = params.user_comment
         if not account:
-
             if club.automatic_confirmation:
                 account = await db.create_club_member(club.id, user.id, user_comment, True)
             else:
@@ -1358,8 +1361,8 @@ async def v1_set_user_data(club_id: int, params: ChangeMembersData, users=Depend
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail='You not specified any params')
         if account is None:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail='No such account was found')
-        await db.club_owner_update_club_member(account.id, nickname=nickname, club_comment=club_comment, user_role=user_role)
-    return HTTP_200_OK
+        await db.club_owner_update_member_account(account.id, nickname=nickname, club_comment=club_comment, user_role=user_role)
+    return HTTP_200_OK# club_owner_update_user_account
 
 
 #
