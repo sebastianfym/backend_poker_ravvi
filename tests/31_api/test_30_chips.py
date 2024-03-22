@@ -48,7 +48,7 @@ def test_txns_in_club(api_client: TestClient, api_guest: UserAccessProfile, api_
     assert club1.id
     assert club1.name.startswith("CLUB-")
 
-    response = api_client_2.post(f"/v1/clubs/{club1.id}/members")
+    response = api_client_2.post(f"/v1/clubs/{club1.id}/members", json={})
     assert response.status_code == 200
 
     response = api_client.get(f"/v1/clubs/{club1.id}/members/requests")
