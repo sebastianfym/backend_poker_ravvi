@@ -7,7 +7,7 @@ from pydantic import BaseModel, EmailStr
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY, HTTP_400_BAD_REQUEST
 
 from ..db import DBI as DBI
-from .utils import SessionUUID, get_session_and_user, get_country_code, check_username
+from .utils import SessionUUID, get_session_and_user, get_country_code, check_username, check_email
 from .types import UserPublicProfile, UserPrivateProfile, UserMutableProps
 
 
@@ -48,6 +48,11 @@ async def v1_update_user(props: UserMutableProps, session_uuid: SessionUUID, req
             if await db.check_uniq_username(name) is not None:
                 raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="This name is already taken")
             check_username(name, user.id)
+        if "email" in kwargs.keys():
+            email = kwargs['email']
+            if await db.check_uniq_email(email) is not None:
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="This email is already taken")
+            check_email(email)
         user = await db.update_user(user.id, **kwargs)
     return UserPrivateProfile.from_row(user)
 

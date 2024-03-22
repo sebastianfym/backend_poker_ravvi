@@ -21,7 +21,6 @@ class DBI:
     APPLICATION_NAME = 'CPS'
     CONNECT_TIMEOUT = 15
 
-
     pool = None
 
     OperationalError = psycopg.OperationalError
@@ -212,6 +211,14 @@ class DBI:
     async def check_uniq_username(self, name):
         name_lower = name.lower()
         sql = "SELECT name FROM user_profile WHERE LOWER(name) = %s;"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (name_lower,))
+            row = await cursor.fetchone()
+        return row
+
+    async def check_uniq_email(self, email):
+        name_lower = email.lower()
+        sql = "SELECT email FROM user_profile WHERE LOWER(email) = %s;"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (name_lower,))
             row = await cursor.fetchone()

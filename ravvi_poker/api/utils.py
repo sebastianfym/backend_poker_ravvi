@@ -64,6 +64,19 @@ def check_username(name, user_id):
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid name")
 
 
+def check_email(email):
+    if email.isdigit():
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Email should not consist only of digits")
+    for bad_word in forbidden_words:
+        if bad_word.lower() in email.lower():
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Email contains forbidden word")
+
+    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    match = re.fullmatch(pattern, email)
+    if match is None:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid email")
+
+
 def check_club_name(name, club_id):
     if name.isdigit():
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Name should not consist only of digits")
