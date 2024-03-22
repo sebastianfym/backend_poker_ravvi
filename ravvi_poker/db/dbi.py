@@ -1003,7 +1003,7 @@ class DBI:
 
     async def get_user_history_trx_in_club(self, user_id, club_id):
         sql_history = "SELECT * FROM user_account_txn WHERE account_id=%s"
-        sql_user_account = "SELECT id FROM user_account WHERE user_id=%s AND club_id=%s"
+        sql_user_account = "SELECT id FROM club_member WHERE user_id=%s AND club_id=%s"
         result_list = []
         async with self.cursor() as cursor:
             await cursor.execute(sql_user_account, (user_id, club_id))
