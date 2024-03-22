@@ -541,7 +541,7 @@ def test_delete_chips_to_club(client, initial_club_balance, request_params, stat
 #     async with DBI() as dbi:
 #         async with dbi.cursor() as cursor:
 #             # проверяем баланс
-#             await cursor.execute(f"SELECT {balance_type} FROM user_account WHERE id = %s AND club_id = %s",
+#             await cursor.execute(f"SELECT {balance_type} FROM club_member WHERE id = %s AND club_id = %s",
 #                                  (user_account_to_get_chips.id, club.id))
 #             balance = await cursor.fetchone()
 #             # TODO окргуление
