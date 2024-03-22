@@ -18,6 +18,7 @@ from ravvi_poker.engine.poker.bet import Bet
 
 logger = logging.getLogger(__name__)
 
+
 class PokerClient:
     API_HOST = '127.0.0.1:5001'
     USE_SSL = False
@@ -33,7 +34,7 @@ class PokerClient:
     @property
     def user_id(self):
         return self.access_profile.user.id if self.access_profile else None
-    
+
     # CONTEXT
 
     async def __aenter__(self):
@@ -51,7 +52,7 @@ class PokerClient:
             self.session = None
 
     # WS
-    
+
     async def ws_connect(self):
         params = {}
         if self.access_profile and self.access_profile.access_token:
@@ -83,7 +84,7 @@ class PokerClient:
         await self.ws.send_json(kwargs)
 
     # HELPERS
-            
+
     async def _get_result(self, response):
         payload = None
         if response.ok:
@@ -91,7 +92,7 @@ class PokerClient:
         return response.status, payload
 
     # AUTH
-    
+
     async def auth_register(self, *, device_token=None, device_props=None):
         body = dict(device_token=device_token, device_props=device_props or {})
         response = await self.session.post('/v1/auth/register', json=body)
@@ -106,10 +107,10 @@ class PokerClient:
         logger.info(f"User has logout: {datetime.datetime.now()}")
         await self._get_result(response)
         self.access_profile = None
-        self.session.headers.popall("Authorization",None)
+        self.session.headers.popall("Authorization", None)
 
     # USER
-        
+
     async def get_user_profile(self):
         user_profile = None
         response = await self.session.get('/v1/user/profile')
@@ -147,23 +148,22 @@ class PokerClient:
 
     async def login_with_username_and_password(self, username, password):
         data = {
-            "username":  username,
+            "username": username,
             "password": password
         }
         response = await self.session.post(f'/v1/auth/login', json=data)
         status, payload = await self._get_result(response)
         if status == 200:
             logger.info(f"User login with username/password: {datetime.datetime.now()}")
-            user_profile = UserPrivateProfile(**payload)
-            self.access_profile.user = user_profile
-            return user_profile
+            self.access_profile = UserAccessProfile(**payload)
+            self.session.headers["Authorization"] = "Bearer " + self.access_profile.access_token
         else:
             raise "Check the correctness of the data"
 
     async def password_update(self, current_password, new_password):
         data = {
-           "current_password": current_password,
-           "new_password": new_password
+            "current_password": current_password,
+            "new_password": new_password
         }
         response = await self.session.post(f'/v1/auth/password', json=data)
         status, payload = await self._get_result(response)
@@ -172,7 +172,6 @@ class PokerClient:
             return status
         else:
             raise "Check the correctness username or password"
-
 
     # IMAGES
     async def get_available_images(self):
@@ -188,13 +187,11 @@ class PokerClient:
 
     # CLUBS
 
-    async def create_club(self, name=None, description=None, image_id=None, user_role="O", user_approved=False, timezone=None):
+    async def create_club(self, name=None, description=None, image_id=None, timezone=None):
         data = {
             "name": name,
             "description": description,
             "image_id": image_id,
-            "user_role": user_role,
-            "user_approved": user_approved,
             "timezone": timezone
         }
         response = await self.session.post('/v1/clubs', json=data)
@@ -216,7 +213,8 @@ class PokerClient:
         else:
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
 
-    async def update_club(self, club_id, name=None, description=None, image_id=None, timezone=None, automatic_confirmation=False):
+    async def update_club(self, club_id, name=None, description=None, image_id=None, timezone=None,
+                          automatic_confirmation=False):
         data = {
             "name": name,
             "description": description,
@@ -261,7 +259,7 @@ class PokerClient:
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
 
     async def send_req_join_in_club(self, club_id=None, user_comment=None):
-        response = await self.session.post(f'/v1/clubs/{club_id}/members', json={"user_comment":user_comment})
+        response = await self.session.post(f'/v1/clubs/{club_id}/members', json={"user_comment": user_comment})
         status, payload = await self._get_result(response)
         if status == 200:
             logger.info(f"User send req for update balance: {datetime.datetime.now()}")
@@ -288,7 +286,8 @@ class PokerClient:
         else:
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
 
-    async def approve_req_to_join(self, club_id, user_id, rakeback=None, agent_id=None, nickname=None, comment=None, user_role=None):
+    async def approve_req_to_join(self, club_id, user_id, rakeback=None, agent_id=None, nickname=None, comment=None,
+                                  user_role="P"):
         data = {
             "rakeback": rakeback,
             "agent_id": agent_id,
@@ -307,6 +306,8 @@ class PokerClient:
         elif status == 404:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club with this id not found")
         else:
+            print(status)
+            print(payload)
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
 
     async def reject_req_to_join(self, club_id, user_id):
@@ -364,10 +365,13 @@ class PokerClient:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club or user with this id not found")
         else:
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
+
     # TABLE
 
-    async def create_table(self, buyin_min, buyin_max, action_time, blind_small, blind_big,
-                           club_id=None, table_type=None, table_name=None, table_seats=None, game_type=None,
+    async def create_table(self, action_time, blind_small, blind_big,
+                           table_type, table_seats,
+                           buyin_min=None, buyin_max=None,
+                           club_id=None, table_name=None, game_type=None,
                            game_subtype=None, buyin_cost=None):
 
         data = {
@@ -377,6 +381,11 @@ class PokerClient:
             "game_type": game_type,
             "game_subtype": game_subtype,
             "buyin_cost": buyin_cost,
+            "buyin_min": buyin_min,
+            "buyin_max": buyin_max,
+            "action_time": action_time,
+            "blind_small": blind_small,
+            "blind_big": blind_big
         }
 
         response = await self.session.post(f'/v1/clubs/{club_id}/tables', json=data)
@@ -481,7 +490,8 @@ class PokerClient:
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
 
     async def up_agent_balance(self, club_id, user_id, amount):
-        response = await self.session.post(f"/v1/chips/{club_id}/agents/chips/{user_id}", json={"amount": amount, "mode": "give_out"})
+        response = await self.session.post(f"/v1/chips/{club_id}/agents/chips/{user_id}",
+                                           json={"amount": amount, "mode": "give_out"})
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"Owner update agent balance: {datetime.datetime.now()}")
@@ -495,7 +505,8 @@ class PokerClient:
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
 
     async def down_agent_balance(self, club_id, user_id, amount):
-        response = await self.session.post(f"/v1/chips/{club_id}/agents/chips/{user_id}", json={"amount": amount, "mode": "pick_up"})
+        response = await self.session.post(f"/v1/chips/{club_id}/agents/chips/{user_id}",
+                                           json={"amount": amount, "mode": "pick_up"})
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"Owner debited agent balance: {datetime.datetime.now()}")
@@ -546,7 +557,8 @@ class PokerClient:
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
 
     async def send_req_to_up_user_balance(self, club_id, amount):
-        response = await self.session.post(f"/v1/chips/{club_id}/requests/chips", json={"amount":amount, "agent": False})
+        response = await self.session.post(f"/v1/chips/{club_id}/requests/chips",
+                                           json={"amount": amount, "agent": False})
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"member send request to update balance: {datetime.datetime.now()}")
@@ -560,7 +572,8 @@ class PokerClient:
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
 
     async def send_req_to_up_agent_balance(self, club_id, amount):
-        response = await self.session.post(f"/v1/chips/{club_id}/requests/chips", json={"amount":amount, "agent": True})
+        response = await self.session.post(f"/v1/chips/{club_id}/requests/chips",
+                                           json={"amount": amount, "agent": True})
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"member send request to update agent balance: {datetime.datetime.now()}")
@@ -602,6 +615,7 @@ class PokerClient:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club with this id not found")
         else:
             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
+
     # INFO
 
     async def levels_schedule(self, table_type):
@@ -645,11 +659,23 @@ class PokerClient:
 
     # PLAY
 
-    async def join_table(self, table_id, take_seat, table_msg_handler):
+    async def join_table(self, table_id, club_id, take_seat, table_msg_handler):
         if not self.ws:
             await self.ws_connect()
         self.table_handlers[table_id] = table_msg_handler
-        await self.ws_send(cmd_type=CommandType.JOIN, table_id=table_id, take_seat=take_seat)
+        await self.ws_send(cmd_type=CommandType.JOIN, table_id=table_id, take_seat=take_seat, club_id=club_id)
+
+    async def take_seat(self, table_id, seat_idx):
+        await self.ws_send(cmd_type=CommandType.TAKE_SEAT, table_id=table_id, seat_idx=seat_idx)
+
+    async def accept_offer(self, table_id: int, buyin_value: float | int | None):
+        await self.ws_send(cmd_type=CommandType.OFFER_RESULT, table_id=table_id, buyin_value=buyin_value)
+
+    async def decline_offer(self, table_id: int):
+        await self.accept_offer(table_id=table_id, buyin_value=0)
+
+    async def request_offer(self, table_id: int):
+        await self.accept_offer(table_id=table_id, buyin_value=None)
 
     async def exit_table(self, table_id):
         if table_id not in self.table_handlers:
@@ -671,4 +697,3 @@ class PokerClient:
                 await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
             else:
                 await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
-

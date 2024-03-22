@@ -240,7 +240,8 @@ class Table:
                                                 seat_idx=seat_idx)
             elif cmd_type == Command.Type.OFFER_RESULT:
                 buyin_value = props.get("buyin_value", 0)
-                await self.handle_cmd_offer_result(db, user_id=user_id, buyin_value=buyin_value)
+                await self.handle_cmd_offer_result(db, cmd_id=cmd_id, client_id=client_id, user_id=user_id,
+                                                   buyin_value=buyin_value)
             elif cmd_type == Command.Type.EXIT:
                 await self.handle_cmd_exit(db, user_id=user_id)
             elif self.game:
@@ -414,6 +415,8 @@ class Table:
                     await self.remove_users(db)
 
     def user_can_play(self, user):
+        # TODO пользователь мог оставить заявку на пополнение после AllIn, необходимо сначала это проверить и если
+        #  нужно исполнить её
         return isinstance(user.balance, (int, float)) and user.balance > 0
 
     def user_can_stay(self, user):

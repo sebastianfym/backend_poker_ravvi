@@ -13,7 +13,7 @@ class User:
         self.balance = None
         self.clients = set()
 
-        self.buyin_event: asyncio.Event = asyncio.Event()
+        self.buyin_offer_timeout: int | None = None
 
     @property
     def connected(self) -> bool:

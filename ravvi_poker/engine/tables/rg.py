@@ -44,6 +44,7 @@ class Table_RG(Table):
 
     async def on_player_enter(self, db: DBI, cmd_id, client_id, user, seat_idx):
         # lobby: get user_profile balance
+        # TODO убрать FOR UPDATE
         account = await db.get_account_for_update(user.account_id)
         if not account:
             return False
@@ -53,7 +54,7 @@ class Table_RG(Table):
                           error_id=400, error_text='Not enough balance')
             await self.emit_msg(db, msg)
             return False
-        # отправляем предложение выбрать buyin,
+        # отправляем предложение выбрать buyin
         await self.make_player_offer(db, user, client_id, account.balance)
         # создаем сессию
         table_session = await db.register_table_session(table_id=self.table_id, account_id=account.id)
@@ -70,38 +71,92 @@ class Table_RG(Table):
     async def make_player_offer(self, db, user: User, client_id: int, account_balance: decimal.Decimal):
         offer_closed_at = time.time() + 60
         # TODO временно только range (нужна реализация ratholing)
+        buyin_range = [self.buyin_min, self.buyin_max]
+        if user.balance is not None:
+            buyin_range = [self.buyin_min - user.balance
+                           if self.buyin_min - user.balance > 0 else self.game_props.get("blind_big"),
+                           self.buyin_max - user.balance]
         await self.emit_TABLE_JOIN_OFFER(db, client_id=client_id, offer_type="buyin",
                                          table_id=self.table_id, balance=account_balance,
-                                         closed_at=offer_closed_at, buyin_range=[self.buyin_min, self.buyin_max])
+                                         closed_at=offer_closed_at, buyin_range=buyin_range)
         # TODO пользователь может попытаться сесть за один стол несколько раз подряд
-        user.buyin_event.clear()
+        user.buyin_offer_timeout = offer_closed_at + 5
 
-    async def handle_cmd_offer_result(self, db, *, client_id: int, user_id: int, buyin_value: float | None):
+    async def handle_cmd_offer_result(self, db, *, cmd_id: int, client_id: int, user_id: int,
+                                      buyin_value: float | None):
+        user, seat_idx, _ = self.find_user(user_id)
+        if not user or seat_idx is None:
+            return
+
         if buyin_value is None:
-            pass
             # пользователь запросил оффер - отправляем его
-            # account = await db.get_account_for_update(user.account_id)
-            # if not account:
-            # await self.make_player_offer(db, user)
-        elif buyin_value == 0:
-            # пользователь отклонил оффер - убираем его из-за стола
-            user, seat_idx, _ = self.find_user(user_id)
-            if not user or seat_idx is None:
+            # TODO убрать FOR UPDATE
+            account = await db.get_account_for_update(user.account_id)
+            if not account:
                 return
-            self.seats[seat_idx] = None
-            # оповещаем всех что пользователь вышел
-            await self.broadcast_PLAYER_EXIT(db, user.id)
-            # закрываем сессию если она была
-            if user.table_session_id:
-                await db.close_table_session(user.table_session_id)
-                user.table_session_id = None
+
+            await self.make_player_offer(db, user, client_id, account.balance)
+        elif buyin_value == 0:
+            if user.buyin_offer_timeout is not None:
+                # убираем у пользователя timeout timestamp оффера
+                user.buyin_offer_timeout = None
+
+                if user.balance is None:
+                    # пользователь отклонил оффер - убираем его из-за стола
+                    self.seats[seat_idx] = None
+                    # оповещаем всех что пользователь вышел
+                    await self.broadcast_PLAYER_EXIT(db, user.id)
+                    # закрываем сессию если она была
+                    if user.table_session_id:
+                        await db.close_table_session(user.table_session_id)
+                        user.table_session_id = None
         elif buyin_value > 0:
-            # пользователь выбрал сумму бай-ин, если она верная, то обновляем его баланс
             # TODO ratholing
-            # проверяем сумму buy-in
-            if self.buyin_min <= buyin_value <= self.buyin_max:
-                # обновляем баланс
-                await self.broadcast_PLAYER_BALANCE(db, user_id, buyin_value)
+            # TODO использовать Decimal
+            # если есть игра и пользователь в ней участвует и не находится в состоянии FOLD то моментальное
+            # пополнение не возможно
+            if self.game:
+                pass
+                # TODO создаем задачу пополнить
+            else:
+                # пользователь выбрал сумму бай-ин, если она верная, то обновляем его баланс
+                # проверяем сумму buy-in
+                account = await db.get_account_for_update(user.account_id)
+                if not account:
+                    return
+                # если не достаточно денег на балансе, то возвращаем ошибку
+                if account.balance < buyin_value:
+                    msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id,
+                                  client_id=client_id,
+                                  error_id=400, error_text='Not enough balance')
+                    await self.emit_msg(db, msg)
+                    return
+                # если баланс игрока уже больше максимального значения байина, то возвращаем ошибку
+                if user.balance and user.balance >= self.buyin_max:
+                    msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id,
+                                  client_id=client_id,
+                                  error_id=400, error_text='The maximum balance value has been exceeded')
+                    await self.emit_msg(db, msg)
+                    return
+
+                if (user.balance is None and
+                    self.buyin_min <= buyin_value <= self.buyin_max) or \
+                        (user.balance is not None and
+                         self.game_props.get("blind_big") <= buyin_value <= self.buyin_max - user.balance):
+                    user.buyin_offer_timeout = None
+                    user.balance = buyin_value
+
+                    await db.create_account_txn(user.account_id, "BUYIN", -buyin_value, sender_id=None,
+                                                table_id=self.table_id)
+
+                    # обновляем баланс
+                    await self.broadcast_PLAYER_BALANCE(db, user_id, buyin_value)
+                else:
+                    msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id,
+                                  client_id=client_id,
+                                  error_id=400, error_text='Incorrect buyin value')
+                    await self.emit_msg(db, msg)
+                    return
 
     async def on_player_exit(self, db: DBI, user, seat_idx):
         account = await db.get_account_for_update(user.account_id)
@@ -119,9 +174,23 @@ class Table_RG(Table):
 
     async def run_buyin_timeout(self):
         while True:
-            await self.sleep(51)
-            for user in self.users:
-                print(user.__dict__)
+            await self.sleep(2)
+            for _, user in self.users.items():
+                # если пользователь имел оффер, он просрочен и баланс отсутствует, то убираем его из-за стола
+                if user.buyin_offer_timeout and user.buyin_offer_timeout < time.time() and user.balance is None:
+                    async with DBI() as db:
+                        user, seat_idx, _ = self.find_user(user.id)
+                        if not user or seat_idx is None:
+                            continue
+                        # пользователь отклонил оффер - убираем его из-за стола
+                        self.seats[seat_idx] = None
+                        # оповещаем всех что пользователь вышел
+                        await self.broadcast_PLAYER_EXIT(db, user.id)
+                        # закрываем сессию если она была
+                        if user.table_session_id:
+                            await db.close_table_session(user.table_session_id)
+                            user.table_session_id = None
+                # TODO просмотреть задачи на пополнения
 
     async def run_table(self):
         self.log.info("%s", self.status)
