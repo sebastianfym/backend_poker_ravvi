@@ -480,7 +480,6 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID, request: Request
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
         account = await db.find_account(user_id=user.id, club_id=club_id)
         if not account:
-
             if club.automatic_confirmation:
                 account = await db.create_club_member(club.id, user.id, user_comment, True)
             else:
