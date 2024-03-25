@@ -67,7 +67,7 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessProfile):
 
     # response = api_client.get(f"/api/v1/clubs/{club.id}/tables")
 
-    response = api_client.post(f"v1/clubs/{12346789}/tables", json=params)
+    response = api_client.post(f"/api/v1/clubs/{12346789}/tables", json=params)
     assert response.status_code == 404
     assert response.json() == {"detail": "Club not found"}
 
@@ -79,7 +79,7 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessProfile):
         "game_subtype": "AOF"
     }
 
-    response = api_client.post(f"v1/clubs/{club.id}/tables", json=params)
+    response = api_client.post(f"/api/v1/clubs/{club.id}/tables", json=params)
     assert response.json()['detail'][0]['msg'] == "Value error, Possible options: RG | SNG | MTT"
 
     params = {
@@ -90,7 +90,7 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessProfile):
         "game_subtype": "AOF"
     }
 
-    response = api_client.post(f"v1/clubs/{club.id}/tables", json=params)
+    response = api_client.post(f"/api/v1/clubs/{club.id}/tables", json=params)
     assert response.status_code == 201
 
     params = {
@@ -101,7 +101,7 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessProfile):
         "game_subtype": "PLO4"
     }
 
-    response = api_client.post(f"v1/clubs/{club.id}/tables", json=params)
+    response = api_client.post(f"/api/v1/clubs/{club.id}/tables", json=params)
     assert response.status_code == 201
 
     params = {
@@ -111,7 +111,7 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessProfile):
         "game_type": "PLO",
         "game_subtype": "..."
     }
-    response = api_client.post(f"v1/clubs/{club.id}/tables", json=params)
+    response = api_client.post(f"/api/v1/clubs/{club.id}/tables", json=params)
     assert response.status_code == 422
 
     params = {
@@ -122,7 +122,7 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessProfile):
         "game_subtype": "DEFAULT"
     }
 
-    response = api_client.post(f"v1/clubs/{club.id}/tables", json=params)
+    response = api_client.post(f"/api/v1/clubs/{club.id}/tables", json=params)
     assert response.status_code == 201
 
     params = {
@@ -134,7 +134,7 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessProfile):
         "ratholing": 1
     }
 
-    response = api_client.post(f"v1/clubs/{club.id}/tables", json=params)
+    response = api_client.post(f"/api/v1/clubs/{club.id}/tables", json=params)
     assert response.status_code == 201
 
     params = {
@@ -145,7 +145,7 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessProfile):
         "game_subtype": "DEFAULT",
         "ratholing": 13
     }
-    response = api_client.post(f"v1/clubs/{club.id}/tables", json=params)
+    response = api_client.post(f"/api/v1/clubs/{club.id}/tables", json=params)
     assert response.status_code == 422
     assert response.json()['detail'][0]['msg'] == 'Value error, Invalid ratholing, must be between 0 and 12'
 
