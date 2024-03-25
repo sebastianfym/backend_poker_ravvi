@@ -1205,12 +1205,14 @@ async def v1_pick_up_or_give_out_chips(club_id: int, request: Request, users=Dep
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Quantity club members for action is invalid')
 
     amount = (await request.json())['amount']
+    print(amount)
     if isinstance(amount, str) and amount != 'all':
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid amount value')
 
     if mode != 'pick_up' and amount != 'all':
         try:
             amount = decimal.Decimal(amount)
+            print(amount)
             if amount <= 0 or isinstance(amount, decimal.Decimal) is False:
                 raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Invalid amount value')
         except decimal.InvalidOperation:

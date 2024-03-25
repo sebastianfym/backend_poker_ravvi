@@ -1,6 +1,9 @@
 import asyncio
 import decimal
 import time
+from decimal import Decimal, ROUND_HALF_DOWN
+
+from psycopg.rows import Row
 
 from . import TableStatus
 from .base import Table, DBI
@@ -18,8 +21,8 @@ class Table_RG(Table):
         from ..poker.bomb_pot import BombPotController
         from ..poker.seven_deuce import SevenDeuceController
 
-        self.buyin_min = buyin_min
-        self.buyin_max = buyin_max
+        self.buyin_min = Decimal(buyin_min).quantize(Decimal("0.01"))
+        self.buyin_max = Decimal(buyin_max).quantize(Decimal("0.01"))
         self.game_props.update(bet_timeout=action_time, blind_small=blind_small,
                                blind_big=blind_big if blind_big is not None else blind_small * 2)
 
@@ -59,12 +62,6 @@ class Table_RG(Table):
         # создаем сессию
         table_session = await db.register_table_session(table_id=self.table_id, account_id=account.id)
         user.table_session_id = table_session.id
-        # buyin = self.buyin_min
-        # TODO: точность и округление
-        # new_account_balance = float(account.balance) - buyin
-        # self.log.info("user %s buyin %s -> balance %s", user.id, buyin, new_account_balance)
-        # await db.create_account_txn(user.account_id, "BUYIN", -buyin, sender_id=None, table_id=self.table_id)
-        # user.balance = buyin
         self.log.info("on_player_enter(%s): done", user.id)
         return True
 
@@ -112,57 +109,28 @@ class Table_RG(Table):
                         user.table_session_id = None
         elif buyin_value > 0:
             # TODO ratholing
-            # TODO использовать Decimal
+            buyin_value = Decimal(buyin_value).quantize(Decimal('.01'), rounding=ROUND_HALF_DOWN)
+            # проверяем сумму buy-in
+            account = await db.get_account_for_update(user.account_id)
+            if not account:
+                return
+            if not await self.check_conditions_for_update_balance(db, cmd_id, client_id, account, user, buyin_value):
+                return
+
             # если есть игра и пользователь в ней участвует и не находится в состоянии FOLD то моментальное
             # пополнение не возможно
+            # TODO дописать условия
             if self.game:
-                pass
-                # TODO создаем задачу пополнить
+                user.buyin_deferred_value = buyin_value
             else:
-                # пользователь выбрал сумму бай-ин, если она верная, то обновляем его баланс
-                # проверяем сумму buy-in
-                account = await db.get_account_for_update(user.account_id)
-                if not account:
-                    return
-                # если не достаточно денег на балансе, то возвращаем ошибку
-                if account.balance < buyin_value:
-                    msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id,
-                                  client_id=client_id,
-                                  error_id=400, error_text='Not enough balance')
-                    await self.emit_msg(db, msg)
-                    return
-                # если баланс игрока уже больше максимального значения байина, то возвращаем ошибку
-                if user.balance and user.balance >= self.buyin_max:
-                    msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id,
-                                  client_id=client_id,
-                                  error_id=400, error_text='The maximum balance value has been exceeded')
-                    await self.emit_msg(db, msg)
-                    return
-
-                if (user.balance is None and
-                    self.buyin_min <= buyin_value <= self.buyin_max) or \
-                        (user.balance is not None and
-                         self.game_props.get("blind_big") <= buyin_value <= self.buyin_max - user.balance):
-                    user.buyin_offer_timeout = None
-                    user.balance = buyin_value
-
-                    await db.create_account_txn(user.account_id, "BUYIN", -buyin_value, sender_id=None,
-                                                table_id=self.table_id)
-
-                    # обновляем баланс
-                    await self.broadcast_PLAYER_BALANCE(db, user_id, buyin_value)
-                else:
-                    msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id,
-                                  client_id=client_id,
-                                  error_id=400, error_text='Incorrect buyin value')
-                    await self.emit_msg(db, msg)
-                    return
+                # обновляем баланс
+                user.buyin_offer_timeout = None
+                await self.update_balance(db, user, buyin_value)
 
     async def on_player_exit(self, db: DBI, user, seat_idx):
         account = await db.get_account_for_update(user.account_id)
         if user.balance is not None:
-            # TODO: точность и округление
-            new_account_balance = float(account.balance) + user.balance
+            new_account_balance = account.balance + user.balance
             self.log.info("user %s exit %s -> balance %s", user.id, user.balance, new_account_balance)
             await db.create_account_txn(user.account_id, "CASHOUT", user.balance, sender_id=self.table_id,
                                         table_id=self.table_id)
@@ -174,23 +142,66 @@ class Table_RG(Table):
 
     async def run_buyin_timeout(self):
         while True:
-            await self.sleep(2)
-            for _, user in self.users.items():
-                # если пользователь имел оффер, он просрочен и баланс отсутствует, то убираем его из-за стола
-                if user.buyin_offer_timeout and user.buyin_offer_timeout < time.time() and user.balance is None:
-                    async with DBI() as db:
-                        user, seat_idx, _ = self.find_user(user.id)
-                        if not user or seat_idx is None:
-                            continue
-                        # пользователь отклонил оффер - убираем его из-за стола
-                        self.seats[seat_idx] = None
-                        # оповещаем всех что пользователь вышел
-                        await self.broadcast_PLAYER_EXIT(db, user.id)
-                        # закрываем сессию если она была
-                        if user.table_session_id:
-                            await db.close_table_session(user.table_session_id)
-                            user.table_session_id = None
-                # TODO просмотреть задачи на пополнения
+            await self.sleep(1)
+            async with self.lock:
+                for _, user in self.users.items():
+                    # если пользователь имел оффер, он просрочен и баланс отсутствует, то убираем его из-за стола
+                    if user.buyin_offer_timeout and user.buyin_offer_timeout < time.time() and user.balance is None:
+                        async with DBI() as db:
+                            user, seat_idx, _ = self.find_user(user.id)
+                            if not user or seat_idx is None:
+                                continue
+                            # пользователь отклонил оффер - убираем его из-за стола
+                            self.seats[seat_idx] = None
+                            # оповещаем всех что пользователь вышел
+                            await self.broadcast_PLAYER_EXIT(db, user.id)
+                            # закрываем сессию если она была
+                            if user.table_session_id:
+                                await db.close_table_session(user.table_session_id)
+                                user.table_session_id = None
+
+    async def check_conditions_for_update_balance(self, db, cmd_id: int, client_id: int, account: Row, user: User,
+                                                  buyin_value: Decimal) -> bool:
+        # если не достаточно денег на балансе, то возвращаем ошибку
+        if account.balance < buyin_value:
+            msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id,
+                          client_id=client_id,
+                          error_id=400, error_text='Not enough balance')
+            await self.emit_msg(db, msg)
+            return False
+
+        # если баланс игрока уже больше максимального значения байина, то возвращаем ошибку
+        if user.balance and user.balance >= self.buyin_max:
+            msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id,
+                          client_id=client_id,
+                          error_id=400, error_text='The maximum balance value has been exceeded')
+            await self.emit_msg(db, msg)
+            return False
+
+        # если выбрана неверная сумма байина
+        if not ((user.balance is None and
+                 self.buyin_min <= buyin_value <= self.buyin_max) or
+                (user.balance is not None and
+                 self.game_props.get("blind_big") <= buyin_value <= self.buyin_max - user.balance)):
+            msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id,
+                          client_id=client_id,
+                          error_id=400, error_text='Incorrect buyin value')
+            await self.emit_msg(db, msg)
+            return False
+
+        return True
+
+    async def update_balance(self, db, user: User, buyin_value: Decimal):
+        if user.balance is None:
+            user.balance = buyin_value
+        else:
+            user.balance += buyin_value
+
+        await db.create_account_txn(user.account_id, "BUYIN", -buyin_value, sender_id=None,
+                                    table_id=self.table_id)
+
+        # обновляем баланс
+        await self.broadcast_PLAYER_BALANCE(db, user.id, user.balance)
 
     async def run_table(self):
         self.log.info("%s", self.status)
@@ -204,6 +215,15 @@ class Table_RG(Table):
             # self.log.info("try start game")
             await self.run_game()
             async with self.lock:
+                # пополним балансы пользователей, которые ранее это запросили
+                async with self.DBI() as db:
+                    for _, user in self.users.items():
+                        if user.buyin_deferred_value:
+                            account = await db.get_account_for_update(user.account_id)
+                            if not (account.balance < user.buyin_deferred_value and
+                                    user.balance + user.buyin_deferred_value > self.buyin_max):
+                                await self.update_balance(db, user, user.buyin_deferred_value)
+                            user.buyin_deferred_value = None
                 async with self.DBI() as db:
                     await self.remove_users(db)
 

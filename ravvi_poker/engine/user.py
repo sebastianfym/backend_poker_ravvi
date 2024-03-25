@@ -1,4 +1,5 @@
 import asyncio
+from decimal import Decimal
 from typing import Set
 
 
@@ -14,6 +15,7 @@ class User:
         self.clients = set()
 
         self.buyin_offer_timeout: int | None = None
+        self.buyin_deferred_value: Decimal | None = None
 
     @property
     def connected(self) -> bool:

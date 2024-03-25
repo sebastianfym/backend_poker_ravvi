@@ -1253,8 +1253,9 @@ class TestReplenishBalance:
             await client.accept_offer(table_id=new_table.id, buyin_value=0.2)
             await asyncio.sleep(3)
 
+            # проверяем что деньги не спишутся сразу
             member_data = await client.get_detail_member_info(new_club.id)
-            assert member_data.balance == 39.8
+            assert member_data.balance == 40
 
     @pytest.mark.asyncio
     async def test_replenish_balance_in_game(self):
