@@ -24,7 +24,7 @@ class PokerClient:
     USE_SSL = False
 
     def __init__(self, *, host=None, use_ssl=None) -> None:
-        self.base_url = f"{'https' if use_ssl or self.USE_SSL else 'http'}://{host or self.API_HOST}/"
+        self.base_url = f"{'https' if use_ssl or self.USE_SSL else 'http'}://{host or self.API_HOST}"
         self.session = None
         self.ws = None
         self.access_profile = None
@@ -57,7 +57,7 @@ class PokerClient:
         params = {}
         if self.access_profile and self.access_profile.access_token:
             params["access_token"] = self.access_profile.access_token
-        self.ws = await self.session.ws_connect('/v1/ws', params=params)
+        self.ws = await self.session.ws_connect('/api/v1/ws', params=params)
         self.ws_task = asyncio.create_task(self.ws_reader())
 
     async def ws_reader(self):
@@ -95,7 +95,7 @@ class PokerClient:
 
     async def auth_register(self, *, device_token=None, device_props=None):
         body = dict(device_token=device_token, device_props=device_props or {})
-        response = await self.session.post('/v1/auth/register', json=body)
+        response = await self.session.post('/api/v1/auth/register', json=body)
         status, payload = await self._get_result(response)
         if status == 200:
             logger.info(f"Register new user: {datetime.datetime.now()}")
@@ -106,7 +106,7 @@ class PokerClient:
             return status, payload
 
     async def auth_logout(self):
-        response = await self.session.post('/v1/auth/logout')
+        response = await self.session.post('/api/v1/auth/logout')
         logger.info(f"User has logout: {datetime.datetime.now()}")
         status, payload = await self._get_result(response)
         await self._get_result(response)
@@ -118,7 +118,7 @@ class PokerClient:
 
     async def get_user_profile(self):
         user_profile = None
-        response = await self.session.get('/v1/user/profile')
+        response = await self.session.get('/api/v1/user/profile')
         status, payload = await self._get_result(response)
         if status == 200:
             logger.info(f"Get user profile: {datetime.datetime.now()}")
@@ -131,7 +131,7 @@ class PokerClient:
             "name": name,
             "image_id": image_id
         }
-        response = await self.session.patch('/v1/user/profile', json=data)
+        response = await self.session.patch('/api/v1/user/profile', json=data)
         status, payload = await self._get_result(response)
         if status == 200:
             logger.info(f"User update account: {datetime.datetime.now()}")
@@ -143,7 +143,7 @@ class PokerClient:
             return status, payload
 
     async def get_user_by_id(self, id=None):
-        response = await self.session.get(f'/v1/user/{id}')
+        response = await self.session.get(f'/api/v1/user/{id}')
         status, payload = await self._get_result(response)
         if status == 200:
             logger.info(f"Open user account by id: {datetime.datetime.now()}")
@@ -158,7 +158,7 @@ class PokerClient:
             "username": username,
             "password": password
         }
-        response = await self.session.post(f'/v1/auth/login', json=data)
+        response = await self.session.post(f'/api/v1/auth/login', json=data)
         status, payload = await self._get_result(response)
         if status == 200:
             logger.info(f"User login with username/password: {datetime.datetime.now()}")
@@ -175,7 +175,7 @@ class PokerClient:
             "current_password": current_password,
             "new_password": new_password
         }
-        response = await self.session.post(f'/v1/auth/password', json=data)
+        response = await self.session.post(f'/api/v1/auth/password', json=data)
         status, payload = await self._get_result(response)
         if status == 200:
             logger.info(f"User update password: {datetime.datetime.now()}")
@@ -186,7 +186,7 @@ class PokerClient:
 
     # IMAGES
     async def get_available_images(self):
-        response = await self.session.get('/v1/images')
+        response = await self.session.get('/api/v1/images')
         status, payload = await self._get_result(response)
         if status == 200:
             img_list = []
@@ -209,7 +209,7 @@ class PokerClient:
             "user_approved": user_approved,
             "timezone": timezone
         }
-        response = await self.session.post('/v1/clubs', json=data)
+        response = await self.session.post('/api/v1/clubs', json=data)
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"Owner create club: {datetime.datetime.now()}")
@@ -219,7 +219,7 @@ class PokerClient:
             return status, payload
 
     async def get_club_by_id(self, club_id=None):
-        response = await self.session.get(f'/v1/clubs/{club_id}')
+        response = await self.session.get(f'/api/v1/clubs/{club_id}')
         status, payload = await self._get_result(response)
         if status == 200:
             logger.info(f"Get club by id: {datetime.datetime.now()}")
@@ -240,7 +240,7 @@ class PokerClient:
             "timezone": timezone,
             "automatic_confirmation": automatic_confirmation
         }
-        response = await self.session.patch(f'/v1/clubs/{club_id}', json=data)
+        response = await self.session.patch(f'/api/v1/clubs/{club_id}', json=data)
         status, payload = await self._get_result(response)
         if status == 200:
             logger.info(f"Owner update club: {datetime.datetime.now()}")
@@ -253,7 +253,7 @@ class PokerClient:
             return status, payload
 
     async def get_all_clubs(self):
-        response = await self.session.get('/v1/clubs')
+        response = await self.session.get('/api/v1/clubs')
         status, payload = await self._get_result(response)
         if status == 200:
             club_list = []
@@ -266,7 +266,7 @@ class PokerClient:
             return status, payload
 
     async def get_clubs_members(self, club_id=None):
-        response = await self.session.get(f'/v1/clubs/{club_id}/members')
+        response = await self.session.get(f'/api/v1/clubs/{club_id}/members')
         status, payload = await self._get_result(response)
         if status == 200:
             members_list = []
@@ -282,7 +282,7 @@ class PokerClient:
 #             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
 
     async def send_req_join_in_club(self, club_id=None, user_comment=None):
-        response = await self.session.post(f'/v1/clubs/{club_id}/members', json={"user_comment": user_comment})
+        response = await self.session.post(f'/api/v1/clubs/{club_id}/members', json={"user_comment": user_comment})
         status, payload = await self._get_result(response)
         if status == 200:
             logger.info(f"User send req for update balance: {datetime.datetime.now()}")
@@ -295,7 +295,7 @@ class PokerClient:
 #             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
 
     async def get_request_to_join(self, club_id):
-        response = await self.session.get(f'/v1/clubs/{club_id}/members/requests')
+        response = await self.session.get(f'/api/v1/clubs/{club_id}/members/requests')
         status, payload = await self._get_result(response)
         if status == 200:
             requests_list = []
@@ -323,7 +323,7 @@ class PokerClient:
             "comment": comment,
             "user_role": user_role
         }
-        response = await self.session.put(f'/v1/clubs/{club_id}/members/{user_id}', json=data)
+        response = await self.session.put(f'/api/v1/clubs/{club_id}/members/{user_id}', json=data)
         status, payload = await self._get_result(response)
         if status == 200:
             logger.info(f"Accept new member in club: {datetime.datetime.now()}")
@@ -340,7 +340,7 @@ class PokerClient:
             return status, payload
 
     async def reject_req_to_join(self, club_id, user_id):
-        response = await self.session.delete(f'/v1/clubs/{club_id}/members/{user_id}', json={})
+        response = await self.session.delete(f'/api/v1/clubs/{club_id}/members/{user_id}', json={})
         status, payload = await self._get_result(response)
         if status == 200:
             logger.info(f"Reject member request to join: {datetime.datetime.now()}")
@@ -357,7 +357,7 @@ class PokerClient:
             return status, payload
 
     async def leave_from_club(self, club_id):
-        response = await self.session.post(f"/v1/clubs/{club_id}/leave_from_club", json={})
+        response = await self.session.post(f"/api/v1/clubs/{club_id}/leave_from_club", json={})
         status, payload = await self._get_result(response)
         if status == 200:
             logger.info(f"Member leave from club: {datetime.datetime.now()}")
@@ -374,7 +374,7 @@ class PokerClient:
             return status, payload
 
     async def get_member_info_for_owner(self, club_id, user_id):
-        response = await self.session.post(f"/v1/clubs/{club_id}/profile/{user_id}", json={})
+        response = await self.session.post(f"/api/v1/clubs/{club_id}/profile/{user_id}", json={})
         status, payload = await self._get_result(response)
         if status == 200:
             logger.info(f"Owner get info about member: {datetime.datetime.now()}")
@@ -391,7 +391,7 @@ class PokerClient:
             return status, payload
 
     async def get_detail_member_info(self, club_id):
-        response = await self.session.post(f"/v1/clubs/{club_id}/user_account", json={})
+        response = await self.session.post(f"/api/v1/clubs/{club_id}/user_account", json={})
         status, payload = await self._get_result(response)
         if status == 200:
             logger.info(f"Get info about member: {datetime.datetime.now()}")
@@ -421,7 +421,7 @@ class PokerClient:
             "buyin_cost": buyin_cost,
         }
 
-        response = await self.session.post(f'/v1/clubs/{club_id}/tables', json=data)
+        response = await self.session.post(f'/api/v1/clubs/{club_id}/tables', json=data)
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"Create new table: {datetime.datetime.now()}")
@@ -438,7 +438,7 @@ class PokerClient:
             return status, payload
 
     async def get_club_tables(self, club_id):
-        response = await self.session.get(f'/v1/clubs/{club_id}/tables')
+        response = await self.session.get(f'/api/v1/clubs/{club_id}/tables')
         status, payload = await self._get_result(response)
         if status == 200:
             result_list = []
@@ -459,7 +459,7 @@ class PokerClient:
 
     # TXN CHIPS
     async def get_club_balance(self, club_id):
-        response = await self.session.get(f"/v1/clubs/{club_id}/club_balance")
+        response = await self.session.get(f"/api/v1/clubs/{club_id}/club_balance")
         status, payload = await self._get_result(response)
         if status == 200:
             logger.info(f"Owner get club balance: {datetime.datetime.now()}")
@@ -476,7 +476,7 @@ class PokerClient:
             return status, payload
 
     async def get_club_chips_requests(self, club_id):
-        response = await self.session.get(f"/v1/clubs/{club_id}/requests_chip_replenishment")
+        response = await self.session.get(f"/api/v1/clubs/{club_id}/requests_chip_replenishment")
         status, payload = await self._get_result(response)
         if status == 200:
             # logger.info(f"Owner get requests on chips: {datetime.datetime.now()}")
@@ -493,7 +493,7 @@ class PokerClient:
             return status, payload
 
     async def get_club_txn_history(self, club_id):
-        response = await self.session.get(f"/v1/info/{club_id}/history")
+        response = await self.session.get(f"/api/v1/info/{club_id}/history")
         status, payload = await self._get_result(response)
         if status == 200:
             logger.info(f"Owner get txns info: {datetime.datetime.now()}")
@@ -510,7 +510,7 @@ class PokerClient:
             return status, payload
 
     async def up_club_balance(self, club_id, amount):
-        response = await self.session.post(f"/v1/chips/{club_id}/club/chips", json={"amount": amount})
+        response = await self.session.post(f"/api/v1/chips/{club_id}/club/chips", json={"amount": amount})
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"Owner update club balance: {datetime.datetime.now()}")
@@ -527,7 +527,7 @@ class PokerClient:
             return status, payload
 
     async def down_club_balance(self, club_id, amount):
-        response = await self.session.delete(f"/v1/chips/{club_id}/club/chips", json={"amount": amount})
+        response = await self.session.delete(f"/api/v1/chips/{club_id}/club/chips", json={"amount": amount})
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"Owner debited balance: {datetime.datetime.now()}")
@@ -544,7 +544,7 @@ class PokerClient:
             return status, payload
 
     async def up_agent_balance(self, club_id, user_id, amount):
-        response = await self.session.post(f"/v1/chips/{club_id}/agents/chips/{user_id}",
+        response = await self.session.post(f"/api/v1/chips/{club_id}/agents/chips/{user_id}",
                                            json={"amount": amount, "mode": "give_out"})
         status, payload = await self._get_result(response)
         if status == 201:
@@ -562,7 +562,7 @@ class PokerClient:
             return status, payload
 
     async def down_agent_balance(self, club_id, user_id, amount):
-        response = await self.session.post(f"/v1/chips/{club_id}/agents/chips/{user_id}",
+        response = await self.session.post(f"/api/v1/chips/{club_id}/agents/chips/{user_id}",
                                            json={"amount": amount, "mode": "pick_up"})
         status, payload = await self._get_result(response)
         if status == 201:
@@ -584,7 +584,7 @@ class PokerClient:
             "amount": amount,
             "club_member": user_list
         }
-        response = await self.session.post(f"/v1/chips/{club_id}/players/chips", json=data)
+        response = await self.session.post(f"/api/v1/chips/{club_id}/players/chips", json=data)
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"Owner update user balance: {datetime.datetime.now()}")
@@ -606,7 +606,7 @@ class PokerClient:
             "amount": amount,
             "club_member": user_list
         }
-        response = await self.session.post(f"/v1/chips/{club_id}/players/chips", json=data)
+        response = await self.session.post(f"/api/v1/chips/{club_id}/players/chips", json=data)
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"Owner debited user balance: {datetime.datetime.now()}")
@@ -623,7 +623,7 @@ class PokerClient:
             return status, payload
 
     async def send_req_to_up_user_balance(self, club_id, amount):
-        response = await self.session.post(f"/v1/chips/{club_id}/requests/chips",
+        response = await self.session.post(f"/api/v1/chips/{club_id}/requests/chips",
                                            json={"amount": amount, "agent": False})
         status, payload = await self._get_result(response)
         if status == 201:
@@ -641,7 +641,7 @@ class PokerClient:
             return status, payload
 
     async def send_req_to_up_agent_balance(self, club_id, amount):
-        response = await self.session.post(f"/v1/chips/{club_id}/requests/chips",
+        response = await self.session.post(f"/api/v1/chips/{club_id}/requests/chips",
                                            json={"amount": amount, "agent": True})
         status, payload = await self._get_result(response)
         if status == 201:
@@ -659,7 +659,7 @@ class PokerClient:
             return status, payload
 
     async def accept_all_balance_requests(self, club_id):
-        response = await self.session.post(f"/v1/chips/{club_id}/requests/chips/all",
+        response = await self.session.post(f"/api/v1/chips/{club_id}/requests/chips/all",
                                            json={"operation": "approve"})
         status, payload = await self._get_result(response)
         if status == 201:
@@ -677,7 +677,7 @@ class PokerClient:
             return status, payload
 
     async def reject_all_balance_requests(self, club_id):
-        response = await self.session.post(f"/v1/chips/{club_id}/requests/chips/all",
+        response = await self.session.post(f"/api/v1/chips/{club_id}/requests/chips/all",
                                            json={"operation": "reject"})
         status, payload = await self._get_result(response)
         if status == 201:
@@ -697,7 +697,7 @@ class PokerClient:
     # INFO
 
     async def levels_schedule(self, table_type):
-        response = await self.session.get(f"/v1/info/levels_schedule/{table_type}")
+        response = await self.session.get(f"/api/v1/info/levels_schedule/{table_type}")
         status, payload = await self._get_result(response)
         if status == 200:
             return status, payload
@@ -713,7 +713,7 @@ class PokerClient:
             return status, payload
 
     async def rewards_distribution(self):
-        response = await self.session.get(f"/v1/info/rewards_distribution")
+        response = await self.session.get(f"/api/v1/info/rewards_distribution")
         status, payload = await self._get_result(response)
         if status == 200:
             return status, payload
@@ -729,7 +729,7 @@ class PokerClient:
             return status, payload
 
     async def countries(self, language):
-        response = await self.session.get(f"/v1/info/countries/{language}")
+        response = await self.session.get(f"/api/v1/info/countries/{language}")
         status, payload = await self._get_result(response)
         if status == 200:
             return status, payload
