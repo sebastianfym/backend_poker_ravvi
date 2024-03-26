@@ -7,15 +7,15 @@ logger = logging.getLogger(__name__)
 from ravvi_poker.db import DBI
 from ravvi_poker.engine.tables import Table, TablesManager
 
-# @pytest.mark.asyncio
-# async def test_table_start_stop_raw(table):
-#
-#     kwargs = table._asdict()
-#     x_table = Table(**kwargs)
-#     await x_table.start()
-#     await x_table.wait_ready(timeout=5)
-#     await x_table.shutdown()
-#     await x_table.wait_done()
+@pytest.mark.asyncio
+async def test_table_start_stop_raw(table):
+
+    kwargs = table._asdict()
+    x_table = Table(**kwargs)
+    await x_table.start()
+    await x_table.wait_ready(timeout=5)
+    await x_table.shutdown()
+    await x_table.wait_done()
 
 
 @pytest.mark.asyncio
