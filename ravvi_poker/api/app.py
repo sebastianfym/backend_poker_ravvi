@@ -45,7 +45,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-v1 = APIRouter(prefix="/v1")
+v1 = APIRouter(prefix="/api/v1")
 v1.include_router(auth.router)
 v1.include_router(user.router)
 v1.include_router(images.router)
