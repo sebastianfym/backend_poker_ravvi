@@ -10,7 +10,7 @@ from ..engine.jwt import jwt_get, jwt_encode
 from ..engine.passwd import password_hash, password_verify
 from ..db import DBI
 
-from .utils import SessionUUID, get_session_and_user, username_or_email
+from .utils import SessionUUID, get_session_and_user, username_is_email
 from .types import UserPrivateProfile, DeviceProps, DeviceLoginProps, UserLoginProps
 
 log = getLogger(__name__)
@@ -116,7 +116,7 @@ async def handle_login(device_uuid, request: Request, username=None, password=No
         if username.isdigit():
             user_id = int(username)
             user = await db.get_user(user_id)
-        elif username_or_email(username):
+        elif username_is_email(username):
             user = await db.get_user_by_email(username)
         else:
             user = await db.get_user_by_name(username)

@@ -91,7 +91,7 @@ def check_club_name(name, club_id):
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid name")
 
 
-def username_or_email(string):
+def username_is_email(string):
     email_pattern = r'^[^@]+@[^@]+\.[^@]+$'
 
     if re.match(email_pattern, string):
