@@ -2,6 +2,8 @@ import logging
 import asyncio
 from ravvi_poker.client import PokerClient
 
+logger = logging.getLogger(__name__)
+
 async def try_to_register(client: PokerClient, *,  sleep_min = 2, sleep_max = 5):
     """Регистрация пользователя с несколькими попытками и настройка профиля"""
     for _ in range(1):
@@ -11,6 +13,11 @@ async def try_to_register(client: PokerClient, *,  sleep_min = 2, sleep_max = 5)
             break
     if status!=200:
         raise RuntimeError("Failed to register user")
+
+    status, data = await client.get_lobby_entry_tables()
+    if status!=200 or len(data)<1:
+        raise RuntimeError("Failed to register user")
+    #logger.info("%s %s", status, data)
 
     username = f"T-{client.user_id}"
     password = f"test{client.user_id}"
@@ -45,13 +52,14 @@ async def main(count):
     results = await asyncio.gather(*tasks, return_exceptions=True)
     failed = 0
     for x in results:
-        print(type(x), x)
         if not isinstance(x, int):
             failed += 1
+            print(type(x), x)
     print(f"FAILURES: {failed}/{count}")
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    asyncio.run(main(100))
+    #PokerClient.API_HOST = 'poker.dev.ravvi.net:5000'
+    asyncio.run(run_new_user())
 
 
