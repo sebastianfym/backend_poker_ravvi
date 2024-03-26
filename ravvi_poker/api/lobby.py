@@ -3,7 +3,7 @@ from fastapi.exceptions import HTTPException
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 from pydantic import BaseModel
 
-from .tables import TableParams
+from .tables import TableProfile
 from ..db import DBI
 from .utils import SessionUUID, get_session_and_user
 
@@ -16,7 +16,7 @@ async def v1_get_entry_tables(session_uuid: SessionUUID):
         _, user = await get_session_and_user(db, session_uuid)
         tables = await db.get_lobby_entry_tables()
     return list([
-        TableParams(
+        TableProfile(
             id=table.id,
             club_id=table.club_id,
             table_name=table.table_name,
