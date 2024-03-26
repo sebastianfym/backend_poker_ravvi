@@ -27,10 +27,18 @@ async def v1_ws_endpoint(ws: WebSocket, access_token: str = None):
         if not session:
             raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
         row = await db.create_client(session_id=session.session_id)
-    await ws.accept()
-    # create client object
-    client = ClientWS(manager=manager, user_id=session.user_id, client_id=row.id, ws=ws)
-    # start client
+        await ws.accept()
+        # create client object
+        client = ClientWS(manager=manager, user_id=session.user_id, client_id=row.id, ws=ws)
+        try:
+            client_host = client.ws.client.host
+            print(client_host)
+        except AttributeError:
+            client_host = "127.0.0.1"
+        # start client
+        print(row)
+        await db.update_client(ip=client_host, id=row.id)
+
     await client.start()
     # process incoming commands
     await client.recv_commands()
