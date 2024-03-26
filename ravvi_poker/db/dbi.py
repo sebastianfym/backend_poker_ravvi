@@ -385,7 +385,7 @@ class DBI:
     # LOBBY
 
     async def get_lobby_entry_tables(self):
-        sql = "SELECT * FROM table_profile WHERE table_type='RG' and club_id IS NULL AND parent_id IS NULL AND closed_ts IS NULL"
+        sql = "SELECT * FROM table_profile WHERE table_type='RG' and club_id=0 AND parent_id IS NULL AND closed_ts IS NULL"
         result = {}
         async with self.cursor() as cursor:
             await cursor.execute(sql)

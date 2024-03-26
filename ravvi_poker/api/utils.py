@@ -9,7 +9,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 from ..engine.jwt import jwt_get
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/auth/login_form")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login_form")
 
 forbidden_words = ['fuck', 'shit', 'f*ck', 'f**k']
 
