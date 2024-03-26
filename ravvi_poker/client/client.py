@@ -2,9 +2,10 @@ import datetime
 import logging
 import asyncio
 
+
 import aiohttp
-import websockets
-from fastapi import HTTPException
+from random import SystemRandom
+from time import perf_counter
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 from ravvi_poker.api.auth import UserAccessProfile
 from ravvi_poker.api.clubs import ClubProfile, ClubMemberProfile, MemberAccountDetailInfo, AccountDetailInfo, \
@@ -18,6 +19,15 @@ from ravvi_poker.engine.poker.bet import Bet
 
 logger = logging.getLogger(__name__)
 
+def perf_log(func):
+    async def wrapper(self, url, **kwargs):
+        t0 = perf_counter()
+        response =  await func(self, url, **kwargs)
+        payload = await response.json()
+        t1 = perf_counter()
+        logger.info("%s %s %s %s", func.__name__, url, response.status, f"{t1-t0:.3f}")
+        return response.status, payload
+    return wrapper    
 
 class PokerClient:
     API_HOST = '127.0.0.1:5001'
@@ -30,6 +40,7 @@ class PokerClient:
         self.access_profile = None
         self.table_handlers = {}
         self.device_token = None
+        self.rng = SystemRandom()
 
     @property
     def user_id(self):
@@ -41,7 +52,8 @@ class PokerClient:
         headers = {"Accept": "application/json"}
         if self.access_profile and self.access_profile.access_token:
             headers["Authorization"] = "Bearer " + self.access_profile.access_token
-        self.session = aiohttp.ClientSession(self.base_url, headers=headers)
+        connector = aiohttp.TCPConnector(force_close=True, limit=1000)
+        self.session = aiohttp.ClientSession(self.base_url, headers=headers, connector=connector)
         return self
 
     async def __aexit__(self, exc_type, exc_value, exc_tb):
@@ -50,6 +62,19 @@ class PokerClient:
         if self.session:
             await self.session.close()
             self.session = None
+
+    # HTTP
+    @perf_log
+    async def GET(self, url, **kwargs):
+        return await self.session.get(url, **kwargs)
+
+    @perf_log
+    async def POST(self, url, **kwargs):
+        return await self.session.post(url, **kwargs)
+
+    @perf_log
+    async def PATCH(self, url, **kwargs):
+        return await self.session.patch(url, **kwargs)
 
     # WS
 
@@ -91,25 +116,24 @@ class PokerClient:
             payload = await response.json()
         return response.status, payload
 
+    async def sleep_random(self, minSeconds, maxSeconds):
+        seconds = self.rng.randint(minSeconds, maxSeconds)
+        await asyncio.sleep(seconds)
+
     # AUTH
 
     async def auth_register(self, *, device_token=None, device_props=None):
         body = dict(device_token=device_token, device_props=device_props or {})
-        response = await self.session.post('/api/v1/auth/register', json=body)
-        status, payload = await self._get_result(response)
+        status, payload = await self.POST('/api/v1/auth/register', json=body)
         if status == 200:
-            logger.info(f"Register new user: {datetime.datetime.now()}")
+            #logger.info(f"Register new user: {datetime.datetime.now()}")
             self.access_profile = UserAccessProfile(**payload)
             self.session.headers["Authorization"] = "Bearer " + self.access_profile.access_token
-            return status, payload
-        else:
-            return status, payload
+        return status, payload
 
     async def auth_logout(self):
-        response = await self.session.post('/api/v1/auth/logout')
-        logger.info(f"User has logout: {datetime.datetime.now()}")
-        status, payload = await self._get_result(response)
-        await self._get_result(response)
+        status, payload = await self.POST('/api/v1/auth/logout')
+        #logger.info(f"User has logout: {datetime.datetime.now()}")
         self.access_profile = None
         self.session.headers.popall("Authorization", None)
         return status, payload
@@ -121,7 +145,7 @@ class PokerClient:
         response = await self.session.get('/api/v1/user/profile')
         status, payload = await self._get_result(response)
         if status == 200:
-            logger.info(f"Get user profile: {datetime.datetime.now()}")
+            #logger.info(f"Get user profile: {datetime.datetime.now()}")
             user_profile = UserPrivateProfile(**payload)
             self.access_profile.user = user_profile
         return status, user_profile
@@ -131,10 +155,9 @@ class PokerClient:
             "name": name,
             "image_id": image_id
         }
-        response = await self.session.patch('/api/v1/user/profile', json=data)
-        status, payload = await self._get_result(response)
+        status, payload = await self.PATCH('/api/v1/user/profile', json=data)
         if status == 200:
-            logger.info(f"User update account: {datetime.datetime.now()}")
+            #logger.info(f"User update account: {datetime.datetime.now()}")
             user_profile = UserPrivateProfile(**payload)
             self.access_profile.user = user_profile
             return status, user_profile
@@ -158,14 +181,12 @@ class PokerClient:
             "username": username,
             "password": password
         }
-        response = await self.session.post(f'/api/v1/auth/login', json=data)
-        status, payload = await self._get_result(response)
+        status, payload = await self.POST(f'/api/v1/auth/login', json=data)
         if status == 200:
-            logger.info(f"User login with username/password: {datetime.datetime.now()}")
+            #logger.info(f"User login with username/password: {datetime.datetime.now()}")
             self.access_profile = UserAccessProfile(**payload)
             self.session.headers["Authorization"] = "Bearer " + self.access_profile.access_token
             return status, UserAccessProfile(**payload)
-            # return status, user_profile
         else:
             # raise "Check the correctness of the data"
             return status, payload
@@ -175,10 +196,9 @@ class PokerClient:
             "current_password": current_password,
             "new_password": new_password
         }
-        response = await self.session.post(f'/api/v1/auth/password', json=data)
-        status, payload = await self._get_result(response)
+        status, payload = await self.POST(f'/api/v1/auth/password', json=data)
         if status == 200:
-            logger.info(f"User update password: {datetime.datetime.now()}")
+            #logger.info(f"User update password: {datetime.datetime.now()}")
             return status, payload
         else:
             # raise "Check the correctness username or password"
@@ -186,7 +206,7 @@ class PokerClient:
 
     # IMAGES
     async def get_available_images(self):
-        response = await self.session.get('/api/v1/images')
+        response = await self.GET('/api/v1/images')
         status, payload = await self._get_result(response)
         if status == 200:
             img_list = []
@@ -212,7 +232,7 @@ class PokerClient:
         response = await self.session.post('/api/v1/clubs', json=data)
         status, payload = await self._get_result(response)
         if status == 201:
-            logger.info(f"Owner create club: {datetime.datetime.now()}")
+            #logger.info(f"Owner create club: {datetime.datetime.now()}")
             return status, ClubProfile(**payload)
         else:
             # raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
@@ -222,7 +242,7 @@ class PokerClient:
         response = await self.session.get(f'/api/v1/clubs/{club_id}')
         status, payload = await self._get_result(response)
         if status == 200:
-            logger.info(f"Get club by id: {datetime.datetime.now()}")
+            #logger.info(f"Get club by id: {datetime.datetime.now()}")
             return status, ClubProfile(**payload)
         elif status == 404:
             return status, payload
