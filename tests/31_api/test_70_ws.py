@@ -17,14 +17,14 @@ logger = logging.getLogger(__name__)
 def test_ws_no_token(api_client: TestClient):
     # set headers
     with pytest.raises(WebSocketDisconnect) as ex_info:
-        with api_client.websocket_connect("/v1/ws") as ws:
+        with api_client.websocket_connect("/api/v1/ws") as ws:
             pass
     assert ex_info.value.code == 1008
 
 @pytest.mark.skip
 def test_ws_valid_token(api_client: TestClient, api_guest: UserAccessProfile):
     params = urlencode(dict(access_token=api_guest.access_token))
-    with api_client.websocket_connect(f"/v1/ws?{params}") as ws:
+    with api_client.websocket_connect(f"/api/v1/ws?{params}") as ws:
         sleep(3)
         ws.close()
         sleep(1)
@@ -39,7 +39,7 @@ def cmd_TABLE_JOIN(ws, **kwargs):
 #@pytest.mark.asyncio    
 def test_ws_join(api_client: TestClient, api_guest: UserAccessProfile, table):
     params = urlencode(dict(access_token=api_guest.access_token))
-    with api_client.websocket_connect(f"/v1/ws?{params}") as ws:
+    with api_client.websocket_connect(f"/api/v1/ws?{params}") as ws:
         cmd_TABLE_JOIN(ws, table_id=table.id, take_seat=True)
         msg = ws.receive_json()
         logger.info("got %s", msg)
