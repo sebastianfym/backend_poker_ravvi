@@ -13,12 +13,8 @@ from ...engine.jwt import jwt_get
 async def v1_login(params: UserLoginProps, request: Request):
     """Login API with username / password"""
     device_uuid = jwt_get(params.device_token, "device_uuid")
-    if params.username:
-        return await handle_login(device_uuid=device_uuid, username=params.username, password=params.password)
-    elif params.id:
-        return await handle_login(device_uuid=device_uuid, id=params.id, password=params.password)
-    elif params.email:
-        return await handle_login(device_uuid=device_uuid, email=params.email, password=params.password)
+    return await handle_login(device_uuid=device_uuid, username=params.username, password=params.password,
+                              request=request)
 
 
 @router.post("/login_form", responses={400: {}, 401: {}, 403: {}})

@@ -9,7 +9,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 from ..engine.jwt import jwt_get
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/auth/login_form")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login_form")
 
 forbidden_words = ['fuck', 'shit', 'f*ck', 'f**k']
 
@@ -89,3 +89,14 @@ def check_club_name(name, club_id):
     if match:
         if int(name.split("-")[1]) != club_id:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid name")
+
+
+def username_or_email(string):
+    email_pattern = r'^[^@]+@[^@]+\.[^@]+$'
+
+    if re.match(email_pattern, string):
+        return True
+    else:
+        return False
+
+
