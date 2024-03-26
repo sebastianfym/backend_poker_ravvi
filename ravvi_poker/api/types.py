@@ -12,8 +12,8 @@ class DeviceLoginProps(DeviceProps):
 
 class UserLoginProps(DeviceProps):
     username: str | None = None
-    id: int | None = None
-    email: str | None = None
+    # id: int | None = None
+    # email: str | None = None
     password: str
 
 
