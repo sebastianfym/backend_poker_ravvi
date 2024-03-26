@@ -30,7 +30,7 @@ class UserAccessProfile(BaseModel):
 async def v1_register(params: DeviceProps, request: Request) -> UserAccessProfile:
     """Register user account (guest)"""
     # TODO: ip detection POKER-616
-    client_host = '' #request.client.host
+    client_host = request.client.host
     device_uuid = jwt_get(params.device_token, "device_uuid")
     log.info("%s: auth.register device=%s", client_host, device_uuid)
 
@@ -39,8 +39,8 @@ async def v1_register(params: DeviceProps, request: Request) -> UserAccessProfil
         device = await db.get_device(uuid=device_uuid) if device_uuid else None
         if not device or device.closed_ts:
             device = await db.create_device(params.device_props)
-        login = await db.create_login(device.id, user.id)
-        session = await db.create_session(login.id)
+        login = await db.create_login(device.id, user.id, ip=client_host)
+        session = await db.create_session(login.id, client_host)
         
     device_token = jwt_encode(device_uuid=str(device.uuid))
     login_token = jwt_encode(login_uuid=str(login.uuid))
@@ -59,7 +59,7 @@ async def v1_register(params: DeviceProps, request: Request) -> UserAccessProfil
 async def v1_device(params: DeviceLoginProps, request: Request) -> UserAccessProfile:
     """Login with device/login token"""
     # TODO: ip detection POKER-616
-    client_host = '' #request.client.host
+    client_host = request.client.host
     device_uuid = jwt_get(params.device_token, "device_uuid")
     login_uuid = jwt_get(params.login_token, "login_uuid")
     log.info("%s: auth.device device=%s login=%s", client_host, device_uuid, login_uuid)
@@ -81,7 +81,7 @@ async def v1_device(params: DeviceLoginProps, request: Request) -> UserAccessPro
             login_token = None
             access_token = None
         elif login and user:
-            session = await db.create_session(login.id)
+            session = await db.create_session(login.id, client_host)
             device_token = jwt_encode(device_uuid=str(device.uuid))
             login_token = jwt_encode(login_uuid=str(login.uuid))
             access_token = jwt_encode(session_uuid=str(session.uuid))
@@ -99,7 +99,7 @@ async def v1_device(params: DeviceLoginProps, request: Request) -> UserAccessPro
     return response
 
 
-async def handle_login(device_uuid, username=None, password=None, id=None, email=None):
+async def handle_login(device_uuid, request: Request, username=None, password=None, id=None, email=None):
     async with DBI() as db:
         device = await db.get_device(uuid=device_uuid) if device_uuid else None
         if not device:
@@ -123,8 +123,10 @@ async def handle_login(device_uuid, username=None, password=None, id=None, email
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="User deactivated")
         if not password_verify(password, user.password_hash):
             raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
-        login = await db.create_login(device.id, user.id)
-        session = await db.create_session(login.id)
+
+        client_host = request.client.host
+        login = await db.create_login(device.id, user.id, ip=client_host)
+        session = await db.create_session(login.id, client_host)
 
     device_token = jwt_encode(device_uuid=str(device.uuid))
     login_token = jwt_encode(login_uuid=str(login.uuid))
@@ -182,11 +184,12 @@ async def v1_user_password(params: UserChangePassword, session_uuid: SessionUUID
 
 
 @router.post("/logout")
-async def v1_user_logout(session_uuid: SessionUUID):
+async def v1_user_logout(session_uuid: SessionUUID, request: Request):
     """Logout"""    
     async with DBI() as db:
         session = await db.get_session_info(uuid=session_uuid) if session_uuid else None
         if session:
-            await db.close_session(session.session_id)
-            await db.close_login(session.login_id)
+            client_host = request.client.host
+            await db.close_session(session.session_id, ip=client_host)
+            await db.close_login(session.login_id, ip=client_host)
     return {}
