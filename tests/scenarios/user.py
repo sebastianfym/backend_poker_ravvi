@@ -45,9 +45,9 @@ async def main(count):
     results = await asyncio.gather(*tasks, return_exceptions=True)
     failed = 0
     for x in results:
-        print(type(x), x)
         if not isinstance(x, int):
             failed += 1
+            print(type(x), x)
     print(f"FAILURES: {failed}/{count}")
 
 if __name__ == '__main__':
