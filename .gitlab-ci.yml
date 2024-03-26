@@ -148,6 +148,7 @@ deploy_staging:
     - pip3 freeze --user >pip_freeze.txt
     # reset (drop/re-create) database
     - ravvi_poker_db_reset
+    - ravvi_poker_db_dump_schema
     # start service
     - ravvi_poker_service start
   artifacts:

@@ -12,14 +12,13 @@ async def try_to_register(client: PokerClient, *,  sleep_min = 2, sleep_max = 5)
         if status==200:
             break
     if status!=200:
-        raise RuntimeError("Failed to register user")
+        raise RuntimeError("Failed to register user", status)
 
     status, data = await client.get_lobby_entry_tables()
     if status!=200 or len(data)<1:
-        raise RuntimeError("Failed to register user")
-    #logger.info("%s %s", status, data)
+        raise RuntimeError("Failed to get lobby tables")
 
-    username = f"T-{client.user_id}"
+    username = f"T{client.user_id}"
     password = f"test{client.user_id}"
 
     await client.sleep_random(sleep_min, sleep_max)
@@ -45,21 +44,27 @@ async def run_new_user():
     client = PokerClient()
     async with client:
         await try_to_register(client)
-    return client.user_id
+    return client.user_id, client.requests_time
 
-async def main(count):
+async def run_batch(count):
     tasks = [run_new_user() for _ in range(count)]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     failed = 0
     for x in results:
-        if not isinstance(x, int):
+        if isinstance(x, tuple):
+            user_id, requests_time = x
+            print(f"{user_id}: {requests_time:.2f}")
+        else:
             failed += 1
             print(type(x), x)
     print(f"FAILURES: {failed}/{count}")
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    #PokerClient.API_HOST = 'poker.dev.ravvi.net:5000'
+    #PokerClient.API_HOST = '10.4.1.240:8080'
+    #PokerClient.API_HOST = 'clubpoker.space'
+    #PokerClient.USE_SSL = True
     asyncio.run(run_new_user())
+    #asyncio.run(run_batch(10))
 
 
