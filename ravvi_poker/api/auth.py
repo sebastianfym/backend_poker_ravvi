@@ -10,7 +10,7 @@ from ..engine.jwt import jwt_get, jwt_encode
 from ..engine.passwd import password_hash, password_verify
 from ..db import DBI
 
-from .utils import SessionUUID, get_session_and_user
+from .utils import SessionUUID, get_session_and_user, username_or_email
 from .types import UserPrivateProfile, DeviceProps, DeviceLoginProps, UserLoginProps
 
 log = getLogger(__name__)
@@ -105,7 +105,7 @@ async def v1_device(params: DeviceLoginProps, request: Request) -> UserAccessPro
     return response
 
 
-async def handle_login(device_uuid, request: Request, username=None, password=None, id=None, email=None):
+async def handle_login(device_uuid, request: Request, username=None, password=None):
     async with DBI() as db:
         device = await db.get_device(uuid=device_uuid) if device_uuid else None
         if not device:
@@ -113,15 +113,13 @@ async def handle_login(device_uuid, request: Request, username=None, password=No
             device_token = jwt_encode(device_uuid=str(device.uuid))
         #if login_uuid:
         #    dbi.close_user_login(uuid=login_uuid)
-        if id:
-            user_id = int(id)
+        if username.isdigit():
+            user_id = int(username)
             user = await db.get_user(user_id)
-        elif username:
-            user = await db.get_user_by_name(username)
-        elif email:
-            user = await db.get_user_by_email(email)
+        elif username_or_email(username):
+            user = await db.get_user_by_email(username)
         else:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Missing username or password")
+            user = await db.get_user_by_name(username)
 
         if not user:
             raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
@@ -155,12 +153,14 @@ async def handle_login(device_uuid, request: Request, username=None, password=No
 async def v1_login(params: UserLoginProps, request: Request):
     """Login API with username / password"""
     device_uuid = jwt_get(params.device_token, "device_uuid")
-    if params.username:
-        return await handle_login(device_uuid=device_uuid, username=params.username, password=params.password, request=request)
-    elif params.id:
-        return await handle_login(device_uuid=device_uuid, id=params.id, password=params.password, request=request)
-    elif params.email:
-        return await handle_login(device_uuid=device_uuid, email=params.email, password=params.password, request=request)
+    return await handle_login(device_uuid=device_uuid, username=params.username, password=params.password,
+                              request=request)
+    # if params.username:
+    #     return await handle_login(device_uuid=device_uuid, username=params.username, password=params.password, request=request)
+    # elif params.id:
+    #     return await handle_login(device_uuid=device_uuid, id=params.id, password=params.password, request=request)
+    # elif params.email:
+    #     return await handle_login(device_uuid=device_uuid, email=params.email, password=params.password, request=request)
 
 
 @router.post("/login_form", responses={400: {}, 401: {}, 403: {}})
