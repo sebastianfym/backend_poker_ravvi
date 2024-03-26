@@ -44,6 +44,7 @@ def test_user(api_client: TestClient, api_guest: UserAccessProfile, api_client_2
 
     params = {'name': 'test2', 'image_id': 11}
     response = api_client.patch("/v1/user/profile", json=params)
+    print(response.json())
     assert response.status_code == HTTP_200_OK
     user_1 = UserPrivateProfile(**response.json())
     assert user_1.id == api_guest.user.id
