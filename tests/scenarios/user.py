@@ -1,6 +1,7 @@
 import logging
 import asyncio
 from ravvi_poker.client import PokerClient
+from ravvi_poker.client import patterns
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +41,33 @@ async def try_to_register(client: PokerClient, *,  sleep_min = 2, sleep_max = 5)
         raise RuntimeError("Failed to change user name")
 
 
+async def try_play_lobby(client: PokerClient, game_type, game_subtype, play_time = 5*60):
+    status, data = await client.get_lobby_entry_tables()
+    if status!=200 or len(data)<1:
+        raise RuntimeError("Failed to get lobby tables")
+    table_id = None
+    for x in data:
+        if (x['game_type'],x['game_subtype']) == (game_type, game_subtype):
+            table_id = x['id']
+    if not table_id:
+         raise RuntimeError("Failed to find lobby table")
+    await client.join_table(table_id, True, client.play_random_option)
+    await asyncio.sleep(play_time)
+    await client.exit_table(table_id)
+    await client.ws_close()
+
+
 async def run_new_user():
     client = PokerClient()
     async with client:
-        await try_to_register(client)
+        await patterns.try_register(client)
+
+        username = f"T{client.user_id}"
+        password = f"test{client.user_id}"
+        await patterns.try_set_username_and_password(client, username, password)
+
+        await try_play_lobby(client, 'NLH', 'REGULAR')
+
     return client.user_id, client.requests_time
 
 async def run_batch(count):
@@ -62,9 +86,9 @@ async def run_batch(count):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     #PokerClient.API_HOST = '10.4.1.240:8080'
-    #PokerClient.API_HOST = 'clubpoker.space'
-    #PokerClient.USE_SSL = True
+    PokerClient.API_HOST = 'clubpoker.space'
+    PokerClient.USE_SSL = True
     asyncio.run(run_new_user())
-    #asyncio.run(run_batch(10))
+    #asyncio.run(run_batch(200))
 
 

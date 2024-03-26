@@ -54,7 +54,7 @@ class PokerClient:
         headers = {"Accept": "application/json"}
         if self.access_profile and self.access_profile.access_token:
             headers["Authorization"] = "Bearer " + self.access_profile.access_token
-        connector = aiohttp.TCPConnector(force_close=True, limit=1000)
+        connector = aiohttp.TCPConnector(limit=1000)
         self.session = aiohttp.ClientSession(self.base_url, headers=headers, connector=connector)
         return self
 
@@ -795,3 +795,15 @@ class PokerClient:
                 await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
             else:
                 await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
+
+    async def play_random_option(self, msg: Message):
+        if msg.msg_type == MessageType.GAME_PLAYER_MOVE and msg.user_id == self.user_id:
+            logger.info("%s: bet options %s", msg.table_id, msg.options)
+            await self.sleep_random(3, 15)
+            bet = self.rng.choice(msg.options)
+            if bet == Bet.RAISE:
+                rnd = self.rng.random()
+                amount = msg.raise_min + (msg.raise_max-msg.raise_min)*rnd
+                await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.RAISE, amount = amount)
+            else:                
+                await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
