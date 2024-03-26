@@ -31,17 +31,17 @@ async def test_login_constrains(login):
     with pytest.raises(DBI.ForeignKeyViolation):
         async with DBI() as db:
             # invalid device
-            await db.create_login(-1, login.user_id, ip="127.0.0.1")
+            await db.create_login(-1, login.user_id, host="127.0.0.1")
     with pytest.raises(DBI.ForeignKeyViolation):
         async with DBI() as db:
             # invalid device
-            await db.create_login(login.device_id, -1, ip="127.0.0.1")
+            await db.create_login(login.device_id, -1, host="127.0.0.1")
 
 @pytest.mark.dependency(depends=["test_login"])
 @pytest.mark.asyncio
 async def test_login_close(login):
     async with DBI() as db:
-        x_login = await db.create_login(login.device_id, login.user_id, ip="127.0.0.1")
+        x_login = await db.create_login(login.device_id, login.user_id, host="127.0.0.1")
         assert not x_login.closed_ts
 
     async with DBI() as db:
