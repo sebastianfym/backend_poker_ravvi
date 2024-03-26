@@ -2,8 +2,8 @@ import pytest
 
 from starlette.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 from fastapi.testclient import TestClient
-from ravvi_poker.api.auth import UserAccessProfile
-from ravvi_poker.api.user import UserPrivateProfile, UserPublicProfile
+from ravvi_poker.api.auth.types import UserAccessProfile
+from ravvi_poker.api.users.types import UserPrivateProfile, UserPublicProfile
 
 
 def test_user(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient, api_guest_2: UserAccessProfile):
@@ -31,7 +31,7 @@ def test_user(api_client: TestClient, api_guest: UserAccessProfile, api_client_2
     assert user_2.image_id is None
 
     # update own data
-    params = {'aaabbbccc': 'test', 'name': 'test1'}
+    params = {'aaabbjhbcccc': 'test', 'name': 'test1'}
     response = api_client.patch("/v1/user/profile", json=params)
     assert response.status_code == HTTP_200_OK
     user_1 = UserPrivateProfile(**response.json())
@@ -43,6 +43,7 @@ def test_user(api_client: TestClient, api_guest: UserAccessProfile, api_client_2
 
     params = {'name': 'test2', 'image_id': 11}
     response = api_client.patch("/v1/user/profile", json=params)
+
     assert response.status_code == HTTP_200_OK
     user_1 = UserPrivateProfile(**response.json())
     assert user_1.id == api_guest.user.id

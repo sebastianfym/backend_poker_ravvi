@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 
 class DBI:
     DB_HOST = os.getenv("RAVVI_POKER_DB_HOST", "127.0.0.1")
-    DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "15432"))
-    DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "develop")
+    DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "5432"))
+    DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "poker_db")
     DB_USER = os.getenv("RAVVI_POKER_DB_USER", "postgres")
-    DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
+    DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "postgres")
     POOL_LIMIT = int(os.getenv("RAVVI_POKER_DB_POOL_LIMIT", "10"))
     APPLICATION_NAME = 'CPS'
     CONNECT_TIMEOUT = 15

@@ -4,8 +4,8 @@ from decimal import Decimal
 import pytest
 
 from fastapi.testclient import TestClient
-from ravvi_poker.api.auth import UserAccessProfile
-from ravvi_poker.api.clubs import ClubProfile, ClubMemberProfile
+from ravvi_poker.api.auth.types import UserAccessProfile
+from ravvi_poker.api.clubs.types import ClubProfile, ClubMemberProfile
 from ravvi_poker.db import DBI
 
 
@@ -914,8 +914,8 @@ def test_actions_with_users_requests(api_client: TestClient, api_guest: UserAcce
 
     request = api_client.get(f"/v1/clubs/{club.id}/requests_chip_replenishment")
     txn_id = request.json()['users_requests'][0].get('txn_id')
-    assert request.status_code == 200
 
+    assert request.status_code == 200
     params = {"id": txn_id, "operation": "approve"}
     request = api_client.post(f"/v1/clubs/{club.id}/action_with_user_request", json=params)
     assert request.status_code == 400
@@ -941,7 +941,6 @@ def client_new(request, api_client: TestClient, api_guest: UserAccessProfile,
            api_client_2: TestClient, api_guest_2: UserAccessProfile,
            api_client_3: TestClient, api_guest_3: UserAccessProfile):
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
-    print(request.__dict__["param"])
     if request.__dict__["param"] == "get_authorize_client":
         api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
         yield api_client

@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from ravvi_poker.api.auth import UserAccessProfile, UserPrivateProfile
+from ravvi_poker.api.auth.types import UserAccessProfile, UserPrivateProfile
 
 def test_auth_register(api_client: TestClient):
     # CASE 1: register guest on new device
