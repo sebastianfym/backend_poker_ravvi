@@ -6,7 +6,6 @@ from pydantic import BaseModel
 from .tables import TableParams
 from ..db import DBI
 from .utils import SessionUUID, get_session_and_user
-# from .tables import TableProps
 
 router = APIRouter(prefix="/lobby", tags=["lobby"])
 
@@ -24,6 +23,7 @@ async def v1_get_entry_tables(session_uuid: SessionUUID):
             table_type=table.table_type,
             table_seats=table.table_seats,
             game_type=table.game_type,
-            game_subtype=table.game_subtype
+            game_subtype=table.game_subtype,
+            **table.props
         ) for table in tables
     ])
