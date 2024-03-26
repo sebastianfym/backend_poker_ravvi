@@ -36,7 +36,7 @@ async def v1_ws_endpoint(ws: WebSocket, access_token: str = None):
         except AttributeError:
             client_host = "127.0.0.1"
         # start client
-        await db.update_client(ip=client_host, id=row.id)
+        await db.update_client(host=client_host, id=row.id)
 
     await client.start()
     # process incoming commands
