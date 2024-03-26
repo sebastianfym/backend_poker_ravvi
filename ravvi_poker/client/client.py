@@ -24,7 +24,7 @@ def perf_log(func):
         t0 = perf_counter()
         response =  await func(self, url, **kwargs)
         t1 = perf_counter()
-        logger.info("%s %s %s %s", func.__name__, url, response.status, f"{t1-t0:.3f}")
+        logger.info("%s %s %s %s %s", self.user_id, func.__name__, url, response.status, f"{t1-t0:.3f}")
         return response
     return wrapper    
 
@@ -199,6 +199,7 @@ class PokerClient:
         return status, payload
 
     # IMAGES
+
     async def get_available_images(self):
         response = await self.GET('/api/v1/images')
         status, payload = await self._get_result(response)
@@ -207,6 +208,13 @@ class PokerClient:
             for img in payload:
                 img_list.append(ImageProfile(**img))
             payload = img_list
+        return status, payload
+
+    # LOBBY 
+
+    async def get_lobby_entry_tables(self):
+        response = await self.GET('/api/v1/lobby/entry_tables')
+        status, payload = await self._get_result(response)
         return status, payload
 
     # CLUBS
