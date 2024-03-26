@@ -24,7 +24,9 @@ def perf_log(func):
         t0 = perf_counter()
         response =  await func(self, url, **kwargs)
         t1 = perf_counter()
-        logger.info("%s %s %s %s %s", self.user_id, func.__name__, url, response.status, f"{t1-t0:.3f}")
+        delta = t1-t0
+        self.requests_time += delta
+        logger.info("%s %s %s %s %s", self.user_id, func.__name__, url, response.status, f"{delta:.3f}")
         return response
     return wrapper    
 
@@ -39,6 +41,7 @@ class PokerClient:
         self.access_profile = None
         self.table_handlers = {}
         self.device_token = None
+        self.requests_time = 0
         self.rng = SystemRandom()
 
     @property

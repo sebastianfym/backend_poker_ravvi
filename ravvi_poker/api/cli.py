@@ -12,7 +12,9 @@ logger = logging.getLogger(__name__)
 def cmd_run(args):
     host = os.getenv("RAVVI_POKER_API_HOST", "0.0.0.0")
     port = int(os.getenv("RAVVI_POKER_API_PORT", "5001"))
-    uvicorn.run(app, host=host, port=port, log_level="info")
+    proxy = os.getenv("RAVVI_POKER_API_PROXY", "*")
+    proxy = proxy.split(',')
+    uvicorn.run(app, host=host, port=port, log_level="info", proxy_headers=True, forwarded_allow_ips=proxy)
 
 
 def main():
