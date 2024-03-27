@@ -31,7 +31,7 @@ def test_user(api_client: TestClient, api_guest: UserAccessProfile, api_client_2
     assert user_2.image_id is None
 
     # update own data
-    params = {'aaabbbccc': 'test', 'name': 'test1'}
+    params = {'name': 'test1'}
     response = api_client.patch("api/v1/user/profile", json=params)
     print(response.json())
     assert response.status_code == HTTP_200_OK
@@ -57,6 +57,10 @@ def test_user(api_client: TestClient, api_guest: UserAccessProfile, api_client_2
     assert response.status_code == 400
 
     params = {'country': 'zxcvbn'}
+    response = api_client.patch("api/v1/user/profile", json=params)
+    assert response.status_code == 400
+
+    params = {'email': 'test@mail.ru'}
     response = api_client.patch("api/v1/user/profile", json=params)
     assert response.status_code == 400
 

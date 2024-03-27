@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 
 class DBI:
     DB_HOST = os.getenv("RAVVI_POKER_DB_HOST", "127.0.0.1")
-    DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "15432"))
-    DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "develop")
+    DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "5432"))
+    DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "poker_db")
     DB_USER = os.getenv("RAVVI_POKER_DB_USER", "postgres")
-    DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
+    DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "postgres")
     POOL_LIMIT = int(os.getenv("RAVVI_POKER_DB_POOL_LIMIT", "10"))
     APPLICATION_NAME = 'CPS'
     CONNECT_TIMEOUT = 15
@@ -224,12 +224,20 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def check_img_id(self, image_id):
+        sql = "SELECT id FROM image WHERE id=%s;"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (image_id,))
+            row = await cursor.fetchone()
+            print(row)
+        return row
+
     # LOGIN
 
-    async def create_login(self, device_id, user_id, ip):
-        sql = "INSERT INTO user_login (device_id, user_id, ip) VALUES (%s, %s, %s) RETURNING *"
+    async def create_login(self, device_id, user_id, host=None):
+        sql = "INSERT INTO user_login (device_id, user_id, host) VALUES (%s, %s, %s) RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (device_id, user_id, ip))
+            await cursor.execute(sql, (device_id, user_id, host))
             row = await cursor.fetchone()
         return row
 
@@ -241,11 +249,11 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    async def close_login(self, id=None, *, uuid=None, ip=None):
+    async def close_login(self, id=None, *, uuid=None, host=None):
         key, value = self.use_id_or_uuid(id, uuid)
-        sql = f"UPDATE user_login SET closed_ts=now_utc(), ip=%s WHERE {key}=%s RETURNING *"  # nosec
+        sql = f"UPDATE user_login SET closed_ts=now_utc(), host=%s WHERE {key}=%s RETURNING *"  # nosec
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (ip, value,))
+            await cursor.execute(sql, (host, value,))
             row = await cursor.fetchone()
         return row
 
@@ -258,10 +266,10 @@ class DBI:
 
     # SESSION
 
-    async def create_session(self, login_id, ip=None):
-        sql = "INSERT INTO user_session (login_id, ip) VALUES (%s, %s) RETURNING *"
+    async def create_session(self, login_id, host=None):
+        sql = "INSERT INTO user_session (login_id, host) VALUES (%s, %s) RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (login_id, ip))
+            await cursor.execute(sql, (login_id, host))
             row = await cursor.fetchone()
         return row
 
@@ -291,11 +299,11 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    async def close_session(self, id=None, *, uuid=None, ip=None):
+    async def close_session(self, id=None, *, uuid=None, host=None):
         key, value = self.use_id_or_uuid(id, uuid)
         async with self.cursor() as cursor:
-            sql = f"UPDATE user_session SET closed_ts=now_utc(), ip=%s  WHERE {key}=%s RETURNING *"  # nosec
-            await cursor.execute(sql, (ip, value,))
+            sql = f"UPDATE user_session SET closed_ts=now_utc(), host=%s  WHERE {key}=%s RETURNING *"  # nosec
+            await cursor.execute(sql, (host, value,))
 
             row = await cursor.fetchone()
         return row
@@ -318,10 +326,10 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    async def update_client(self, ip, id):
-        sql = "UPDATE user_client SET ip=%s WHERE id=%s"
+    async def update_client(self, host, id):
+        sql = "UPDATE user_client SET host=%s WHERE id=%s"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (ip, id))
+            await cursor.execute(sql, (host, id))
 
 
     async def get_client(self, id=None, *, uuid=None):

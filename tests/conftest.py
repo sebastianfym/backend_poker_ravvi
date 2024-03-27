@@ -51,7 +51,7 @@ async def users_10():
 @pytest_asyncio.fixture
 async def login(device, user):
     async with DBI() as db:
-        row = await db.create_login(device.id, user.id, ip="127.0.0.1")
+        row = await db.create_login(device.id, user.id, host="127.0.0.1")
         assert row
     yield row
 
@@ -59,7 +59,7 @@ async def login(device, user):
 @pytest_asyncio.fixture
 async def session(login):
     async with DBI() as db:
-        row = await db.create_session(login.id)
+        row = await db.create_session(login.id, host="127.0.0.1")
         assert row
     yield row
 
