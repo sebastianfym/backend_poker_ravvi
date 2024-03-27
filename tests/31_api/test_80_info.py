@@ -4,8 +4,8 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_401_UNAUTHORIZED
-from ravvi_poker.api.auth.types import UserAccessProfile
-from ravvi_poker.api.clubs.types import ClubProfile
+from ravvi_poker.api.auth_.types import UserAccessProfile
+from ravvi_poker.api.clubs_.types import ClubProfile
 
 from ravvi_poker.engine import data
 

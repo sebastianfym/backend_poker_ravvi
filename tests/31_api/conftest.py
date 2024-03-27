@@ -3,7 +3,7 @@ import pytest_asyncio
 
 from fastapi.testclient import TestClient
 from ravvi_poker.api.app import app
-from ravvi_poker.api.auth.types import UserAccessProfile
+from ravvi_poker.api.auth_.types import UserAccessProfile
 from ravvi_poker.engine.tables import TablesManager
 
 import logging

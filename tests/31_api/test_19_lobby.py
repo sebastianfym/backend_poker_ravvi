@@ -2,7 +2,7 @@ import pytest
 
 from starlette.status import HTTP_200_OK
 from fastapi.testclient import TestClient
-from ravvi_poker.api.auth.types import UserAccessProfile
+from ravvi_poker.api.auth_.types import UserAccessProfile
 
 
 def test_lobby_(api_client: TestClient, api_guest: UserAccessProfile):

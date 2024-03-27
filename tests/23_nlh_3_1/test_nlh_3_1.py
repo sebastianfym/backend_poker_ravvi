@@ -1,8 +1,8 @@
 import logging
 
 import pytest
-from helpers.mocked_table import MockedTable
-from helpers.x_game_case import load_game_cases, create_game_case
+from tests.helpers.mocked_table import MockedTable
+from tests.helpers.x_game_case import load_game_cases, create_game_case
 
 from ravvi_poker.engine.poker.nlh import Poker_NLH_3M1
 

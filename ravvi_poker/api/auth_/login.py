@@ -18,7 +18,7 @@ async def v1_login(params: UserLoginProps, request: Request):
 
 
 @router.post("/login_form", responses={400: {}, 401: {}, 403: {}})
-async def v1_login_form(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+async def v1_login_form(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], request: Request):
     """Login Form with username / password"""
     device_uuid = jwt_get(form_data.client_id, "device_uuid") if form_data.client_id else None
-    return await handle_login(device_uuid, username=form_data.username, password=form_data.password)
+    return await handle_login(device_uuid, username=form_data.username, password=form_data.password, request=request)

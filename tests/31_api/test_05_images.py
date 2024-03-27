@@ -6,7 +6,7 @@ from io import BytesIO
 
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 from fastapi.testclient import TestClient
-from ravvi_poker.api.auth.types import UserAccessProfile
+from ravvi_poker.api.auth_.types import UserAccessProfile
 from ravvi_poker.api.images import ImageProfile
 
 log = logging.getLogger(__name__)

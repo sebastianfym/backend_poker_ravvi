@@ -1,7 +1,7 @@
 import logging
 import pytest
 
-from helpers.services import Services
+from tests.helpers.services import Services
 
 log = logging.getLogger(__name__)
 

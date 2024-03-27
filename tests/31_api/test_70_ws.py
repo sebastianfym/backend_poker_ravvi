@@ -8,7 +8,7 @@ from httpx import AsyncClient
 
 from ravvi_poker.db import DBI
 from ravvi_poker.engine.tables import TablesManager
-from ravvi_poker.api.auth.types import UserAccessProfile
+from ravvi_poker.api.auth_.types import UserAccessProfile
 
 import logging
 logger = logging.getLogger(__name__)

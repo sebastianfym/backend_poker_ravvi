@@ -2,8 +2,8 @@ import pytest
 
 from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_404_NOT_FOUND
 from fastapi.testclient import TestClient
-from ravvi_poker.api.auth.types import UserAccessProfile
-from ravvi_poker.api.clubs.types import ClubProfile, ClubMemberProfile, TableProfile
+from ravvi_poker.api.auth_.types import UserAccessProfile
+from ravvi_poker.api.clubs_.types import ClubProfile, ClubMemberProfile, TableProfile
 # from ravvi_poker.api.tables import TableProfile
 
 

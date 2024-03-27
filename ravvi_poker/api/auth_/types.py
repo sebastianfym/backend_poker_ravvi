@@ -3,7 +3,6 @@ from pydantic import BaseModel
 from ravvi_poker.api.users.types import UserPrivateProfile
 
 
-
 class UserAccessProfile(BaseModel):
     device_token: str | None = None
     login_token: str | None = None

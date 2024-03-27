@@ -6,8 +6,8 @@ from ravvi_poker.engine.poker.ante import AnteUpController
 from ravvi_poker.engine.poker.nlh import Poker_NLH_REGULAR
 from ravvi_poker.engine.tables import Table_RG
 
-from helpers.x_game_case import load_game_cases, create_game_case
-from helpers.mocked_table import MockedTable
+from tests.helpers.x_game_case import load_game_cases, create_game_case
+from tests.helpers.mocked_table import MockedTable
 
 
 class TestAnteUpControllerInstance:

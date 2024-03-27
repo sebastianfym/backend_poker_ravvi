@@ -58,7 +58,7 @@ async def v1_club_txn_history(club_id: int, users=Depends(check_rights_user_club
                     )
                     result_list.append(txn_model)
                 except AttributeError as error:
-                    # log.info(f"Error getting club. Error: {error}")
+                    # log.info_(f"Error getting club. Error: {error}")
                     continue
     return result_list
 

@@ -1,7 +1,7 @@
 import pytest
 
 from ravvi_poker.db.dbi import DBI
-from helpers.x_listener import X_DBI_Listener
+from tests.helpers.x_listener import X_DBI_Listener
 
 
 @pytest.mark.dependency()

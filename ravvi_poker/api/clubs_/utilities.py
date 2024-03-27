@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_400_BAD_REQUEST
 
-from ravvi_poker.api.clubs.types import UserChipsValue
+from ravvi_poker.api.clubs_.types import UserChipsValue
 from ravvi_poker.api.utils import SessionUUID, get_session_and_user
 from ravvi_poker.db import DBI
 

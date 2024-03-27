@@ -2,8 +2,8 @@ import logging
 from unittest.mock import AsyncMock
 
 import pytest
-from helpers.x_game_case import load_game_cases, create_game_case
-from helpers.mocked_table import MockedTable
+from tests.helpers.x_game_case import load_game_cases, create_game_case
+from tests.helpers.mocked_table import MockedTable
 
 from ravvi_poker.engine.poker.nlh import Poker_NLH_REGULAR
 

@@ -1,6 +1,6 @@
 import pytest
-from helpers.mocked_table import MockedTable
-from helpers.x_game_case import load_game_cases, create_game_case
+from tests.helpers.mocked_table import MockedTable
+from tests.helpers.x_game_case import load_game_cases, create_game_case
 
 from ravvi_poker.engine.poker.bomb_pot import BombPotMixin
 from ravvi_poker.engine.poker.double_board import DoubleBoardMixin

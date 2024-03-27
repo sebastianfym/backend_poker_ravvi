@@ -1,7 +1,7 @@
 from typing import List
 
 from .router import *
-from ..clubs.types import TableParams
+from ..clubs_.types import TableParams
 from ..utils import SessionUUID, get_session_and_user
 from ...db import DBI
 

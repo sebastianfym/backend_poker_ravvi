@@ -3,8 +3,8 @@ from ravvi_poker.engine.poker.board import Board, BoardType
 
 from ravvi_poker.engine.poker.hands import Hand, LowHand
 
-from helpers.x_game_case import load_game_cases, create_game_case
-from helpers.mocked_table import MockedTable
+from tests.helpers.x_game_case import load_game_cases, create_game_case
+from tests.helpers.mocked_table import MockedTable
 
 from ravvi_poker.engine.poker.hi_low import HiLowMixin
 from ravvi_poker.engine.poker.plo import Poker_PLO_4
