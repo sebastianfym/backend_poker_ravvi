@@ -42,8 +42,8 @@ async def v1_register(params: DeviceProps, request: Request) -> UserAccessProfil
         device = await db.get_device(uuid=device_uuid) if device_uuid else None
         if not device or device.closed_ts:
             device = await db.create_device(params.device_props)
-        login = await db.create_login(device.id, user.id, ip=client_host)
-        session = await db.create_session(login.id, client_host)
+        login = await db.create_login(device.id, user.id, host=client_host)
+        session = await db.create_session(login.id, host=client_host)
         
     device_token = jwt_encode(device_uuid=str(device.uuid))
     login_token = jwt_encode(login_uuid=str(login.uuid))
@@ -135,7 +135,7 @@ async def handle_login(device_uuid, request: Request, username=None, password=No
         except AttributeError:
             client_host = "127.0.0.1"
 
-        login = await db.create_login(device.id, user.id, ip=client_host)
+        login = await db.create_login(device.id, user.id, host=client_host)
         session = await db.create_session(login.id, client_host)
 
     device_token = jwt_encode(device_uuid=str(device.uuid))
@@ -204,6 +204,6 @@ async def v1_user_logout(session_uuid: SessionUUID, request: Request):
                 client_host = request.client.host
             except AttributeError:
                 client_host = "127.0.0.1"
-            await db.close_session(session.session_id, ip=client_host)
-            await db.close_login(session.login_id, ip=client_host)
+            await db.close_session(session.session_id, host=client_host)
+            await db.close_login(session.login_id, host=client_host)
     return {}

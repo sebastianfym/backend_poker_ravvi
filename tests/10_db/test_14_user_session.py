@@ -29,7 +29,7 @@ async def test_session_constrains(session):
     with pytest.raises(DBI.ForeignKeyViolation):
         async with DBI() as db:
             # invalid login
-            await db.create_session(-1)
+            await db.create_session(-1, host="127.0.0.1")
 
 
 @pytest.mark.dependency(depends=["test_session_constrains"])
@@ -49,7 +49,7 @@ async def test_session_info(session):
 @pytest.mark.asyncio
 async def test_session_close(session):
     async with DBI() as db:
-        x_session = await db.create_session(session.login_id)
+        x_session = await db.create_session(session.login_id, host="127.0.0.1")
         assert not x_session.closed_ts
 
     async with DBI() as db:
@@ -63,7 +63,7 @@ async def test_session_close(session):
         assert not x_session.closed_ts
 
     async with DBI() as db:
-        await db.close_login(session.login_id)
+        await db.close_login(session.login_id, host="127.0.0.1")
 
     async with DBI() as db:
         session = await db.get_session(session.id)

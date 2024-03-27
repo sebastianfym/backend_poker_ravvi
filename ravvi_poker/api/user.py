@@ -45,7 +45,7 @@ async def v1_update_user(props: UserMutableProps, session_uuid: SessionUUID, req
             kwargs['country'] = get_country_code(kwargs['country'])
         if "name" in kwargs.keys():
             name = kwargs['name']
-            if await db.check_uniq_username(name) is not None:
+            if await db.check_uniq_username(name, user.id) is not None:
                 raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="This name is already taken")
             check_username(name, user.id)
         if "email" in kwargs.keys():
@@ -53,6 +53,10 @@ async def v1_update_user(props: UserMutableProps, session_uuid: SessionUUID, req
             if await db.check_uniq_email(email) is not None:
                 raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="This email is already taken")
             check_email(email)
+        if "image_id" in kwargs.keys():
+            image_id = kwargs["image_id"]
+            if await db.check_img_id(image_id) is None:
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="This image not found")
         user = await db.update_user(user.id, **kwargs)
     return UserPrivateProfile.from_row(user)
 
