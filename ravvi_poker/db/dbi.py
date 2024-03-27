@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 
 class DBI:
     DB_HOST = os.getenv("RAVVI_POKER_DB_HOST", "127.0.0.1")
-    DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "5432"))
-    DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "poker_db")
+    DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "15432"))
+    DB_NAME = os.getenv("RAVVI_POKER_DB_NAME", "develop")
     DB_USER = os.getenv("RAVVI_POKER_DB_USER", "postgres")
-    DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "postgres")
+    DB_PASSWORD = os.getenv("RAVVI_POKER_DB_PASSWORD", "password")
     POOL_LIMIT = int(os.getenv("RAVVI_POKER_DB_POOL_LIMIT", "10"))
     APPLICATION_NAME = 'CPS'
     CONNECT_TIMEOUT = 15
@@ -226,12 +226,13 @@ class DBI:
 
     # LOGIN
 
-    async def create_login(self, device_id, user_id):
-        sql = "INSERT INTO user_login (device_id, user_id) VALUES (%s, %s) RETURNING *"
+    async def create_login(self, device_id, user_id, host=None):
+        sql = "INSERT INTO user_login (device_id, user_id, host) VALUES (%s, %s, %s) RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (device_id, user_id))
+            await cursor.execute(sql, (device_id, user_id, host))
             row = await cursor.fetchone()
         return row
+
 
     async def get_login(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
@@ -241,13 +242,15 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    async def close_login(self, id=None, *, uuid=None):
+    async def close_login(self, id=None, *, uuid=None, host=None):
         key, value = self.use_id_or_uuid(id, uuid)
-        sql = f"UPDATE user_login SET closed_ts=now_utc() WHERE {key}=%s RETURNING *"  # nosec
+        sql = f"UPDATE user_login SET closed_ts=now_utc(), host=%s WHERE {key}=%s RETURNING *"  # nosec
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (value,))
+            await cursor.execute(sql, (host, value,))
             row = await cursor.fetchone()
         return row
+
+
 
     async def get_last_user_login(self, user_id=None):
         sql = f"SELECT * FROM user_login WHERE user_id=%s ORDER BY id DESC"
@@ -258,12 +261,13 @@ class DBI:
 
     # SESSION
 
-    async def create_session(self, login_id):
-        sql = "INSERT INTO user_session (login_id) VALUES (%s) RETURNING *"
+    async def create_session(self, login_id, host=None):
+        sql = "INSERT INTO user_session (login_id, host) VALUES (%s, %s) RETURNING *"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (login_id,))
+            await cursor.execute(sql, (login_id, host))
             row = await cursor.fetchone()
         return row
+
 
     async def get_session(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
@@ -291,13 +295,15 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    async def close_session(self, id=None, *, uuid=None):
+    async def close_session(self, id=None, *, uuid=None, host=None):
         key, value = self.use_id_or_uuid(id, uuid)
         async with self.cursor() as cursor:
-            sql = f"UPDATE user_session SET closed_ts=now_utc() WHERE {key}=%s RETURNING *"  # nosec
-            await cursor.execute(sql, (value,))
+            sql = f"UPDATE user_session SET closed_ts=now_utc(), host=%s  WHERE {key}=%s RETURNING *"  # nosec
+            await cursor.execute(sql, (host, value,))
+
             row = await cursor.fetchone()
         return row
+
 
     async def get_last_user_session(self, last_login_id):
         sql = "SELECT * FROM user_session WHERE login_id=%s ORDER BY id DESC"

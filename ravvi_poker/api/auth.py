@@ -28,7 +28,6 @@ class UserAccessProfile(BaseModel):
 @router.post("/register")
 async def v1_register(params: DeviceProps, request: Request) -> UserAccessProfile:
     """Register user account (guest)"""
-    # TODO: ip detection POKER-616
     try:
         client_host = request.client.host
     except AttributeError:

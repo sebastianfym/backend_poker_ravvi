@@ -6,6 +6,7 @@ def test_auth_register(api_client: TestClient):
     # CASE 1: register guest on new device
     params1 = dict(device_token=None, device_props={})
     response1 = api_client.post("/v1/auth/register", json=params1)
+    print(response1.json())
     assert response1.status_code == 200
 
     result1 = response1.json()
