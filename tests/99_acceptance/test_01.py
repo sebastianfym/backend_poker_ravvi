@@ -8,7 +8,7 @@ import pytest
 
 from ravvi_poker.api.app import app as api_app
 
-from tests.helpers.client import Client, Message
+from helpers.client import Client, Message
 
 logger = logging.getLogger(__name__)
 

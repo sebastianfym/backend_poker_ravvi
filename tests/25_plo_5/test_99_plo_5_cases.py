@@ -3,7 +3,7 @@ import asyncio
 import pytest
 from ravvi_poker.engine.poker.plo import Poker_PLO_5
 
-from tests.helpers.x_game_case import load_game_cases, create_game_case
+from helpers.x_game_case import load_game_cases, create_game_case
 
 logger = logging.getLogger(__name__)
 

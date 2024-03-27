@@ -3,7 +3,7 @@ import pytest
 import pytest_asyncio
 
 from ravvi_poker.db.dbi import DBI
-from tests.helpers.x_listener import X_DBI_Listener
+from helpers.x_listener import X_DBI_Listener
 
 
 # from helpers.x_listener import X_DBI_Listener
