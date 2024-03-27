@@ -45,7 +45,7 @@ async def v1_update_user(props: UserMutableProps, session_uuid: SessionUUID, req
             kwargs['country'] = get_country_code(kwargs['country'])
         if "name" in kwargs.keys():
             name = kwargs['name']
-            if await db.check_uniq_username(name) is not None:
+            if await db.check_uniq_username(name, user.id) is not None:
                 raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="This name is already taken")
             check_username(name, user.id)
         if "email" in kwargs.keys():

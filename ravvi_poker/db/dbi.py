@@ -208,11 +208,11 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    async def check_uniq_username(self, name):
+    async def check_uniq_username(self, name, user_id):
         name_lower = name.lower()
-        sql = "SELECT name FROM user_profile WHERE LOWER(name) = %s;"
+        sql = "SELECT name FROM user_profile WHERE LOWER(name) = %s AND id != %s;"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (name_lower,))
+            await cursor.execute(sql, (name_lower, user_id))
             row = await cursor.fetchone()
         return row
 
