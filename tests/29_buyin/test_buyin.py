@@ -1,10 +1,11 @@
 import asyncio
+import sys
 import time
+from multiprocessing import Pool, cpu_count
 
 import pytest
 
 from ravvi_poker.client.client import PokerClient
-from ravvi_poker.engine.events import CommandType
 
 collected_data = []
 
@@ -1257,71 +1258,71 @@ class TestReplenishBalance:
             member_data = await client.get_detail_member_info(new_club.id)
             assert member_data.balance == 40
 
-    @pytest.mark.asyncio
-    async def test_replenish_balance_in_game(self):
-        """
-        Проверяем что баланс пополнится. Аккаунт уже за столом и дет игра
-        """
-        client1, client2 = PokerClient(), PokerClient()
-
-        async with client1, client2:
-            await client1.auth_register()
-            await client2.auth_register()
-
-            # создаем клуб, вступаем и подтверждаем заявку
-            new_club = await client1.create_club()
-            await client2.send_req_join_in_club(new_club.id)
-            await client1.approve_req_to_join(new_club.id, client2.user_id)
-
-            # пополняем баланс клуба
-            await client1.up_club_balance(new_club.id, 1000)
-            await client1.up_user_balance(new_club.id, 100,
-                                          [
-                                              {
-                                                  "id": client1.user_id,
-                                                  "balance": 1000,
-                                                  "balance_shared": None
-                                              },
-                                              {
-                                                  "id": client2.user_id,
-                                                  "balance": 1000,
-                                                  "balance_shared": None
-                                              }
-                                          ]
-                                          )
-
-            # создаем стол
-            table_params = {
-                "blind_small": 0.1,
-                "blind_big": 0.2,
-                "game_type": "NLH",
-                "game_subtype": "REGULAR",
-                "table_type": "RG"
-            }
-            new_table = await client1.create_table(club_id=new_club.id, **table_params,
-                                                   buyin_min=10, buyin_max=20, action_time=15,
-                                                   table_seats=2)
-            # дождемся старта стола
-            await asyncio.sleep(3)
-
-            await client1.join_table(new_table.id, new_club.id, True, self.handler_collector_client_1)
-            await client2.join_table(new_table.id, new_club.id, True, self.handler_collector_client_2)
-            await asyncio.sleep(3)
-
-            await client1.accept_offer(new_table.id, buyin_value=10)
-            await client2.accept_offer(new_table.id, buyin_value=10)
-            await asyncio.sleep(3)
-            collected_data_client_1.clear()
-            collected_data_client_2.clear()
-
-            await asyncio.sleep(10)
-
-            await client1.request_offer(new_table.id)
-            await asyncio.sleep(3)
-
-            print([msg for msg in collected_data_client_1 if msg["msg_type"] not in [301, 203, 204, 304]])
-            print(collected_data_client_2)
-            raise ValueError
+    # @pytest.mark.asyncio
+    # async def test_replenish_balance_in_game(self):
+    #     """
+    #     Проверяем что баланс не пополнится, пока игра не закончится. Аккаунт уже за столом и идет игра.
+    #     """
+    #     client1, client2 = PokerClient(), PokerClient()
+    #
+    #     async with client1, client2:
+    #         await client1.auth_register()
+    #         await client2.auth_register()
+    #
+    #         # создаем клуб, вступаем и подтверждаем заявку
+    #         new_club = await client1.create_club()
+    #         await client2.send_req_join_in_club(new_club.id)
+    #         await client1.approve_req_to_join(new_club.id, client2.user_id)
+    #
+    #         # пополняем баланс клуба
+    #         await client1.up_club_balance(new_club.id, 1000)
+    #         await client1.up_user_balance(new_club.id, 100,
+    #                                       [
+    #                                           {
+    #                                               "id": client1.user_id,
+    #                                               "balance": 1000,
+    #                                               "balance_shared": None
+    #                                           },
+    #                                           {
+    #                                               "id": client2.user_id,
+    #                                               "balance": 1000,
+    #                                               "balance_shared": None
+    #                                           }
+    #                                       ]
+    #                                       )
+    #
+    #         # создаем стол
+    #         table_params = {
+    #             "blind_small": 0.1,
+    #             "blind_big": 0.2,
+    #             "game_type": "NLH",
+    #             "game_subtype": "REGULAR",
+    #             "table_type": "RG"
+    #         }
+    #         new_table = await client1.create_table(club_id=new_club.id, **table_params,
+    #                                                buyin_min=10, buyin_max=20, action_time=15,
+    #                                                table_seats=2)
+    #         # дождемся старта стола
+    #         await asyncio.sleep(3)
+    #
+    #         await client1.join_table(new_table.id, new_club.id, True, self.handler_collector_client_1)
+    #         await client2.join_table(new_table.id, new_club.id, True, self.handler_collector_client_2)
+    #         await asyncio.sleep(3)
+    #
+    #         await client1.accept_offer(new_table.id, buyin_value=10)
+    #         await client2.accept_offer(new_table.id, buyin_value=10)
+    #         await asyncio.sleep(3)
+    #         collected_data_client_1.clear()
+    #         collected_data_client_2.clear()
+    #
+    #         await asyncio.sleep(10)
+    #
+    #         await client1.request_offer(new_table.id)
+    #         await asyncio.sleep(15)
+    #
+    #         print([f"{msg}" + "\n" for msg in collected_data_client_1 if msg["msg_type"] not in [301, 203, 204, 304]])
+    #         print(collected_data_client_2)
+    #         raise ValueError
 
 
 class TestBuyInTwoClientsForAccount:
@@ -1448,3 +1449,172 @@ class TestBuyInTwoClientsForAccount:
                     }
                 }
             ]
+
+    @pytest.mark.asyncio
+    async def test_two_clients_two_offer_take_seat(self):
+        """
+        Проверяем что если один аккаунт находится за двумя устройствами, то оффер получит только то устройство,
+        которое инициировало take_seat (оба клиента зашли как зрители). После того как второе устройство запросит оффер,
+        то оно пропадет с первого устройства
+        """
+        client1, client2 = PokerClient(), PokerClient()
+
+        async with client1, client2:
+            await client1.auth_register()
+            await client1.password_update(None, "12345678")
+            await client2.login_with_username_and_password(f"{client1.user_id}", "12345678")
+
+            new_club = await client1.create_club()
+
+            # пополняем баланс клуба
+            await client1.up_club_balance(new_club.id, 1000)
+            await client1.up_user_balance(new_club.id, 50,
+                                          [
+                                              {
+                                                  "id": client1.user_id,
+                                                  "balance": 1000,
+                                                  "balance_shared": None
+                                              }
+                                          ]
+                                          )
+
+            # создаем стол
+            table_params = {
+                "blind_small": 0.1,
+                "blind_big": 0.2,
+                "game_type": "NLH",
+                "game_subtype": "REGULAR",
+                "table_type": "RG"
+            }
+            new_table = await client1.create_table(club_id=new_club.id, **table_params,
+                                                   buyin_min=10, buyin_max=20, action_time=15,
+                                                   table_seats=2)
+            # дождемся старта стола
+            await asyncio.sleep(3)
+
+            await client1.join_table(new_table.id, new_club.id, False, self.handler_collector_client_1)
+            await client2.join_table(new_table.id, new_club.id, False, self.handler_collector_client_2)
+            await asyncio.sleep(3)
+
+            # проверяем что у обоих аккаунтов только приветственное сообщение
+            assert collected_data_client_1 == collected_data_client_2 == [
+                {
+                    "client_id": None,
+                    "cmd_id": None,
+                    "game_id": None,
+                    "msg_type": 101,
+                    "table_id": new_table.id,
+                    "props": table_params | {
+                        "captcha": False,
+                        "ev_chop": False,
+                        "game": None,
+                        "player_move": None,
+                        "seats": [None, None],
+                        "table_redirect_id": new_table.id,
+                        "users": [],
+                        "view_during_move": False,
+                        'table_name': None
+                    }
+                }
+            ]
+            collected_data_client_1.clear()
+            collected_data_client_2.clear()
+
+            await client1.take_seat(new_table.id, 0)
+            await asyncio.sleep(3)
+
+            assert collected_data_client_1[0]["props"]["closed_at"] < time.time() + 60
+            collected_data_client_1[0]["props"]["closed_at"] = 0
+            assert collected_data_client_1 == [
+                # предложение оффера
+                {
+                    "client_id": None,
+                    "cmd_id": None,
+                    "game_id": None,
+                    "msg_type": 103,
+                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "table_id": new_table.id
+                },
+                # сообщение с информацией, что нас посадили за стол
+                {
+                    "client_id": None,
+                    "cmd_id": None,
+                    "game_id": None,
+                    "msg_type": 201,
+                    "table_id": new_table.id,
+                    "props": {
+                        "seat_id": 0,
+                        "user": {'balance': None,
+                                 'id': client1.user_id,
+                                 'image_id': None,
+                                 'name': f"u{client1.user_id}"},
+                    }
+                }
+            ]
+            assert collected_data_client_2 == [
+                # сообщение с информацией, что нас посадили за стол
+                {
+                    "client_id": None,
+                    "cmd_id": None,
+                    "game_id": None,
+                    "msg_type": 201,
+                    "table_id": new_table.id,
+                    "props": {
+                        "seat_id": 0,
+                        "user": {'balance': None,
+                                 'id': client2.user_id,
+                                 'image_id': None,
+                                 'name': f"u{client2.user_id}"},
+                    }
+                }
+            ]
+            collected_data_client_1.clear()
+            collected_data_client_2.clear()
+
+            await asyncio.sleep(3)
+            await client2.request_offer(new_table.id)
+            await asyncio.sleep(3)
+
+            assert collected_data_client_1 == [
+                # сообщение - оффер более не действителен
+                {
+                    "client_id": None,
+                    "cmd_id": None,
+                    "game_id": None,
+                    "msg_type": 103,
+                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "table_id": new_table.id
+                },
+            ]
+            assert collected_data_client_2[1]["props"]["closed_at"] < time.time() + 60
+            collected_data_client_2[1]["props"]["closed_at"] = 0
+            assert collected_data_client_2 == [
+                # сообщение - оффер более не действителен
+                {
+                    "client_id": None,
+                    "cmd_id": None,
+                    "game_id": None,
+                    "msg_type": 103,
+                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "table_id": new_table.id
+                },
+                # предложение оффера
+                {
+                    "client_id": None,
+                    "cmd_id": None,
+                    "game_id": None,
+                    "msg_type": 103,
+                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "table_id": new_table.id
+                },
+            ]
+
+
+if __name__ == "__main__":
+    test_funcs = []
+    for test_class in [obj for obj in dir() if "Test" in obj]:
+        for test_func in [obj for obj in dir(locals()[test_class]) if obj[:4] == "test"]:
+            test_funcs.append([f"tests/29_buyin/test_buyin.py::{test_class}::{test_func}", "-rN", "--disable-warnings"])
+
+    with Pool(processes=cpu_count()) as pool:
+        pool.map(pytest.main, test_funcs)

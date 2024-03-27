@@ -435,6 +435,12 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def get_account(self, member_id: int):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM user_account WHERE id=%s", (member_id,))
+            row = await cursor.fetchone()
+        return row
+
     async def get_account_for_update(self, member_id):
         async with self.cursor() as cursor:
             await cursor.execute("SELECT * FROM user_account WHERE id=%s FOR UPDATE", (member_id,))
@@ -657,6 +663,18 @@ class DBI:
             await cursor.execute(sql, (table_id,))
             rows = cursor.fetchall()
         return rows
+
+    async def get_last_table_reward(self, table_id: int, account_id: int, interval_in_hours: int):
+        """
+        Получить последнюю выплату за столом для выбранного игрока.
+        Используется столом для определения buyin если включен ratholing.
+        """
+        sql = ("SELECT txn_value FROM user_account_txn WHERE txn_type = 'REWARD' AND account_id = %s "
+               "AND props->table_id = %s AND created_ts > now() - interval %s hour ORDER BY id DESC LIMIT 1")
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, account_id, table_id, interval_in_hours)
+            row = await cursor.fetchone()
+        return row
 
     # GAMES
 
