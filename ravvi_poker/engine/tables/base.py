@@ -5,6 +5,7 @@ from typing import List, Mapping
 from .configs import configCls
 from .status import TableStatus
 from ..events import Command, Message
+from ..game import GameConditionType, Game
 from ..user import User
 from ...db import DBI
 from ...logging import getLogger, ObjectLoggerAdapter
@@ -416,6 +417,7 @@ class Table:
                     await self.remove_users(db)
 
     def user_can_play(self, user):
+        # TODO убрать int и float из типа баланса
         return isinstance(user.balance, (int, float, Decimal)) and user.balance > 0
 
     def user_can_stay(self, user):
@@ -423,7 +425,7 @@ class Table:
             return True
         return self.user_can_play(user)
 
-    def get_game_players(self, *, min_size=2) -> List[User]:
+    def get_game_players(self, *, min_size) -> List[User]:
         players = []
         for i, user in enumerate(self.seats):
             if user and self.user_can_play(user):
@@ -440,8 +442,10 @@ class Table:
         self.dealer_idx = players[0][0]
         return [user for _, user in players]
 
-    async def create_game(self, users):
+    async def create_game(self, users) -> Game:
         game = await self.game_factory(users)
+        if game.condition is not GameConditionType.READY:
+            return game
         async with self.DBI() as db:
             row = await db.create_game(
                 table_id=self.table_id,
@@ -478,7 +482,7 @@ class Table:
 
     async def run_game(self):
         async with self.lock:
-            users = self.get_game_players()
+            users = self.get_game_players(min_size=getattr(getattr(self, "game_modes_config"), "players_required"))
             if not users:
                 # сбрасываем уровень бомпота
                 if self.bombpot:
@@ -488,6 +492,11 @@ class Table:
                     await self.ante.reset_ante_level()
                 return
             self.game = await self.create_game(users)
+        if self.game.condition is GameConditionType.FULL_RECONFIGURE:
+            return
+        while self.game.condition is GameConditionType.FAST_RECONFIGURE:
+            await self.run_game()
+            return
         try:
             await self.game.run()
             # TODO сюда можно перенести обновление параметров счетчика bompot и ante, чтобы игра ничего не знала о столе

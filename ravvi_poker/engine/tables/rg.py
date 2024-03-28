@@ -2,6 +2,7 @@ import asyncio
 import decimal
 import time
 from decimal import Decimal, ROUND_HALF_DOWN
+from typing import List
 
 from psycopg.rows import Row
 
@@ -61,6 +62,8 @@ class Table_RG(Table):
         # создаем сессию
         table_session = await db.register_table_session(table_id=self.table_id, account_id=account.id)
         user.table_session_id = table_session.id
+        # ставим флаг, что это новый участник
+        user.is_new_player_on_table = True
         self.log.info("on_player_enter(%s): done", user.id)
         return True
 
@@ -230,6 +233,23 @@ class Table_RG(Table):
 
         # обновляем баланс
         await self.broadcast_PLAYER_BALANCE(db, user.id, user.balance)
+
+    # async def get_game_players(self, *, min_size=2) -> List[User]:
+    #     users = super().get_game_players()
+    #     if len(users) > min_size:
+    #         # если все игроки имеют флаг is_new_player_on_table, то снимем его и вернем первоначальный список игроков
+    #         if all([user.is_new_player_on_table for user in users]):
+    #             for user in users:
+    #                 user.is_new_player_on_table = False
+    #         else:
+    #             # прокручиваем метку дилера пока она не выпадет на игрока без флага is_new_player_on_table
+    #             while users[0].is_new_player_on_table:
+    #                 users = self.get_game_players()
+    #     elif users is not None and any([user.is_new_player_on_table for user in users]):
+    #         # снимаем флаг is_new_player_on_table, по причине того что у нас минимальное количество участников
+    #         for user in users:
+    #             user.is_new_player_on_table = False
+    #     return users
 
     async def run_table(self):
         self.log.info("%s", self.status)

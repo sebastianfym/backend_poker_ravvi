@@ -1,4 +1,5 @@
 import logging
+from enum import Enum
 
 from .cards import Deck
 from .events import Message, Command
@@ -8,6 +9,12 @@ from ..db import DBI
 from ..logging import ObjectLoggerAdapter
 
 logger = logging.getLogger(__name__)
+
+
+class GameConditionType(Enum):
+    READY = "READY"
+    FAST_RECONFIGURE = "FAST_RECONFIGURE"
+    FULL_RECONFIGURE = "FULL_RECONFIGURE"
 
 
 class Game:
@@ -28,6 +35,8 @@ class Game:
         self.boards_types: list[BoardType] | None = None
         self.boards: list[Board] | None = None
 
+        self.condition = self.get_condition()
+
     def player_factory(self, user) -> Player:
         return Player(user)
 
@@ -46,6 +55,41 @@ class Game:
     @property
     def game_props(self):
         return None
+
+    def get_condition(self) -> GameConditionType:
+        """
+        Проверяет можно ли игре запускаться в данной конфигурации игроков
+        """
+        if len(self.players) < (
+                players_required := getattr(getattr(self.table, "game_modes_config"), "players_required")):
+            return GameConditionType.FULL_RECONFIGURE
+        if self.table.TABLE_TYPE == "RG":
+            # снимаем флаг is_new_player_on_table, по причине того что у нас минимальное количество участников
+            if len(self.players) == players_required and any([p.user.is_new_player_on_table for p in self.players]):
+                for p in self.players:
+                    p.user.is_new_player_on_table = False
+            # если все участники являются новыми, то снимаем флаг is_new_player_on_table
+            elif len(self.players) > players_required and all([p.user.is_new_player_on_table for p in self.players]):
+                for p in self.players:
+                    p.user.is_new_player_on_table = False
+
+            # если на позиции дилера стоит участник с флагом is_new_player_on_table, то требуется быстрая пересборка
+            if self.players[0].user.is_new_player_on_table:
+                return GameConditionType.FAST_RECONFIGURE
+
+            # проверяем есть ли новые игроки, если да то выбрасываем их из игры если они не в положении большого
+            # блайнда
+            if any([p.user.is_new_player_on_table for p in self.players]):
+                cleared_players_list = []
+                for num, p in self.players:
+                    # TODO игрок может попросить принудительно поставить за него большой блайнд
+                    if p.user.is_new_player_on_table and num != 2:
+                        continue
+                    else:
+                        cleared_players_list.append(p)
+                self.players = cleared_players_list
+
+        return GameConditionType.READY
 
     def get_info(self, users_info: dict = None, user_id: int = None) -> dict:
         info = dict(

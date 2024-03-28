@@ -24,7 +24,7 @@ class TestOfferResult:
         db_mocked = AsyncMock()
         account_mock = MagicMock()
         account_mock.balance = 10
-        db_mocked.get_account_for_update.return_value = account_mock
+        db_mocked.get_account.return_value = account_mock
         await table.handle_cmd_offer_result(db_mocked, cmd_id=1, client_id=1, user_id=1, buyin_value=None)
 
         make_player_offer.assert_called_once_with(db_mocked, user_mocked, 1, 10)

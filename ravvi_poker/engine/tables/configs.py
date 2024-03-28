@@ -52,8 +52,8 @@ class TableSafety(TableConfigParams):
 
 
 class TableGameModesConfig(TableConfigParams):
-    def __init__(self, game_type: str, game_subtype: str, jackpot: bool | None = None, ante_up: bool | None = None,
-                 double_board: bool | None = None,
+    def __init__(self, game_type: str, game_subtype: str, players_required: int = 2, jackpot: bool | None = None,
+                 ante_up: bool | None = None, double_board: bool | None = None,
                  bombpot_freq: int | None = None, bombpot_min: int | None = None, bombpot_max: int | None = None,
                  bombpot_double_board: bool | None = None,
                  seven_deuce: int | None = None, each_prize: int | None = None, hi_low: bool | None = None,
@@ -63,6 +63,7 @@ class TableGameModesConfig(TableConfigParams):
         from ravvi_poker.engine.poker.ofc import Poker_OFC_X, Poker_OFC_Limited
 
         super().__init__()
+        self.players_required = players_required
         self.jackpot = jackpot
 
         self.ante_up = ante_up
