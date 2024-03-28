@@ -13,8 +13,10 @@ log = getLogger(__name__)
 @router.post("/register")
 async def v1_register(params: DeviceProps, request: Request) -> UserAccessProfile:
     """Register user account (guest)"""
-    # TODO: ip detection POKER-616
-    client_host = ''  # request.client.host
+    try:
+        client_host = request.client.host
+    except AttributeError:
+        client_host = "127.0.0.1"
     device_uuid = jwt_get(params.device_token, "device_uuid")
     log.info("%s: auth.register device=%s", client_host, device_uuid)
 
@@ -23,8 +25,8 @@ async def v1_register(params: DeviceProps, request: Request) -> UserAccessProfil
         device = await db.get_device(uuid=device_uuid) if device_uuid else None
         if not device or device.closed_ts:
             device = await db.create_device(params.device_props)
-        login = await db.create_login(device.id, user.id)
-        session = await db.create_session(login.id)
+        login = await db.create_login(device.id, user.id, host=client_host)
+        session = await db.create_session(login.id, client_host)
 
     device_token = jwt_encode(device_uuid=str(device.uuid))
     login_token = jwt_encode(login_uuid=str(login.uuid))

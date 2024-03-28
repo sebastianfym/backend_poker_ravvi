@@ -6,7 +6,7 @@ from io import BytesIO
 
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 from fastapi.testclient import TestClient
-from ravvi_poker.api.auth_.types import UserAccessProfile
+from ravvi_poker.api.auth.types import UserAccessProfile
 from ravvi_poker.api.images import ImageProfile
 
 log = logging.getLogger(__name__)
@@ -22,31 +22,31 @@ def test_upload_image(api_client: TestClient, api_guest: UserAccessProfile):
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
 
     # no image data
-    response = api_client.post("/v1/images")
+    response = api_client.post("/api/v1/images")
     assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
 
     image_png =  create_dummy_image_data('PNG', 1024, 800)
     image_jpeg =  create_dummy_image_data('JPEG', 300, 200)
 
     # sample image data
-    response = api_client.post("/v1/images", files={'file': BytesIO(image_png)})
+    response = api_client.post("/api/v1/images", files={'file': BytesIO(image_png)})
     assert response.status_code == HTTP_200_OK
     image_1 = ImageProfile(**response.json())
     assert image_1.id
     assert image_1.is_owner
 
-    response = api_client.post("/v1/images", files={'file': BytesIO(image_jpeg)})
+    response = api_client.post("/api/v1/images", files={'file': BytesIO(image_jpeg)})
     assert response.status_code == HTTP_200_OK
     image_2 = ImageProfile(**response.json())
     assert image_2.id
     assert image_2.is_owner
 
     # get image
-    response = api_client.get(f"/v1/images/123456")
+    response = api_client.get(f"/api/v1/images/123456")
     assert response.status_code == HTTP_404_NOT_FOUND
 
     # get image
-    response = api_client.get(f"/v1/images/{image_1.id}")
+    response = api_client.get(f"/api/v1/images/{image_1.id}")
     assert response.status_code == HTTP_200_OK
     #log.info("%s %s", response, response.headers)
     assert response.headers.get('cache-control')
@@ -56,7 +56,7 @@ def test_upload_image(api_client: TestClient, api_guest: UserAccessProfile):
         assert im.format == 'PNG'
         assert im.size == (500, 391)
 
-    response = api_client.get(f"/v1/images/{image_2.id}")
+    response = api_client.get(f"/api/v1/images/{image_2.id}")
     assert response.status_code == HTTP_200_OK
     #log.info("%s %s", response, response.headers)
     assert response.headers.get('cache-control')
@@ -67,7 +67,7 @@ def test_upload_image(api_client: TestClient, api_guest: UserAccessProfile):
         assert im.size == (300, 200)
 
     # get image list
-    response = api_client.get(f"/v1/images")
+    response = api_client.get(f"/api/v1/images")
     assert response.status_code == HTTP_200_OK
     images = [ImageProfile(**r) for r in response.json()]
     assert images

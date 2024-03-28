@@ -430,6 +430,7 @@ async def v1_set_user_data(club_id: int, params: ChangeMembersData, users=Depend
     - **club_id**: number
 
     """
+    #Todo добавить типизацию для вывода !
     user_id = params.id
     nickname = params.nickname
     club_comment = params.club_comment

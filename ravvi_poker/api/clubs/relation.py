@@ -8,7 +8,7 @@ from .types import *
 
 @router.get("/{club_id}/relation_clubs", status_code=HTTP_200_OK,
             summary="Returns all relationships with other clubs for the club with the ID")
-async def v1_get_relation_clubs(club_id: int, session_uuid: SessionUUID):
+async def v1_get_relation_clubs(club_id: int, session_uuid: SessionUUID) -> List[ClubProfile]:
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         club = await db.get_club(club_id)
@@ -25,7 +25,7 @@ async def v1_get_relation_clubs(club_id: int, session_uuid: SessionUUID):
 
 
 @router.get("/{union_id}/relation_union", status_code=HTTP_200_OK, summary="Get a union by id")
-async def v1_get_relation_union(union_id: int, session_uuid: SessionUUID):
+async def v1_get_relation_union(union_id: int, session_uuid: SessionUUID) -> UnionProfile:
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         try:

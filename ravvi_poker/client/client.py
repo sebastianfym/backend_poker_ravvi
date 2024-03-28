@@ -6,8 +6,8 @@ import aiohttp
 import websockets
 from fastapi import HTTPException
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
-from ravvi_poker.api.auth_.types import UserAccessProfile
-from ravvi_poker.api.clubs_.types import ClubProfile, ClubMemberProfile, MemberAccountDetailInfo, AccountDetailInfo, \
+from ravvi_poker.api.auth.types import UserAccessProfile
+from ravvi_poker.api.clubs.types import ClubProfile, ClubMemberProfile, MemberAccountDetailInfo, AccountDetailInfo, \
     ClubBalance, ChipsTxnItem, TableProfile
 from ravvi_poker.api.images import ImageProfile
 # from ravvi_poker.api.tables import TableProfile

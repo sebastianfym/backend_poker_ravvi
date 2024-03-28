@@ -14,7 +14,6 @@ class ErrorException(Exception):
     detail: str
     message: str
 
-# CLUBS
 
 class ClubProps(BaseModel):
     name: str | None = None
@@ -69,7 +68,6 @@ class ClubMemberProfile(BaseModel):
 
     agent_id: int | None = None
 
-
 class SortingByDate(BaseModel):
     starting_date: float | None = None
     end_date: float | None = None
@@ -92,13 +90,11 @@ class UserRequest(BaseModel):
 
     country: str | None
 
-# UNIONS
 
 class UnionProfile(BaseModel):
     name: str | None = None
     """По мере прогресса раширить модель"""
 
-# MEMBERS
 
 class MemberApplicationForMembership(BaseModel):
     user_comment: str | None = None
@@ -173,7 +169,6 @@ class ClubAgentProfile(BaseModel): #Todo изменить
     super_agents_count: int | None = None
     players: int | None = 0
 
-# CHIPS and REQUESTS
 
 class ClubChipsValue(BaseModel):
     amount: Decimal = Field(

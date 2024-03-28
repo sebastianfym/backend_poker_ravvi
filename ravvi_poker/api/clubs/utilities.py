@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_400_BAD_REQUEST
 
-from ravvi_poker.api.clubs_.types import UserChipsValue
+from ravvi_poker.api.clubs.types import UserChipsValue
 from ravvi_poker.api.utils import SessionUUID, get_session_and_user
 from ravvi_poker.db import DBI
 
@@ -20,6 +20,7 @@ async def check_rights_user_club_owner(club_id: int, session_uuid: SessionUUID):
         if club_owner_account is None or club_owner_account.user_role != "O":
             raise HTTPException(status_code=HTTP_403_FORBIDDEN,
                                 detail="You don't have enough rights to perform this action")
+
     return club_owner_account, user, club
 
 

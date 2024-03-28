@@ -16,7 +16,7 @@ log = getLogger(__name__)
 @router.post("", status_code=HTTP_201_CREATED, summary="Create new club")
 async def v1_create_club(params: ClubProps, session_uuid: SessionUUID) -> ClubProfile:
     """
-    Служит для создания клуба
+    Эндпоинт служит для создания клуба
     """
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)

@@ -5,9 +5,12 @@ from ...db import DBI
 from ..utils import SessionUUID, get_session_and_user, check_club_name
 from .router import router
 from .types import *
+from logging import getLogger
 
 
-@router.post("/{club_id}/tables", status_code=HTTP_201_CREATED, summary="Create club table",
+log = getLogger(__name__)
+
+@router.post("/{club_id}/tables", status_code=HTTP_201_CREATED, summary="Создание стола",
              responses={
                  404: {"model": ErrorException, "detail": "Club not found",
                        "message": "Club not found"},

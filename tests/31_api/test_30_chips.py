@@ -4,8 +4,8 @@ from decimal import Decimal
 import pytest
 
 from fastapi.testclient import TestClient
-from ravvi_poker.api.auth_.types import UserAccessProfile
-from ravvi_poker.api.clubs_.types import ClubProfile, ClubMemberProfile
+from ravvi_poker.api.auth.types import UserAccessProfile
+from ravvi_poker.api.clubs.types import ClubProfile, ClubMemberProfile
 
 
 @pytest.fixture
@@ -23,9 +23,9 @@ def client(request, api_client: TestClient, api_guest: UserAccessProfile,
 def create_club(client: list[TestClient] | TestClient):
     params = {}
     if isinstance(client, list):
-        response = client[0].post("/v1/clubs", json=params)
+        response = client[0].post("/api/v1/clubs", json=params)
     elif isinstance(client, TestClient):
-        response = client.post("/v1/clubs", json=params)
+        response = client.post("/api/v1/clubs", json=params)
     else:
         raise ValueError("incorrect client type")
     club = ClubProfile(**response.json())
@@ -41,17 +41,17 @@ def test_txns_in_club(api_client: TestClient, api_guest: UserAccessProfile, api_
 
     # create club without props (defaults)
     params = {}
-    response = api_client.post("/v1/clubs", json=params)
+    response = api_client.post("/api/v1/clubs", json=params)
     assert response.status_code == 201
 
     club1 = ClubProfile(**response.json())
     assert club1.id
     assert club1.name.startswith("CLUB-")
 
-    response = api_client_2.post(f"/v1/clubs/{club1.id}/members", json={})
+    response = api_client_2.post(f"/api/v1/clubs/{club1.id}/members", json={})
     assert response.status_code == 200
 
-    response = api_client.get(f"/v1/clubs/{club1.id}/members/requests")
+    response = api_client.get(f"/api/v1/clubs/{club1.id}/members/requests")
     assert response.status_code == 200
 
     data = {
@@ -61,20 +61,20 @@ def test_txns_in_club(api_client: TestClient, api_guest: UserAccessProfile, api_
         "comment": "string",
         "user_role": "A"
     }
-    response = api_client.put(f"/v1/clubs/{club1.id}/members/{response.json()[0]['id']}", json=data)
+    response = api_client.put(f"/api/v1/clubs/{club1.id}/members/{response.json()[0]['id']}", json=data)
     assert response.status_code == 200
 
-    response = api_client.get(f"/v1/clubs/{club1.id}/members")
+    response = api_client.get(f"/api/v1/clubs/{club1.id}/members")
     second_member_id = response.json()[1]['id']
     assert response.status_code == 200
 
-    response = api_client.post(f"/v1/chips/{club1.id}/club/chips", json={"amount": 5000})
+    response = api_client.post(f"/api/v1/chips/{club1.id}/club/chips", json={"amount": 5000})
     assert response.status_code == 201
 
-    response = api_client.post(f"/v1/chips/{club1.id}/club/chips", json={"amount": -50})
+    response = api_client.post(f"/api/v1/chips/{club1.id}/club/chips", json={"amount": -50})
     assert response.status_code == 201
 
-    response = api_client.get(f"/v1/clubs/{club1.id}")
+    response = api_client.get(f"/api/v1/clubs/{club1.id}")
     assert response.status_code == 200
 
     # response = api_client.delete(f"/v1/chips/{club1.id}/club/chips", data={"amount": 5000})
@@ -91,7 +91,7 @@ def test_txns_in_club(api_client: TestClient, api_guest: UserAccessProfile, api_
             },
         ]
     }
-    response = api_client.post(f"/v1/chips/{club1.id}/players/chips", json=data)
+    response = api_client.post(f"/api/v1/chips/{club1.id}/players/chips", json=data)
     assert response.status_code == 201
 
     data = {
@@ -105,14 +105,14 @@ def test_txns_in_club(api_client: TestClient, api_guest: UserAccessProfile, api_
             },
         ]
     }
-    response = api_client.post(f"/v1/chips/{club1.id}/players/chips", json=data)
+    response = api_client.post(f"/api/v1/chips/{club1.id}/players/chips", json=data)
     assert response.status_code == 201
 
-    response = api_client.post(f"/v1/chips/{club1.id}/agents/chips/{second_member_id}",
+    response = api_client.post(f"/api/v1/chips/{club1.id}/agents/chips/{second_member_id}",
                                json={"amount": 200, "mode": "give_out"})
     assert response.status_code == 201
 
-    response = api_client.post(f"/v1/chips/{club1.id}/agents/chips/{second_member_id}",
+    response = api_client.post(f"/api/v1/chips/{club1.id}/agents/chips/{second_member_id}",
                                json={"amount": 200, "mode": "pick_up"})
     assert response.status_code == 201
 
@@ -120,23 +120,23 @@ def test_txns_in_club(api_client: TestClient, api_guest: UserAccessProfile, api_
       "amount": 200,
       "agent": True
     }
-    response = api_client_2.post(f"/v1/chips/{club1.id}/requests/chips", json=data)
+    response = api_client_2.post(f"/api/v1/chips/{club1.id}/requests/chips", json=data)
     assert response.status_code == 201
 
-    response = api_client.get(f"/v1/chips/{club1.id}/requests/chips")
+    response = api_client.get(f"/api/v1/chips/{club1.id}/requests/chips")
     assert response.status_code == 200
 
-    response = api_client.put(f"/v1/chips/{club1.id}/requests/chips/{response.json()['users_requests'][0]['txn_id']}",
+    response = api_client.put(f"/api/v1/chips/{club1.id}/requests/chips/{response.json()['users_requests'][0]['txn_id']}",
                               json={"action": "approve"})
     assert response.status_code == 200
 
-    response = api_client_2.post(f"/v1/chips/{club1.id}/requests/chips", json=data)
+    response = api_client_2.post(f"/api/v1/chips/{club1.id}/requests/chips", json=data)
     assert response.status_code == 201
 
-    response = api_client.get(f"/v1/chips/{club1.id}/requests/chips")
+    response = api_client.get(f"/api/v1/chips/{club1.id}/requests/chips")
     assert response.status_code == 200
 
-    response = api_client.put(f"/v1/chips/{club1.id}/requests/chips/{response.json()['users_requests'][0]['txn_id']}",
+    response = api_client.put(f"/api/v1/chips/{club1.id}/requests/chips/{response.json()['users_requests'][0]['txn_id']}",
                               json={"action": "reject"})
     assert response.status_code == 200
 
@@ -144,9 +144,9 @@ def test_txns_in_club(api_client: TestClient, api_guest: UserAccessProfile, api_
         "amount": 200,
         "agent": True
     }
-    response = api_client_2.post(f"/v1/chips/{club1.id}/requests/chips", json=data)
+    response = api_client_2.post(f"/api/v1/chips/{club1.id}/requests/chips", json=data)
     assert response.status_code == 201
 
-    response = api_client.get(f"/v1/chips/{club1.id}/requests/chips")
+    response = api_client.get(f"/api/v1/chips/{club1.id}/requests/chips")
     assert response.status_code == 200
 

@@ -24,6 +24,7 @@ async def v1_approve_join_request(club_id: int, user_id: int, params: UserReques
     - **club_id**: number
 
     """
+    # Todo Добавить типизацию !
     agent_id = params.agent_id
     rakeback = params.rakeback
     nickname = params.nickname
@@ -73,7 +74,7 @@ async def v1_reject_join_request(club_id: int, user_id: int, users=Depends(check
         return HTTP_200_OK
 
 
-@router.get("/{club_id}/members/requests", status_code=HTTP_200_OK,summary="Отображение всех заявок на вступление в клуб",
+@router.get("/{club_id}/members/requests", status_code=HTTP_200_OK, summary="Отображение всех заявок на вступление в клуб",
             responses={
                 404: {"model": ErrorException, "detail": "Member not found",
                       "message": "Member not found"},

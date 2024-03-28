@@ -95,18 +95,6 @@ async def v1_delete_chip_from_club_balance(club_id: int, chips_value: ClubChipsV
         await db.txn_with_chip_on_club_balance(club_id, chips_value.amount, "CHIPSOUT", club_owner_account.id, user.id)
 
 
-async def check_compatibility_recipient_and_balance_type(club_id: int, request: UserChipsValue):
-    async with DBI() as db:
-        club_member = await db.find_account(user_id=request.account_id, club_id=club_id)
-    try:
-        if club_member.user_role not in ["A", "S"] and request.balance == "balance_shared":
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='User has not agent balance')
-        request.club_member = club_member
-        return request
-    except AttributeError:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='User account not found in club')
-
-
 @router.post("/{club_id}/giving_chips_to_the_user", status_code=HTTP_200_OK,
              summary="Owner giv chips to the club's user")
 async def v1_club_giving_chips_to_the_user(club_id: int, request: Annotated[
@@ -126,10 +114,8 @@ async def v1_club_delete_chips_from_the_user(club_id: int, request: Annotated[
     async with DBI() as db:
         member = await db.find_account(user_id=request.account_id, club_id=club_id)
         if request.balance == "balance":
-            # await db.delete_chips_from_the_account_balance(request.amount, request.account_id, users[0].id)
             await db.delete_chips_from_the_account_balance(request.amount, member.id, users[0].id)
         else:
-            # await db.delete_chips_from_the_agent_balance(request.amount, request.account_id, users[0].id)
             await db.delete_chips_from_the_agent_balance(request.amount, member.id, users[0].id)
 
 

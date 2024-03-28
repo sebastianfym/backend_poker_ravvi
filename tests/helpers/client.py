@@ -45,7 +45,7 @@ class Client:
                return await self.get_result(response)
             
     async def register(self):
-        status, data = await self.post('/v1/auth/register')
+        status, data = await self.post('/api/v1/auth/register')
         assert status == 200
         assert data
         assert 'device_token' in data

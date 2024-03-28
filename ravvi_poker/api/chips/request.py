@@ -7,8 +7,8 @@ from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UN
 from pydantic import BaseModel, Field, field_validator, validator
 
 from .utilities import check_rights_user_club_owner_or_manager
-from ..clubs_.utilities import check_rights_user_club_owner
-# from ..clubs_ import check_rights_user_club_owner, check_rights_user_club_owner_or_manager
+from ..clubs.utilities import check_rights_user_club_owner
+# from ..clubs import check_rights_user_club_owner, check_rights_user_club_owner_or_manager
 from ...db import DBI
 from ..utils import SessionUUID, get_session_and_user
 # from ..types import HTTPError

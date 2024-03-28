@@ -5,7 +5,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ..db import DBI
 
-from . import auth_
 from . import users
 from . import auth
 from . import user
@@ -47,14 +46,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-v1 = APIRouter(prefix="/v1")
-v1.include_router(auth.router)
-v1.include_router(user.router)
+v1 = APIRouter(prefix="/api/v1")
+v1.include_router(auth.router.router)
+v1.include_router(users.router.router)
 v1.include_router(images.router)
-v1.include_router(lobby.router)
-v1.include_router(clubs.router)
-v1.include_router(tables.router)
-v1.include_router(info.router)
+v1.include_router(lobby.router.router)
+v1.include_router(clubs.router.router) #Todo  закончить с клубами и проверить все
+v1.include_router(tables.router.router)
+v1.include_router(info.router.router)
 v1.include_router(chips.router.router)
 v1.include_router(ws.router)
 

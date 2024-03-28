@@ -17,7 +17,10 @@ log = getLogger(__name__)
 async def v1_device(params: DeviceLoginProps, request: Request) -> UserAccessProfile:
     """Login with device/login token"""
     # TODO: ip detection POKER-616
-    client_host = ''  # request.client.host
+    try:
+        client_host = request.client.host
+    except AttributeError:
+        client_host = "127.0.0.1"
     device_uuid = jwt_get(params.device_token, "device_uuid")
     login_uuid = jwt_get(params.login_token, "login_uuid")
     log.info("%s: auth.device device=%s login=%s", client_host, device_uuid, login_uuid)
@@ -39,7 +42,7 @@ async def v1_device(params: DeviceLoginProps, request: Request) -> UserAccessPro
             login_token = None
             access_token = None
         elif login and user:
-            session = await db.create_session(login.id)
+            session = await db.create_session(login.id, client_host)
             device_token = jwt_encode(device_uuid=str(device.uuid))
             login_token = jwt_encode(login_uuid=str(login.uuid))
             access_token = jwt_encode(session_uuid=str(session.uuid))

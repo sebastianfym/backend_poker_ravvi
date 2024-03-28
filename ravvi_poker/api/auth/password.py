@@ -21,7 +21,7 @@ async def v1_user_password(params: UserChangePassword, session_uuid: SessionUUID
             if not password_verify(params.current_password, user.password_hash):
                 raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
         elif params.current_password:
-                raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
+            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
         hash = password_hash(params.new_password)
         await db.update_user_password(user.id, password_hash=hash)
     return {}

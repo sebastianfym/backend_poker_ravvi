@@ -8,7 +8,7 @@ from ...db import DBI
 
 
 @router.get("/{user_id}", summary="Get user public info")
-async def v1_get_user_public(user_id: int, session_uuid: SessionUUID) -> UserPublicProfile:
+async def v1_get_user_public(user_id: int, session_uuid: SessionUUID):
     """Get user public info"""
     async with DBI() as db:
         await get_session_and_user(db, session_uuid)

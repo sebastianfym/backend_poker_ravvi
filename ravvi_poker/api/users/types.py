@@ -61,6 +61,7 @@ class UserMutableProps(BaseModel):
 class UserEmail(BaseModel):
     email: EmailStr
 
+
 class UserTempEmail(BaseModel):
     user_id: int
     uuid: UUID
