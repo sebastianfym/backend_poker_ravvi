@@ -7,7 +7,6 @@ from ..db import DBI
 
 from . import users
 from . import auth
-from . import user
 from . import images
 from . import lobby
 from . import clubs
