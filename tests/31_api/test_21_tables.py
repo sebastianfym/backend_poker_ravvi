@@ -65,7 +65,7 @@ def test_create_table(api_client: TestClient, api_guest: UserAccessProfile):
     assert response.status_code == HTTP_404_NOT_FOUND
     assert response.json() == {"detail": "Club not found"}
 
-    # response = api_client.get(f"/v1/clubs/{club.id}/tables")
+    # response = api_client.get(f"/api/v1/clubs/{club.id}/tables")
 
     response = api_client.post(f"/api/v1/clubs/{12346789}/tables", json=params)
     assert response.status_code == 404

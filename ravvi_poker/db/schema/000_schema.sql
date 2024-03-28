@@ -163,6 +163,24 @@ BEGIN
   RETURN NEW;
 END; $$;
 
+CREATE TABLE public.club_member (
+    id bigint NOT NULL,
+    club_id bigint DEFAULT 0 NOT NULL,
+    user_id bigint NOT NULL,
+    user_role public.user_role_enum DEFAULT 'P'::public.user_role_enum NOT NULL,
+    created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
+    user_comment character varying(255) DEFAULT NULL::character varying,
+    approved_ts timestamp without time zone,
+    approved_by bigint,
+    club_comment character varying(255) DEFAULT NULL::character varying,
+    nickname character varying(28),
+    balance numeric(20,4) DEFAULT 0 NOT NULL,
+    balance_shared numeric(20,4) DEFAULT 0 NOT NULL,
+    closed_ts timestamp without time zone,
+    closed_by bigint,
+    agent_id integer
+);
+
 CREATE TABLE public.club_profile (
     id bigint NOT NULL,
     name character varying(200) DEFAULT NULL::character varying,
@@ -173,9 +191,10 @@ CREATE TABLE public.club_profile (
     created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
     closed_ts timestamp without time zone,
     club_balance numeric(20,4) DEFAULT 0,
-    tables_сount integer DEFAULT 0,
+    "tables_сount" integer DEFAULT 0,
     players_online integer DEFAULT 0,
-    timezone text
+    timezone text,
+    automatic_confirmation boolean
 );
 
 CREATE SEQUENCE public.club_profile_id_seq
@@ -335,31 +354,14 @@ CREATE SEQUENCE public.temp_email_id_seq
 
 ALTER SEQUENCE public.temp_email_id_seq OWNED BY public.temp_email.id;
 
-CREATE TABLE public.user_account (
-    id bigint NOT NULL,
-    club_id bigint DEFAULT 0 NOT NULL,
-    user_id bigint NOT NULL,
-    user_role public.user_role_enum DEFAULT 'P'::public.user_role_enum NOT NULL,
-    created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
-    user_comment character varying(255) DEFAULT NULL::character varying,
-    approved_ts timestamp without time zone,
-    approved_by bigint,
-    club_comment character varying(255) DEFAULT NULL::character varying,
-    nickname character varying(28),
-    balance numeric(20,4) DEFAULT 0 NOT NULL,
-    balance_shared numeric(20,4) DEFAULT 0 NOT NULL,
-    closed_ts timestamp without time zone,
-    closed_by bigint
-);
-
-CREATE SEQUENCE public.user_account_id_seq
+CREATE SEQUENCE public.club_member_id_seq
     START WITH 1000
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
 
-ALTER SEQUENCE public.user_account_id_seq OWNED BY public.user_account.id;
+ALTER SEQUENCE public.club_member_id_seq OWNED BY public.club_member.id;
 
 CREATE TABLE public.user_account_txn (
     id bigint NOT NULL,
@@ -471,6 +473,8 @@ CREATE SEQUENCE public.user_session_id_seq
 
 ALTER SEQUENCE public.user_session_id_seq OWNED BY public.user_session.id;
 
+ALTER TABLE ONLY public.club_member ALTER COLUMN id SET DEFAULT nextval('public.club_member_id_seq'::regclass);
+
 ALTER TABLE ONLY public.club_profile ALTER COLUMN id SET DEFAULT nextval('public.club_profile_id_seq'::regclass);
 
 ALTER TABLE ONLY public.game_profile ALTER COLUMN id SET DEFAULT nextval('public.game_profile_id_seq'::regclass);
@@ -486,8 +490,6 @@ ALTER TABLE ONLY public.table_profile ALTER COLUMN id SET DEFAULT nextval('publi
 ALTER TABLE ONLY public.table_session ALTER COLUMN id SET DEFAULT nextval('public.table_session_id_seq'::regclass);
 
 ALTER TABLE ONLY public.temp_email ALTER COLUMN id SET DEFAULT nextval('public.temp_email_id_seq'::regclass);
-
-ALTER TABLE ONLY public.user_account ALTER COLUMN id SET DEFAULT nextval('public.user_account_id_seq'::regclass);
 
 ALTER TABLE ONLY public.user_account_txn ALTER COLUMN id SET DEFAULT nextval('public.user_account_txn_id_seq'::regclass);
 
@@ -531,8 +533,8 @@ ALTER TABLE ONLY public.temp_email
 ALTER TABLE ONLY public.temp_email
     ADD CONSTRAINT temp_email_unq_uuid UNIQUE (uuid);
 
-ALTER TABLE ONLY public.user_account
-    ADD CONSTRAINT user_account_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.club_member
+    ADD CONSTRAINT club_member_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.user_account_txn
     ADD CONSTRAINT user_account_txn_pkey PRIMARY KEY (id);
@@ -568,9 +570,9 @@ CREATE INDEX game_profile_idx_type ON public.game_profile USING btree (game_type
 
 CREATE INDEX game_profile_idx_user ON public.game_player USING btree (user_id);
 
-CREATE INDEX user_account_idx_user ON public.user_account USING btree (user_id);
+CREATE INDEX club_member_idx_user ON public.club_member USING btree (user_id);
 
-CREATE UNIQUE INDEX user_account_unq_clubuser ON public.user_account USING btree (club_id, user_id);
+CREATE UNIQUE INDEX club_member_unq_clubuser ON public.club_member USING btree (club_id, user_id);
 
 CREATE INDEX user_client_idx_closed ON public.user_client USING btree (session_id, closed_ts);
 
@@ -641,7 +643,7 @@ ALTER TABLE ONLY public.table_profile
     ADD CONSTRAINT table_profile_fk_parent FOREIGN KEY (parent_id) REFERENCES public.table_profile(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.table_session
-    ADD CONSTRAINT table_session_fk_account FOREIGN KEY (account_id) REFERENCES public.user_account(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT table_session_fk_account FOREIGN KEY (account_id) REFERENCES public.club_member(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.table_session
     ADD CONSTRAINT table_session_fk_table FOREIGN KEY (table_id) REFERENCES public.table_profile(id) ON UPDATE CASCADE ON DELETE CASCADE;
@@ -649,17 +651,17 @@ ALTER TABLE ONLY public.table_session
 ALTER TABLE ONLY public.temp_email
     ADD CONSTRAINT temp_email_fk_user FOREIGN KEY (user_id) REFERENCES public.user_profile(id);
 
-ALTER TABLE ONLY public.user_account
-    ADD CONSTRAINT user_account_fk_approved_by FOREIGN KEY (approved_by) REFERENCES public.user_profile(id);
+ALTER TABLE ONLY public.club_member
+    ADD CONSTRAINT club_member_fk_approved_by FOREIGN KEY (approved_by) REFERENCES public.user_profile(id);
 
-ALTER TABLE ONLY public.user_account
-    ADD CONSTRAINT user_account_fk_club FOREIGN KEY (club_id) REFERENCES public.club_profile(id);
+ALTER TABLE ONLY public.club_member
+    ADD CONSTRAINT club_member_fk_club FOREIGN KEY (club_id) REFERENCES public.club_profile(id);
 
-ALTER TABLE ONLY public.user_account
-    ADD CONSTRAINT user_account_fk_user FOREIGN KEY (user_id) REFERENCES public.user_profile(id);
+ALTER TABLE ONLY public.club_member
+    ADD CONSTRAINT club_member_fk_user FOREIGN KEY (user_id) REFERENCES public.user_profile(id);
 
 ALTER TABLE ONLY public.user_account_txn
-    ADD CONSTRAINT user_account_txn_fk_account FOREIGN KEY (account_id) REFERENCES public.user_account(id);
+    ADD CONSTRAINT user_account_txn_fk_account FOREIGN KEY (account_id) REFERENCES public.club_member(id);
 
 ALTER TABLE ONLY public.user_client
     ADD CONSTRAINT user_client_fk_session FOREIGN KEY (session_id) REFERENCES public.user_session(id) ON UPDATE RESTRICT ON DELETE RESTRICT;

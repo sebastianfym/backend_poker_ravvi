@@ -1,9 +1,11 @@
+import logging
 import pytest
 
 from starlette.status import HTTP_200_OK
 from fastapi.testclient import TestClient
 from ravvi_poker.api.auth.types import UserAccessProfile
 
+logger = logging.getLogger(__name__)
 
 def test_lobby_(api_client: TestClient, api_guest: UserAccessProfile):
     # set headers

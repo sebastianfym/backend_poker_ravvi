@@ -50,7 +50,7 @@ v1.include_router(auth.router.router)
 v1.include_router(users.router.router)
 v1.include_router(images.router)
 v1.include_router(lobby.router.router)
-v1.include_router(clubs.router.router) #Todo  закончить с клубами и проверить все
+v1.include_router(clubs.router.router)
 v1.include_router(tables.router.router)
 v1.include_router(info.router.router)
 v1.include_router(chips.router.router)

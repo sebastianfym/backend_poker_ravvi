@@ -17,8 +17,8 @@ async def create_user():
 async def create_client(user):
     async with DBI() as db:
         device = await db.create_device()
-        login = await db.create_login(device.id, user.id)
-        session = await db.create_session(login.id)
+        login = await db.create_login(device.id, user.id, host="127.0.0.1")
+        session = await db.create_session(login.id, host="127.0.0.1")
         client = await db.create_client(session.id)
     return client
 

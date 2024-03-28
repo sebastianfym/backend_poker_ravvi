@@ -77,7 +77,7 @@ def test_txns_in_club(api_client: TestClient, api_guest: UserAccessProfile, api_
     response = api_client.get(f"/api/v1/clubs/{club1.id}")
     assert response.status_code == 200
 
-    # response = api_client.delete(f"/v1/chips/{club1.id}/club/chips", data={"amount": 5000})
+    # response = api_client.delete(f"/api/v1/chips/{club1.id}/club/chips", data={"amount": 5000})
     # assert response.status_code == 200
 
     data = {

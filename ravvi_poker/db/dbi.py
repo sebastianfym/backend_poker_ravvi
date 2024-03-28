@@ -331,6 +331,12 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def update_client(self, host, id):
+        sql = "UPDATE user_client SET host=%s WHERE id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (host, id))
+
+
     async def get_client(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
         async with self.cursor() as cursor:
@@ -392,7 +398,7 @@ class DBI:
     # LOBBY
 
     async def get_lobby_entry_tables(self):
-        sql = "SELECT * FROM table_profile WHERE table_type='RG' and club_id IS NULL AND parent_id IS NULL AND closed_ts IS NULL"
+        sql = "SELECT * FROM table_profile WHERE table_type='RG' and club_id=0 AND parent_id IS NULL AND closed_ts IS NULL"
         result = {}
         async with self.cursor() as cursor:
             await cursor.execute(sql)
