@@ -1,3 +1,4 @@
 ALTER TABLE ONLY user_session ADD COLUMN host TEXT;
 ALTER TABLE ONLY user_client ADD COLUMN host TEXT;
 ALTER TABLE ONLY user_login ADD COLUMN host TEXT;
+

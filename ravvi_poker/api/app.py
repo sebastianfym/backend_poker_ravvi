@@ -5,8 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ..db import DBI
 
+from . import users
 from . import auth
-from . import user
 from . import images
 from . import lobby
 from . import clubs
@@ -46,13 +46,13 @@ app.add_middleware(
 )
 
 v1 = APIRouter(prefix="/api/v1")
-v1.include_router(auth.router)
-v1.include_router(user.router)
+v1.include_router(auth.router.router)
+v1.include_router(users.router.router)
 v1.include_router(images.router)
-v1.include_router(lobby.router)
-v1.include_router(clubs.router)
-v1.include_router(tables.router)
-v1.include_router(info.router)
+v1.include_router(lobby.router.router)
+v1.include_router(clubs.router.router)
+v1.include_router(tables.router.router)
+v1.include_router(info.router.router)
 v1.include_router(chips.router.router)
 v1.include_router(ws.router)
 

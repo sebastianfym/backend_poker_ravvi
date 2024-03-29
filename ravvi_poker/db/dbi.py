@@ -241,6 +241,7 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+
     async def get_login(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
         sql = f"SELECT * FROM user_login WHERE {key}=%s"  # nosec
@@ -257,6 +258,8 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+
+
     async def get_last_user_login(self, user_id=None):
         sql = f"SELECT * FROM user_login WHERE user_id=%s ORDER BY id DESC"
         async with self.cursor() as cursor:
@@ -272,6 +275,7 @@ class DBI:
             await cursor.execute(sql, (login_id, host))
             row = await cursor.fetchone()
         return row
+
 
     async def get_session(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
@@ -307,6 +311,7 @@ class DBI:
 
             row = await cursor.fetchone()
         return row
+
 
     async def get_last_user_session(self, last_login_id):
         sql = "SELECT * FROM user_session WHERE login_id=%s ORDER BY id DESC"

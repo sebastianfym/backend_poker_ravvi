@@ -1,13 +1,9 @@
-from fastapi import APIRouter
-from fastapi.exceptions import HTTPException
-from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
-from pydantic import BaseModel
+from typing import List
 
-from .tables import TableProfile
-from ..db import DBI
-from .utils import SessionUUID, get_session_and_user
-
-router = APIRouter(prefix="/lobby", tags=["lobby"])
+from .router import *
+from ..clubs.types import TableParams, TableProfile
+from ..utils import SessionUUID, get_session_and_user
+from ...db import DBI
 
 
 @router.get("/entry_tables", status_code=200, summary="Get game entry points")

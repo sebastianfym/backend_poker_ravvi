@@ -1,11 +1,12 @@
 import pytest
 from fastapi.testclient import TestClient
-from ravvi_poker.api.auth import UserAccessProfile, UserPrivateProfile
+from ravvi_poker.api.auth.types import UserAccessProfile, UserPrivateProfile
 
 def test_auth_register(api_client: TestClient):
     # CASE 1: register guest on new device
     params1 = dict(device_token=None, device_props={})
     response1 = api_client.post("/api/v1/auth/register", json=params1)
+    print(response1.json())
     assert response1.status_code == 200
 
     result1 = response1.json()
