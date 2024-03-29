@@ -213,7 +213,7 @@ class Table_RG(Table):
             return False
         # пополнение
         elif (user.balance is not None and not self.game_props.get("blind_big") <= buyin_value <=
-              self.buyin_max - user.balance):
+                                               self.buyin_max - user.balance):
             msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id,
                           client_id=client_id,
                           error_id=400, error_text='Incorrect buyin value')
@@ -233,23 +233,6 @@ class Table_RG(Table):
 
         # обновляем баланс
         await self.broadcast_PLAYER_BALANCE(db, user.id, user.balance)
-
-    # async def get_game_players(self, *, min_size=2) -> List[User]:
-    #     users = super().get_game_players()
-    #     if len(users) > min_size:
-    #         # если все игроки имеют флаг is_new_player_on_table, то снимем его и вернем первоначальный список игроков
-    #         if all([user.is_new_player_on_table for user in users]):
-    #             for user in users:
-    #                 user.is_new_player_on_table = False
-    #         else:
-    #             # прокручиваем метку дилера пока она не выпадет на игрока без флага is_new_player_on_table
-    #             while users[0].is_new_player_on_table:
-    #                 users = self.get_game_players()
-    #     elif users is not None and any([user.is_new_player_on_table for user in users]):
-    #         # снимаем флаг is_new_player_on_table, по причине того что у нас минимальное количество участников
-    #         for user in users:
-    #             user.is_new_player_on_table = False
-    #     return users
 
     async def run_table(self):
         self.log.info("%s", self.status)
