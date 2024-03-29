@@ -22,6 +22,7 @@ class TestBuyInTableJoin:
         collected_data.append(payload)
 
     @pytest.mark.asyncio
+    @pytest.mark.integration_test
     async def test_not_enough_balance(self):
         client = PokerClient()
 
@@ -79,6 +80,7 @@ class TestBuyInTableJoin:
             ]
 
     @pytest.mark.asyncio
+    @pytest.mark.integration_test
     async def test_give_offer(self):
         client = PokerClient()
 
@@ -155,6 +157,7 @@ class TestBuyInTableJoin:
             ]
 
     @pytest.mark.asyncio
+    @pytest.mark.integration_test
     async def test_correct_accept_offer(self):
         client = PokerClient()
 
@@ -249,6 +252,7 @@ class TestBuyInTableJoin:
             assert member_data.balance == 40
 
     @pytest.mark.asyncio
+    @pytest.mark.integration_test
     @pytest.mark.parametrize("buyin_value", [5, 25])
     async def test_incorrect_accept_offer_balance_value(self, buyin_value: int):
         """
@@ -368,6 +372,7 @@ class TestBuyInTableJoin:
             ]
 
     @pytest.mark.asyncio
+    @pytest.mark.integration_test
     @pytest.mark.parametrize("buyin_value", [5, 25])
     async def test_incorrect_accept_offer_buyin_value(self, buyin_value):
         client = PokerClient()
@@ -475,6 +480,7 @@ class TestBuyInTableJoin:
             ]
 
     @pytest.mark.asyncio
+    @pytest.mark.integration_test
     async def test_offer_timeout(self):
         """
         Проверить что если оффер просрочен, то участника выкинет из-за стола, а команда с байином будет проигнорирована
@@ -574,6 +580,7 @@ class TestBuyInTakeSeat:
         collected_data.append(payload)
 
     @pytest.mark.asyncio
+    @pytest.mark.integration_test
     async def test_not_enough_balance(self):
         client = PokerClient()
 
@@ -616,6 +623,7 @@ class TestBuyInTakeSeat:
             ]
 
     @pytest.mark.asyncio
+    @pytest.mark.integration_test
     @pytest.mark.parametrize("wait_method", ["wait_timeout", "decline_offer"])
     async def test_give_offer(self, wait_method):
         client = PokerClient()
@@ -696,6 +704,7 @@ class TestBuyInTakeSeat:
             ]
 
     @pytest.mark.asyncio
+    @pytest.mark.integration_test
     @pytest.mark.parametrize("wait_method", ["wait_timeout", "decline_offer"])
     async def test_correct_accept_offer(self, wait_method: str):
         client = PokerClient()
@@ -794,6 +803,7 @@ class TestBuyInTakeSeat:
             assert member_data.balance == 40
 
     @pytest.mark.asyncio
+    @pytest.mark.integration_test
     @pytest.mark.parametrize("wait_method, buyin_value", [
         ["wait_timeout", 5],
         ["wait_timeout", 25],
@@ -921,6 +931,7 @@ class TestBuyInTakeSeat:
             ]
 
     @pytest.mark.asyncio
+    @pytest.mark.integration_test
     @pytest.mark.parametrize("wait_method, buyin_value", [
         ["wait_timeout", 5],
         ["wait_timeout", 25],
@@ -1036,6 +1047,7 @@ class TestBuyInTakeSeat:
             ]
 
     @pytest.mark.asyncio
+    @pytest.mark.integration_test
     @pytest.mark.parametrize("wait_method", ["wait_timeout", "decline_offer"])
     async def test_offer_timeout(self, wait_method):
         client = PokerClient()
@@ -1143,6 +1155,7 @@ class TestReplenishBalance:
         collected_data_client_2.append(payload)
 
     @pytest.mark.asyncio
+    @pytest.mark.integration_test
     async def test_replenish_balance_not_game(self):
         """
         Проверяем что баланс пополнится. Аккаунт уже за столом. Игра не идет
@@ -1340,6 +1353,7 @@ class TestBuyInTwoClientsForAccount:
         collected_data_client_2.append(payload)
 
     @pytest.mark.asyncio
+    @pytest.mark.integration_test
     async def test_two_clients_one_offer_take_seat(self):
         """
         Проверяем что если один аккаунт находится за двумя устройствами, то оффер получит только то устройство,
@@ -1459,6 +1473,7 @@ class TestBuyInTwoClientsForAccount:
             ]
 
     @pytest.mark.asyncio
+    @pytest.mark.integration_test
     async def test_two_clients_two_offer_take_seat(self):
         """
         Проверяем что если один аккаунт находится за двумя устройствами, то оффер получит только то устройство,

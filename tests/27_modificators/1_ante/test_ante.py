@@ -21,6 +21,8 @@ class TestAnteUpControllerInstance:
         """
         table = Table_RG(self.TABLE_ID, self.TABLE_NAME, table_seats=3,
                          props={
+                             "buyin_min": 10,
+                             "buyin_max": 20,
                              "ante_up": True
                          })
 
@@ -35,6 +37,8 @@ class TestAnteUpControllerInstance:
         """
         table = Table_RG(self.TABLE_ID, self.TABLE_NAME, table_seats=3,
                          props={
+                             "buyin_min": 10,
+                             "buyin_max": 20,
                              "ante_up": False
                          })
 
@@ -130,6 +134,8 @@ class TestAnteUpControllerInitialValueForGame:
         """
         table = Table_RG(self.TABLE_ID, self.TABLE_NAME, table_seats=3, game_type=game_type, game_subtype=game_subtype,
                          props={
+                             "buyin_min": 10,
+                             "buyin_max": 20,
                              "ante_up": True,
                              "blind_small": blind_small_value
                          })
@@ -149,6 +155,8 @@ class TestAnteUpControllerInitialValueForGame:
         """
         table = Table_RG(self.TABLE_ID, self.TABLE_NAME, table_seats=3, game_type=game_type, game_subtype=game_subtype,
                          props={
+                             "buyin_min": 10,
+                             "buyin_max": 20,
                              "ante_up": ante_up,
                              "blind_small": blind_small_value
                          })

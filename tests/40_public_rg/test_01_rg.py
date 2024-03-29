@@ -10,10 +10,12 @@ from ravvi_poker.bots.dummy import DummyBot
 
 log = logging.getLogger(__name__)
 
+
 async def create_user(balance=0):
     async with DBI(log=log) as db:
-        user = await db.create_user(balance=balance)    
+        user = await db.create_user(balance=balance)
     return user
+
 
 async def create_client(user):
     async with DBI(log=log) as db:
@@ -23,16 +25,19 @@ async def create_client(user):
         client = await db.create_client(session.id)
     return client
 
+
 async def create_table():
     async with DBI(log=log) as db:
-        table = await db.create_table(table_type="RG", table_seats=9, table_name="test_01_rg", 
-            game_type="NLH", game_subtype="REGULAR", club_id=0,
-            props=dict(
-                buyin_min = 2,
-                bet_timeout = 10,
-                blind_small = 5,
-            ))
+        table = await db.create_table(table_type="RG", table_seats=9, table_name="test_01_rg",
+                                      game_type="NLH", game_subtype="REGULAR", club_id=0,
+                                      props=dict(
+                                          bet_timeout=10,
+                                          blind_small=5,
+                                          buyin_min=10,
+                                          buyin_max=20
+                                      ))
     return table
+
 
 async def send_cmd_table_join(client, table):
     async with DBI() as db:
@@ -42,9 +47,10 @@ async def send_cmd_table_join(client, table):
 async def wait_for_no_players(x_table):
     while True:
         players = [u for u in x_table.seats if u]
-        if len(players)<2:
+        if len(players) < 2:
             break
         await asyncio.sleep(1)
+
 
 @pytest_asyncio.fixture()
 async def engine():
@@ -62,6 +68,7 @@ async def engine():
     await DBI.pool_close()
     await asyncio.sleep(1)
 
+
 @pytest.mark.asyncio
 async def test_engine_manager(engine):
     t_mgr, c_mgr = engine
@@ -77,7 +84,7 @@ async def test_engine_manager(engine):
     x_table = t_mgr.tables[table.id]
 
     # bot-1
-    user_1 = await create_user(2)
+    user_1 = await create_user(10)
     client_1 = await create_client(user_1)
     c1 = DummyBot(c_mgr, client_1.id, user_1.id)
     await c1.start()
@@ -87,7 +94,7 @@ async def test_engine_manager(engine):
     assert user_1.id in x_table.users
     assert user_1.id in [u.id for u in x_table.seats if u]
 
-    user_2 = await create_user(10)
+    user_2 = await create_user(15)
     client_2 = await create_client(user_2)
     c2 = DummyBot(c_mgr, client_2.id, user_2.id)
     await c2.start()

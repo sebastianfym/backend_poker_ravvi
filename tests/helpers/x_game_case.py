@@ -42,7 +42,6 @@ class X_CaseMixIn:
         self._check_steps = list(enumerate(_moves, 1))
 
     def setup_boards(self):
-        print(123123)
         super().setup_boards()
         self.deck = X_Deck(self._deck)
 
@@ -55,7 +54,6 @@ class X_CaseMixIn:
         assert self._check_steps
         step_num, step = self._check_steps.pop(0)
         step_msg = f"msg {step_num}"
-        print(step_msg, msg)
         if isinstance(step, dict):
             expected = step
         else:

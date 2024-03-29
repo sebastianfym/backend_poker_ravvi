@@ -2,14 +2,16 @@ import pytest
 from ravvi_poker.engine.poker.board import BoardType
 
 from ravvi_poker.engine.poker.base import PokerBase, User, PlayerRole
+from helpers.mocked_table import MockedTable
 
 @pytest.mark.asyncio
 async def test_42_poker_4_players():
     users = [User(x, f"u{x}", 1000) for x in [111, 222, 333, 444]]
-    
+
+    mocked_table = MockedTable()
     # game with random deck
-    game = PokerBase(None, users, blind_small=1)
-    assert game.table is None
+    game = PokerBase(mocked_table, users, blind_small=1)
+    assert game.table is mocked_table
     assert game.game_id is None
     assert game.round is None
     assert len(game.players) == len(users)
