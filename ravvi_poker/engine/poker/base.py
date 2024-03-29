@@ -470,7 +470,6 @@ class PokerBase(Game):
     ]
 
     def get_hand_rank(self, hand):
-        print(f"Пришел запрос на get_hand_rank {hand}")
         if not hand.type:
             return None
         if isinstance(hand, LowHand):
@@ -762,14 +761,9 @@ class PokerBase(Game):
                 self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hands, p.hands[0].type)
 
     async def open_cards_on_request(self):
-        print("_______________________")
-        print("Прилетел запрос на открытие карт в конце игры")
         # открываем карты по запросу
         async with self.DBI() as db:
             for p in self.players:
-                print(f"Смотрим для {p.user_id}")
-                print(p.cards_open_on_request)
-                print(p.cards_open)
                 if p.cards_open_on_request and not p.cards_open:
                     await self.broadcast_PLAYER_CARDS_ON_REQUEST(db, p)
                     self.log.info("player %s: open cards on request %s", p.user_id, p.cards_open_on_request)

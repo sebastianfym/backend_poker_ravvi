@@ -2,7 +2,6 @@ import asyncio
 import decimal
 import time
 from decimal import Decimal, ROUND_HALF_DOWN
-from typing import List
 
 from psycopg.rows import Row
 
