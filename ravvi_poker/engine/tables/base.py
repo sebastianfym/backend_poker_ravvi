@@ -135,8 +135,9 @@ class Table:
         self.log.debug("on_user_join(%s)", user.id if user else None)
 
     async def on_player_enter(self, db, cmd_id, client_id, user, seat_idx):
-        # TODO вернуть старый код
-        raise NotImplementedError("on_player_enter() is not implemented")
+        # TODO RG и SNG|MTT по разному переопределяют этот метод
+        user.balance = 1
+        return True
 
     async def on_player_exit(self, db, user, seat_idx):
         # TODO return table balance to user
@@ -162,7 +163,6 @@ class Table:
         await self.emit_msg(db, msg)
 
     async def emit_TABLE_JOIN_OFFER(self, db, **kwargs):
-        # TODO перенести в RG
         msg = Message(msg_type=Message.Type.TABLE_JOIN_OFFER, **kwargs)
         await self.emit_msg(db, msg)
 
