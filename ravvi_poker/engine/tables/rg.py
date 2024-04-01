@@ -70,6 +70,9 @@ class Table_RG(Table):
     async def make_player_offer(self, db, user: User, client_id: int, account_balance: decimal.Decimal):
         offer_closed_at = time.time() + 60
         buyin_min, buyin_max = self.buyin_min, self.buyin_max
+        # если максимальный байин больше чем денег на балансе, то максимальный байин равен балансу
+        if buyin_max > account_balance:
+            buyin_max = account_balance
         if user.balance is not None:
             if (buyin_min := self.buyin_min - user.balance) <= 0:
                 buyin_min = self.game_props.get("blind_big")
