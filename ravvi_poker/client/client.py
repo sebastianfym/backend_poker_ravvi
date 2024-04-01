@@ -668,14 +668,14 @@ class PokerClient:
     async def take_seat(self, table_id, seat_idx):
         await self.ws_send(cmd_type=CommandType.TAKE_SEAT, table_id=table_id, seat_idx=seat_idx)
 
-    async def accept_offer(self, table_id: int, buyin_value: float | int | None):
-        await self.ws_send(cmd_type=CommandType.OFFER_RESULT, table_id=table_id, buyin_value=buyin_value)
+    async def accept_offer(self, table_id: int, buyin_cost: float | int | None):
+        await self.ws_send(cmd_type=CommandType.OFFER_RESULT, table_id=table_id, buyin_cost=buyin_cost)
 
     async def decline_offer(self, table_id: int):
-        await self.accept_offer(table_id=table_id, buyin_value=0)
+        await self.accept_offer(table_id=table_id, buyin_cost=0)
 
     async def request_offer(self, table_id: int):
-        await self.accept_offer(table_id=table_id, buyin_value=None)
+        await self.accept_offer(table_id=table_id, buyin_cost=None)
 
     async def exit_table(self, table_id):
         if table_id not in self.table_handlers:

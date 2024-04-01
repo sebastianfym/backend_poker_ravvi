@@ -241,9 +241,9 @@ class Table:
                 await self.handle_cmd_take_seat(db, cmd_id=cmd_id, client_id=client_id, user_id=user_id,
                                                 seat_idx=seat_idx)
             elif cmd_type == Command.Type.OFFER_RESULT:
-                buyin_value = props.get("buyin_value", 0)
+                buyin_cost = props.get("buyin_cost", 0)
                 await self.handle_cmd_offer_result(db, cmd_id=cmd_id, client_id=client_id, user_id=user_id,
-                                                   buyin_value=buyin_value)
+                                                   buyin_cost=buyin_cost)
             elif cmd_type == Command.Type.EXIT:
                 await self.handle_cmd_exit(db, user_id=user_id)
             elif self.game:

@@ -52,8 +52,9 @@ class Table_RG(Table):
             return False
         # если не достаточно денег на балансе, то возвращаем ошибку
         if account.balance < self.buyin_min:
-            msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id, client_id=client_id,
-                          error_id=400, error_text='Not enough balance')
+            msg = Message(msg_type=Message.Type.TABLE_WARNING,
+                          table_id=self.table_id, cmd_id=cmd_id, client_id=client_id,
+                          error_id=1, error_text='Not enough balance')
             await self.emit_msg(db, msg)
             return False
         # отправляем предложение выбрать buyin
@@ -68,49 +69,42 @@ class Table_RG(Table):
 
     async def make_player_offer(self, db, user: User, client_id: int, account_balance: decimal.Decimal):
         offer_closed_at = time.time() + 60
-        buyin_value = None
-        buyin_range = [self.buyin_min, self.buyin_max]
+        buyin_min, buyin_max = self.buyin_min, self.buyin_max
         if user.balance is not None:
-            buyin_range = [self.buyin_min - user.balance
-                           if self.buyin_min - user.balance > 0 else self.game_props.get("blind_big"),
-                           self.buyin_max - user.balance]
+            if (buyin_min := self.buyin_min - user.balance) <= 0:
+                buyin_min = self.game_props.get("blind_big")
+            buyin_max -= user.balance
         elif user.balance is None and (interval_in_hours := getattr(self, "advanced_config").ratholing):
             # получаем последнюю выплату от стола за N часов
-            buyin_value = await db.get_last_table_reward(self.table_id, user.account_id, interval_in_hours)
+            buyin_min = buyin_max = await db.get_last_table_reward(self.table_id, user.account_id, interval_in_hours)
         # если пользователь ранее имел офферы, то разошлем сообщения, что они просрочены
         if user.buyin_offer_timeout:
             for client_id_expired_offer in user.clients:
                 await self.emit_TABLE_JOIN_OFFER(db, client_id=client_id_expired_offer, offer_type="buyin",
                                                  table_id=self.table_id, balance=account_balance,
-                                                 closed_at=0, buyin_range=buyin_range)
+                                                 closed_at=0, buyin_min=buyin_min, buyin_max=buyin_max)
             await db.commit()
         # отправим действующий оффер
-        # оффер из-за рэтхолинга
-        if buyin_value:
-            await self.emit_TABLE_JOIN_OFFER(db, client_id=client_id, offer_type="buyin",
-                                             table_id=self.table_id, balance=account_balance,
-                                             closed_at=offer_closed_at, buyin_value=buyin_value)
+        await self.emit_TABLE_JOIN_OFFER(db, client_id=client_id, offer_type="buyin",
+                                         table_id=self.table_id, balance=account_balance,
+                                         closed_at=offer_closed_at, buyin_min=buyin_min, buyin_max=buyin_max)
         # стандартный оффер
-        else:
-            await self.emit_TABLE_JOIN_OFFER(db, client_id=client_id, offer_type="buyin",
-                                             table_id=self.table_id, balance=account_balance,
-                                             closed_at=offer_closed_at, buyin_range=buyin_range)
         user.buyin_offer_timeout = offer_closed_at + 5
 
     async def handle_cmd_offer_result(self, db, *, cmd_id: int, client_id: int, user_id: int,
-                                      buyin_value: float | None):
+                                      buyin_cost: float | None):
         user, seat_idx, _ = self.find_user(user_id)
         if not user or seat_idx is None:
             return
 
-        if buyin_value is None:
+        if buyin_cost is None:
             # пользователь запросил оффер - отправляем его
             account = await db.get_account(user.account_id)
             if not account:
                 return
 
             await self.make_player_offer(db, user, client_id, account.balance)
-        elif buyin_value == 0:
+        elif buyin_cost == 0:
             if user.buyin_offer_timeout is not None:
                 # убираем у пользователя timeout timestamp оффера
                 user.buyin_offer_timeout = None
@@ -124,8 +118,8 @@ class Table_RG(Table):
                     if user.table_session_id:
                         await db.close_table_session(user.table_session_id)
                         user.table_session_id = None
-        elif buyin_value > 0:
-            buyin_value = Decimal(buyin_value).quantize(Decimal('.01'), rounding=ROUND_HALF_DOWN)
+        elif buyin_cost > 0:
+            buyin_value = Decimal(buyin_cost).quantize(Decimal('.01'), rounding=ROUND_HALF_DOWN)
             # проверяем сумму buy-in
             account = await db.get_account(user.account_id)
             if not account:
@@ -180,17 +174,17 @@ class Table_RG(Table):
                                                   buyin_value: Decimal) -> bool:
         # если не достаточно денег на балансе, то возвращаем ошибку
         if account.balance < buyin_value:
-            msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id,
-                          client_id=client_id,
-                          error_id=400, error_text='Not enough balance')
+            msg = Message(msg_type=Message.Type.TABLE_WARNING,
+                          table_id=self.table_id, cmd_id=cmd_id, client_id=client_id,
+                          error_id=1, error_text='Not enough balance')
             await self.emit_msg(db, msg)
             return False
 
         # если баланс игрока уже больше максимального значения байина, то возвращаем ошибку
         if user.balance and user.balance >= self.buyin_max:
-            msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id,
+            msg = Message(msg_type=Message.Type.TABLE_WARNING, table_id=self.table_id, cmd_id=cmd_id,
                           client_id=client_id,
-                          error_id=400, error_text='The maximum balance value has been exceeded')
+                          error_id=3, error_text='The maximum balance value has been exceeded')
             await self.emit_msg(db, msg)
             return False
 
@@ -198,24 +192,24 @@ class Table_RG(Table):
         # проверим на рэтхолинг
         if user.balance is None and (interval_in_hours := getattr(self, "advanced_config").ratholing):
             if buyin_value != await db.get_last_table_reward(self.table_id, user.account_id, interval_in_hours):
-                msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id,
+                msg = Message(msg_type=Message.Type.TABLE_WARNING, table_id=self.table_id, cmd_id=cmd_id,
                               client_id=client_id,
-                              error_id=400, error_text='Incorrect buyin value')
+                              error_id=2, error_text='Incorrect buyin value')
                 await self.emit_msg(db, msg)
                 return False
         # проверка при входе
         elif user.balance is None and not self.buyin_min <= buyin_value <= self.buyin_max:
-            msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id,
+            msg = Message(msg_type=Message.Type.TABLE_WARNING, table_id=self.table_id, cmd_id=cmd_id,
                           client_id=client_id,
-                          error_id=400, error_text='Incorrect buyin value')
+                          error_id=2, error_text='Incorrect buyin value')
             await self.emit_msg(db, msg)
             return False
         # пополнение
         elif (user.balance is not None and not self.game_props.get("blind_big") <= buyin_value <=
                                                self.buyin_max - user.balance):
-            msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id,
+            msg = Message(msg_type=Message.Type.TABLE_WARNING, table_id=self.table_id, cmd_id=cmd_id,
                           client_id=client_id,
-                          error_id=400, error_text='Incorrect buyin value')
+                          error_id=2, error_text='Incorrect buyin value')
             await self.emit_msg(db, msg)
             return False
 

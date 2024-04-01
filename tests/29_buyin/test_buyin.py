@@ -1,5 +1,4 @@
 import asyncio
-import sys
 import time
 from multiprocessing import Pool, cpu_count
 
@@ -53,8 +52,8 @@ class TestBuyInTableJoin:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 102,
-                    "props": {"error_id": 400, "error_text": "Not enough balance"},
+                    "msg_type": 103,
+                    "props": {"error_id": 1, "error_text": "Not enough balance"},
                     "table_id": new_table.id
                 },
                 # сообщение с параметрами стола
@@ -126,8 +125,9 @@ class TestBuyInTableJoin:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 103,
-                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "msg_type": 104,
+                    "props": {"balance": 50, "buyin_min": 10.0, "buyin_max": 20.0, "closed_at": 0,
+                              "offer_type": "buyin"},
                     "table_id": new_table.id
                 },
                 # сообщение с параметрами стола
@@ -203,8 +203,9 @@ class TestBuyInTableJoin:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 103,
-                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "msg_type": 104,
+                    "props": {"balance": 50, "buyin_min": 10.0, "buyin_max": 20.0, "closed_at": 0,
+                              "offer_type": "buyin"},
                     "table_id": new_table.id
                 },
                 # сообщение с параметрами стола
@@ -234,7 +235,7 @@ class TestBuyInTableJoin:
             ]
             collected_data.clear()
 
-            await client.accept_offer(table_id=new_table.id, buyin_value=10)
+            await client.accept_offer(table_id=new_table.id, buyin_cost=10)
             await asyncio.sleep(3)
 
             assert collected_data == [
@@ -303,8 +304,9 @@ class TestBuyInTableJoin:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 103,
-                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "msg_type": 104,
+                    "props": {"balance": 50, "buyin_min": 10.0, "buyin_max": 20.0, "closed_at": 0,
+                              "offer_type": "buyin"},
                     "table_id": new_table.id
                 },
                 # сообщение с параметрами стола
@@ -341,7 +343,7 @@ class TestBuyInTableJoin:
                     "balance_shared": None
                 }
             ])
-            await client.accept_offer(table_id=new_table.id, buyin_value=buyin_value)
+            await client.accept_offer(table_id=new_table.id, buyin_cost=buyin_value)
             await asyncio.sleep(3)
 
             assert collected_data == [
@@ -350,8 +352,8 @@ class TestBuyInTableJoin:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 102,
-                    "props": {"error_id": 400, "error_text": "Not enough balance"},
+                    "msg_type": 103,
+                    "props": {"error_id": 1, "error_text": "Not enough balance"},
                     "table_id": new_table.id
                 },
             ]
@@ -419,8 +421,9 @@ class TestBuyInTableJoin:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 103,
-                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "msg_type": 104,
+                    "props": {"balance": 50, "buyin_min": 10.0, "buyin_max": 20.0, "closed_at": 0,
+                              "offer_type": "buyin"},
                     "table_id": new_table.id
                 },
                 # сообщение с параметрами стола
@@ -450,7 +453,7 @@ class TestBuyInTableJoin:
             ]
             collected_data.clear()
 
-            await client.accept_offer(table_id=new_table.id, buyin_value=buyin_value)
+            await client.accept_offer(table_id=new_table.id, buyin_cost=buyin_value)
             await asyncio.sleep(3)
 
             assert collected_data == [
@@ -458,8 +461,8 @@ class TestBuyInTableJoin:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 102,
-                    "props": {"error_id": 400, "error_text": "Incorrect buyin value"},
+                    "msg_type": 103,
+                    "props": {"error_id": 2, "error_text": "Incorrect buyin value"},
                     "table_id": new_table.id
                 },
             ]
@@ -529,8 +532,9 @@ class TestBuyInTableJoin:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 103,
-                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "msg_type": 104,
+                    "props": {"balance": 50, "buyin_min": 10.0, "buyin_max": 20.0, "closed_at": 0,
+                              "offer_type": "buyin"},
                     "table_id": new_table.id
                 },
                 # сообщение с параметрами стола
@@ -616,8 +620,8 @@ class TestBuyInTakeSeat:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 102,
-                    "props": {"error_id": 400, "error_text": "Not enough balance"},
+                    "msg_type": 103,
+                    "props": {"error_id": 1, "error_text": "Not enough balance"},
                     "table_id": new_table.id
                 },
             ]
@@ -682,8 +686,9 @@ class TestBuyInTakeSeat:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 103,
-                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "msg_type": 104,
+                    "props": {"balance": 50, "buyin_min": 10.0, "buyin_max": 20.0, "closed_at": 0,
+                              "offer_type": "buyin"},
                     "table_id": new_table.id
                 },
                 # сообщение с информацией, что нас посадили за стол
@@ -763,8 +768,9 @@ class TestBuyInTakeSeat:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 103,
-                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "msg_type": 104,
+                    "props": {"balance": 50, "buyin_min": 10.0, "buyin_max": 20.0, "closed_at": 0,
+                              "offer_type": "buyin"},
                     "table_id": new_table.id
                 },
                 # сообщение с параметрами стола
@@ -785,7 +791,7 @@ class TestBuyInTakeSeat:
             ]
             collected_data.clear()
 
-            await client.accept_offer(table_id=new_table.id, buyin_value=10)
+            await client.accept_offer(table_id=new_table.id, buyin_cost=10)
             await asyncio.sleep(3)
 
             assert collected_data == [
@@ -871,8 +877,9 @@ class TestBuyInTakeSeat:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 103,
-                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "msg_type": 104,
+                    "props": {"balance": 50, "buyin_min": 10.0, "buyin_max": 20.0, "closed_at": 0,
+                              "offer_type": "buyin"},
                     "table_id": new_table.id
                 },
                 # сообщение с параметрами стола
@@ -900,7 +907,7 @@ class TestBuyInTakeSeat:
                     "balance_shared": None
                 }
             ])
-            await client.accept_offer(table_id=new_table.id, buyin_value=buyin_value)
+            await client.accept_offer(table_id=new_table.id, buyin_cost=buyin_value)
             await asyncio.sleep(3)
 
             assert collected_data == [
@@ -909,8 +916,8 @@ class TestBuyInTakeSeat:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 102,
-                    "props": {"error_id": 400, "error_text": "Not enough balance"},
+                    "msg_type": 103,
+                    "props": {"error_id": 1, "error_text": "Not enough balance"},
                     "table_id": new_table.id
                 },
             ]
@@ -995,8 +1002,9 @@ class TestBuyInTakeSeat:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 103,
-                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "msg_type": 104,
+                    "props": {"balance": 50, "buyin_min": 10.0, "buyin_max": 20.0, "closed_at": 0,
+                              "offer_type": "buyin"},
                     "table_id": new_table.id
                 },
                 # сообщение с параметрами стола
@@ -1017,7 +1025,7 @@ class TestBuyInTakeSeat:
             ]
             collected_data.clear()
 
-            await client.accept_offer(table_id=new_table.id, buyin_value=buyin_value)
+            await client.accept_offer(table_id=new_table.id, buyin_cost=buyin_value)
             await asyncio.sleep(3)
 
             assert collected_data == [
@@ -1025,8 +1033,8 @@ class TestBuyInTakeSeat:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 102,
-                    "props": {"error_id": 400, "error_text": "Incorrect buyin value"},
+                    "msg_type": 103,
+                    "props": {"error_id": 2, "error_text": "Incorrect buyin value"},
                     "table_id": new_table.id
                 },
             ]
@@ -1106,8 +1114,9 @@ class TestBuyInTakeSeat:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 103,
-                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "msg_type": 104,
+                    "props": {"balance": 50, "buyin_min": 10.0, "buyin_max": 20.0, "closed_at": 0,
+                              "offer_type": "buyin"},
                     "table_id": new_table.id
                 },
                 # сообщение с параметрами стола
@@ -1204,8 +1213,9 @@ class TestReplenishBalance:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 103,
-                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "msg_type": 104,
+                    "props": {"balance": 50, "buyin_min": 10.0, "buyin_max": 20.0, "closed_at": 0,
+                              "offer_type": "buyin"},
                     "table_id": new_table.id
                 },
                 # сообщение с параметрами стола
@@ -1235,7 +1245,7 @@ class TestReplenishBalance:
             ]
             collected_data_client_1.clear()
 
-            await client.accept_offer(table_id=new_table.id, buyin_value=10)
+            await client.accept_offer(table_id=new_table.id, buyin_cost=10)
             await asyncio.sleep(3)
 
             assert collected_data_client_1 == [
@@ -1264,14 +1274,15 @@ class TestReplenishBalance:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 103,
-                    "props": {"balance": 40, "buyin_range": [0.2, 10.0], "closed_at": 0, "offer_type": "buyin"},
+                    "msg_type": 104,
+                    "props": {"balance": 40, "buyin_min": 0.2, "buyin_max": 10.0, "closed_at": 0,
+                              "offer_type": "buyin"},
                     "table_id": new_table.id
                 },
             ]
             collected_data_client_1.clear()
 
-            await client.accept_offer(table_id=new_table.id, buyin_value=0.2)
+            await client.accept_offer(table_id=new_table.id, buyin_cost=0.2)
             await asyncio.sleep(3)
 
             # проверяем что деньги не спишутся сразу
@@ -1434,8 +1445,9 @@ class TestBuyInTwoClientsForAccount:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 103,
-                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "msg_type": 104,
+                    "props": {"balance": 50, "buyin_min": 10.0, "buyin_max": 20.0, "closed_at": 0,
+                              "offer_type": "buyin"},
                     "table_id": new_table.id
                 },
                 # сообщение с информацией, что нас посадили за стол
@@ -1555,8 +1567,9 @@ class TestBuyInTwoClientsForAccount:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 103,
-                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "msg_type": 104,
+                    "props": {"balance": 50, "buyin_min": 10.0, "buyin_max": 20.0, "closed_at": 0,
+                              "offer_type": "buyin"},
                     "table_id": new_table.id
                 },
                 # сообщение с информацией, что нас посадили за стол
@@ -1605,8 +1618,9 @@ class TestBuyInTwoClientsForAccount:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 103,
-                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "msg_type": 104,
+                    "props": {"balance": 50, "buyin_min": 10.0, "buyin_max": 20.0, "closed_at": 0,
+                              "offer_type": "buyin"},
                     "table_id": new_table.id
                 },
             ]
@@ -1618,8 +1632,9 @@ class TestBuyInTwoClientsForAccount:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 103,
-                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "msg_type": 104,
+                    "props": {"balance": 50, "buyin_min": 10.0, "buyin_max": 20.0, "closed_at": 0,
+                              "offer_type": "buyin"},
                     "table_id": new_table.id
                 },
                 # предложение оффера
@@ -1627,8 +1642,9 @@ class TestBuyInTwoClientsForAccount:
                     "client_id": None,
                     "cmd_id": None,
                     "game_id": None,
-                    "msg_type": 103,
-                    "props": {"balance": 50, "buyin_range": [10.0, 20.0], "closed_at": 0, "offer_type": "buyin"},
+                    "msg_type": 104,
+                    "props": {"balance": 50, "buyin_min": 10.0, "buyin_max": 20.0, "closed_at": 0,
+                              "offer_type": "buyin"},
                     "table_id": new_table.id
                 },
             ]
