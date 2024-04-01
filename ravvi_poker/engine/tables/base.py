@@ -307,6 +307,11 @@ class Table:
             user_info = user.get_info()
             await self.broadcast_PLAYER_ENTER(db, user_info, seat_idx)
         else:
+            # если баланс пользователя None, то отправим offer
+            if user.balance is None:
+                if not (account := await self.prepare_before_offer(db, cmd_id, client_id, user)):
+                    return False
+                await self.make_player_offer(db, user, client_id, account.balance)
             self.seats[old_seat_idx] = None
             self.seats[seat_idx] = user
             await self.broadcast_PLAYER_SEAT(db, user_id, seat_idx)
@@ -428,7 +433,7 @@ class Table:
             return True
         if user.balance == 0 and user.buyin_deferred_value is None:
             user.balance = None
-            await self.make_player_offer()
+            # await self.make_player_offer()
             return True
         return self.user_can_play(user)
 
@@ -474,7 +479,7 @@ class Table:
         for seat_idx, user in enumerate(self.seats):
             if not user:
                 continue
-            if not force and self.user_can_stay(user):
+            if not force and await self.user_can_stay(user):
                 continue
             self.seats[seat_idx] = None
             await self.on_player_exit(db, user, seat_idx)

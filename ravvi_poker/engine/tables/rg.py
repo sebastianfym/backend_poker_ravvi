@@ -45,17 +45,9 @@ class Table_RG(Table):
     def user_exit_enabled(self):
         return True
 
-    async def on_player_enter(self, db: DBI, cmd_id, client_id, user, seat_idx):
+    async def on_player_enter(self, db: DBI, cmd_id, client_id, user: User, seat_idx):
         # lobby: get user_profile balance
-        account = await db.get_account(user.account_id)
-        if not account:
-            return False
-        # если не достаточно денег на балансе, то возвращаем ошибку
-        if account.balance < self.buyin_min:
-            msg = Message(msg_type=Message.Type.TABLE_WARNING,
-                          table_id=self.table_id, cmd_id=cmd_id, client_id=client_id,
-                          error_id=1, error_text='Not enough balance')
-            await self.emit_msg(db, msg)
+        if not (account := await self.prepare_before_offer(db, cmd_id, client_id, user)):
             return False
         # отправляем предложение выбрать buyin
         await self.make_player_offer(db, user, client_id, account.balance)
@@ -66,6 +58,19 @@ class Table_RG(Table):
         user.is_new_player_on_table = True
         self.log.info("on_player_enter(%s): done", user.id)
         return True
+
+    async def prepare_before_offer(self, db: DBI, cmd_id, client_id, user: User) -> Row | None:
+        account = await db.get_account(user.account_id)
+        if not account:
+            return None
+        # если не достаточно денег на балансе, то возвращаем ошибку
+        if account.balance < self.buyin_min:
+            msg = Message(msg_type=Message.Type.TABLE_WARNING,
+                          table_id=self.table_id, cmd_id=cmd_id, client_id=client_id,
+                          error_id=1, error_text='Not enough balance')
+            await self.emit_msg(db, msg)
+            return None
+        return account
 
     async def make_player_offer(self, db, user: User, client_id: int, account_balance: decimal.Decimal):
         # игрок ранее не запрашивал оффер за этот стол
@@ -88,12 +93,16 @@ class Table_RG(Table):
             buyin_min = buyin_max = await db.get_last_table_reward(self.table_id, user.account_id, interval_in_hours)
         # если пользователь ранее имел офферы, то разошлем сообщения, что они просрочены
         if user.buyin_offer_timeout:
+            print("____________________")
+            print("Отправил что оффер не действителен")
             for client_id_expired_offer in user.clients:
                 await self.emit_TABLE_JOIN_OFFER(db, client_id=client_id_expired_offer, offer_type="buyin",
                                                  table_id=self.table_id, balance=account_balance,
                                                  closed_at=0, buyin_min=buyin_min, buyin_max=buyin_max)
             await db.commit()
         # отправим действующий оффер
+        print("____________________")
+        print("Отправил действительный оффер")
         await self.emit_TABLE_JOIN_OFFER(db, client_id=client_id, offer_type="buyin",
                                          table_id=self.table_id, balance=account_balance,
                                          closed_at=offer_closed_at, buyin_min=buyin_min, buyin_max=buyin_max)
