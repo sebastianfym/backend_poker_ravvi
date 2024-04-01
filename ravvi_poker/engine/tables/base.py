@@ -312,6 +312,9 @@ class Table:
             await self.broadcast_PLAYER_SEAT(db, user_id, seat_idx)
         return True
 
+    async def handle_cmd_offer_result(self, db, *, cmd_id: int, client_id: int, user_id: int, buyin_cost: float | None):
+        pass
+
     async def handle_cmd_exit(self, db, *, user_id: int):
         if not self.user_exit_enabled:
             return False
@@ -420,8 +423,12 @@ class Table:
         # TODO убрать int и float из типа баланса
         return isinstance(user.balance, (int, float, Decimal)) and user.balance > 0
 
-    def user_can_stay(self, user):
+    async def user_can_stay(self, user):
         if user.balance is None:
+            return True
+        if user.balance == 0 and user.buyin_deferred_value is None:
+            user.balance = None
+            await self.make_player_offer()
             return True
         return self.user_can_play(user)
 

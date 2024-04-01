@@ -68,7 +68,12 @@ class Table_RG(Table):
         return True
 
     async def make_player_offer(self, db, user: User, client_id: int, account_balance: decimal.Decimal):
-        offer_closed_at = time.time() + 60
+        # игрок ранее не запрашивал оффер за этот стол
+        if user.buyin_offer_timeout is None:
+            offer_closed_at = time.time() + 60
+        # игрок уже имеет активный оффер
+        else:
+            offer_closed_at = user.buyin_offer_timeout - 5
         buyin_min, buyin_max = self.buyin_min, self.buyin_max
         # если максимальный байин больше чем денег на балансе, то максимальный байин равен балансу
         if buyin_max > account_balance:
@@ -79,6 +84,7 @@ class Table_RG(Table):
             buyin_max -= user.balance
         elif user.balance is None and (interval_in_hours := getattr(self, "advanced_config").ratholing):
             # получаем последнюю выплату от стола за N часов
+            # TODO дополнить правило рэтхолинга, если последняя выплата равна байину, то рэтхолинга нет
             buyin_min = buyin_max = await db.get_last_table_reward(self.table_id, user.account_id, interval_in_hours)
         # если пользователь ранее имел офферы, то разошлем сообщения, что они просрочены
         if user.buyin_offer_timeout:
@@ -91,8 +97,8 @@ class Table_RG(Table):
         await self.emit_TABLE_JOIN_OFFER(db, client_id=client_id, offer_type="buyin",
                                          table_id=self.table_id, balance=account_balance,
                                          closed_at=offer_closed_at, buyin_min=buyin_min, buyin_max=buyin_max)
-        # стандартный оффер
-        user.buyin_offer_timeout = offer_closed_at + 5
+        if user.buyin_offer_timeout is None:
+            user.buyin_offer_timeout = offer_closed_at + 5
 
     async def handle_cmd_offer_result(self, db, *, cmd_id: int, client_id: int, user_id: int,
                                       buyin_cost: float | None):
