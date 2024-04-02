@@ -41,9 +41,6 @@ class PokerBase(Game):
         self.log.logger = logger
         self.round = None
         self.deck = None
-        # TODO удалить
-        # self.boards_types: list[BoardType] = [BoardType.BOARD1]
-        # self.boards = None
         self.bank_total = None
         self.banks = None
 

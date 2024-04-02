@@ -428,12 +428,18 @@ class Table:
         # TODO убрать int и float из типа баланса
         return isinstance(user.balance, (int, float, Decimal)) and user.balance > 0
 
-    async def user_can_stay(self, user):
+    async def user_can_stay(self, db, user):
         if user.balance is None:
             return True
+        # если баланс равен 0 и нет отложенного пополнения, то ставим баланс в None и пытаемся отправить оффер
         if user.balance == 0 and user.buyin_deferred_value is None:
             user.balance = None
-            # await self.make_player_offer()
+            # TODO вытянуть клиент который последний делал действия(Bet, take_seat), если количество клиентов
+            #  больше одного
+            client_id = user.clients[0]
+            if not (account := await self.prepare_before_offer(db, None, client_id, user)):
+                return False
+            await self.make_player_offer(db, user, client_id, account.balance)
             return True
         return self.user_can_play(user)
 
@@ -479,7 +485,7 @@ class Table:
         for seat_idx, user in enumerate(self.seats):
             if not user:
                 continue
-            if not force and await self.user_can_stay(user):
+            if not force and await self.user_can_stay(db, user):
                 continue
             self.seats[seat_idx] = None
             await self.on_player_exit(db, user, seat_idx)
