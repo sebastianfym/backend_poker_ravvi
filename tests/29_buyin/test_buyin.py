@@ -16,19 +16,22 @@ def clear_collected_data():
     collected_data_client_2.clear()
 
 
+@pytest.mark.integration_test
 class TestBuyInTableJoin:
     async def handler_collector(self, payload):
         collected_data.append(payload)
 
     @pytest.mark.asyncio
-    @pytest.mark.integration_test
     async def test_not_enough_balance(self):
         client = PokerClient()
 
         async with client:
-            await client.auth_register()
-            new_club = await client.create_club()
-            await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            status, _ = await client.auth_register()
+            assert status == 200
+            status, new_club = await client.create_club()
+            assert status == 201
+            status, _ = await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            assert status == 200
 
             table_params = {
                 "blind_small": 0.1,
@@ -37,9 +40,10 @@ class TestBuyInTableJoin:
                 "game_subtype": "REGULAR",
                 "table_type": "RG"
             }
-            new_table = await client.create_table(club_id=new_club.id, **table_params,
-                                                  buyin_min=10, buyin_max=20, action_time=15,
-                                                  table_seats=2)
+            status, new_table = await client.create_table(club_id=new_club.id, **table_params,
+                                                          buyin_min=10, buyin_max=20, action_time=15,
+                                                          table_seats=2)
+            assert status == 201
             # дождемся старта стола
             await asyncio.sleep(3)
 
@@ -79,26 +83,30 @@ class TestBuyInTableJoin:
             ]
 
     @pytest.mark.asyncio
-    @pytest.mark.integration_test
     async def test_give_offer(self):
         client = PokerClient()
 
         async with client:
-            await client.auth_register()
-            new_club = await client.create_club()
-            await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            status, _ = await client.auth_register()
+            assert status == 200
+            status, new_club = await client.create_club()
+            assert status == 201
+            status, _ = await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            assert status == 200
 
             # пополняем баланс клуба
-            await client.up_club_balance(new_club.id, 1000)
-            await client.up_user_balance(new_club.id, 50,
-                                         [
-                                             {
-                                                 "id": client.user_id,
-                                                 "balance": 1000,
-                                                 "balance_shared": None
-                                             }
-                                         ]
-                                         )
+            status, _ = await client.up_club_balance(new_club.id, 1000)
+            assert status == 201
+            status, _ = await client.up_user_balance(new_club.id, 50,
+                                                     [
+                                                         {
+                                                             "id": client.user_id,
+                                                             "balance": 1000,
+                                                             "balance_shared": None
+                                                         }
+                                                     ]
+                                                     )
+            assert status == 201
 
             table_params = {
                 "blind_small": 0.1,
@@ -107,9 +115,10 @@ class TestBuyInTableJoin:
                 "game_subtype": "REGULAR",
                 "table_type": "RG"
             }
-            new_table = await client.create_table(club_id=new_club.id, **table_params,
-                                                  buyin_min=10, buyin_max=20, action_time=15,
-                                                  table_seats=2)
+            status, new_table = await client.create_table(club_id=new_club.id, **table_params,
+                                                          buyin_min=10, buyin_max=20, action_time=15,
+                                                          table_seats=2)
+            assert status == 201
             # дождемся старта стола
             await asyncio.sleep(3)
 
@@ -157,26 +166,30 @@ class TestBuyInTableJoin:
             ]
 
     @pytest.mark.asyncio
-    @pytest.mark.integration_test
     async def test_correct_accept_offer(self):
         client = PokerClient()
 
         async with client:
-            await client.auth_register()
-            new_club = await client.create_club()
-            await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            status, _ = await client.auth_register()
+            assert status == 200
+            status, new_club = await client.create_club()
+            assert status == 201
+            status, _ = await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            assert status == 200
 
             # пополняем баланс клуба
-            await client.up_club_balance(new_club.id, 1000)
-            await client.up_user_balance(new_club.id, 50,
-                                         [
-                                             {
-                                                 "id": client.user_id,
-                                                 "balance": 1000,
-                                                 "balance_shared": None
-                                             }
-                                         ]
-                                         )
+            status, _ = await client.up_club_balance(new_club.id, 1000)
+            assert status == 201
+            status, _ = await client.up_user_balance(new_club.id, 50,
+                                                     [
+                                                         {
+                                                             "id": client.user_id,
+                                                             "balance": 1000,
+                                                             "balance_shared": None
+                                                         }
+                                                     ]
+                                                     )
+            assert status == 201
 
             table_params = {
                 "blind_small": 0.1,
@@ -185,9 +198,10 @@ class TestBuyInTableJoin:
                 "game_subtype": "REGULAR",
                 "table_type": "RG"
             }
-            new_table = await client.create_table(club_id=new_club.id, **table_params,
-                                                  buyin_min=10, buyin_max=20, action_time=15,
-                                                  table_seats=2)
+            status, new_table = await client.create_table(club_id=new_club.id, **table_params,
+                                                          buyin_min=10, buyin_max=20, action_time=15,
+                                                          table_seats=2)
+            assert status == 201
             # дождемся старта стола
             await asyncio.sleep(3)
 
@@ -249,11 +263,11 @@ class TestBuyInTableJoin:
                 }
             ]
 
-            member_data = await client.get_detail_member_info(new_club.id)
+            status, member_data = await client.get_detail_member_info(new_club.id)
+            assert status == 200
             assert member_data.balance == 40
 
     @pytest.mark.asyncio
-    @pytest.mark.integration_test
     @pytest.mark.parametrize("buyin_value", [5, 25])
     async def test_incorrect_accept_offer_balance_value(self, buyin_value: int):
         """
@@ -263,21 +277,26 @@ class TestBuyInTableJoin:
         client = PokerClient()
 
         async with client:
-            await client.auth_register()
-            new_club = await client.create_club()
-            await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            status, _ = await client.auth_register()
+            assert status == 200
+            status, new_club = await client.create_club()
+            assert status == 201
+            status, _ = await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            assert status == 200
 
             # пополняем баланс клуба
-            await client.up_club_balance(new_club.id, 1000)
-            await client.up_user_balance(new_club.id, 50,
-                                         [
-                                             {
-                                                 "id": client.user_id,
-                                                 "balance": 1000,
-                                                 "balance_shared": None
-                                             }
-                                         ]
-                                         )
+            status, _ = await client.up_club_balance(new_club.id, 1000)
+            assert status == 201
+            status, _ = await client.up_user_balance(new_club.id, 50,
+                                                     [
+                                                         {
+                                                             "id": client.user_id,
+                                                             "balance": 1000,
+                                                             "balance_shared": None
+                                                         }
+                                                     ]
+                                                     )
+            assert status == 201
 
             table_params = {
                 "blind_small": 0.1,
@@ -286,9 +305,10 @@ class TestBuyInTableJoin:
                 "game_subtype": "REGULAR",
                 "table_type": "RG"
             }
-            new_table = await client.create_table(club_id=new_club.id, **table_params,
-                                                  buyin_min=10, buyin_max=20, action_time=15,
-                                                  table_seats=2)
+            status, new_table = await client.create_table(club_id=new_club.id, **table_params,
+                                                          buyin_min=10, buyin_max=20, action_time=15,
+                                                          table_seats=2)
+            assert status == 201
             # дождемся старта стола
             await asyncio.sleep(3)
 
@@ -336,13 +356,14 @@ class TestBuyInTableJoin:
             ]
             collected_data.clear()
 
-            await client.down_user_balance(new_club.id, -50, [
+            status, _ = await client.down_user_balance(new_club.id, -50, [
                 {
                     "id": client.user_id,
                     "balance": 1000,
                     "balance_shared": None
                 }
             ])
+            assert status == 201
             await client.accept_offer(table_id=new_table.id, buyin_cost=buyin_value)
             await asyncio.sleep(3)
 
@@ -374,27 +395,31 @@ class TestBuyInTableJoin:
             ]
 
     @pytest.mark.asyncio
-    @pytest.mark.integration_test
     @pytest.mark.parametrize("buyin_value", [5, 25])
     async def test_incorrect_accept_offer_buyin_value(self, buyin_value):
         client = PokerClient()
 
         async with client:
-            await client.auth_register()
-            new_club = await client.create_club()
-            await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            status, _ = await client.auth_register()
+            assert status == 200
+            status, new_club = await client.create_club()
+            assert status == 201
+            status, _ = await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            assert status == 200
 
             # пополняем баланс клуба
-            await client.up_club_balance(new_club.id, 1000)
-            await client.up_user_balance(new_club.id, 50,
-                                         [
-                                             {
-                                                 "id": client.user_id,
-                                                 "balance": 1000,
-                                                 "balance_shared": None
-                                             }
-                                         ]
-                                         )
+            status, _ = await client.up_club_balance(new_club.id, 1000)
+            assert status == 201
+            status, _ = await client.up_user_balance(new_club.id, 50,
+                                                     [
+                                                         {
+                                                             "id": client.user_id,
+                                                             "balance": 1000,
+                                                             "balance_shared": None
+                                                         }
+                                                     ]
+                                                     )
+            assert status == 201
 
             table_params = {
                 "blind_small": 0.1,
@@ -403,9 +428,10 @@ class TestBuyInTableJoin:
                 "game_subtype": "REGULAR",
                 "table_type": "RG"
             }
-            new_table = await client.create_table(club_id=new_club.id, **table_params,
-                                                  buyin_min=10, buyin_max=20, action_time=15,
-                                                  table_seats=2)
+            status, new_table = await client.create_table(club_id=new_club.id, **table_params,
+                                                          buyin_min=10, buyin_max=20, action_time=15,
+                                                          table_seats=2)
+            assert status == 201
             # дождемся старта стола
             await asyncio.sleep(3)
 
@@ -483,7 +509,6 @@ class TestBuyInTableJoin:
             ]
 
     @pytest.mark.asyncio
-    @pytest.mark.integration_test
     async def test_offer_timeout(self):
         """
         Проверить что если оффер просрочен, то участника выкинет из-за стола, а команда с байином будет проигнорирована
@@ -491,21 +516,26 @@ class TestBuyInTableJoin:
         client = PokerClient()
 
         async with client:
-            await client.auth_register()
-            new_club = await client.create_club()
-            await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            status, _ = await client.auth_register()
+            assert status == 200
+            status, new_club = await client.create_club()
+            assert status == 201
+            status, _ = await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            assert status == 200
 
             # пополняем баланс клуба
-            await client.up_club_balance(new_club.id, 1000)
-            await client.up_user_balance(new_club.id, 50,
-                                         [
-                                             {
-                                                 "id": client.user_id,
-                                                 "balance": 1000,
-                                                 "balance_shared": None
-                                             }
-                                         ]
-                                         )
+            status, _ = await client.up_club_balance(new_club.id, 1000)
+            assert status == 201
+            status, _ = await client.up_user_balance(new_club.id, 50,
+                                                     [
+                                                         {
+                                                             "id": client.user_id,
+                                                             "balance": 1000,
+                                                             "balance_shared": None
+                                                         }
+                                                     ]
+                                                     )
+            assert status == 201
 
             table_params = {
                 "blind_small": 0.1,
@@ -514,9 +544,10 @@ class TestBuyInTableJoin:
                 "game_subtype": "REGULAR",
                 "table_type": "RG"
             }
-            new_table = await client.create_table(club_id=new_club.id, **table_params,
-                                                  buyin_min=10, buyin_max=20, action_time=15,
-                                                  table_seats=2)
+            status, new_table = await client.create_table(club_id=new_club.id, **table_params,
+                                                          buyin_min=10, buyin_max=20, action_time=15,
+                                                          table_seats=2)
+            assert status == 201
             # дождемся старта стола
             await asyncio.sleep(3)
 
@@ -584,14 +615,16 @@ class TestBuyInTakeSeat:
         collected_data.append(payload)
 
     @pytest.mark.asyncio
-    @pytest.mark.integration_test
     async def test_not_enough_balance(self):
         client = PokerClient()
 
         async with client:
-            await client.auth_register()
-            new_club = await client.create_club()
-            await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            status, _ = await client.auth_register()
+            assert status == 200
+            status, new_club = await client.create_club()
+            assert status == 201
+            status, _ = await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            assert status == 200
 
             table_params = {
                 "blind_small": 0.1,
@@ -600,9 +633,10 @@ class TestBuyInTakeSeat:
                 "game_subtype": "REGULAR",
                 "table_type": "RG"
             }
-            new_table = await client.create_table(club_id=new_club.id, **table_params,
-                                                  buyin_min=10, buyin_max=20, action_time=15,
-                                                  table_seats=2)
+            status, new_table = await client.create_table(club_id=new_club.id, **table_params,
+                                                          buyin_min=10, buyin_max=20, action_time=15,
+                                                          table_seats=2)
+            assert status == 201
             # дождемся старта стола
             await asyncio.sleep(3)
 
@@ -627,27 +661,31 @@ class TestBuyInTakeSeat:
             ]
 
     @pytest.mark.asyncio
-    @pytest.mark.integration_test
     @pytest.mark.parametrize("wait_method", ["wait_timeout", "decline_offer"])
     async def test_give_offer(self, wait_method):
         client = PokerClient()
 
         async with client:
-            await client.auth_register()
-            new_club = await client.create_club()
-            await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            status, _ = await client.auth_register()
+            assert status == 200
+            status, new_club = await client.create_club()
+            assert status == 201
+            status, _ = await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            assert status == 200
 
             # пополняем баланс клуба
-            await client.up_club_balance(new_club.id, 1000)
-            await client.up_user_balance(new_club.id, 50,
-                                         [
-                                             {
-                                                 "id": client.user_id,
-                                                 "balance": 1000,
-                                                 "balance_shared": None
-                                             }
-                                         ]
-                                         )
+            status, _ = await client.up_club_balance(new_club.id, 1000)
+            assert status == 201
+            status, _ = await client.up_user_balance(new_club.id, 50,
+                                                     [
+                                                         {
+                                                             "id": client.user_id,
+                                                             "balance": 1000,
+                                                             "balance_shared": None
+                                                         }
+                                                     ]
+                                                     )
+            assert status == 201
 
             table_params = {
                 "blind_small": 0.1,
@@ -656,9 +694,10 @@ class TestBuyInTakeSeat:
                 "game_subtype": "REGULAR",
                 "table_type": "RG"
             }
-            new_table = await client.create_table(club_id=new_club.id, **table_params,
-                                                  buyin_min=10, buyin_max=20, action_time=15,
-                                                  table_seats=2)
+            status, new_table = await client.create_table(club_id=new_club.id, **table_params,
+                                                          buyin_min=10, buyin_max=20, action_time=15,
+                                                          table_seats=2)
+            assert status == 201
             # дождемся старта стола
             await asyncio.sleep(3)
 
@@ -709,27 +748,31 @@ class TestBuyInTakeSeat:
             ]
 
     @pytest.mark.asyncio
-    @pytest.mark.integration_test
     @pytest.mark.parametrize("wait_method", ["wait_timeout", "decline_offer"])
     async def test_correct_accept_offer(self, wait_method: str):
         client = PokerClient()
 
         async with client:
-            await client.auth_register()
-            new_club = await client.create_club()
-            await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            status, _ = await client.auth_register()
+            assert status == 200
+            status, new_club = await client.create_club()
+            assert status == 201
+            status, _ = await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            assert status == 200
 
             # пополняем баланс клуба
-            await client.up_club_balance(new_club.id, 1000)
-            await client.up_user_balance(new_club.id, 50,
-                                         [
-                                             {
-                                                 "id": client.user_id,
-                                                 "balance": 1000,
-                                                 "balance_shared": None
-                                             }
-                                         ]
-                                         )
+            status, _ = await client.up_club_balance(new_club.id, 1000)
+            assert status == 201
+            status, _ = await client.up_user_balance(new_club.id, 50,
+                                                     [
+                                                         {
+                                                             "id": client.user_id,
+                                                             "balance": 1000,
+                                                             "balance_shared": None
+                                                         }
+                                                     ]
+                                                     )
+            assert status == 201
 
             table_params = {
                 "blind_small": 0.1,
@@ -738,9 +781,10 @@ class TestBuyInTakeSeat:
                 "game_subtype": "REGULAR",
                 "table_type": "RG"
             }
-            new_table = await client.create_table(club_id=new_club.id, **table_params,
-                                                  buyin_min=10, buyin_max=20, action_time=15,
-                                                  table_seats=2)
+            status, new_table = await client.create_table(club_id=new_club.id, **table_params,
+                                                          buyin_min=10, buyin_max=20, action_time=15,
+                                                          table_seats=2)
+            assert status == 201
             # дождемся старта стола
             await asyncio.sleep(3)
 
@@ -805,11 +849,11 @@ class TestBuyInTakeSeat:
                 }
             ]
 
-            member_data = await client.get_detail_member_info(new_club.id)
+            status, member_data = await client.get_detail_member_info(new_club.id)
+            assert status == 200
             assert member_data.balance == 40
 
     @pytest.mark.asyncio
-    @pytest.mark.integration_test
     @pytest.mark.parametrize("wait_method, buyin_value", [
         ["wait_timeout", 5],
         ["wait_timeout", 25],
@@ -824,21 +868,26 @@ class TestBuyInTakeSeat:
         client = PokerClient()
 
         async with client:
-            await client.auth_register()
-            new_club = await client.create_club()
-            await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            status, _ = await client.auth_register()
+            assert status == 200
+            status, new_club = await client.create_club()
+            assert status == 201
+            status, _ = await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            assert status == 200
 
             # пополняем баланс клуба
-            await client.up_club_balance(new_club.id, 1000)
-            await client.up_user_balance(new_club.id, 50,
-                                         [
-                                             {
-                                                 "id": client.user_id,
-                                                 "balance": 1000,
-                                                 "balance_shared": None
-                                             }
-                                         ]
-                                         )
+            status, _ = await client.up_club_balance(new_club.id, 1000)
+            assert status == 201
+            status, _ = await client.up_user_balance(new_club.id, 50,
+                                                     [
+                                                         {
+                                                             "id": client.user_id,
+                                                             "balance": 1000,
+                                                             "balance_shared": None
+                                                         }
+                                                     ]
+                                                     )
+            assert status == 201
 
             table_params = {
                 "blind_small": 0.1,
@@ -847,9 +896,10 @@ class TestBuyInTakeSeat:
                 "game_subtype": "REGULAR",
                 "table_type": "RG"
             }
-            new_table = await client.create_table(club_id=new_club.id, **table_params,
-                                                  buyin_min=10, buyin_max=20, action_time=15,
-                                                  table_seats=2)
+            status, new_table = await client.create_table(club_id=new_club.id, **table_params,
+                                                          buyin_min=10, buyin_max=20, action_time=15,
+                                                          table_seats=2)
+            assert status == 201
             # дождемся старта стола
             await asyncio.sleep(3)
 
@@ -938,7 +988,6 @@ class TestBuyInTakeSeat:
             ]
 
     @pytest.mark.asyncio
-    @pytest.mark.integration_test
     @pytest.mark.parametrize("wait_method, buyin_value", [
         ["wait_timeout", 5],
         ["wait_timeout", 25],
@@ -949,21 +998,26 @@ class TestBuyInTakeSeat:
         client = PokerClient()
 
         async with client:
-            await client.auth_register()
-            new_club = await client.create_club()
-            await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            status, _ = await client.auth_register()
+            assert status == 200
+            status, new_club = await client.create_club()
+            assert status == 201
+            status, _ = await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            assert status == 200
 
             # пополняем баланс клуба
-            await client.up_club_balance(new_club.id, 1000)
-            await client.up_user_balance(new_club.id, 50,
-                                         [
-                                             {
-                                                 "id": client.user_id,
-                                                 "balance": 1000,
-                                                 "balance_shared": None
-                                             }
-                                         ]
-                                         )
+            status, _ = await client.up_club_balance(new_club.id, 1000)
+            assert status == 201
+            status, _ = await client.up_user_balance(new_club.id, 50,
+                                                     [
+                                                         {
+                                                             "id": client.user_id,
+                                                             "balance": 1000,
+                                                             "balance_shared": None
+                                                         }
+                                                     ]
+                                                     )
+            assert status == 201
 
             table_params = {
                 "blind_small": 0.1,
@@ -972,9 +1026,10 @@ class TestBuyInTakeSeat:
                 "game_subtype": "REGULAR",
                 "table_type": "RG"
             }
-            new_table = await client.create_table(club_id=new_club.id, **table_params,
-                                                  buyin_min=10, buyin_max=20, action_time=15,
-                                                  table_seats=2)
+            status, new_table = await client.create_table(club_id=new_club.id, **table_params,
+                                                          buyin_min=10, buyin_max=20, action_time=15,
+                                                          table_seats=2)
+            assert status == 201
             # дождемся старта стола
             await asyncio.sleep(3)
 
@@ -1055,27 +1110,31 @@ class TestBuyInTakeSeat:
             ]
 
     @pytest.mark.asyncio
-    @pytest.mark.integration_test
     @pytest.mark.parametrize("wait_method", ["wait_timeout", "decline_offer"])
     async def test_offer_timeout(self, wait_method):
         client = PokerClient()
 
         async with client:
-            await client.auth_register()
-            new_club = await client.create_club()
-            await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            status, _ = await client.auth_register()
+            assert status == 200
+            status, new_club = await client.create_club()
+            assert status == 201
+            status, _ = await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            assert status == 200
 
             # пополняем баланс клуба
-            await client.up_club_balance(new_club.id, 1000)
-            await client.up_user_balance(new_club.id, 50,
-                                         [
-                                             {
-                                                 "id": client.user_id,
-                                                 "balance": 1000,
-                                                 "balance_shared": None
-                                             }
-                                         ]
-                                         )
+            status, _ = await client.up_club_balance(new_club.id, 1000)
+            assert status == 201
+            status, _ = await client.up_user_balance(new_club.id, 50,
+                                                     [
+                                                         {
+                                                             "id": client.user_id,
+                                                             "balance": 1000,
+                                                             "balance_shared": None
+                                                         }
+                                                     ]
+                                                     )
+            assert status == 201
 
             table_params = {
                 "blind_small": 0.1,
@@ -1084,9 +1143,10 @@ class TestBuyInTakeSeat:
                 "game_subtype": "REGULAR",
                 "table_type": "RG"
             }
-            new_table = await client.create_table(club_id=new_club.id, **table_params,
-                                                  buyin_min=10, buyin_max=20, action_time=15,
-                                                  table_seats=2)
+            status, new_table = await client.create_table(club_id=new_club.id, **table_params,
+                                                          buyin_min=10, buyin_max=20, action_time=15,
+                                                          table_seats=2)
+            assert status == 201
             # дождемся старта стола
             await asyncio.sleep(3)
 
@@ -1156,6 +1216,7 @@ collected_data_client_1 = []
 collected_data_client_2 = []
 
 
+@pytest.mark.integration_test
 class TestReplenishBalance:
     async def handler_collector_client_1(self, payload):
         collected_data_client_1.append(payload)
@@ -1164,7 +1225,6 @@ class TestReplenishBalance:
         collected_data_client_2.append(payload)
 
     @pytest.mark.asyncio
-    @pytest.mark.integration_test
     async def test_replenish_balance_not_game(self):
         """
         Проверяем что баланс пополнится. Аккаунт уже за столом. Игра не идет
@@ -1172,21 +1232,26 @@ class TestReplenishBalance:
         client = PokerClient()
 
         async with client:
-            await client.auth_register()
-            new_club = await client.create_club()
-            await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            status, _ = await client.auth_register()
+            assert status == 200
+            status, new_club = await client.create_club()
+            assert status == 201
+            status, _ = await client.update_club(club_id=new_club.id, automatic_confirmation=True)
+            assert status == 200
 
             # пополняем баланс клуба
-            await client.up_club_balance(new_club.id, 1000)
-            await client.up_user_balance(new_club.id, 50,
-                                         [
-                                             {
-                                                 "id": client.user_id,
-                                                 "balance": 1000,
-                                                 "balance_shared": None
-                                             }
-                                         ]
-                                         )
+            status, _ = await client.up_club_balance(new_club.id, 1000)
+            assert status == 201
+            status, _ = await client.up_user_balance(new_club.id, 50,
+                                                     [
+                                                         {
+                                                             "id": client.user_id,
+                                                             "balance": 1000,
+                                                             "balance_shared": None
+                                                         }
+                                                     ]
+                                                     )
+            assert status == 201
 
             table_params = {
                 "blind_small": 0.1,
@@ -1195,9 +1260,10 @@ class TestReplenishBalance:
                 "game_subtype": "REGULAR",
                 "table_type": "RG"
             }
-            new_table = await client.create_table(club_id=new_club.id, **table_params,
-                                                  buyin_min=10, buyin_max=20, action_time=15,
-                                                  table_seats=2)
+            status, new_table = await client.create_table(club_id=new_club.id, **table_params,
+                                                          buyin_min=10, buyin_max=20, action_time=15,
+                                                          table_seats=2)
+            assert status == 201
             # дождемся старта стола
             await asyncio.sleep(3)
 
@@ -1260,7 +1326,8 @@ class TestReplenishBalance:
             ]
             collected_data_client_1.clear()
 
-            member_data = await client.get_detail_member_info(new_club.id)
+            status, member_data = await client.get_detail_member_info(new_club.id)
+            assert status == 200
             assert member_data.balance == 40
 
             await client.request_offer(new_table.id)
@@ -1286,7 +1353,8 @@ class TestReplenishBalance:
             await asyncio.sleep(3)
 
             # проверяем что деньги не спишутся сразу
-            member_data = await client.get_detail_member_info(new_club.id)
+            status, member_data = await client.get_detail_member_info(new_club.id)
+            assert status == 200
             assert member_data.balance == 40
 
     # @pytest.mark.asyncio
@@ -1356,6 +1424,7 @@ class TestReplenishBalance:
     #         raise ValueError
 
 
+@pytest.mark.integration_test
 class TestBuyInTwoClientsForAccount:
     async def handler_collector_client_1(self, payload):
         collected_data_client_1.append(payload)
@@ -1364,7 +1433,6 @@ class TestBuyInTwoClientsForAccount:
         collected_data_client_2.append(payload)
 
     @pytest.mark.asyncio
-    @pytest.mark.integration_test
     async def test_two_clients_one_offer_take_seat(self):
         """
         Проверяем что если один аккаунт находится за двумя устройствами, то оффер получит только то устройство,
@@ -1373,23 +1441,30 @@ class TestBuyInTwoClientsForAccount:
         client1, client2 = PokerClient(), PokerClient()
 
         async with client1, client2:
-            await client1.auth_register()
-            await client1.password_update(None, "12345678")
-            await client2.login_with_username_and_password(f"{client1.user_id}", "12345678")
+            status, _ = await client1.auth_register()
+            assert status == 200
+            status, _ = await client1.password_update(None, "12345678")
+            assert status == 200
+            status, _ = await client2.login_with_username_and_password(f"{client1.user_id}",
+                                                                       "12345678")
+            assert status == 200
 
-            new_club = await client1.create_club()
+            status, new_club = await client1.create_club()
+            assert status == 201
 
             # пополняем баланс клуба
-            await client1.up_club_balance(new_club.id, 1000)
-            await client1.up_user_balance(new_club.id, 50,
-                                          [
-                                              {
-                                                  "id": client1.user_id,
-                                                  "balance": 1000,
-                                                  "balance_shared": None
-                                              }
-                                          ]
-                                          )
+            status, _ = await client1.up_club_balance(new_club.id, 1000)
+            assert status == 201
+            status, _ = await client1.up_user_balance(new_club.id, 50,
+                                                      [
+                                                          {
+                                                              "id": client1.user_id,
+                                                              "balance": 1000,
+                                                              "balance_shared": None
+                                                          }
+                                                      ]
+                                                      )
+            assert status == 201
 
             # создаем стол
             table_params = {
@@ -1399,9 +1474,10 @@ class TestBuyInTwoClientsForAccount:
                 "game_subtype": "REGULAR",
                 "table_type": "RG"
             }
-            new_table = await client1.create_table(club_id=new_club.id, **table_params,
-                                                   buyin_min=10, buyin_max=20, action_time=15,
-                                                   table_seats=2)
+            status, new_table = await client1.create_table(club_id=new_club.id, **table_params,
+                                                           buyin_min=10, buyin_max=20, action_time=15,
+                                                           table_seats=2)
+            assert status == 201
             # дождемся старта стола
             await asyncio.sleep(3)
 
@@ -1485,7 +1561,6 @@ class TestBuyInTwoClientsForAccount:
             ]
 
     @pytest.mark.asyncio
-    @pytest.mark.integration_test
     async def test_two_clients_two_offer_take_seat(self):
         """
         Проверяем что если один аккаунт находится за двумя устройствами, то оффер получит только то устройство,
@@ -1495,23 +1570,30 @@ class TestBuyInTwoClientsForAccount:
         client1, client2 = PokerClient(), PokerClient()
 
         async with client1, client2:
-            await client1.auth_register()
-            await client1.password_update(None, "12345678")
-            await client2.login_with_username_and_password(f"{client1.user_id}", "12345678")
+            status, _ = await client1.auth_register()
+            assert status == 200
+            status, _ = await client1.password_update(None, "12345678")
+            assert status == 200
+            status, _ = await client2.login_with_username_and_password(f"{client1.user_id}",
+                                                                       "12345678")
+            assert status == 200
 
-            new_club = await client1.create_club()
+            status, new_club = await client1.create_club()
+            assert status == 201
 
             # пополняем баланс клуба
-            await client1.up_club_balance(new_club.id, 1000)
-            await client1.up_user_balance(new_club.id, 50,
-                                          [
-                                              {
-                                                  "id": client1.user_id,
-                                                  "balance": 1000,
-                                                  "balance_shared": None
-                                              }
-                                          ]
-                                          )
+            status, _ = await client1.up_club_balance(new_club.id, 1000)
+            assert status == 201
+            status, _ = await client1.up_user_balance(new_club.id, 50,
+                                                      [
+                                                          {
+                                                              "id": client1.user_id,
+                                                              "balance": 1000,
+                                                              "balance_shared": None
+                                                          }
+                                                      ]
+                                                      )
+            assert status == 201
 
             # создаем стол
             table_params = {
@@ -1521,9 +1603,10 @@ class TestBuyInTwoClientsForAccount:
                 "game_subtype": "REGULAR",
                 "table_type": "RG"
             }
-            new_table = await client1.create_table(club_id=new_club.id, **table_params,
-                                                   buyin_min=10, buyin_max=20, action_time=15,
-                                                   table_seats=2)
+            status, new_table = await client1.create_table(club_id=new_club.id, **table_params,
+                                                           buyin_min=10, buyin_max=20, action_time=15,
+                                                           table_seats=2)
+            assert status == 201
             # дождемся старта стола
             await asyncio.sleep(3)
 

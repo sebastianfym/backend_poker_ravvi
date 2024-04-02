@@ -4,6 +4,8 @@ import logging
 import os
 import json
 import base64
+from decimal import Decimal
+
 import psycopg
 from psycopg.rows import namedtuple_row, dict_row
 from psycopg.connection import Notify
@@ -783,6 +785,8 @@ class DBI:
 
     def json_dumps(self, obj):
         def encoder(x):
+            if isinstance(x, Decimal):
+                return float(x)
             if hasattr(x, "__int__"):
                 return int(x)
             if hasattr(x, "__str__"):
