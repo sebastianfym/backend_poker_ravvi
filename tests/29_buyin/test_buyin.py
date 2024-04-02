@@ -610,6 +610,7 @@ class TestBuyInTableJoin:
             ]
 
 
+@pytest.mark.integration_test
 class TestBuyInTakeSeat:
     async def handler_collector(self, payload):
         collected_data.append(payload)
