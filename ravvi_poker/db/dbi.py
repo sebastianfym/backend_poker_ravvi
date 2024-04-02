@@ -494,7 +494,7 @@ class DBI:
 
     async def get_account(self, member_id: int):
         async with self.cursor() as cursor:
-            await cursor.execute("SELECT * FROM user_account WHERE id=%s", (member_id,))
+            await cursor.execute("SELECT * FROM club_member WHERE id=%s", (member_id,))
             row = await cursor.fetchone()
         return row
 
