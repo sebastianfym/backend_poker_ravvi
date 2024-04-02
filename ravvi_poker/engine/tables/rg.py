@@ -75,9 +75,10 @@ class Table_RG(Table):
     async def make_player_offer(self, db, user: User, client_id: int, account_balance: decimal.Decimal):
         # игрок ранее не запрашивал оффер за этот стол
         if user.buyin_offer_timeout is None:
-            offer_closed_at = time.time() + 60
+            offer_closed_at = time.time() + 30
         # игрок уже имеет активный оффер
         else:
+            # TODO обработать отрицательное значение относительно текущего времени
             offer_closed_at = user.buyin_offer_timeout - 5
         buyin_min, buyin_max = self.buyin_min, self.buyin_max
         # если максимальный байин больше чем денег на балансе, то максимальный байин равен балансу
@@ -93,19 +94,16 @@ class Table_RG(Table):
             buyin_min = buyin_max = await db.get_last_table_reward(self.table_id, user.account_id, interval_in_hours)
         # если пользователь ранее имел офферы, то разошлем сообщения, что они просрочены
         if user.buyin_offer_timeout:
-            print("____________________")
-            print("Отправил что оффер не действителен")
             for client_id_expired_offer in user.clients:
                 await self.emit_TABLE_JOIN_OFFER(db, client_id=client_id_expired_offer, offer_type="buyin",
                                                  table_id=self.table_id, balance=account_balance,
                                                  closed_at=0, buyin_min=buyin_min, buyin_max=buyin_max)
             await db.commit()
         # отправим действующий оффер
-        print("____________________")
-        print("Отправил действительный оффер")
         await self.emit_TABLE_JOIN_OFFER(db, client_id=client_id, offer_type="buyin",
                                          table_id=self.table_id, balance=account_balance,
-                                         closed_at=offer_closed_at, buyin_min=buyin_min, buyin_max=buyin_max)
+                                         closed_at=offer_closed_at-time.time(),
+                                         buyin_min=buyin_min, buyin_max=buyin_max)
         if user.buyin_offer_timeout is None:
             user.buyin_offer_timeout = offer_closed_at + 5
 
