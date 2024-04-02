@@ -13,6 +13,7 @@ from ravvi_poker.api.images import ImageProfile
 # from ravvi_poker.api.tables import TableProfile
 # from ravvi_poker.api.types import UserPublicProfile
 from ravvi_poker.api.users.types import UserPrivateProfile, UserPublicProfile
+from ravvi_poker.client.utilities import card_decoder
 from ravvi_poker.engine.events import Message, MessageType, CommandType
 from ravvi_poker.engine.poker.bet import Bet
 
@@ -773,10 +774,10 @@ class PokerClient:
     # PLAY
 
     async def join_table(self, table_id, take_seat, table_msg_handler, club_id):
+        await asyncio.sleep(1)
         if not self.ws:
             await self.ws_connect()
         self.table_handlers[table_id] = table_msg_handler
-        print(self.table_handlers[table_id])
         await self.ws_send(cmd_type=CommandType.JOIN, table_id=table_id, take_seat=take_seat, club_id=club_id)
 
     async def exit_table(self, table_id):
@@ -792,18 +793,31 @@ class PokerClient:
             logger.info("%s: bet options %s", msg.table_id, msg.options)
             await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=1)
 
-    async def play_check_or_fold(self, msg: Message):
-        print(f"2 msg_type:{msg.msg_type}")
+    async def play_check_or_fold_or_allin(self, msg: Message):
+        print(f"msg_type: {msg.msg_type}, msg: {msg}")
         if msg.msg_type == MessageType.GAME_PLAYER_MOVE and msg.user_id == self.user_id:
             logger.info("%s: bet options %s", msg.table_id, msg.options)
             if Bet.CHECK in msg.options:
                 await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
             else:
                 await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
+        elif msg.msg_type == MessageType.PLAYER_CARDS and msg.user_id == self.user_id:
+            # проверка на соответствие доступных комбинаций
+            if card_decoder(msg) is False:
+                await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
 
-    async def bet_action(self, msg: Message):
-        if Bet.CHECK in msg.options:
-            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
-        else:
-            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
+            # комбинация должна быть "пара" или выше
+            if msg.props['hands'][0]['hand_type'] != "H" and msg.user_id == self.user_id:
+                print('Пара или выше')
+                try:
+                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
+                    print(f'Check {msg.user_id}')
+                except:
+                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CALL)
+                    print('Call')
+            elif msg.props['hands'][0]['hand_type'] == "H" and msg.user_id == self.user_id:
+                print(f'Старшая карта, фолдим: {msg.user_id}')
+                await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
+
+
 
