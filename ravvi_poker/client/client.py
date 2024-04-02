@@ -219,8 +219,6 @@ class PokerClient:
 
     # CLUBS
 
-    async def create_club(self, name=None, description=None, image_id=None, user_role="O", user_approved=False,
-                          timezone=None):
     async def create_club(self, name=None, description=None, image_id=None, timezone=None):
         data = {
             "name": name,
