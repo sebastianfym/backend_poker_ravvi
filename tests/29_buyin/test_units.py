@@ -25,7 +25,7 @@ class TestOfferResult:
         account_mock = MagicMock()
         account_mock.balance = 10
         db_mocked.get_account.return_value = account_mock
-        await table.handle_cmd_offer_result(db_mocked, cmd_id=1, client_id=1, user_id=1, buyin_value=None)
+        await table.handle_cmd_offer_result(db_mocked, cmd_id=1, client_id=1, user_id=1, buyin_cost=None)
 
         make_player_offer.assert_called_once_with(db_mocked, user_mocked, 1, 10)
 
@@ -45,7 +45,7 @@ class TestOfferResult:
         table.find_user = MagicMock(return_value=(user_mocked, 1, None))
 
         db_mocked = MagicMock()
-        await table.handle_cmd_offer_result(db_mocked, cmd_id=1, client_id=1, user_id=1, buyin_value=0)
+        await table.handle_cmd_offer_result(db_mocked, cmd_id=1, client_id=1, user_id=1, buyin_cost=0)
 
         assert db_mocked.mock_calls == []
 
@@ -74,7 +74,7 @@ class TestOfferResult:
         account_mock = MagicMock()
         account_mock.balance = 10
         db_mocked.get_account_for_update.return_value = account_mock
-        await table.handle_cmd_offer_result(db_mocked, cmd_id=1, client_id=1, user_id=1, buyin_value=0)
+        await table.handle_cmd_offer_result(db_mocked, cmd_id=1, client_id=1, user_id=1, buyin_cost=0)
 
         broadcast_mock.assert_awaited_once_with(db_mocked, 105)
         close_table_session_mocked.assert_awaited_once_with(95)
@@ -97,7 +97,7 @@ class TestOfferResult:
         account_mock = MagicMock()
         account_mock.balance = 10
         db_mocked.get_account_for_update.return_value = account_mock
-        await table.handle_cmd_offer_result(db_mocked, cmd_id=1, client_id=1, user_id=1, buyin_value=10.557)
+        await table.handle_cmd_offer_result(db_mocked, cmd_id=1, client_id=1, user_id=1, buyin_cost=10.557)
 
         assert user_mocked.buyin_offer_timeout is None
         update_balance_mock.assert_awaited_once_with(db_mocked, user_mocked, Decimal("10.56"))
@@ -119,6 +119,6 @@ class TestOfferResult:
         account_mock = MagicMock()
         account_mock.balance = 10
         db_mocked.get_account_for_update.return_value = account_mock
-        await table.handle_cmd_offer_result(db_mocked, cmd_id=1, client_id=1, user_id=1, buyin_value=10.557)
+        await table.handle_cmd_offer_result(db_mocked, cmd_id=1, client_id=1, user_id=1, buyin_cost=10.557)
 
         assert user_mocked.buyin_deferred_value == Decimal("10.56")
