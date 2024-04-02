@@ -9,10 +9,12 @@ class MyVerySmartCustomPokerStrategy:
         self.club_id = club_id
 
     async def __call__(self, msg: Message):
-        if msg.msg_type == MessageType.PLAYER_EXIT:
-            await self.client.join_table(table_id=msg.table_id, take_seat=True, table_msg_handler=self, club_id=self.club_id)
-        else:
-            await self.client.bet_action(msg)
+        print(f"1 msg_type:{msg.msg_type}")
+        await self.client.play_check_or_fold(msg)
+        # if msg.msg_type == MessageType.PLAYER_EXIT:
+        #     await self.client.join_table(table_id=msg.table_id, take_seat=True, table_msg_handler=self, club_id=self.club_id)
+        # else:
+        #     await self.client.bet_action(msg)
 
 
 async def owner_scenario():
@@ -45,14 +47,14 @@ async def owner_scenario():
         #                               buyin_value=10.0, buyin_min=10.0)
         await client.create_table(club_id=my_club_id, table_type="RG", table_name=None,
                                   table_seats=9, game_type="NLH",
-                                  game_subtype="REGULAR", buyin_cost=15.0, blind_small=16.0, blind_big=3.0,
+                                  game_subtype="REGULAR", buyin_cost=15.0, blind_small=3.0, blind_big=13.0,
                                   buyin_value=1.0, buyin_min=19.0)
         await asyncio.sleep(1)
 
 
 async def player_scenario():
     client = PokerClient()
-    strategy = MyVerySmartCustomPokerStrategy(client, club_id=1080) #Todo тут нужно подставлять  id актуального клуба
+    strategy = MyVerySmartCustomPokerStrategy(client, club_id=1004) #Todo тут нужно подставлять  id актуального клуба
     async with client:
         await client.auth_register()
         await client.update_user_profile(name=f'PLAYER-{client.user_id}', image_id=12)
@@ -61,7 +63,7 @@ async def player_scenario():
         await client.get_user_by_id(id=client.user_id)
         await asyncio.sleep(1)
 
-        club = await client.send_req_join_in_club(club_id=1080, user_comment=None) #Todo тут нужно подставлять  id актуального клуба
+        club = await client.send_req_join_in_club(club_id=1004, user_comment=None) #Todo тут нужно подставлять  id актуального клуба
         club_id = club[1].id
 
         chips_request = await client.send_req_to_up_user_balance(club_id, 5100)
@@ -79,6 +81,7 @@ async def player_scenario():
         # for table in (await client.get_club_tables(club_id))[1]:
         #     await client.join_table(table_id=table.id, take_seat=True, table_msg_handler=strategy, club_id=club_id)
         #     await asyncio.sleep(180)
+
         table = (await client.get_club_tables(club_id))[1]
         while True:
             await client.join_table(table_id=table[0].id, take_seat=True, table_msg_handler=strategy, club_id=club_id)

@@ -776,6 +776,7 @@ class PokerClient:
         if not self.ws:
             await self.ws_connect()
         self.table_handlers[table_id] = table_msg_handler
+        print(self.table_handlers[table_id])
         await self.ws_send(cmd_type=CommandType.JOIN, table_id=table_id, take_seat=take_seat, club_id=club_id)
 
     async def exit_table(self, table_id):
@@ -792,6 +793,7 @@ class PokerClient:
             await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=1)
 
     async def play_check_or_fold(self, msg: Message):
+        print(f"2 msg_type:{msg.msg_type}")
         if msg.msg_type == MessageType.GAME_PLAYER_MOVE and msg.user_id == self.user_id:
             logger.info("%s: bet options %s", msg.table_id, msg.options)
             if Bet.CHECK in msg.options:
