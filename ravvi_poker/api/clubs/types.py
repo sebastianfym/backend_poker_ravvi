@@ -187,7 +187,7 @@ class ClubChipsValue(BaseModel):
 
 class UserChipsValue(ClubChipsValue):
     balance: str
-    # ID аккаунта внутри клуба
+    # ID пользователя (user_profile)
     account_id: int
     club_member: Row | None = Field(default=None)
 
@@ -459,6 +459,7 @@ class TxnHistoryManual(BaseModel):
 
 
 class TxnHistoryOnTable(BaseModel):
+    username: str | None
     table_name: str | None
     table_id: int | None
     txn_time: str | None

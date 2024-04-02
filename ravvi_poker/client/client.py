@@ -26,7 +26,7 @@ def perf_log(func):
         t1 = perf_counter()
         logger.info("%s %s %s %s %s", self.user_id, func.__name__, url, response.status, f"{t1-t0:.3f}")
         return response
-    return wrapper    
+    return wrapper
 
 class PokerClient:
     API_HOST = '127.0.0.1:5001'
@@ -210,7 +210,7 @@ class PokerClient:
             payload = img_list
         return status, payload
 
-    # LOBBY 
+    # LOBBY
 
     async def get_lobby_entry_tables(self):
         response = await self.GET('/api/v1/lobby/entry_tables')

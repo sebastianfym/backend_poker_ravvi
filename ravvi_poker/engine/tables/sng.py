@@ -132,7 +132,6 @@ class Table_SNG(Table):
             if all(self.seats):
                 break
             await self.sleep(1)
-
         # фиксируем время начала турнира
         self.time_counter.start()
 
@@ -147,7 +146,7 @@ class Table_SNG(Table):
                 async with self.DBI() as db:
                     await self.remove_users(db)
                 users = [u for u in self.seats if u]
-                if len(users)<2:
+                if len(users) < 2:
                     self.status = TableStatus.CLOSING
 
         # останавливаем обновлятор уровней
