@@ -75,7 +75,7 @@ class Table_RG(Table):
     async def make_player_offer(self, db, user: User, client_id: int, account_balance: decimal.Decimal):
         # игрок ранее не запрашивал оффер за этот стол
         if user.buyin_offer_timeout is None:
-            offer_closed_at = time.time() + 30
+            offer_closed_at = time.time() + 60
         # игрок уже имеет активный оффер
         else:
             # TODO обработать отрицательное значение относительно текущего времени
@@ -102,7 +102,7 @@ class Table_RG(Table):
         # отправим действующий оффер
         await self.emit_TABLE_JOIN_OFFER(db, client_id=client_id, offer_type="buyin",
                                          table_id=self.table_id, balance=account_balance,
-                                         closed_at=offer_closed_at-time.time(),
+                                         closed_at=int(offer_closed_at-time.time()),
                                          buyin_min=buyin_min, buyin_max=buyin_max)
         if user.buyin_offer_timeout is None:
             user.buyin_offer_timeout = offer_closed_at + 5
