@@ -17,6 +17,7 @@ class TxnHistoryManual(BaseModel):
 
 
 class TxnHistoryOnTable(BaseModel):
+    username: str | None = None
     table_name: str | None
     table_id: int | None
     txn_time: str | None
