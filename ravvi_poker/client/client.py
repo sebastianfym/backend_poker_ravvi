@@ -2,7 +2,6 @@ import datetime
 import logging
 import asyncio
 
-
 import aiohttp
 from random import SystemRandom
 from time import perf_counter
@@ -19,14 +18,17 @@ from ravvi_poker.engine.poker.bet import Bet
 
 logger = logging.getLogger(__name__)
 
+
 def perf_log(func):
     async def wrapper(self, url, **kwargs):
         t0 = perf_counter()
-        response =  await func(self, url, **kwargs)
+        response = await func(self, url, **kwargs)
         t1 = perf_counter()
-        logger.info("%s %s %s %s %s", self.user_id, func.__name__, url, response.status, f"{t1-t0:.3f}")
+        logger.info("%s %s %s %s %s", self.user_id, func.__name__, url, response.status, f"{t1 - t0:.3f}")
         return response
-    return wrapper    
+
+    return wrapper
+
 
 class PokerClient:
     API_HOST = '127.0.0.1:5001'
@@ -40,6 +42,8 @@ class PokerClient:
         self.table_handlers = {}
         self.device_token = None
         self.rng = SystemRandom()
+
+
 
     @property
     def user_id(self):
@@ -148,7 +152,7 @@ class PokerClient:
         response = await self.GET('/api/v1/user/profile')
         status, payload = await self._get_result(response)
         if status == 200:
-            #logger.info(f"Get user profile: {datetime.datetime.now()}")
+            # logger.info(f"Get user profile: {datetime.datetime.now()}")
             user_profile = UserPrivateProfile(**payload)
             self.access_profile.user = user_profile
         return status, user_profile
@@ -161,7 +165,7 @@ class PokerClient:
         response = await self.PATCH('/api/v1/user/profile', json=data)
         status, payload = await self._get_result(response)
         if status == 200:
-            #logger.info(f"User update account: {datetime.datetime.now()}")
+            # logger.info(f"User update account: {datetime.datetime.now()}")
             user_profile = UserPrivateProfile(**payload)
             self.access_profile.user = user_profile
             return status, user_profile
@@ -232,7 +236,7 @@ class PokerClient:
         response = await self.POST('/api/v1/clubs', json=data)
         status, payload = await self._get_result(response)
         if status == 201:
-            #logger.info(f"Owner create club: {datetime.datetime.now()}")
+            # logger.info(f"Owner create club: {datetime.datetime.now()}")
             return status, ClubProfile(**payload)
         else:
             # raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
@@ -242,7 +246,7 @@ class PokerClient:
         response = await self.GET(f'/api/v1/clubs/{club_id}')
         status, payload = await self._get_result(response)
         if status == 200:
-            #logger.info(f"Get club by id: {datetime.datetime.now()}")
+            # logger.info(f"Get club by id: {datetime.datetime.now()}")
             return status, ClubProfile(**payload)
         elif status == 404:
             return status, payload
@@ -299,7 +303,8 @@ class PokerClient:
             # raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club with this id not found")
         else:
             return status, payload
-#             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
+
+    #             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
 
     async def send_req_join_in_club(self, club_id=None, user_comment=None):
         response = await self.POST(f'/api/v1/clubs/{club_id}/members', json={"user_comment": user_comment})
@@ -312,7 +317,8 @@ class PokerClient:
             # raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club with this id not found")
         else:
             return status, payload
-#             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
+
+    #             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
 
     async def get_request_to_join(self, club_id):
         response = await self.GET(f'/api/v1/clubs/{club_id}/members/requests')
@@ -430,7 +436,8 @@ class PokerClient:
     # TABLE
 
     async def create_table(self, club_id=None, table_type=None, table_name=None, table_seats=None, game_type=None,
-                           game_subtype=None, buyin_cost=None):
+                           game_subtype=None, buyin_cost=None, blind_small=None, blind_big=None, buyin_value=None,
+                           buyin_min=None):
 
         data = {
             "table_type": table_type,
@@ -439,6 +446,10 @@ class PokerClient:
             "game_type": game_type,
             "game_subtype": game_subtype,
             "buyin_cost": buyin_cost,
+            "blind_small": blind_small,
+            "blind_big": blind_big,
+            "buyin_value":  buyin_value,
+            "buyin_min": buyin_min
         }
 
         response = await self.POST(f'/api/v1/clubs/{club_id}/tables', json=data)
@@ -499,17 +510,12 @@ class PokerClient:
         response = await self.GET(f"/api/v1/clubs/{club_id}/requests_chip_replenishment")
         status, payload = await self._get_result(response)
         if status == 200:
-            # logger.info(f"Owner get requests on chips: {datetime.datetime.now()}")
             return status, payload
         elif status == 403:
-            # raise HTTPException(status_code=HTTP_403_FORBIDDEN,
-            #                     detail="You don't have enough rights to perform this action")
             return status, payload
         elif status == 404:
-            # raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club with this id not found")
             return status, payload
         else:
-            # raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
             return status, payload
 
     async def get_club_txn_history(self, club_id):
@@ -565,7 +571,7 @@ class PokerClient:
 
     async def up_agent_balance(self, club_id, user_id, amount):
         response = await self.POST(f"/api/v1/chips/{club_id}/agents/chips/{user_id}",
-                                           json={"amount": amount, "mode": "give_out"})
+                                   json={"amount": amount, "mode": "give_out"})
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"Owner update agent balance: {datetime.datetime.now()}")
@@ -583,7 +589,7 @@ class PokerClient:
 
     async def down_agent_balance(self, club_id, user_id, amount):
         response = await self.POST(f"/api/v1/chips/{club_id}/agents/chips/{user_id}",
-                                           json={"amount": amount, "mode": "pick_up"})
+                                   json={"amount": amount, "mode": "pick_up"})
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"Owner debited agent balance: {datetime.datetime.now()}")
@@ -644,7 +650,7 @@ class PokerClient:
 
     async def send_req_to_up_user_balance(self, club_id, amount):
         response = await self.POST(f"/api/v1/chips/{club_id}/requests/chips",
-                                           json={"amount": amount, "agent": False})
+                                   json={"amount": amount, "agent": False})
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"member send request to update balance: {datetime.datetime.now()}")
@@ -662,7 +668,7 @@ class PokerClient:
 
     async def send_req_to_up_agent_balance(self, club_id, amount):
         response = await self.POST(f"/api/v1/chips/{club_id}/requests/chips",
-                                           json={"amount": amount, "agent": True})
+                                   json={"amount": amount, "agent": True})
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"member send request to update agent balance: {datetime.datetime.now()}")
@@ -680,7 +686,7 @@ class PokerClient:
 
     async def accept_all_balance_requests(self, club_id):
         response = await self.POST(f"/api/v1/chips/{club_id}/requests/chips/all",
-                                           json={"operation": "approve"})
+                                   json={"operation": "approve"})
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"Owner accept all chips requests: {datetime.datetime.now()}")
@@ -698,7 +704,7 @@ class PokerClient:
 
     async def reject_all_balance_requests(self, club_id):
         response = await self.POST(f"/api/v1/chips/{club_id}/requests/chips/all",
-                                           json={"operation": "reject"})
+                                   json={"operation": "reject"})
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"Owner reject all chips requests: {datetime.datetime.now()}")
@@ -766,11 +772,11 @@ class PokerClient:
 
     # PLAY
 
-    async def join_table(self, table_id, take_seat, table_msg_handler):
+    async def join_table(self, table_id, take_seat, table_msg_handler, club_id):
         if not self.ws:
             await self.ws_connect()
         self.table_handlers[table_id] = table_msg_handler
-        await self.ws_send(cmd_type=CommandType.JOIN, table_id=table_id, take_seat=take_seat)
+        await self.ws_send(cmd_type=CommandType.JOIN, table_id=table_id, take_seat=take_seat, club_id=club_id)
 
     async def exit_table(self, table_id):
         if table_id not in self.table_handlers:
@@ -792,3 +798,10 @@ class PokerClient:
                 await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
             else:
                 await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
+
+    async def bet_action(self, msg: Message):
+        if Bet.CHECK in msg.options:
+            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
+        else:
+            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
+
