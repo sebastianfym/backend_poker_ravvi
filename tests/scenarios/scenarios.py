@@ -1,13 +1,18 @@
 import asyncio
 from ravvi_poker.client.client import PokerClient, Message
+from ravvi_poker.engine.events import MessageType
 
 
 class MyVerySmartCustomPokerStrategy:
-    def __init__(self, client: PokerClient) -> None:
+    def __init__(self, client: PokerClient, club_id=None) -> None:
         self.client = client
+        self.club_id = club_id
 
     async def __call__(self, msg: Message):
-        await self.client.play_check_or_fold(msg)
+        if msg.msg_type == MessageType.PLAYER_EXIT:
+            await self.client.join_table(table_id=msg.table_id, take_seat=True, table_msg_handler=self, club_id=self.club_id)
+        else:
+            await self.client.bet_action(msg)
 
 
 async def owner_scenario():
@@ -24,29 +29,30 @@ async def owner_scenario():
         my_club_id = my_club[1].id
         await client.update_club(club_id=my_club_id, description='my best club', image_id=12,
                                  timezone="Europe/Moscow", automatic_confirmation=True)
-        print('Получил запрос, сейчас всё сделаю')
         await client.up_club_balance(club_id=my_club_id, amount=50000)
         while True:
             await asyncio.sleep(2)
             requests = await client.get_club_chips_requests(my_club_id)
             if len(requests[1]['users_requests']) != 0:
-                print('Пополнил')
                 await client.accept_all_balance_requests(my_club_id)
                 break
-        await asyncio.sleep(2)
-        # Создаём столы
-        print('Тогда создам столы для игры')
-        for table in range(10): #Случайное число
-            await client.create_table(club_id=my_club_id, table_type="RG", table_name=None,
-                                      table_seats=9, game_type="NLH",
-                                      game_subtype="REGULAR", buyin_cost=1.0)
         await asyncio.sleep(1)
-        print('Столы готовы, садись играть ')
+        # Создаём столы
+        # for table in range(10):  # Случайное число
+        #     await client.create_table(club_id=my_club_id, table_type="RG", table_name=None,
+        #                               table_seats=9, game_type="NLH",
+        #                               game_subtype="REGULAR", buyin_cost=1.0, blind_small=1.0, blind_big=10.0,
+        #                               buyin_value=10.0, buyin_min=10.0)
+        await client.create_table(club_id=my_club_id, table_type="RG", table_name=None,
+                                  table_seats=9, game_type="NLH",
+                                  game_subtype="REGULAR", buyin_cost=15.0, blind_small=16.0, blind_big=3.0,
+                                  buyin_value=1.0, buyin_min=19.0)
+        await asyncio.sleep(1)
 
 
 async def player_scenario():
     client = PokerClient()
-    strategy = MyVerySmartCustomPokerStrategy(client)
+    strategy = MyVerySmartCustomPokerStrategy(client, club_id=1080) #Todo тут нужно подставлять  id актуального клуба
     async with client:
         await client.auth_register()
         await client.update_user_profile(name=f'PLAYER-{client.user_id}', image_id=12)
@@ -54,21 +60,35 @@ async def player_scenario():
         await client.login_with_username_and_password(username=f'PLAYER-{client.user_id}', password="password")
         await client.get_user_by_id(id=client.user_id)
         await asyncio.sleep(1)
-        club = await client.send_req_join_in_club(club_id=1001, user_comment=None)
-        await client.send_req_to_up_user_balance(club[1].id, 5100)
-        print('Отправил запрос')
+
+        club = await client.send_req_join_in_club(club_id=1080, user_comment=None) #Todo тут нужно подставлять  id актуального клуба
+        club_id = club[1].id
+
+        chips_request = await client.send_req_to_up_user_balance(club_id, 5100)
+        if chips_request[0] == 201:
+            while True:
+                await asyncio.sleep(1)
+                member_profile = await client.get_detail_member_info(club_id=club_id)
+                if member_profile[1].balance and member_profile[1].balance > 0:
+                    break
+        else:
+            raise RuntimeError("Failed to chips request")
+
+        await asyncio.sleep(3)
+
+        # for table in (await client.get_club_tables(club_id))[1]:
+        #     await client.join_table(table_id=table.id, take_seat=True, table_msg_handler=strategy, club_id=club_id)
+        #     await asyncio.sleep(180)
+        table = (await client.get_club_tables(club_id))[1]
         while True:
-            await asyncio.sleep(1)
-            member_profile = await client.get_detail_member_info(club_id=club[1].id)
-            if member_profile[1].balance and member_profile[1].balance > 0:
-                print('Деньги пришли, гуляем на все')
-                break
+            await client.join_table(table_id=table[0].id, take_seat=True, table_msg_handler=strategy, club_id=club_id)
+            await asyncio.sleep(30)
 
 
 
 
 async def main():
-    await asyncio.gather(owner_scenario(), player_scenario(), return_exceptions=True)
+    await asyncio.gather(owner_scenario(), player_scenario(), player_scenario(), return_exceptions=True)
 
 
 if __name__ == '__main__':
