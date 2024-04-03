@@ -233,10 +233,14 @@ class Table_RG(Table):
         return True
 
     async def update_balance(self, db, user: User, buyin_value: Decimal):
+        print(user.balance)
+        print(type(user.balance))
         if user.balance is None:
             user.balance = buyin_value
         else:
             user.balance += buyin_value
+        print(user.balance)
+        print(type(user.balance))
 
         await db.create_account_txn(user.account_id, "BUYIN", -buyin_value, sender_id=None,
                                     table_id=self.table_id)

@@ -11,7 +11,7 @@ class User:
         self.club_id = None
         self.account_id = None
         self.table_session_id = None
-        self.balance = None
+        self.balance: Decimal | None = None
         self.clients = set()
 
         # timestamp в int

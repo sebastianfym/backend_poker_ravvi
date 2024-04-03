@@ -1,6 +1,6 @@
 import asyncio
 import time
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_DOWN
 from enum import IntEnum, unique
 from itertools import groupby, combinations
 from typing import List, Tuple
@@ -277,9 +277,24 @@ class PokerBase(Game):
         if not Bet.verify(bet_type):
             raise ValueError('invalid bet type')
 
+        print("______________________________________")
         b_0, b_a_0, b_t_0 = p.user.balance, p.bet_amount, p.bet_total
+        print(b_0)
+        print(type(b_0))
+        print(b_a_0)
+        print(type(b_a_0))
+        print(b_t_0)
+        print(type(b_t_0))
 
         call_delta, raise_min, raise_max, player_max = self.get_bet_limits(p)
+        print(call_delta)
+        print(type(call_delta))
+        print(raise_min)
+        print(type(raise_min))
+        print(raise_max)
+        print(type(raise_max))
+        print(player_max)
+        print(type(player_max))
 
         if bet_type == Bet.FOLD:
             p.bet_delta = 0
@@ -289,10 +304,12 @@ class PokerBase(Game):
             p.bet_delta = 0
         elif bet_type == Bet.CALL:
             assert call_delta > 0
-            p.bet_delta = call_delta
+            p.bet_delta = Decimal(call_delta).quantize(Decimal(".01"), rounding=ROUND_HALF_DOWN)
         elif bet_type == Bet.RAISE:
             assert raise_min <= raise_delta and raise_delta <= raise_max
-            p.bet_delta = raise_delta
+            print("Значение рейза")
+            print(raise_delta)
+            p.bet_delta = Decimal(raise_delta).quantize(Decimal(".01"), rounding=ROUND_HALF_DOWN)
         elif bet_type == Bet.ALLIN:
             p.bet_delta = player_max
         else:
@@ -587,6 +604,10 @@ class PokerBase(Game):
             # small blind
             p = self.players_to_role(PlayerRole.SMALL_BLIND)
             assert PlayerRole.SMALL_BLIND in p.role
+
+            print("Проверка")
+            print(type(p.user.balance))
+            print(p.user.balance)
 
             if p.user.balance <= self.blind_small:
                 p.bet_type = Bet.ALLIN
