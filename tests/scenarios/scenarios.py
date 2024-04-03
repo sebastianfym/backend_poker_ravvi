@@ -50,35 +50,54 @@ async def owner_scenario():
 
 async def player_scenario():
     client = PokerClient()
+    club_id = 1042   #Todo тут нужно подставлять  id актуального клуба
+    strategy = MyVerySmartCustomPokerStrategy(client, club_id=club_id)
+    async with client:
+        await client.auth_register()
+        await client.update_user_profile(name=f'PLAYER-{client.user_id}', image_id=12)
+        await client.password_update(None, "password")
+        await client.login_with_username_and_password(username=f'PLAYER-{client.user_id}', password="password")
+        await client.get_user_by_id(id=client.user_id)
+        await asyncio.sleep(1)
+
+        club = await client.send_req_join_in_club(club_id=club_id, user_comment=None)
+        print(f"club: {club}")
+        # club_id = club[1].id
+
+        chips_request = await client.send_req_to_up_user_balance(club_id, 5100)
+        if chips_request[0] == 201:
+            while True:
+                await asyncio.sleep(1)
+                member_profile = await client.get_detail_member_info(club_id=club_id)
+                if member_profile[1].balance and member_profile[1].balance > 0:
+                    break
+        else:
+            raise RuntimeError("Failed to chips request")
+
+        await asyncio.sleep(3)
+
+        for table in (await client.get_club_tables(club_id))[1]:
+            await client.join_table(table_id=table.id, take_seat=True, table_msg_handler=strategy, club_id=club_id)
+            await asyncio.sleep(180)
+
+        table = (await client.get_club_tables(club_id))[1]
+        while True:
+            await client.join_table(table_id=table[0].id, take_seat=True, table_msg_handler=strategy, club_id=club_id)
+            await asyncio.sleep(30)
+
+
+async def evan_bot_scenario():
+    client = PokerClient()
     strategy = MyVerySmartCustomPokerStrategy(client, club_id=1004) #Todo тут нужно подставлять  id актуального клуба
     async with client:
-        # await client.auth_register()
-        # await client.update_user_profile(name=f'PLAYER-{client.user_id}', image_id=12)
-        # await client.password_update(None, "password")
-        await client.login_with_username_and_password(username=f'preflop bill', password="Y8G5Qv3b")#(username=f'PLAYER-{client.user_id}', password="password")
+        await client.login_with_username_and_password(username=f'preflop bill', password="Y8G5Qv3b")
         await client.get_user_by_id(id=client.user_id)
         await asyncio.sleep(1)
 
         club = await client.send_req_join_in_club(club_id=1004, user_comment=None) #Todo тут нужно подставлять  id актуального клуба
         print(f"club: {club}")
         club_id = 1004
-        # club_id = club[1].id
-        #
-        # chips_request = await client.send_req_to_up_user_balance(club_id, 5100)
-        # if chips_request[0] == 201:
-        #     while True:
-        #         await asyncio.sleep(1)
-        #         member_profile = await client.get_detail_member_info(club_id=club_id)
-        #         if member_profile[1].balance and member_profile[1].balance > 0:
-        #             break
-        # else:
-        #     raise RuntimeError("Failed to chips request")
-
         await asyncio.sleep(3)
-
-        # for table in (await client.get_club_tables(club_id))[1]:
-        #     await client.join_table(table_id=table.id, take_seat=True, table_msg_handler=strategy, club_id=club_id)
-        #     await asyncio.sleep(180)
 
         table = (await client.get_club_tables(club_id))[1]
         while True:
@@ -87,10 +106,9 @@ async def player_scenario():
 
 
 
-
 async def main():
-    # await asyncio.gather(owner_scenario(), player_scenario(), player_scenario(), return_exceptions=True)
-    await player_scenario()
+    await asyncio.gather(owner_scenario(), player_scenario(), player_scenario(), return_exceptions=True)
+    await evan_bot_scenario()
 
 
 if __name__ == '__main__':
