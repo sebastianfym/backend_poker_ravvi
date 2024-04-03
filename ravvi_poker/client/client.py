@@ -32,8 +32,8 @@ def perf_log(func):
 
 
 class PokerClient:
-    API_HOST = '127.0.0.1:5001'
-    USE_SSL = False
+    API_HOST = "poker-st1.ravvi.net/"#'127.0.0.1:5001'
+    USE_SSL = True#False
 
     def __init__(self, *, host=None, use_ssl=None) -> None:
         self.base_url = f"{'https' if use_ssl or self.USE_SSL else 'http'}://{host or self.API_HOST}"
@@ -57,6 +57,7 @@ class PokerClient:
         if self.access_profile and self.access_profile.access_token:
             headers["Authorization"] = "Bearer " + self.access_profile.access_token
         connector = aiohttp.TCPConnector(force_close=True, limit=1000)
+        print("self.base_url", self.base_url)
         self.session = aiohttp.ClientSession(self.base_url, headers=headers, connector=connector)
         return self
 
