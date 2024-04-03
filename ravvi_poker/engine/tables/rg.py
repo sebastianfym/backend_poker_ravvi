@@ -14,8 +14,8 @@ from ..user import User
 class Table_RG(Table):
     TABLE_TYPE = "RG"
 
-    def parse_props(self, buyin_min=100, buyin_max=None, blind_small: float = 0.01,
-                    blind_big: float | None = None, ante_up: bool | None = None,
+    def parse_props(self, buyin_min=100, buyin_max=None, blind_small: Decimal = Decimal("0.01"),
+                    blind_big: Decimal | None = None, ante_up: bool | None = None,
                     action_time=30, **kwargs):
         from ..poker.ante import AnteUpController
         from ..poker.bomb_pot import BombPotController
@@ -23,8 +23,10 @@ class Table_RG(Table):
 
         self.buyin_min = Decimal(buyin_min).quantize(Decimal("0.01"))
         self.buyin_max = Decimal(buyin_max).quantize(Decimal("0.01"))
-        self.game_props.update(bet_timeout=action_time, blind_small=blind_small,
-                               blind_big=blind_big if blind_big is not None else blind_small * 2)
+        self.game_props.update(bet_timeout=action_time,
+                               blind_small=Decimal(blind_small).quantize(Decimal("0.01")),
+                               blind_big=Decimal(blind_big).quantize(Decimal("0.01")) if blind_big is not None
+                               else blind_small * 2)
 
         if ante_up:
             self.ante = AnteUpController(blind_small)

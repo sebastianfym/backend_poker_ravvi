@@ -738,6 +738,10 @@ class DBI:
     # GAMES
 
     async def create_game(self, *, table_id: int, game_type, game_subtype, props, players):
+        # TODO возможно стоит написать JSONCustomDecoder
+        for key, item in props.items():
+            if isinstance(item, Decimal):
+                props[key] = float(item)
         props = json.dumps(props or {})
         async with self.cursor() as cursor:
             sql = "INSERT INTO game_profile (table_id,game_type,game_subtype,props) VALUES (%s,%s,%s,%s) RETURNING *"

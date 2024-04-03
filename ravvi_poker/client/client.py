@@ -29,8 +29,10 @@ def perf_log(func):
     return wrapper
 
 class PokerClient:
-    API_HOST = '127.0.0.1:5001'
-    USE_SSL = False
+    # API_HOST = '127.0.0.1:5001'
+    API_HOST = "poker-st1.ravvi.net"
+    # USE_SSL = False
+    USE_SSL = True
 
     def __init__(self, *, host=None, use_ssl=None) -> None:
         self.base_url = f"{'https' if use_ssl or self.USE_SSL else 'http'}://{host or self.API_HOST}"

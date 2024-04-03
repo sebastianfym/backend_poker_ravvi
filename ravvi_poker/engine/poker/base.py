@@ -1,5 +1,6 @@
 import asyncio
 import time
+from decimal import Decimal
 from enum import IntEnum, unique
 from itertools import groupby, combinations
 from typing import List, Tuple
@@ -35,8 +36,8 @@ class PokerBase(Game):
     SLEEP_GAME_END = 1
 
     def __init__(self, table, users: List[User],
-                 *, blind_small: float = 0.01, blind_big: float = 0.02, bet_timeout=30,
-                 ante: float | None = None, bombpot_blind_multiplier: int | None = None, **kwargs) -> None:
+                 *, blind_small: Decimal = Decimal("0.01"), blind_big: Decimal = Decimal("0.02"), bet_timeout=30,
+                 ante: Decimal | None = None, bombpot_blind_multiplier: int | None = None, **kwargs) -> None:
         super().__init__(table=table, users=users)
         self.log.logger = logger
         self.round = None

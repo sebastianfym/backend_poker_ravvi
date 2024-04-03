@@ -1,3 +1,4 @@
+from decimal import Decimal
 from enum import IntFlag
 from typing import Callable
 
@@ -27,13 +28,13 @@ class Player(PlayerBase):
         self.hands: list[Hand, LowHand] | None = None
         self.active = True
         self.bet_type = None
-        self.bet_amount = 0
-        self.bet_ante = 0
-        self.bet_delta = 0
-        self.bet_total = 0
+        self.bet_amount: Decimal = Decimal("0.00")
+        self.bet_ante: Decimal = Decimal("0.00")
+        self.bet_delta: Decimal = Decimal("0.00")
+        self.bet_total: Decimal = Decimal("0.00")
 
     @property
-    def bet_max(self) -> int:
+    def bet_max(self) -> Decimal:
         return self.bet_amount + self.balance
 
     @property
