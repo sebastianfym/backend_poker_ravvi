@@ -86,10 +86,25 @@ class Table_RG(Table):
         # если максимальный байин больше чем денег на балансе, то максимальный байин равен балансу
         if buyin_max > account_balance:
             buyin_max = account_balance
-        if user.balance is not None:
-            if (buyin_min := self.buyin_min - user.balance) <= 0:
-                buyin_min = self.game_props.get("blind_big")
+        elif user.balance is not None:
             buyin_max -= user.balance
+        if user.balance is not None:
+            buyin_min -= user.balance
+            if buyin_min > account_balance:
+                msg = Message(msg_type=Message.Type.TABLE_WARNING,
+                              table_id=self.table_id, cmd_id=None, client_id=client_id,
+                              error_code=1, error_text='Not enough balance')
+                await self.emit_msg(db, msg)
+                return
+            # если максимальный байин меньше нуля, значит превышен максимальный возможный баланс за столом
+            if buyin_max <= 0:
+                msg = Message(msg_type=Message.Type.TABLE_WARNING, table_id=self.table_id, cmd_id=None,
+                              client_id=client_id,
+                              error_code=3, error_text='The maximum balance value has been exceeded')
+                await self.emit_msg(db, msg)
+                return
+            if buyin_min < 0:
+                buyin_min = min(self.game_props.get("blind_big"), buyin_max)
         elif user.balance is None and (interval_in_hours := getattr(self, "advanced_config").ratholing):
             # получаем последнюю выплату от стола за N часов
             # TODO дополнить правило рэтхолинга, если последняя выплата равна байину, то рэтхолинга нет
@@ -104,7 +119,7 @@ class Table_RG(Table):
         # отправим действующий оффер
         await self.emit_TABLE_JOIN_OFFER(db, client_id=client_id, offer_type="buyin",
                                          table_id=self.table_id, balance=account_balance,
-                                         closed_at=int(offer_closed_at-time.time()),
+                                         closed_at=int(offer_closed_at - time.time()),
                                          buyin_min=buyin_min, buyin_max=buyin_max)
         if user.buyin_offer_timeout is None:
             user.buyin_offer_timeout = offer_closed_at + 5
@@ -159,7 +174,8 @@ class Table_RG(Table):
         if user.balance is not None:
             new_account_balance = account.balance + user.balance
             self.log.info("user %s exit %s -> balance %s", user.id, user.balance, new_account_balance)
-            await db.create_account_txn(user.account_id, "REWARD", user.balance, sender_id=self.table_id, table_id=self.table_id)
+            await db.create_account_txn(user.account_id, "REWARD", user.balance, sender_id=self.table_id,
+                                        table_id=self.table_id)
             user.balance = None
         if user.table_session_id:
             await db.close_table_session(user.table_session_id)
@@ -223,7 +239,7 @@ class Table_RG(Table):
             await self.emit_msg(db, msg)
             return False
         # пополнение
-        elif (user.balance is not None and not self.game_props.get("blind_big") <= buyin_value <=
+        elif (user.balance is not None and not self.buyin_min - user.balance <= buyin_value <=
                                                self.buyin_max - user.balance):
             msg = Message(msg_type=Message.Type.TABLE_WARNING, table_id=self.table_id, cmd_id=cmd_id,
                           client_id=client_id,
@@ -262,8 +278,8 @@ class Table_RG(Table):
                     for _, user in self.users.items():
                         if user.buyin_deferred_value:
                             account = await db.get_account_for_update(user.account_id)
-                            if not (account.balance < user.buyin_deferred_value and
-                                    user.balance + user.buyin_deferred_value > self.buyin_max):
+                            if (account.balance >= user.buyin_deferred_value and
+                                    user.balance + user.buyin_deferred_value <= self.buyin_max):
                                 await self.update_balance(db, user, user.buyin_deferred_value)
                             user.buyin_deferred_value = None
                 async with self.DBI() as db:
