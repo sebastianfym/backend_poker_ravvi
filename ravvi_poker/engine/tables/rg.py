@@ -29,7 +29,7 @@ class Table_RG(Table):
                                else blind_small * 2)
 
         if ante_up:
-            self.ante = AnteUpController(blind_small)
+            self.ante = AnteUpController(self.game_props.get("blind_small"))
             if len(self.ante.ante_levels) != 0:
                 self.game_props.update(ante=self.ante.current_ante_value)
         if bompot_settings := getattr(self, "game_modes_config").bombpot_settings:
@@ -69,7 +69,7 @@ class Table_RG(Table):
         if account.balance < self.buyin_min:
             msg = Message(msg_type=Message.Type.TABLE_WARNING,
                           table_id=self.table_id, cmd_id=cmd_id, client_id=client_id,
-                          error_id=1, error_text='Not enough balance')
+                          error_code=1, error_text='Not enough balance')
             await self.emit_msg(db, msg)
             return None
         return account
@@ -145,6 +145,7 @@ class Table_RG(Table):
             if not await self.check_conditions_for_update_balance(db, cmd_id, client_id, account, user, buyin_value):
                 return
 
+            # TODO проверить что пользователь в игре
             # если есть игра и пользователь в ней участвует, то моментальное пополнение не возможно
             if self.game:
                 user.buyin_deferred_value = buyin_value
@@ -193,7 +194,7 @@ class Table_RG(Table):
         if account.balance < buyin_value:
             msg = Message(msg_type=Message.Type.TABLE_WARNING,
                           table_id=self.table_id, cmd_id=cmd_id, client_id=client_id,
-                          error_id=1, error_text='Not enough balance')
+                          error_code=1, error_text='Not enough balance')
             await self.emit_msg(db, msg)
             return False
 
@@ -201,7 +202,7 @@ class Table_RG(Table):
         if user.balance and user.balance >= self.buyin_max:
             msg = Message(msg_type=Message.Type.TABLE_WARNING, table_id=self.table_id, cmd_id=cmd_id,
                           client_id=client_id,
-                          error_id=3, error_text='The maximum balance value has been exceeded')
+                          error_code=3, error_text='The maximum balance value has been exceeded')
             await self.emit_msg(db, msg)
             return False
 
@@ -211,14 +212,14 @@ class Table_RG(Table):
             if buyin_value != await db.get_last_table_reward(self.table_id, user.account_id, interval_in_hours):
                 msg = Message(msg_type=Message.Type.TABLE_WARNING, table_id=self.table_id, cmd_id=cmd_id,
                               client_id=client_id,
-                              error_id=2, error_text='Incorrect buyin value')
+                              error_code=2, error_text='Incorrect buyin value')
                 await self.emit_msg(db, msg)
                 return False
         # проверка при входе
         elif user.balance is None and not self.buyin_min <= buyin_value <= self.buyin_max:
             msg = Message(msg_type=Message.Type.TABLE_WARNING, table_id=self.table_id, cmd_id=cmd_id,
                           client_id=client_id,
-                          error_id=2, error_text='Incorrect buyin value')
+                          error_code=2, error_text='Incorrect buyin value')
             await self.emit_msg(db, msg)
             return False
         # пополнение
@@ -226,21 +227,17 @@ class Table_RG(Table):
                                                self.buyin_max - user.balance):
             msg = Message(msg_type=Message.Type.TABLE_WARNING, table_id=self.table_id, cmd_id=cmd_id,
                           client_id=client_id,
-                          error_id=2, error_text='Incorrect buyin value')
+                          error_code=2, error_text='Incorrect buyin value')
             await self.emit_msg(db, msg)
             return False
 
         return True
 
     async def update_balance(self, db, user: User, buyin_value: Decimal):
-        print(user.balance)
-        print(type(user.balance))
         if user.balance is None:
             user.balance = buyin_value
         else:
             user.balance += buyin_value
-        print(user.balance)
-        print(type(user.balance))
 
         await db.create_account_txn(user.account_id, "BUYIN", -buyin_value, sender_id=None,
                                     table_id=self.table_id)

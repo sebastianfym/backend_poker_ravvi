@@ -57,7 +57,7 @@ class TestBuyInTableJoin:
                     "cmd_id": None,
                     "game_id": None,
                     "msg_type": 103,
-                    "props": {"error_id": 1, "error_text": "Not enough balance"},
+                    "props": {"error_code": 1, "error_text": "Not enough balance"},
                     "table_id": new_table.id
                 },
                 # сообщение с параметрами стола
@@ -374,7 +374,7 @@ class TestBuyInTableJoin:
                     "cmd_id": None,
                     "game_id": None,
                     "msg_type": 103,
-                    "props": {"error_id": 1, "error_text": "Not enough balance"},
+                    "props": {"error_code": 1, "error_text": "Not enough balance"},
                     "table_id": new_table.id
                 },
             ]
@@ -488,7 +488,7 @@ class TestBuyInTableJoin:
                     "cmd_id": None,
                     "game_id": None,
                     "msg_type": 103,
-                    "props": {"error_id": 2, "error_text": "Incorrect buyin value"},
+                    "props": {"error_code": 2, "error_text": "Incorrect buyin value"},
                     "table_id": new_table.id
                 },
             ]
@@ -656,7 +656,7 @@ class TestBuyInTakeSeat:
                     "cmd_id": None,
                     "game_id": None,
                     "msg_type": 103,
-                    "props": {"error_id": 1, "error_text": "Not enough balance"},
+                    "props": {"error_code": 1, "error_text": "Not enough balance"},
                     "table_id": new_table.id
                 },
             ]
@@ -968,7 +968,7 @@ class TestBuyInTakeSeat:
                     "cmd_id": None,
                     "game_id": None,
                     "msg_type": 103,
-                    "props": {"error_id": 1, "error_text": "Not enough balance"},
+                    "props": {"error_code": 1, "error_text": "Not enough balance"},
                     "table_id": new_table.id
                 },
             ]
@@ -1090,7 +1090,7 @@ class TestBuyInTakeSeat:
                     "cmd_id": None,
                     "game_id": None,
                     "msg_type": 103,
-                    "props": {"error_id": 2, "error_text": "Incorrect buyin value"},
+                    "props": {"error_code": 2, "error_text": "Incorrect buyin value"},
                     "table_id": new_table.id
                 },
             ]

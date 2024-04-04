@@ -1,3 +1,4 @@
+from decimal import Decimal
 from unittest.mock import MagicMock, AsyncMock
 
 import pytest
@@ -47,9 +48,9 @@ class TestAnteUpControllerInstance:
 
 def prepare_ante_by_blind() -> list:
     rule_base_cases = [
-        {"blind_small_value": 0.02, "ante_target_value": 0.01},
-        {"blind_small_value": 0.03, "ante_target_value": 0.01},
-        {"blind_small_value": 0.04, "ante_target_value": 0.01},
+        {"blind_small_value": 0.02, "ante_target_value": Decimal("0.01")},
+        {"blind_small_value": 0.03, "ante_target_value": Decimal("0.01")},
+        {"blind_small_value": 0.04, "ante_target_value": Decimal("0.01")},
     ]
 
     for blind_small_value in [0.05, 0.1, 0.2, 0.25, 0.3, 0.4, 0.5,
@@ -58,8 +59,7 @@ def prepare_ante_by_blind() -> list:
                               100, 150, 200, 250, 300, 400, 500,
                               1000, 1500, 2000, 2500, 3000, 4000, 5000, 6000, 7000, 8000, 9000,
                               10000]:
-        # TODO округление
-        target_ante_value = round(blind_small_value * 2 * 0.2, 2)
+        target_ante_value = Decimal(blind_small_value * 2 * 0.2).quantize(Decimal(".01"))
         rule_base_cases.append({"blind_small_value": blind_small_value, "ante_target_value": target_ante_value})
 
     return rule_base_cases
@@ -128,7 +128,7 @@ class TestAnteUpControllerInitialValueForGame:
     @pytest.mark.asyncio
     async def test_initial_ante_value_for_tables_with_possible_ante_up(self, game_type: str, game_subtype: str,
                                                                        blind_small_value: float,
-                                                                       ante_target_value: float):
+                                                                       ante_target_value: Decimal | int):
         """
             Проверяет что первое значение которое будет передано игре от стола верное
         """

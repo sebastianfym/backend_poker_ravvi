@@ -81,7 +81,7 @@ class Game:
             # блайнда
             if any([p.user.is_new_player_on_table for p in self.players]):
                 cleared_players_list = []
-                for num, p in self.players:
+                for num, p in enumerate(self.players):
                     # TODO игрок может попросить принудительно поставить за него большой блайнд
                     if p.user.is_new_player_on_table and num != 2:
                         continue

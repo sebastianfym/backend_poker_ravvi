@@ -45,6 +45,9 @@ class DoubleBoardMixin:
     def get_rounds_results(self) -> list[dict]:
         # делим каждый банк на две части
         banks = [[], []]
+        print("Смотрим типы")
+        print("self.banks")
+        print(self.banks)
         for num in range(len(self.banks)):
             # TODO округление
             banks[0].append(
@@ -53,6 +56,8 @@ class DoubleBoardMixin:
             banks[1].append(
                 (round(self.banks[num][0] / 2, 2), self.banks[num][1])
             )
+        print("banks")
+        print(banks)
 
         winners = [{}, {}]
         players = [p for p in self.players if p.in_the_game]
@@ -82,6 +87,8 @@ class DoubleBoardMixin:
             {"type": "board1", "winners": rewards_winners[0]},
             {"type": "board2", "winners": rewards_winners[1]},
         ]
+        print("rewards")
+        print(rewards)
         rounds_results = [
             {
                 "rewards": rewards[0],
@@ -94,6 +101,8 @@ class DoubleBoardMixin:
                 "bank_total": 0
             },
         ]
+        print("round_results")
+        print(rounds_results)
         for p in self.players:
             amount_board_1 = winners[0].get(p.user_id, 0)
             amount_board_2 = winners[1].get(p.user_id, 0)

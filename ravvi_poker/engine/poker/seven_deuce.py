@@ -1,12 +1,14 @@
+from decimal import Decimal
+
 from ravvi_poker.engine.cards import Card
 from ravvi_poker.engine.poker.bet import Bet
 from ravvi_poker.engine.poker.player import Player
 
 
 class SevenDeuceController:
-    def __init__(self, seven_prize: int, big_blind: float):
+    def __init__(self, seven_prize: int, big_blind: Decimal | int):
         # TODO округление
-        self.each_prize_value = round(seven_prize * big_blind, 2)
+        self.each_prize_value: Decimal = Decimal(seven_prize * big_blind).quantize(Decimal(".01"))
 
     async def handle_winners(self, rounds_results: dict, players: list[Player]):
         bank_seven_deuce = 0
@@ -47,8 +49,8 @@ class SevenDeuceController:
                         player_for_collect_sd.bet_amount += self.each_prize_value
                         player_for_collect_sd.bet_type = Bet.SEVEN_DEUCE
                         # TODO округление
-                        player_for_collect_sd.user.balance = round(player_for_collect_sd.user.balance -
-                                                                   self.each_prize_value, 2)
+                        player_for_collect_sd.user.balance = Decimal(player_for_collect_sd.user.balance -
+                                                                     self.each_prize_value)
                     else:
                         bank_seven_deuce += player_for_collect_sd.user.balance
                         player_for_collect_sd.bet_delta += player_for_collect_sd.user.balance
@@ -70,11 +72,11 @@ class SevenDeuceController:
 
         for player in players:
             if player.user_id in set(winners_seven_deuce_user_id):
-                delta = round(
+                delta = Decimal(
                     bank_seven_deuce / len(winners_seven_deuce_user_id) *
-                    winners_seven_deuce_user_id.count(player.user_id), 2)
+                    winners_seven_deuce_user_id.count(player.user_id))
                 # TODO округление
-                player.user.balance = round(player.user.balance + delta, 2)
+                player.user.balance = Decimal(player.user.balance + delta)
                 winners.append(
                     {"user_id": player.user_id, "amount": delta, "balance": player.user.balance}
                 )

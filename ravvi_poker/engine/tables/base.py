@@ -259,7 +259,7 @@ class Table:
         if club_id != self.club_id:
             # no access
             msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id, client_id=client_id,
-                          error_id=403, error_text=f'No access to club #{self.club_id} from club #{club_id}')
+                          error_code=403, error_text=f'No access to club #{self.club_id} from club #{club_id}')
             await self.emit_msg(db, msg)
             return
 
@@ -425,8 +425,7 @@ class Table:
                     await self.remove_users(db)
 
     def user_can_play(self, user):
-        # TODO убрать int и float из типа баланса
-        return isinstance(user.balance, (int, float, Decimal)) and user.balance > 0
+        return isinstance(user.balance, Decimal) and user.balance > 0
 
     async def user_can_stay(self, db, user):
         if user.balance is None:
@@ -436,7 +435,7 @@ class Table:
             user.balance = None
             # TODO вытянуть клиент который последний делал действия(Bet, take_seat), если количество клиентов
             #  больше одного
-            client_id = user.clients[0]
+            client_id = list(user.clients)[0]
             if not (account := await self.prepare_before_offer(db, None, client_id, user)):
                 return False
             await self.make_player_offer(db, user, client_id, account.balance)
