@@ -8,7 +8,7 @@ class TimeZoneInput(BaseModel):
 class TxnHistoryManual(BaseModel):
     username: str | None
     sender_id: int | None
-    txn_time: str | None
+    txn_time: float | None
     txn_type: str | None
     txn_value: float | None
     balance: float | None
@@ -20,7 +20,7 @@ class TxnHistoryOnTable(BaseModel):
     username: str | None = None
     table_name: str | None
     table_id: int | None
-    txn_time: str | None
+    txn_time: float | None
     min_blind: float | None
     max_blind: float | None
     txn_type: str | None

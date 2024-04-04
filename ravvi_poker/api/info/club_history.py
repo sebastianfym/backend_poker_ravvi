@@ -32,7 +32,7 @@ async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
                 txn_manual = TxnHistoryManual(
                     username=username,
                     sender_id=txn['sender_id'],
-                    txn_time=str(txn['created_ts'].timestamp()),
+                    txn_time=float(txn['created_ts'].timestamp()),
                     txn_type=txn['txn_type'],
                     txn_value=txn['txn_value'],
                     balance=txn['total_balance'],
@@ -49,7 +49,7 @@ async def v1_get_history_trx(club_id: int, session_uuid: SessionUUID):
                     txn_table = TxnHistoryOnTable(
                         table_name=table_info.table_name,
                         table_id=table_info.id,
-                        txn_time=str(txn['created_ts'].timestamp()),
+                        txn_time=float(txn['created_ts'].timestamp()),
                         min_blind=table_info.props['blind_small'],
                         max_blind=table_info.props['blind_big'],
                         txn_type=txn['txn_type'],
