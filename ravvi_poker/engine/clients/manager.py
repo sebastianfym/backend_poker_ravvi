@@ -80,6 +80,10 @@ class ClientsManager:
                 # если сообщение не предназначено для клиента, то пропускаем его
                 if msg.props["user_id"] != client.user_id:
                     continue
+            elif msg.msg_type == Message.Type.TABLE_JOIN_OFFER:
+                # оффер отправляет только клиенту, который его запросил
+                if msg.client_id != client.client_id:
+                    continue
             cmsg = msg.hide_private_info(client.user_id)
             await client.handle_msg(cmsg)
             counter += 1

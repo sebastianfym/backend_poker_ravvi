@@ -1,3 +1,4 @@
+from decimal import Decimal
 from logging import getLogger
 from typing import List
 from itertools import groupby
@@ -34,7 +35,7 @@ def get_banks(players: List[Player]):
     level = 0
     for l, group in levels:
         # TODO округление
-        amount = round((l - level) * len(group), 2)
+        amount = Decimal((l - level) * len(group)).quantize(Decimal("0.01"))
         group = [p for p in group if p.in_the_game]
         banks.append((amount, group))
         level = l
@@ -52,6 +53,6 @@ def get_banks(players: List[Player]):
 
     banks = [b for b in banks if b]
     # TODO округление
-    total = round(sum([b[0] for b in banks]), 2)
+    total = Decimal(sum([b[0] for b in banks])).quantize(Decimal("0.01"))
     logger.debug(f"Total: {total}")
     return banks, total

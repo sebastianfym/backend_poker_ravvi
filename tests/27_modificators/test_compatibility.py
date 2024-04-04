@@ -22,7 +22,7 @@ from ravvi_poker.engine.tables import Table_RG
 async def test_compatibility_double_board(game_type, game_subtype, is_support):
     table = Table_RG(1, "test", table_seats=6,
                      game_type=game_type, game_subtype=game_subtype,
-                     props={"double_board": True})
+                     props={"double_board": True, "buyin_min": 10, "buyin_max": 20})
 
     if not is_support:
         with pytest.raises(ValueError) as err:
@@ -49,7 +49,8 @@ async def test_compatibility_double_board(game_type, game_subtype, is_support):
 async def test_compatibility_bombpot(game_type, game_subtype, is_support):
     table = Table_RG(1, "test", table_seats=6,
                   game_type=game_type, game_subtype=game_subtype,
-                  props={"bombpot_freq": 1, "bombpot_min": 1, "bombpot_max": 2, "bombpot_double_board": False})
+                  props={"bombpot_freq": 1, "bombpot_min": 1, "bombpot_max": 2, "bombpot_double_board": False,
+                         "buyin_min": 10, "buyin_max": 20})
 
     if not is_support:
         with pytest.raises(ValueError) as err:

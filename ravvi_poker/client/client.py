@@ -219,14 +219,11 @@ class PokerClient:
 
     # CLUBS
 
-    async def create_club(self, name=None, description=None, image_id=None, user_role="O", user_approved=False,
-                          timezone=None):
+    async def create_club(self, name=None, description=None, image_id=None, timezone=None):
         data = {
             "name": name,
             "description": description,
             "image_id": image_id,
-            "user_role": user_role,
-            "user_approved": user_approved,
             "timezone": timezone
         }
         response = await self.POST('/api/v1/clubs', json=data)
@@ -335,7 +332,7 @@ class PokerClient:
             return status, payload
 
     async def approve_req_to_join(self, club_id, user_id, rakeback=None, agent_id=None, nickname=None, comment=None,
-                                  user_role=None):
+                                  user_role="P"):
         data = {
             "rakeback": rakeback,
             "agent_id": agent_id,
@@ -429,7 +426,10 @@ class PokerClient:
 
     # TABLE
 
-    async def create_table(self, club_id=None, table_type=None, table_name=None, table_seats=None, game_type=None,
+    async def create_table(self, action_time, blind_small, blind_big,
+                           table_type, table_seats,
+                           buyin_min=None, buyin_max=None,
+                           club_id=None, table_name=None, game_type=None,
                            game_subtype=None, buyin_cost=None):
 
         data = {
@@ -439,6 +439,11 @@ class PokerClient:
             "game_type": game_type,
             "game_subtype": game_subtype,
             "buyin_cost": buyin_cost,
+            "buyin_min": buyin_min,
+            "buyin_max": buyin_max,
+            "action_time": action_time,
+            "blind_small": blind_small,
+            "blind_big": blind_big
         }
 
         response = await self.POST(f'/api/v1/clubs/{club_id}/tables', json=data)
@@ -766,11 +771,23 @@ class PokerClient:
 
     # PLAY
 
-    async def join_table(self, table_id, take_seat, table_msg_handler):
+    async def join_table(self, table_id, club_id, take_seat, table_msg_handler):
         if not self.ws:
             await self.ws_connect()
         self.table_handlers[table_id] = table_msg_handler
-        await self.ws_send(cmd_type=CommandType.JOIN, table_id=table_id, take_seat=take_seat)
+        await self.ws_send(cmd_type=CommandType.JOIN, table_id=table_id, take_seat=take_seat, club_id=club_id)
+
+    async def take_seat(self, table_id, seat_idx):
+        await self.ws_send(cmd_type=CommandType.TAKE_SEAT, table_id=table_id, seat_idx=seat_idx)
+
+    async def accept_offer(self, table_id: int, buyin_cost: float | int | None):
+        await self.ws_send(cmd_type=CommandType.OFFER_RESULT, table_id=table_id, buyin_cost=buyin_cost)
+
+    async def decline_offer(self, table_id: int):
+        await self.accept_offer(table_id=table_id, buyin_cost=0)
+
+    async def request_offer(self, table_id: int):
+        await self.accept_offer(table_id=table_id, buyin_cost=None)
 
     async def exit_table(self, table_id):
         if table_id not in self.table_handlers:
