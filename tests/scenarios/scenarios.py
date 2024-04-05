@@ -9,9 +9,8 @@ class MyVerySmartCustomPokerStrategy:
         self.club_id = club_id
 
     async def __call__(self, msg: Message):
-        # await self.client.play_check_or_call_or_fold(msg)
-        await self.client.play_check_or_call_or_fold_v1(msg)
-
+        # await self.client.play_logic_v1(msg)
+        await self.client.play_logic_v2(msg)
 
 
 
@@ -111,8 +110,5 @@ async def evan_bot_scenario():
 async def main():
     # await asyncio.gather(owner_scenario(), player_scenario(), player_scenario(), return_exceptions=True)
     await evan_bot_scenario()
-    # https://market.yandex.ru/product--kollektsionnaia-figurka-primarkh-horus-lupercal-20-sm-khorus-luperkal-warhammer-40k-varkhammer-40k-sbornyi-4-chasti-podstavka/1859466633?sku=102015977165&uniqueId=48865189&do-waremd5=4lu_KaUo1mRsiJ0KSGw5UQ
-    # https://market.yandex.ru/product--igrovaia-figurka-velikii-nechistyi-vysshii-demon-nurgla-velikii-chun-gus-warhammer-grand-chun-gus-ones-great-unclean-one-warhammer-varkhammer/1866639301?sku=102030568429&uniqueId=48865189&do-waremd5=FbV2u10H9w15cCq9ZYtLgQ
-
 if __name__ == '__main__':
     asyncio.run(main())

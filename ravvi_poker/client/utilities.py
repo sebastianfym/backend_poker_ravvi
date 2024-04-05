@@ -1,5 +1,6 @@
 from ravvi_poker.client.cards_set import one_suit, multi_suit
 from ravvi_poker.engine.cards import Card
+from ravvi_poker.engine.events import CommandType
 
 
 def card_decoder(msg): #  На первый ход на стол кладется 3 карты, так вот сделать проверку (если в msg карты 3, то это на стол)
@@ -30,3 +31,4 @@ def card_decoder(msg): #  На первый ход на стол кладетс�
     else:
         print(f'КОМБИНАЦИЯ НЕ ДОСТУПНА {msg["props"]["hands"][0]["hand_type"]}')#и смотрим msg: {msg}')
         return False
+

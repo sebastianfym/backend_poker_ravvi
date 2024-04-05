@@ -51,6 +51,8 @@ class PokerClient:
         self.couple = False
         self.flop = False
 
+        self.gray_combo = False
+
     @property
     def user_id(self):
         return self.access_profile.user.id if self.access_profile else None
@@ -793,7 +795,7 @@ class PokerClient:
 
     # BASIC SIMPLE PLAY STRATEGIES
 
-    async def play_check_or_call_or_fold_v1(self, msg: Message):
+    async def play_logic_v1(self, msg: Message):
         # print(f"self.fold: {self.fold}, self.couple: {self.couple}, self.flop: {self.flop}")
         if msg.msg_type == MessageType.GAME_PLAYER_MOVE and msg.user_id == self.user_id:
             # print(f"self.fold: {self.fold}, self.couple: {self.couple}, self.flop: {self.flop}")
@@ -805,7 +807,7 @@ class PokerClient:
                     await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CALL)
                     print('Бот сыграл колл')
                 elif Bet.ALLIN in msg.options:
-                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CALL)
+                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.ALLIN)
                     print('Бот сыграл аллин')
 
             elif self.flop and self.couple is False:
@@ -826,7 +828,7 @@ class PokerClient:
                     print('Бот сыграл колл')
 
                 elif Bet.ALLIN in msg.options:
-                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CALL)
+                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.ALLIN)
                     print('Бот сыграл аллин')
 
             elif self.fold is False and self.couple and self.flop is False:
@@ -839,7 +841,7 @@ class PokerClient:
                     print('Бот сыграл колл')
 
                 elif Bet.ALLIN in msg.options:
-                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CALL)
+                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.ALLIN)
                     print('Бот сыграл аллин')
 
 
@@ -855,6 +857,85 @@ class PokerClient:
                     self.couple = True
                 elif msg.props['hands'][0][
                     'hand_type'] == "H" and msg.user_id == self.user_id:  # Старшая карта = сброс (фолд)
+                    self.couple = False
+
+            elif card_decoder(msg) is None:
+                self.flop = True  # Todo тут можно будет расширить не только флопом
+                return
+
+            elif isinstance(card_decoder(msg), list):
+                self.couple = True
+                return
+
+        elif msg.msg_type == MessageType.GAME_BEGIN:
+            self.fold = False
+            self.couple = False
+            self.flop = False
+
+    async def play_logic_v2(self, msg: Message):
+        if msg.msg_type == MessageType.GAME_PLAYER_MOVE and msg.user_id == self.user_id:
+            if self.flop: # Логика для флопа и выше
+                if self.gray_combo: # При условии серых карт
+                    if self.couple: # Если пара или выше
+                        if Bet.CHECK in msg.options:
+                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
+                            print('Бот сыграл чек')
+
+                        elif Bet.CALL in msg.options:
+                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CALL)
+                            print('Бот сыграл колл')
+
+                        elif Bet.ALLIN in msg.options:
+                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.ALLIN)
+                            print('Бот сыграл аллин')
+
+                    else: # Если старшая
+                        if Bet.CHECK in msg.options:
+                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
+                            print('Бот сыграл чек')
+                        elif Bet.FOLD in msg.options:
+                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
+                            print('Бот сыграл фолд')
+
+
+                else: # При условии синих карт
+                    if self.couple: # Если пара или выше
+                        if Bet.CHECK in msg.options:
+                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
+                            print('Бот сыграл чек')
+
+                        elif Bet.CALL in msg.options:
+                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CALL)
+                            print('Бот сыграл колл')
+
+                        elif Bet.ALLIN in msg.options:
+                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.ALLIN)
+                            print('Бот сыграл аллин')
+                    else: # Если старшая
+                        if Bet.CHECK in msg.options:
+                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
+                            print('Бот сыграл чек')
+                        elif Bet.FOLD in msg.options:
+                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
+                            print('Бот сыграл фолд')
+
+
+            else: # логика для префлопа
+                if Bet.CHECK in msg.options:
+                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
+                    print('Бот сыграл чек')
+                elif Bet.FOLD in msg.options:
+                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
+                    print('Бот сыграл фолд')
+
+        elif msg.msg_type == MessageType.PLAYER_CARDS and msg.user_id == self.user_id:
+            if card_decoder(msg) is False:  # Если комбинация карт не проходит в валидные - сброс (фолд)
+                self.gray_combo = True
+
+            elif card_decoder(msg) is True:  # Если комбинация карт проходит в валидные проверяем на пару
+                if msg.props['hands'][0]['hand_type'] != "H" and msg.user_id == self.user_id:  # Пара и выше
+                    self.couple = True
+                elif msg.props['hands'][0]['hand_type'] == "H" and msg.user_id == self.user_id:  # Старшая карта = сброс (фолд)
                     self.couple = False
 
             elif card_decoder(msg) is None:
