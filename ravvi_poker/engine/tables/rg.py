@@ -83,26 +83,28 @@ class Table_RG(Table):
             # TODO обработать отрицательное значение относительно текущего времени
             offer_closed_at = user.buyin_offer_timeout - 5
         buyin_min, buyin_max = self.buyin_min, self.buyin_max
+        # если денег на балансе уже больше максимального байина, то возвращаем ошибку
+        if user.balance is not None and user.balance >= buyin_max:
+            msg = Message(msg_type=Message.Type.TABLE_WARNING, table_id=self.table_id, cmd_id=None,
+                          client_id=client_id,
+                          error_code=3, error_text='The maximum balance value has been exceeded')
+            await self.emit_msg(db, msg)
+            return
+        # если недостаточно денег на балансе до минимального байина, то возвращаем ошибку
+        if buyin_min > account_balance:
+            msg = Message(msg_type=Message.Type.TABLE_WARNING,
+                          table_id=self.table_id, cmd_id=None, client_id=client_id,
+                          error_code=1, error_text='Not enough balance')
+            await self.emit_msg(db, msg)
+            return
         # если максимальный байин больше чем денег на балансе, то максимальный байин равен балансу
         if buyin_max > account_balance:
             buyin_max = account_balance
+        # иначе вычитаем тот баланс что уже есть
         elif user.balance is not None:
             buyin_max -= user.balance
         if user.balance is not None:
             buyin_min -= user.balance
-            if buyin_min > account_balance:
-                msg = Message(msg_type=Message.Type.TABLE_WARNING,
-                              table_id=self.table_id, cmd_id=None, client_id=client_id,
-                              error_code=1, error_text='Not enough balance')
-                await self.emit_msg(db, msg)
-                return
-            # если максимальный байин меньше нуля, значит превышен максимальный возможный баланс за столом
-            if buyin_max <= 0:
-                msg = Message(msg_type=Message.Type.TABLE_WARNING, table_id=self.table_id, cmd_id=None,
-                              client_id=client_id,
-                              error_code=3, error_text='The maximum balance value has been exceeded')
-                await self.emit_msg(db, msg)
-                return
             if buyin_min < 0:
                 buyin_min = min(self.game_props.get("blind_big"), buyin_max)
         elif user.balance is None and (interval_in_hours := getattr(self, "advanced_config").ratholing):
