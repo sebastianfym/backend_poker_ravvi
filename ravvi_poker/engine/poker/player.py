@@ -1,12 +1,12 @@
-from typing import List, Tuple, Callable
+from decimal import Decimal
 from enum import IntFlag
+from typing import Callable
 
 from ravvi_poker.engine.poker.board import Board
-
-from .hands import Hand, LowHand
-from ..user import User
-from ..player import Player as PlayerBase
 from .bet import Bet
+from .hands import Hand, LowHand
+from ..player import Player as PlayerBase
+from ..user import User
 
 
 class PlayerRole(IntFlag):
@@ -28,13 +28,13 @@ class Player(PlayerBase):
         self.hands: list[Hand, LowHand] | None = None
         self.active = True
         self.bet_type = None
-        self.bet_amount = 0
-        self.bet_ante = 0
-        self.bet_delta = 0
-        self.bet_total = 0
+        self.bet_amount: Decimal = Decimal("0.00")
+        self.bet_ante: Decimal = Decimal("0.00")
+        self.bet_delta: Decimal = Decimal("0.00")
+        self.bet_total: Decimal = Decimal("0.00")
 
     @property
-    def bet_max(self) -> int:
+    def bet_max(self) -> Decimal:
         return self.bet_amount + self.balance
 
     @property

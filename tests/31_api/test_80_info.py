@@ -4,8 +4,8 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_401_UNAUTHORIZED
-from ravvi_poker.api.auth import UserAccessProfile
-from ravvi_poker.api.clubs import ClubProfile
+from ravvi_poker.api.auth.types import UserAccessProfile
+from ravvi_poker.api.clubs.types import ClubProfile
 
 from ravvi_poker.engine import data
 
@@ -65,7 +65,7 @@ def test_get_levels_schedule(api_client: TestClient, api_guest: UserAccessProfil
 #         {"players": "7-9", "position": {"first": "50%", "second": "30%", "third": "20%"}}
 #     ]
 
-#     response = api_client.get(f"/api/v1/info/payment structure")
+#     response = api_client.get(f"/v1/info/payment structure")
 #     assert response.status_code == 200
 #     assert isinstance(response.json(), list)
 #     assert response.json() == payment_structure_list
@@ -103,5 +103,5 @@ def test_clubs_history(api_client: TestClient, api_guest: UserAccessProfile):
 
     club = create_club(api_client)
     response = api_client.get(f"/api/v1/info/{club.id}/history")
-
+    print(response.json())
     assert response.status_code == 200

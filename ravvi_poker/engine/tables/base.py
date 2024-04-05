@@ -1,14 +1,14 @@
-from typing import List, Mapping
 import asyncio
-import inspect
-import contextlib
+from decimal import Decimal
+from typing import List, Mapping
 
 from .configs import configCls
-from ...logging import getLogger, ObjectLoggerAdapter
-from ...db import DBI
-from ..user import User
-from ..events import Command, Message
 from .status import TableStatus
+from ..events import Command, Message
+from ..game import GameConditionType, Game
+from ..user import User
+from ...db import DBI
+from ...logging import getLogger, ObjectLoggerAdapter
 
 logger = getLogger(__name__)
 
@@ -134,8 +134,8 @@ class Table:
     async def on_user_join(self, db, user):
         self.log.debug("on_user_join(%s)", user.id if user else None)
 
-    async def on_player_enter(self, db, user, seat_idx):
-        # TODO buyin
+    async def on_player_enter(self, db, cmd_id, client_id, user, seat_idx):
+        # TODO RG и SNG|MTT по разному переопределяют этот метод
         user.balance = 1
         return True
 
@@ -162,6 +162,10 @@ class Table:
         msg = Message(msg_type=Message.Type.TABLE_NEXT_LEVEL_INFO, **kwargs)
         await self.emit_msg(db, msg)
 
+    async def emit_TABLE_JOIN_OFFER(self, db, **kwargs):
+        msg = Message(msg_type=Message.Type.TABLE_JOIN_OFFER, **kwargs)
+        await self.emit_msg(db, msg)
+
     async def broadcast_TABLE_CLOSED(self, db):
         redirect_id = self.parent_id or self.table_id
         msg = Message(msg_type=Message.Type.TABLE_CLOSED, table_redirect_id=redirect_id)
@@ -173,6 +177,10 @@ class Table:
 
     async def broadcast_PLAYER_SEAT(self, db, user_id, seat_idx):
         msg = Message(msg_type=Message.Type.PLAYER_SEAT, user_id=user_id, seat_id=seat_idx)
+        await self.emit_msg(db, msg)
+
+    async def broadcast_PLAYER_BALANCE(self, db, user_id, balance):
+        msg = Message(msg_type=Message.Type.PLAYER_BALANCE, user_id=user_id, balance=balance)
         await self.emit_msg(db, msg)
 
     async def broadcast_PLAYER_EXIT(self, db, user_id):
@@ -228,8 +236,14 @@ class Table:
                 await self.handle_cmd_join(db, cmd_id=cmd_id, client_id=client_id, user_id=user_id, club_id=club_id,
                                            take_seat=take_seat)
             elif cmd_type == Command.Type.TAKE_SEAT:
+                # TODO seat_idx не может быть None в данной реализации
                 seat_idx = props.get("seat_idx", None)
-                await self.handle_cmd_take_seat(db, user_id=user_id, seat_idx=seat_idx)
+                await self.handle_cmd_take_seat(db, cmd_id=cmd_id, client_id=client_id, user_id=user_id,
+                                                seat_idx=seat_idx)
+            elif cmd_type == Command.Type.OFFER_RESULT:
+                buyin_cost = props.get("buyin_cost", 0)
+                await self.handle_cmd_offer_result(db, cmd_id=cmd_id, client_id=client_id, user_id=user_id,
+                                                   buyin_cost=buyin_cost)
             elif cmd_type == Command.Type.EXIT:
                 await self.handle_cmd_exit(db, user_id=user_id)
             elif self.game:
@@ -245,7 +259,7 @@ class Table:
         if club_id != self.club_id:
             # no access
             msg = Message(msg_type=Message.Type.TABLE_ERROR, table_id=self.table_id, cmd_id=cmd_id, client_id=client_id,
-                          error_id=403, error_text=f'No access to club #{self.club_id} from club #{club_id}')
+                          error_code=403, error_text=f'No access to club #{self.club_id} from club #{club_id}')
             await self.emit_msg(db, msg)
             return
 
@@ -266,7 +280,7 @@ class Table:
             # allocate seat
             new_seat_idx = seats_available.pop(0)
             # check user can take seat
-            if await self.on_player_enter(db, user, new_seat_idx):
+            if await self.on_player_enter(db, cmd_id, client_id, user, new_seat_idx):
                 self.seats[new_seat_idx] = user
                 user_info = user.get_info()
                 await self.broadcast_PLAYER_ENTER(db, user_info, new_seat_idx)
@@ -276,7 +290,7 @@ class Table:
         await self.emit_TABLE_INFO(db, cmd_id=cmd_id, client_id=client_id, table_info=table_info)
         self.log.debug("handle_cmd_join: done")
 
-    async def handle_cmd_take_seat(self, db, *, user_id: int, seat_idx: int):
+    async def handle_cmd_take_seat(self, db, *, cmd_id, client_id, user_id: int, seat_idx: int):
         # check seats allocation
         user, old_seat_idx, seats_available = self.find_user(user_id)
         self.log.info("handle_cmd_take_seat: %s, %s, %s", user, old_seat_idx, seats_available)
@@ -287,16 +301,24 @@ class Table:
         if old_seat_idx is None:
             if not self.user_enter_enabled:
                 return False
-            if not await self.on_player_enter(db, user, seat_idx):
+            if not await self.on_player_enter(db, cmd_id, client_id, user, seat_idx):
                 return False
             self.seats[seat_idx] = user
             user_info = user.get_info()
             await self.broadcast_PLAYER_ENTER(db, user_info, seat_idx)
         else:
+            # если баланс пользователя None, то отправим offer
+            if user.balance is None:
+                if not (account := await self.prepare_before_offer(db, cmd_id, client_id, user)):
+                    return False
+                await self.make_player_offer(db, user, client_id, account.balance)
             self.seats[old_seat_idx] = None
             self.seats[seat_idx] = user
             await self.broadcast_PLAYER_SEAT(db, user_id, seat_idx)
         return True
+
+    async def handle_cmd_offer_result(self, db, *, cmd_id: int, client_id: int, user_id: int, buyin_cost: float | None):
+        pass
 
     async def handle_cmd_exit(self, db, *, user_id: int):
         if not self.user_exit_enabled:
@@ -393,6 +415,7 @@ class Table:
 
     async def run_table(self):
         self.log.info("%s", self.status)
+        # основной цикл
         while self.status == TableStatus.OPEN:
             await self.sleep(self.NEW_GAME_DELAY)
             #self.log.info("try start game")
@@ -402,14 +425,24 @@ class Table:
                     await self.remove_users(db)
 
     def user_can_play(self, user):
-        return isinstance(user.balance, (int, float)) and user.balance > 0
+        return isinstance(user.balance, Decimal) and user.balance > 0
 
-    def user_can_stay(self, user):
+    async def user_can_stay(self, db, user):
         if user.balance is None:
+            return True
+        # если баланс равен 0 и нет отложенного пополнения, то ставим баланс в None и пытаемся отправить оффер
+        if user.balance == 0 and user.buyin_deferred_value is None:
+            user.balance = None
+            # TODO вытянуть клиент который последний делал действия(Bet, take_seat), если количество клиентов
+            #  больше одного
+            client_id = list(user.clients)[0]
+            if not (account := await self.prepare_before_offer(db, None, client_id, user)):
+                return False
+            await self.make_player_offer(db, user, client_id, account.balance)
             return True
         return self.user_can_play(user)
 
-    def get_game_players(self, *, min_size=2) -> List[User]:
+    def get_game_players(self, *, min_size) -> List[User]:
         players = []
         for i, user in enumerate(self.seats):
             if user and self.user_can_play(user):
@@ -426,8 +459,10 @@ class Table:
         self.dealer_idx = players[0][0]
         return [user for _, user in players]
 
-    async def create_game(self, users):
+    async def create_game(self, users) -> Game:
         game = await self.game_factory(users)
+        if game.condition is not GameConditionType.READY:
+            return game
         async with self.DBI() as db:
             row = await db.create_game(
                 table_id=self.table_id,
@@ -449,7 +484,7 @@ class Table:
         for seat_idx, user in enumerate(self.seats):
             if not user:
                 continue
-            if not force and self.user_can_stay(user):
+            if not force and await self.user_can_stay(db, user):
                 continue
             self.seats[seat_idx] = None
             await self.on_player_exit(db, user, seat_idx)
@@ -464,7 +499,7 @@ class Table:
 
     async def run_game(self):
         async with self.lock:
-            users = self.get_game_players()
+            users = self.get_game_players(min_size=getattr(getattr(self, "game_modes_config"), "players_required"))
             if not users:
                 # сбрасываем уровень бомпота
                 if self.bombpot:
@@ -474,8 +509,14 @@ class Table:
                     await self.ante.reset_ante_level()
                 return
             self.game = await self.create_game(users)
+        if self.game.condition is GameConditionType.FULL_RECONFIGURE:
+            return
+        while self.game.condition is GameConditionType.FAST_RECONFIGURE:
+            await self.run_game()
+            return
         try:
             await self.game.run()
+            # TODO сюда можно перенести обновление параметров счетчика bompot и ante, чтобы игра ничего не знала о столе
         except Exception as e:
             self.log.exception("%s", str(e))
 

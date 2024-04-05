@@ -1,5 +1,6 @@
 import asyncio
 import time
+from decimal import Decimal, ROUND_HALF_DOWN
 from enum import IntEnum, unique
 from itertools import groupby, combinations
 from typing import List, Tuple
@@ -35,15 +36,12 @@ class PokerBase(Game):
     SLEEP_GAME_END = 1
 
     def __init__(self, table, users: List[User],
-                 *, blind_small: float = 0.01, blind_big: float = 0.02, bet_timeout=30,
-                 ante: float | None = None, bombpot_blind_multiplier: int | None = None, **kwargs) -> None:
+                 *, blind_small: Decimal = Decimal("0.01"), blind_big: Decimal = Decimal("0.02"), bet_timeout=30,
+                 ante: Decimal | None = None, bombpot_blind_multiplier: int | None = None, **kwargs) -> None:
         super().__init__(table=table, users=users)
         self.log.logger = logger
         self.round = None
         self.deck = None
-        # TODO удалить
-        # self.boards_types: list[BoardType] = [BoardType.BOARD1]
-        # self.boards = None
         self.bank_total = None
         self.banks = None
 
@@ -291,8 +289,9 @@ class PokerBase(Game):
             p.bet_delta = 0
         elif bet_type == Bet.CALL:
             assert call_delta > 0
-            p.bet_delta = call_delta
+            p.bet_delta = Decimal(call_delta).quantize(Decimal(".01"), rounding=ROUND_HALF_DOWN)
         elif bet_type == Bet.RAISE:
+            raise_delta = Decimal(raise_delta).quantize(Decimal(".01"), rounding=ROUND_HALF_DOWN)
             assert raise_min <= raise_delta and raise_delta <= raise_max
             p.bet_delta = raise_delta
         elif bet_type == Bet.ALLIN:
@@ -304,7 +303,7 @@ class PokerBase(Game):
         p.bet_amount += p.bet_delta
         p.bet_total += p.bet_delta
         self.bank_total += p.bet_delta
-        p.user.balance = round(p.user.balance - p.bet_delta, 2)
+        p.user.balance = p.user.balance - p.bet_delta
 
         if self.bet_level < p.bet_amount:
             self.bet_id = p.user_id
@@ -342,11 +341,11 @@ class PokerBase(Game):
     def update_banks(self):
         self.banks, self.bank_total = get_banks(self.players)
         # TODO окргуление
-        self.bank_total = round(self.bank_total, 2)
+        self.bank_total = self.bank_total
         banks_info = []
         for b in self.banks:
             # TODO окргуление
-            banks_info.append(round(b[0], 2))
+            banks_info.append(b[0])
         # reset bet status
         for p in self.players:
             p.bet_amount = 0
@@ -470,7 +469,6 @@ class PokerBase(Game):
     ]
 
     def get_hand_rank(self, hand):
-        print(f"Пришел запрос на get_hand_rank {hand}")
         if not hand.type:
             return None
         if isinstance(hand, LowHand):
@@ -601,8 +599,7 @@ class PokerBase(Game):
                 p.bet_delta = self.blind_small
                 p.bet_amount = self.blind_small
                 p.bet_total += self.blind_small
-            # TODO округление
-            self.bank_total = round(self.bank_total + p.bet_delta, 2)
+            self.bank_total = self.bank_total + p.bet_delta
             p.user.balance -= p.bet_delta
             await self.broadcast_PLAYER_BET(db, p)
 
@@ -619,8 +616,7 @@ class PokerBase(Game):
                 p.bet_delta = self.blind_big
                 p.bet_amount = self.blind_big
                 p.bet_total += self.blind_big
-            # TODO округление
-            self.bank_total = round(self.bank_total + p.bet_delta, 2)
+            self.bank_total = self.bank_total + p.bet_delta
             p.user.balance -= p.bet_delta
             await self.broadcast_PLAYER_BET(db, p)
 
@@ -762,14 +758,9 @@ class PokerBase(Game):
                 self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hands, p.hands[0].type)
 
     async def open_cards_on_request(self):
-        print("_______________________")
-        print("Прилетел запрос на открытие карт в конце игры")
         # открываем карты по запросу
         async with self.DBI() as db:
             for p in self.players:
-                print(f"Смотрим для {p.user_id}")
-                print(p.cards_open_on_request)
-                print(p.cards_open)
                 if p.cards_open_on_request and not p.cards_open:
                     await self.broadcast_PLAYER_CARDS_ON_REQUEST(db, p)
                     self.log.info("player %s: open cards on request %s", p.user_id, p.cards_open_on_request)
@@ -782,8 +773,7 @@ class PokerBase(Game):
             w_amount = 0
             for bank_amount, _ in self.banks:
                 w_amount += bank_amount
-                # TODO округление
-            winners[p.user_id] = round(w_amount, 2)
+            winners[p.user_id] = w_amount
         else:
             rankKey = lambda x: x.hands[0].rank
             for amount, bank_players in self.banks:
@@ -792,11 +782,11 @@ class PokerBase(Game):
                 for _, g in groupby(bank_players, key=rankKey):
                     bank_winners = list(g)
                 # TODO округление
-                w_amount = round(amount / len(bank_winners), 2)
+                w_amount = amount / len(bank_winners)
                 for p in bank_winners:
                     amount = winners.get(p.user_id, 0)
                     # TODO округление
-                    winners[p.user_id] = round(amount + w_amount, 2)
+                    winners[p.user_id] = amount + w_amount
 
         rewards_winners = []
         rewards = {"type": "board1", "winners": rewards_winners}
@@ -810,7 +800,7 @@ class PokerBase(Game):
             if not amount:
                 continue
             # TODO округление
-            p.user.balance = round(p.user.balance + amount, 2)
+            p.user.balance = p.user.balance + amount
             rewards_winners.append(
                 {
                     "user_id": p.user_id,
@@ -819,22 +809,6 @@ class PokerBase(Game):
                 }
             )
         rewards_winners.sort(key=lambda x: x["user_id"])
-
-        # winners_info = []
-        # for p in players:
-        #     amount = winners.get(p.user_id, None)
-        #     if not amount:
-        #         continue
-        #     p.user.balance += amount
-        #     # TODO округление
-        #     delta = round(p.balance - p.balance_0, 2)
-        #     info = dict(
-        #         user_id=p.user_id,
-        #         balance=p.balance,
-        #         delta=delta
-        #     )
-        #     self.log.info("winner: %s %s %s", p.user_id, p.balance, delta)
-        #     winners_info.append(info)
 
         return rounds_results
 
@@ -861,9 +835,9 @@ class PokerBase(Game):
             p.bet_delta = p.bet_ante
             p.bet_total += p.bet_delta
             # TODO округление
-            self.bank_total = round(self.bank_total + p.bet_delta, 2)
+            self.bank_total = self.bank_total + p.bet_delta
             # TODO округление
-            p.user.balance = round(p.user.balance - p.bet_delta, 2)
+            p.user.balance = p.user.balance - p.bet_delta
             p.bet_type = Bet.ANTE
 
             await self.broadcast_PLAYER_BET(db, p)

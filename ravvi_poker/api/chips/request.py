@@ -6,7 +6,9 @@ from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_409_CONFLICT
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY, HTTP_400_BAD_REQUEST
 from pydantic import BaseModel, Field, field_validator, validator
 
-from ..clubs import check_rights_user_club_owner, check_rights_user_club_owner_or_manager
+from .utilities import check_rights_user_club_owner_or_manager
+from ..clubs.utilities import check_rights_user_club_owner
+# from ..clubs import check_rights_user_club_owner, check_rights_user_club_owner_or_manager
 from ...db import DBI
 from ..utils import SessionUUID, get_session_and_user
 # from ..types import HTTPError

@@ -83,7 +83,7 @@ class X_Table(Table):
     def user_exit_enabled(self):
         return self._user_exit_enabled
 
-    async def on_player_enter(self, db, user, seat_idx):
+    async def on_player_enter(self, db, cmd_id, client_id, user, seat_idx):
         logger.info("player enter %s -> %s", user.id, seat_idx)
         user.balance = self.buyin_value
         return True

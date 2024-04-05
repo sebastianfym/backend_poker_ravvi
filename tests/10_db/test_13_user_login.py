@@ -45,7 +45,7 @@ async def test_login_close(login):
         assert not x_login.closed_ts
 
     async with DBI() as db:
-        await db.close_login(login.id)
+        await db.close_login(login.id, host="127.0.0.1")
     await asyncio.sleep(1)
 
     async with DBI() as db:

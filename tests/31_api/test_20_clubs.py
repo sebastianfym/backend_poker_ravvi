@@ -4,8 +4,8 @@ from decimal import Decimal
 import pytest
 
 from fastapi.testclient import TestClient
-from ravvi_poker.api.auth import UserAccessProfile
-from ravvi_poker.api.clubs import ClubProfile, ClubMemberProfile
+from ravvi_poker.api.auth.types import UserAccessProfile
+from ravvi_poker.api.clubs.types import ClubProfile, ClubMemberProfile
 from ravvi_poker.db import DBI
 
 
@@ -88,11 +88,11 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_c
     assert response.status_code == 404
 
     # delete club2 by new user
-    # response = client.delete(f"/api/v1/clubs/{club2['id']}", headers=new_headers)
+    # response = client.delete(f"/v1/clubs/{club2['id']}", headers=new_headers)
     # assert response.status_code == 403
 
     # delete club2 by user
-    # response = client.delete(f"/api/v1/clubs/{club2['id']}", headers=headers)
+    # response = client.delete(f"/v1/clubs/{club2['id']}", headers=headers)
     # assert response.status_code == 204
 
     # create and get clubs tables
@@ -476,6 +476,7 @@ def test_delete_chips_to_club(client, initial_club_balance, request_params, stat
     assert response.status_code == status_code
 
     response = authorized_client.get(f"/api/v1/clubs/{club.id}")
+    print(response.json())
     if club_balance is not None:
         assert response.json()['club_balance'] == club_balance
     else:
@@ -491,22 +492,22 @@ def test_delete_chips_to_club(client, initial_club_balance, request_params, stat
 #     api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
 #
 #     params = {}
-#     response = api_client.post("/api/v1/clubs", json=params)
+#     response = api_client.post("/v1/clubs", json=params)
 #     club = ClubProfile(**response.json())
 #
-#     response = api_client.post(f"/api/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 1000})
+#     response = api_client.post(f"/v1/clubs/{club.id}/add_chip_on_club_balance", json={"amount": 1000})
 #     assert response.status_code == 200
-#     response = api_client.get(f"/api/v1/clubs/{club.id}")
+#     response = api_client.get(f"/v1/clubs/{club.id}")
 #     assert response.json()['club_balance'] == 1000
 #
-#     response = api_client.post(f"/api/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 0.12})
+#     response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 0.12})
 #     assert response.status_code == 200
-#     response = api_client.get(f"/api/v1/clubs/{club.id}")
+#     response = api_client.get(f"/v1/clubs/{club.id}")
 #     assert response.json()['club_balance'] == 999.88
 #
-#     response = api_client.post(f"/api/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 0.07})
+#     response = api_client.post(f"/v1/clubs/{club.id}/delete_chip_from_club_balance", json={"amount": 0.07})
 #     assert response.status_code == 200
-#     response = api_client.get(f"/api/v1/clubs/{club.id}")
+#     response = api_client.get(f"/v1/clubs/{club.id}")
 #     assert response.json()['club_balance'] == 999.81
 
 
@@ -533,7 +534,7 @@ def test_delete_chips_to_club(client, initial_club_balance, request_params, stat
 #         user_account_to_get_chips = await dbi.create_club_member(club.id, user_profile_to_get_chips.id, "TEST_MEMBER")
 #
 #     # начисляем фишки
-#     response = api_client.post(f"/api/v1/clubs/{club.id}/giving_chips_to_the_user",
+#     response = api_client.post(f"/v1/clubs/{club.id}/giving_chips_to_the_user",
 #                                json={"amount": amount, "account_id": user_account_to_get_chips.user_id,
 #                                      "balance": balance_type})
 #     assert response.status_code == 200
@@ -902,10 +903,10 @@ def test_actions_with_users_requests(api_client: TestClient, api_guest: UserAcce
     response = api_client.post("/api/v1/clubs", json=params)
     club = ClubProfile(**response.json())
     #
-    # request = api_client_2.post(f"/api/v1/clubs/{club.id}/members")
+    # request = api_client_2.post(f"/v1/clubs/{club.id}/members")
     # assert request.status_code == 200
     #
-    # request = api_client_2.get(f"/api/v1/clubs/{club.id}/members")
+    # request = api_client_2.get(f"/v1/clubs/{club.id}/members")
     # assert request.status_code == 200
 
     params = {"amount": 10, "balance": "balance"}
@@ -914,8 +915,8 @@ def test_actions_with_users_requests(api_client: TestClient, api_guest: UserAcce
 
     request = api_client.get(f"/api/v1/clubs/{club.id}/requests_chip_replenishment")
     txn_id = request.json()['users_requests'][0].get('txn_id')
-    assert request.status_code == 200
 
+    assert request.status_code == 200
     params = {"id": txn_id, "operation": "approve"}
     request = api_client.post(f"/api/v1/clubs/{club.id}/action_with_user_request", json=params)
     assert request.status_code == 400
@@ -941,7 +942,6 @@ def client_new(request, api_client: TestClient, api_guest: UserAccessProfile,
            api_client_2: TestClient, api_guest_2: UserAccessProfile,
            api_client_3: TestClient, api_guest_3: UserAccessProfile):
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
-    print(request.__dict__["param"])
     if request.__dict__["param"] == "get_authorize_client":
         api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
         yield api_client

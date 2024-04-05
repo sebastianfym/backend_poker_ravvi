@@ -4,6 +4,8 @@ import logging
 import os
 import json
 import base64
+from decimal import Decimal
+
 import psycopg
 from psycopg.rows import namedtuple_row, dict_row
 from psycopg.connection import Notify
@@ -208,11 +210,11 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    async def check_uniq_username(self, name):
+    async def check_uniq_username(self, name, user_id):
         name_lower = name.lower()
-        sql = "SELECT name FROM user_profile WHERE LOWER(name) = %s;"
+        sql = "SELECT name FROM user_profile WHERE LOWER(name) = %s AND id != %s;"
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (name_lower,))
+            await cursor.execute(sql, (name_lower, user_id))
             row = await cursor.fetchone()
         return row
 
@@ -224,14 +226,23 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def check_img_id(self, image_id):
+        sql = "SELECT id FROM image WHERE id=%s;"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (image_id,))
+            row = await cursor.fetchone()
+            print(row)
+        return row
+
     # LOGIN
 
-    async def create_login(self, device_id, user_id, host):
+    async def create_login(self, device_id, user_id, host=None):
         sql = "INSERT INTO user_login (device_id, user_id, host) VALUES (%s, %s, %s) RETURNING *"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (device_id, user_id, host))
             row = await cursor.fetchone()
         return row
+
 
     async def get_login(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
@@ -249,6 +260,8 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+
+
     async def get_last_user_login(self, user_id=None):
         sql = f"SELECT * FROM user_login WHERE user_id=%s ORDER BY id DESC"
         async with self.cursor() as cursor:
@@ -264,6 +277,7 @@ class DBI:
             await cursor.execute(sql, (login_id, host))
             row = await cursor.fetchone()
         return row
+
 
     async def get_session(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
@@ -299,6 +313,7 @@ class DBI:
 
             row = await cursor.fetchone()
         return row
+
 
     async def get_last_user_session(self, last_login_id):
         sql = "SELECT * FROM user_session WHERE login_id=%s ORDER BY id DESC"
@@ -474,6 +489,12 @@ class DBI:
         return row
 
     async def get_club_member(self, member_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM club_member WHERE id=%s", (member_id,))
+            row = await cursor.fetchone()
+        return row
+
+    async def get_account(self, member_id: int):
         async with self.cursor() as cursor:
             await cursor.execute("SELECT * FROM club_member WHERE id=%s", (member_id,))
             row = await cursor.fetchone()
@@ -702,9 +723,25 @@ class DBI:
             rows = cursor.fetchall()
         return rows
 
+    async def get_last_table_reward(self, table_id: int, account_id: int, interval_in_hours: int):
+        """
+        Получить последнюю выплату за столом для выбранного игрока.
+        Используется столом для определения buyin если включен ratholing.
+        """
+        sql = ("SELECT txn_value FROM user_account_txn WHERE txn_type = 'REWARD' AND account_id = %s "
+               "AND props->table_id = %s AND created_ts > now() - interval %s hour ORDER BY id DESC LIMIT 1")
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, account_id, table_id, interval_in_hours)
+            row = await cursor.fetchone()
+        return row
+
     # GAMES
 
     async def create_game(self, *, table_id: int, game_type, game_subtype, props, players):
+        # TODO возможно стоит написать JSONCustomDecoder
+        for key, item in props.items():
+            if isinstance(item, Decimal):
+                props[key] = float(item)
         props = json.dumps(props or {})
         async with self.cursor() as cursor:
             sql = "INSERT INTO game_profile (table_id,game_type,game_subtype,props) VALUES (%s,%s,%s,%s) RETURNING *"
@@ -752,6 +789,8 @@ class DBI:
 
     def json_dumps(self, obj):
         def encoder(x):
+            if isinstance(x, Decimal):
+                return float(x)
             if hasattr(x, "__int__"):
                 return int(x)
             if hasattr(x, "__str__"):

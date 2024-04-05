@@ -9,7 +9,7 @@ API_URL = "localhost:5000"
 WS_URL = "localhost:5001"
 
 def register_guest():
-    response = requests.post(f"http://{API_URL}/v1/auth/register", json={})
+    response = requests.post(f"http://{API_URL}/api/v1/auth/register", json={})
     assert response.status_code == 200
     result = response.json()
     username = result["username"]
@@ -19,7 +19,7 @@ def register_guest():
 async def hello():
     access_token, username = register_guest()
     params = urlencode(dict(access_token=access_token))
-    uri = f"ws://{WS_URL}/v1/ws?access_token={access_token}"
+    uri = f"ws://{WS_URL}/api/v1/ws?access_token={access_token}"
 
     async with websockets.connect(uri) as ws:
 

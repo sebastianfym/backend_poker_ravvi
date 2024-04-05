@@ -4,8 +4,8 @@ from decimal import Decimal
 import pytest
 
 from fastapi.testclient import TestClient
-from ravvi_poker.api.auth import UserAccessProfile
-from ravvi_poker.api.clubs import ClubProfile, ClubMemberProfile
+from ravvi_poker.api.auth.types import UserAccessProfile
+from ravvi_poker.api.clubs.types import ClubProfile, ClubMemberProfile
 
 
 @pytest.fixture
