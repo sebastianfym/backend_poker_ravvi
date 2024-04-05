@@ -6,11 +6,11 @@ from ravvi_poker.engine.poker.base import Round
 class AnteUpController:
     def __init__(self, blind_small_value: int | Decimal):
         self.ante_levels = self.get_ante_levels(blind_small_value)
-        self.current_ante_value: Decimal | int | None = None if len(self.ante_levels) == 0 else self.ante_levels[0]
+        self.current_ante_value: Decimal = self.ante_levels[0]
 
     def get_ante_levels(self, blind_small_value: int | Decimal) -> list[int | Decimal]:
         if blind_small_value == Decimal("0.01"):
-            return []
+            return [Decimal("0.01")]
         if blind_small_value == Decimal("0.02"):
             return [Decimal("0.01"), Decimal("0.02")]
         elif blind_small_value in [Decimal("0.03"), Decimal("0.04")]:
@@ -31,4 +31,4 @@ class AnteUpController:
 
     async def reset_ante_level(self):
         if self.current_ante_value != self.ante_levels[0]:
-            self.current_ante_value = self.ante_levels[0] if len(self.ante_levels) != 0 else None
+            self.current_ante_value = self.ante_levels[0]
