@@ -48,6 +48,7 @@ class TestAnteUpControllerInstance:
 
 def prepare_ante_by_blind() -> list:
     rule_base_cases = [
+        {"blind_small_value": 0.01, "ante_target_value": Decimal("0.01")},
         {"blind_small_value": 0.02, "ante_target_value": Decimal("0.01")},
         {"blind_small_value": 0.03, "ante_target_value": Decimal("0.01")},
         {"blind_small_value": 0.04, "ante_target_value": Decimal("0.01")},
