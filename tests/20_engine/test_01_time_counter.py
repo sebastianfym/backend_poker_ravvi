@@ -1,6 +1,6 @@
 import pytest
 import time
-from ravvi_poker.engine.time import TimeCounter
+from ravvi_poker.utils.timecounter import TimeCounter
 
 @pytest.mark.skip
 def test_time_counter():

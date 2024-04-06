@@ -157,10 +157,11 @@ class PokerClient:
         return status, user_profile
 
     async def update_user_profile(self, name=None, image_id=None):
-        data = {
-            "name": name,
-            "image_id": image_id
-        }
+        data = {}
+        if name:
+            data.update(name=name)
+        if image_id:
+            data.update(image_id=image_id)
         response = await self.PATCH('/api/v1/user/profile', json=data)
         status, payload = await self._get_result(response)
         if status == 200:
