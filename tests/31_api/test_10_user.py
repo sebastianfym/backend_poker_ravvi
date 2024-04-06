@@ -31,23 +31,25 @@ def test_user(api_client: TestClient, api_guest: UserAccessProfile, api_client_2
     assert user_2.image_id is None
 
     # update own data
-    params = {'aaabbjhbcccc': 'test', 'name': 'test1'}
+    expectedName = f'test1-{api_guest.user.id}'
+    params = {'aaabbjhbcccc': 'test', 'name': expectedName}
     response = api_client.patch("/api/v1/user/profile", json=params)
     assert response.status_code == HTTP_200_OK
     user_1 = UserPrivateProfile(**response.json())
     assert user_1.id == api_guest.user.id
-    assert user_1.name == 'test1'
+    assert user_1.name == expectedName
     assert user_1.image_id is None
     assert user_1.has_password == False
     assert user_1.email is None
 
-    params = {'name': 'test2', 'image_id': 11}
+    expectedName = f'test2-{api_guest.user.id}'
+    params = {'name': expectedName, 'image_id': 11}
     response = api_client.patch("/api/v1/user/profile", json=params)
 
     assert response.status_code == HTTP_200_OK
     user_1 = UserPrivateProfile(**response.json())
     assert user_1.id == api_guest.user.id
-    assert user_1.name == 'test2'
+    assert user_1.name == expectedName
     assert user_1.image_id == 11
     assert user_1.has_password == False
     assert user_1.email is None
@@ -73,7 +75,7 @@ def test_user(api_client: TestClient, api_guest: UserAccessProfile, api_client_2
     assert response.status_code == HTTP_200_OK
     user_1 = UserPrivateProfile(**response.json())
     assert user_1.id == api_guest.user.id
-    assert user_1.name == 'test2'
+    assert user_1.name == expectedName
     assert user_1.image_id == 11
     assert user_1.has_password == False
     assert user_1.email is None
@@ -87,5 +89,5 @@ def test_user(api_client: TestClient, api_guest: UserAccessProfile, api_client_2
     assert response.status_code == HTTP_200_OK
     user_1 = UserPublicProfile(**response.json())
     assert user_1.id == api_guest.user.id
-    assert user_1.name == 'test2'
+    assert user_1.name == expectedName
     assert user_1.image_id == 11

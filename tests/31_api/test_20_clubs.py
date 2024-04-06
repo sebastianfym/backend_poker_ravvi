@@ -1,5 +1,6 @@
 import json
 from decimal import Decimal
+from time import monotonic
 
 import pytest
 
@@ -23,7 +24,7 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_c
 
     club1 = ClubProfile(**response.json())
     assert club1.id
-    assert club1.name.startswith("CLUB-")
+    assert club1.name == f"CLUB-{club1.id}"
     assert club1.description is None
     assert club1.image_id is None
     assert club1.user_role == "O"
@@ -31,13 +32,14 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_c
     assert club1.timezone is None
 
     # create club with props
-    params = {"name": "New club", "description": "Desc"}
+    club2Name = f"New club {monotonic()}"
+    params = {"name": club2Name, "description": "Desc"}
     response = api_client.post("/api/v1/clubs", json=params)
     assert response.status_code == 201
 
     club2 = ClubProfile(**response.json())
     assert club2.id
-    assert club2.name == "New club"
+    assert club2.name == club2Name
     assert club2.description == "Desc"
     assert club2.image_id is None
     assert club2.user_role == "O"
@@ -54,13 +56,14 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_c
     # assert club2["id"] in my_clubs_ids
 
     # update club2
-    params = {"name": "Some new name", "description": "Some new desc"}
+    club2Name = f"new name {club2.id}"
+    params = {"name": club2Name, "description": "Some new desc"}
     response = api_client.patch(f"/api/v1/clubs/{club2.id}", json=params)
     assert response.status_code == 200
 
     club2 = ClubProfile(**response.json())
     assert club2.id
-    assert club2.name == "Some new name"
+    assert club2.name == club2Name
     assert club2.description == "Some new desc"
     assert club2.image_id is None
     assert club2.user_role == "O"
