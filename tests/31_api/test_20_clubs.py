@@ -1,4 +1,6 @@
 import json
+import random
+import string
 from decimal import Decimal
 from time import monotonic
 
@@ -17,6 +19,18 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_c
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
     api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
 
+    ascii_letters = list(string.ascii_letters)
+    digits = list(string.digits)
+
+    club_name = ""
+
+    for i in range(10):
+        club_name_letter = random.choice(ascii_letters)
+        club_name_number = random.choice(digits)
+        club_name += club_name_letter + str(club_name_number)
+
+    club_name_2 = club_name[-1::-1]
+
     # create club without props (defaults)
     params = {}
     response = api_client.post("/api/v1/clubs", json=params)
@@ -32,14 +46,13 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_c
     assert club1.timezone is None
 
     # create club with props
-    club2Name = f"New club {monotonic()}"
-    params = {"name": club2Name, "description": "Desc"}
+    params = {"name": club_name, "description": "Desc"}
     response = api_client.post("/api/v1/clubs", json=params)
     assert response.status_code == 201
 
     club2 = ClubProfile(**response.json())
     assert club2.id
-    assert club2.name == club2Name
+    assert club2.name == club_name
     assert club2.description == "Desc"
     assert club2.image_id is None
     assert club2.user_role == "O"
@@ -56,14 +69,13 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_c
     # assert club2["id"] in my_clubs_ids
 
     # update club2
-    club2Name = f"new name {club2.id}"
-    params = {"name": club2Name, "description": "Some new desc"}
+    params = {"name": club_name_2, "description": "Some new desc"}
     response = api_client.patch(f"/api/v1/clubs/{club2.id}", json=params)
     assert response.status_code == 200
 
     club2 = ClubProfile(**response.json())
     assert club2.id
-    assert club2.name == club2Name
+    assert club2.name == club_name_2
     assert club2.description == "Some new desc"
     assert club2.image_id is None
     assert club2.user_role == "O"
