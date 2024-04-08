@@ -613,7 +613,7 @@ class DBI:
 
     async def get_club_tables(self, club_id):
         sql = """SELECT tp.*, COUNT(CASE WHEN ts.closed_ts IS NULL THEN 1 END) AS players_count FROM table_profile tp 
-            JOIN table_session ts ON tp.id = ts.table_id
+            LEFT JOIN table_session ts ON tp.id = ts.table_id
             WHERE tp.club_id=%s AND tp.parent_id IS NULL and tp.closed_ts IS NULL
             GROUP BY tp.id"""
         async with self.cursor() as cursor:
