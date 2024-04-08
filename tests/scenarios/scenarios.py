@@ -63,7 +63,6 @@ async def player_scenario():
 
         club = await client.send_req_join_in_club(club_id=club_id, user_comment=None)
         print(f"club: {club}")
-        # club_id = club[1].id
 
         chips_request = await client.send_req_to_up_user_balance(club_id, 5100)
         if chips_request[0] == 201:
@@ -108,7 +107,15 @@ async def evan_bot_scenario():
 
 
 async def main():
+    """
+    await evan_bot_scenario() --- это скрипт по Ваниному сценарию
+    Бот принимает usename & password & club_id
+    Так как в клубе,  который приготовил Ваня (для тестов) есть всего 1 стол, то я и брал тот самый стол (без id, а из списка)
+
+    """
     # await asyncio.gather(owner_scenario(), player_scenario(), player_scenario(), return_exceptions=True)
     await evan_bot_scenario()
+
+
 if __name__ == '__main__':
     asyncio.run(main())

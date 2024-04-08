@@ -470,6 +470,13 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def check_uniq_club_name(self, club_name):
+        sql = "SELECT name FROM club_profile WHERE name = %s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (club_name))
+            row = await cursor.fetchone()
+        return row
+
     # USER ACCOUNT
 
     async def create_club_member(self, club_id, user_id, user_comment, automatic_confirmation):
