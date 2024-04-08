@@ -10,6 +10,21 @@ from .rg import Table_RG
 
 class Table_RG_Club(Table_RG):
 
+    async def user_can_stay(self, user: User):
+        if user.inactive:
+            return False
+        if user.balance == 0 and user.buyin_deferred is None:
+            user.balance = None
+            # TODO вытянуть клиент который последний делал действия(Bet, take_seat), если количество клиентов
+            #  больше одного
+            client_id = list(user.clients)[0]
+            async with DBI() as db:
+                if not (account := await self.prepare_before_offer(db, None, client_id, user)):
+                    return False
+                await self.make_player_offer(db, user, client_id, account.balance)
+            return True
+        return self.user_can_play(user)
+
     async def on_player_enter(self, db: DBI, cmd_id, client_id, user: User, seat_idx):
         # lobby: get user_profile balance
         if not (account := await self.prepare_before_offer(db, cmd_id, client_id, user)):
@@ -231,4 +246,4 @@ class Table_RG_Club(Table_RG):
                         await self.update_balance(db, user, user.buyin_deferred)
                     user.buyin_deferred = None
         
-        super().on_table_continue()
+        await super().on_table_continue()
