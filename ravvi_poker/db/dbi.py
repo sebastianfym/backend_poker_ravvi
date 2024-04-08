@@ -612,7 +612,10 @@ class DBI:
         return rows
 
     async def get_club_tables(self, club_id):
-        sql = "SELECT * FROM table_profile WHERE club_id=%s AND parent_id IS NULL and closed_ts IS NULL"
+        sql = """SELECT tp.*, COUNT(CASE WHEN ts.closed_ts IS NULL THEN 1 END) AS players_count FROM table_profile tp 
+            JOIN table_session ts ON tp.id = ts.table_id
+            WHERE tp.club_id=%s AND tp.parent_id IS NULL and tp.closed_ts IS NULL
+            GROUP BY tp.id"""
         async with self.cursor() as cursor:
             await cursor.execute(sql, (club_id,))
             rows = await cursor.fetchall()
