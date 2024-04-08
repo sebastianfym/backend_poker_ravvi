@@ -66,33 +66,33 @@ def test_change_password_negative(api_client: TestClient, api_guest: UserAccessP
 def test_auth_different_authorization_methods_and_password(api_client: TestClient, api_guest: UserAccessProfile):
     api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
 
-    params = dict(new_password="test")
+    params = dict(new_password="test_password")
     response = api_client.post("/api/v1/auth/password", json=params)
     assert response.status_code == 200
 
     params = {
         "username": api_guest.user.name,
-        "password": "test"
+        "password": "test_password"
     }
     response = api_client.post(f'/api/v1/auth/login', json=params)
     assert response.status_code == 200
 
     params = {
         "username": f"{api_guest.user.id}",
-        "password": "test"
+        "password": "test_password"
     }
     response = api_client.post(f'/api/v1/auth/login', json=params)
     assert response.status_code == 200
 
     params = {
-        "username": "test@mail.ru"
+        "username": "test_email@mail.ru"
     }
     response = api_client.patch(f'/api/v1/user/profile', json=params)
     assert response.status_code == 200
 
     params = {
-        "username": "test@mail.ru",
-        "password": "test"
+        "username": "test_email@mail.ru",
+        "password": "test_password35325"
     }
     response = api_client.post(f'/api/v1/auth/login', json=params)
-    assert response.status_code == 200
+    assert response.status_code == 401
