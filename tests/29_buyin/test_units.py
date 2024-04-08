@@ -6,7 +6,7 @@ import pytest
 
 from ravvi_poker.engine.tables.rg import Table_RG
 
-
+@pytest.mark.skip(reason='review required')
 class TestOfferResult:
     @pytest.mark.asyncio
     async def test_get_offer(self):

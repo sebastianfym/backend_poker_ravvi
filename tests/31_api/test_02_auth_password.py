@@ -84,6 +84,7 @@ def test_auth_different_authorization_methods_and_password(api_client: TestClien
     response = api_client.post(f'/api/v1/auth/login', json=params)
     assert response.status_code == 200
 
+    email = f"{api_guest.user.id}@clubpoker.space"
     params = {
         "username": "test@mail.ru"
     }
@@ -91,7 +92,7 @@ def test_auth_different_authorization_methods_and_password(api_client: TestClien
     assert response.status_code == 200
 
     params = {
-        "username": "test@mail.ru",
+        "username": email,
         "password": "test"
     }
     response = api_client.post(f'/api/v1/auth/login', json=params)

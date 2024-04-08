@@ -1,10 +1,10 @@
 import asyncio
 import time
 from multiprocessing import Pool, cpu_count
-
 import pytest
-
 from ravvi_poker.client.client import PokerClient
+
+backend_available = False
 
 collected_data = []
 
@@ -16,6 +16,7 @@ def clear_collected_data():
     collected_data_client_2.clear()
 
 
+@pytest.mark.skipif(not backend_available, reason="Backend required")
 @pytest.mark.integration_test
 class TestBuyInTableJoin:
     async def handler_collector(self, payload):
@@ -610,6 +611,7 @@ class TestBuyInTableJoin:
             ]
 
 
+@pytest.mark.skipif(not backend_available, reason="Backend required")
 @pytest.mark.integration_test
 class TestBuyInTakeSeat:
     async def handler_collector(self, payload):
@@ -1217,6 +1219,7 @@ collected_data_client_1 = []
 collected_data_client_2 = []
 
 
+@pytest.mark.skipif(not backend_available, reason="Backend required")
 @pytest.mark.integration_test
 class TestReplenishBalance:
     async def handler_collector_client_1(self, payload):
@@ -1425,6 +1428,7 @@ class TestReplenishBalance:
     #         raise ValueError
 
 
+@pytest.mark.skipif(not backend_available, reason="Backend required")
 @pytest.mark.integration_test
 class TestBuyInTwoClientsForAccount:
     async def handler_collector_client_1(self, payload):

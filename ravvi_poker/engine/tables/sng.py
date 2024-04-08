@@ -2,7 +2,7 @@ import asyncio
 import contextlib
 from .base import Table
 from .status import TableStatus
-from ..time import TimeCounter, timedelta
+from ...utils.timecounter import TimeCounter, timedelta
 from ..info import sng_standard, sng_turbo
 from ...db import DBI
 
@@ -126,34 +126,23 @@ class Table_SNG(Table):
                     ante = self.level_next.ante if self.level_next else None
                 )
 
-    async def run_table(self):
-        # wait for players take all seats available
-        while self.status == TableStatus.OPEN:
-            if all(self.seats):
-                break
-            await self.sleep(1)
+    async def on_table_prepare(self):
+        # когда все места заняты
+        ready = all(self.seats)
+        if not ready:
+            return False
         # фиксируем время начала турнира
         self.time_counter.start()
-
         # запускаем обновление уровней
-        task2 = asyncio.create_task(self.run_levels())
+        self.task_secondary = asyncio.create_task(self.run_levels())
+        return True
 
-        # основной цикл
-        while self.status == TableStatus.OPEN:
-            await self.sleep(self.NEW_GAME_DELAY)
-            await self.run_game()
-            async with self.lock:
-                async with self.DBI() as db:
-                    await self.remove_users(db)
-                users = [u for u in self.seats if u]
-                if len(users) < 2:
-                    self.status = TableStatus.CLOSING
-
-        # останавливаем обновлятор уровней
-        if not task2.done():
-            task2.cancel()
-        with contextlib.suppress(asyncio.exceptions.CancelledError):
-            await task2
+    async def on_table_continue(self):
+        await super().on_table_continue()
+        users = [u for u in self.seats if u]
+        if len(users) < 2:
+            self.status = TableStatus.CLOSING
         
-
+    def user_can_stay(self, user):
+        return self.user_can_play(user)
             

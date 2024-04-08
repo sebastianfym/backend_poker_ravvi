@@ -24,7 +24,9 @@ def perf_log(func):
         t0 = perf_counter()
         response =  await func(self, url, **kwargs)
         t1 = perf_counter()
-        logger.info("%s %s %s %s %s", self.user_id, func.__name__, url, response.status, f"{t1-t0:.3f}")
+        delta = t1-t0
+        self.requests_time += delta
+        logger.info("%s %s %s %s %s", self.user_id, func.__name__, url, response.status, f"{delta:.3f}")
         return response
     return wrapper
 
@@ -39,6 +41,7 @@ class PokerClient:
         self.access_profile = None
         self.table_handlers = {}
         self.device_token = None
+        self.requests_time = 0
         self.rng = SystemRandom()
 
     @property
@@ -51,7 +54,7 @@ class PokerClient:
         headers = {"Accept": "application/json"}
         if self.access_profile and self.access_profile.access_token:
             headers["Authorization"] = "Bearer " + self.access_profile.access_token
-        connector = aiohttp.TCPConnector(force_close=True, limit=1000)
+        connector = aiohttp.TCPConnector(limit=1000)
         self.session = aiohttp.ClientSession(self.base_url, headers=headers, connector=connector)
         return self
 
@@ -154,10 +157,11 @@ class PokerClient:
         return status, user_profile
 
     async def update_user_profile(self, name=None, image_id=None):
-        data = {
-            "name": name,
-            "image_id": image_id
-        }
+        data = {}
+        if name:
+            data.update(name=name)
+        if image_id:
+            data.update(image_id=image_id)
         response = await self.PATCH('/api/v1/user/profile', json=data)
         status, payload = await self._get_result(response)
         if status == 200:
@@ -809,3 +813,15 @@ class PokerClient:
                 await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
             else:
                 await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
+
+    async def play_random_option(self, msg: Message):
+        if msg.msg_type == MessageType.GAME_PLAYER_MOVE and msg.user_id == self.user_id:
+            logger.info("%s: bet options %s", msg.table_id, msg.options)
+            await self.sleep_random(3, 15)
+            bet = self.rng.choice(msg.options)
+            if bet == Bet.RAISE:
+                rnd = self.rng.random()
+                amount = msg.raise_min + (msg.raise_max-msg.raise_min)*rnd
+                await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.RAISE, amount = amount)
+            else:                
+                await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
