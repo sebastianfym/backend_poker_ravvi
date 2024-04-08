@@ -9,8 +9,7 @@ class MyVerySmartCustomPokerStrategy:
         self.club_id = club_id
 
     async def __call__(self, msg: Message):
-        # await self.client.play_logic_v1(msg)
-        await self.client.play_logic_v2(msg)
+        await self.client.play_logic(msg)
 
 
 
@@ -94,7 +93,7 @@ async def evan_bot_scenario(username, password, club_id):
         await client.login_with_username_and_password(username=username, password=password)
         await client.get_user_by_id(id=client.user_id)
         await asyncio.sleep(1)
-
+        # await client.send_req_join_in_club(club_id)
         club = await client.send_req_join_in_club(club_id=club_id, user_comment=None)
         print(f"club: {club}")
         await asyncio.sleep(3)
@@ -114,7 +113,7 @@ async def main():
 
     """
     # await asyncio.gather(owner_scenario(), player_scenario(), player_scenario(), return_exceptions=True)
-    await evan_bot_scenario(username="preflop bill", password="Y8G5Qv3b", club_id=1004)
+    await evan_bot_scenario(username="u2173", password="test12345", club_id=1497)
 
 
 if __name__ == '__main__':

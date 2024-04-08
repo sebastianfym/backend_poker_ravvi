@@ -144,7 +144,7 @@ class ChangeMembersData(BaseModel):
     club_comment: str | None = None
     user_role: str | None = None
 
-    @validator("user_role")
+    @field_validator("user_role")
     def user_role_validate(cls, value):
         if value not in ['O', 'M', 'A', 'P', 'S']:
             raise ValueError('Operation must be either "approve" or "reject"')
@@ -203,7 +203,7 @@ class ChipRequestForm(BaseModel):
     id: int
     operation: str
 
-    @validator('operation')
+    @field_validator('operation')
     def operation_validate(cls, value):
         if value not in ["approve", "reject"]:
             raise ValueError('Operation must be either "approve" or "reject"')
@@ -253,7 +253,7 @@ class UserRequestsToJoin(BaseModel):
     comment: str | None = None
     user_role: str | None = "P"
 
-    @validator("user_role")
+    @field_validator("user_role")
     def user_role_validate(cls, value):
         if value not in ['O', 'M', 'A', 'P', 'S']:
             raise ValueError('Operation must be either "approve" or "reject"')

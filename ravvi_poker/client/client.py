@@ -11,7 +11,9 @@ from ravvi_poker.api.clubs.types import ClubProfile, ClubMemberProfile, MemberAc
     ClubBalance, ChipsTxnItem, TableProfile
 from ravvi_poker.api.images import ImageProfile
 from ravvi_poker.api.users.types import UserPrivateProfile, UserPublicProfile
-from ravvi_poker.client.utilities import card_decoder
+from ravvi_poker.client.utilities import card_decoder, preflop_grey_combo, preflop_good_combo, \
+    after_preflop_gray_combo_high_card, after_preflop_gray_combo_couple, after_preflop_good_combo_high_card, \
+    after_preflop_good_combo_couple
 from ravvi_poker.engine.events import Message, MessageType, CommandType
 from ravvi_poker.engine.poker.bet import Bet
 import random
@@ -31,11 +33,11 @@ def perf_log(func):
 
 
 class PokerClient:
-    API_HOST = "poker-st1.ravvi.net"
-    USE_SSL = True
+    # API_HOST = "poker-st1.ravvi.net"
+    # USE_SSL = True
 
-    # API_HOST = '127.0.0.1:5001'
-    # USE_SSL = False
+    API_HOST = '127.0.0.1:5001'
+    USE_SSL = False
 
     def __init__(self, *, host=None, use_ssl=None) -> None:
         self.base_url = f"{'https' if use_ssl or self.USE_SSL else 'http'}://{host or self.API_HOST}"
@@ -796,155 +798,41 @@ class PokerClient:
 
     # BASIC SIMPLE PLAY STRATEGIES
 
-    async def play_logic_v1(self, msg: Message):
-        # print(f"self.fold: {self.fold}, self.couple: {self.couple}, self.flop: {self.flop}")
-        if msg.msg_type == MessageType.GAME_PLAYER_MOVE and msg.user_id == self.user_id:
-            # print(f"self.fold: {self.fold}, self.couple: {self.couple}, self.flop: {self.flop}")
-            if self.flop and self.couple:
-                if Bet.CHECK in msg.options:
-                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
-                    print('Бот сыграл чек')
-                elif Bet.CALL in msg.options:
-                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CALL)
-                    print('Бот сыграл колл')
-                elif Bet.ALLIN in msg.options:
-                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.ALLIN)
-                    print('Бот сыграл аллин')
+    async def play_logic(self, msg: Message):
+        try:
+            time_for_move = random.randint(3, self.time_for_move)
+        except ValueError:
+            time_for_move = 3
 
-            elif self.flop and self.couple is False:
-                await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
-                print('У бота комбинация ниже пары и он фолдить')
-
-            elif self.fold is True and self.flop is False:
-                await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
-
-            elif self.fold is False and self.flop is False and self.couple is False:
-
-                if Bet.CHECK in msg.options:
-                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
-                    print('Бот сыграл чек')
-
-                elif Bet.CALL in msg.options:
-                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CALL)
-                    print('Бот сыграл колл')
-
-                elif Bet.ALLIN in msg.options:
-                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.ALLIN)
-                    print('Бот сыграл аллин')
-
-            elif self.fold is False and self.couple and self.flop is False:
-                if Bet.CHECK in msg.options:
-                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
-                    print('Бот сыграл чек')
-
-                elif Bet.CALL in msg.options:
-                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CALL)
-                    print('Бот сыграл колл')
-
-                elif Bet.ALLIN in msg.options:
-                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.ALLIN)
-                    print('Бот сыграл аллин')
-
-
-        elif msg.msg_type == MessageType.PLAYER_CARDS and msg.user_id == self.user_id:
-
-            if card_decoder(msg) is False:  # Если комбинация карт не проходит в валидные - сброс (фолд)
-                # print("Устанавливаю боту fold")
-                self.fold = True
-                await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
-
-            elif card_decoder(msg) is True:  # Если комбинация карт проходит в валидные проверяем на пару
-                if msg.props['hands'][0]['hand_type'] != "H" and msg.user_id == self.user_id:  # Пара и выше
-                    self.couple = True
-                elif msg.props['hands'][0][
-                    'hand_type'] == "H" and msg.user_id == self.user_id:  # Старшая карта = сброс (фолд)
-                    self.couple = False
-
-            elif card_decoder(msg) is None:
-                self.flop = True  # Todo тут можно будет расширить не только флопом
-                return
-
-            elif isinstance(card_decoder(msg), list):
-                self.couple = True
-                return
-
-        elif msg.msg_type == MessageType.GAME_BEGIN:
-            self.fold = False
-            self.couple = False
-            self.flop = False
-
-    async def play_logic_v2(self, msg: Message):
         if msg.msg_type == MessageType.GAME_PLAYER_MOVE and msg.user_id == self.user_id:
             if self.flop: # Логика для флопа и выше
-                time_for_move = random.randint(3, self.time_for_move)
                 await asyncio.sleep(time_for_move)
 
                 if self.gray_combo: # При условии серых карт
-                    # await asyncio.sleep(10)
                     if self.couple: # Если пара или выше
-                        if Bet.CHECK in msg.options:
-                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
-                            # print('Бот сыграл чек')
-
-                        elif Bet.CALL in msg.options:
-                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CALL)
-                            # print('Бот сыграл колл')
-
-                        elif Bet.ALLIN in msg.options:
-                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.ALLIN)
-                            # print('Бот сыграл аллин')
+                        bet = await after_preflop_gray_combo_couple(Bet, msg)
+                        await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
 
                     else: # Если старшая
-                        if Bet.CHECK in msg.options:
-                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
-                            # print('Бот сыграл чек')
-                        elif Bet.FOLD in msg.options:
-                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
-                            # print('Бот сыграл фолд')
+                        bet = await after_preflop_gray_combo_high_card(Bet, msg)
+                        await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
 
-                else: # При условии синих карт
-                    # time_for_move = random.randint(3, self.time_for_move)
-                    # await asyncio.sleep(time_for_move)
+                else: # При условии синих и желтых карт
                     if self.couple: # Если пара или выше
-                        if Bet.CHECK in msg.options:
-                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
-                            # print('Бот сыграл чек')
-
-                        elif Bet.CALL in msg.options:
-                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CALL)
-                            # print('Бот сыграл колл')
-
-                        elif Bet.ALLIN in msg.options:
-                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.ALLIN)
-                            # print('Бот сыграл аллин')
+                        bet = await after_preflop_good_combo_couple(Bet, msg)
+                        await self.ws_send(cmd=CommandType.BET, table_id=msg.table_id, bet=bet)
                     else: # Если старшая
-                        if Bet.CHECK in msg.options:
-                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
-                            # print('Бот сыграл чек')
-                        elif Bet.FOLD in msg.options:
-                            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
-                            # print('Бот сыграл фолд')
+                        bet = await after_preflop_good_combo_high_card(Bet, msg)
+                        await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
 
             else: # логика для префлопа
-                time_for_move = random.randint(3, self.time_for_move)
                 await asyncio.sleep(time_for_move)
-
                 if self.gray_combo:
-                    if Bet.CHECK in msg.options:
-                        await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
-                        # print('Бот сыграл чек')
-                    elif Bet.FOLD in msg.options:
-                        await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
-                        # print('Бот сыграл фолд')
+                    bet = await preflop_grey_combo(Bet, msg)
+                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
                 else:
-                    if Bet.CHECK in msg.options:
-                        await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
-                        # print('Бот сыграл чек')
-                    elif Bet.CALL in msg.options:
-                        await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CALL)
-                        # print('Бот сыграл колл')
-                    elif Bet.ALLIN in msg.options:
-                        await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.ALLIN)
+                    bet = await preflop_good_combo(Bet, msg)
+                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
 
         elif msg.msg_type == MessageType.PLAYER_CARDS and msg.user_id == self.user_id:
             if card_decoder(msg) is False:  # Если комбинация карт не проходит в валидные - сброс (фолд)
