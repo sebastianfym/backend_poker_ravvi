@@ -30,8 +30,9 @@ async def try_to_register(client: PokerClient, *, sleep_min=2, sleep_max=5):
         raise RuntimeError("Failed to set password")
 
     await client.sleep_random(sleep_min, sleep_max)
-    status, _ = await client.update_user_profile(username)
+    status, payload = await client.update_user_profile(username)
     if status != 200:
+        print(payload)
         raise RuntimeError("Failed to change user name")
 
     await client.sleep_random(sleep_min, sleep_max)
@@ -53,7 +54,7 @@ async def try_play_lobby(client: PokerClient, game_type, game_subtype, play_time
             table_id = x['id']
     if not table_id:
          raise RuntimeError("Failed to find lobby table")
-    await client.join_table(table_id, True, client.play_random_option)
+    await client.join_table(table_id, 0, True, client.play_random_option)
     await asyncio.sleep(play_time)
     await client.exit_table(table_id)
     await client.ws_close()

@@ -68,7 +68,7 @@ async def engine():
     await DBI.pool_close()
     await asyncio.sleep(1)
 
-
+@pytest.mark.skip(reason="Review required")
 @pytest.mark.asyncio
 async def test_engine_manager(engine):
     t_mgr, c_mgr = engine

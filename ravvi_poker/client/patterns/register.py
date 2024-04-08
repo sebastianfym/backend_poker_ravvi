@@ -17,6 +17,7 @@ async def try_set_username_and_password(client: PokerClient, username, password,
     if status!=200:
         raise RuntimeError("Failed to set password")
     await client.sleep_random(sleep_min, sleep_max)
-    status, _ = await client.update_user_profile(username)
+    status, payload = await client.update_user_profile(username)
     if status!=200:
+        #print(payload)
         raise RuntimeError("Failed to change username")

@@ -5,7 +5,7 @@ from typing import Mapping
 
 from ...db import DBI
 from ...db.listener import DBI_Listener
-from . import Table, Table_RG, Table_SNG, TableStatus
+from . import Table, Table_RG_Club, Table_RG_Lobby, Table_SNG, TableStatus
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +122,9 @@ class TablesManager(DBI_Listener):
     def table_factory(self, row):
         kwargs = row._asdict()
         if row.table_type == "RG":
-            return Table_RG(**kwargs)
+            if row.club_id:
+                return Table_RG_Club(**kwargs)
+            return Table_RG_Lobby(**kwargs)
         elif row.table_type == "SNG":
             return Table_SNG(**kwargs)
         self.log.error("table %s unknown table_type=%s", row.id, row.table_type)

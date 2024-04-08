@@ -58,8 +58,10 @@ test_py:
     - coverage run --data-file=.coverage.db_create ~/.local/bin/ravvi_poker_db create ${RAVVI_POKER_DB_NAME}
     # deploy db changes
     - coverage run --data-file=.coverage.db_deploy ~/.local/bin/ravvi_poker_db deploy ${RAVVI_POKER_DB_NAME}
-    # run tests
-    - coverage run --data-file=.coverage.tests -m pytest -m "not integration_test" --junitxml=tests.xml .
+    # run tests (clean db)
+    - coverage run --data-file=.coverage.tests0 -m pytest --junitxml=tests.xml .
+    # run tests again to spot unexpected db state dependencies
+    - coverage run --data-file=.coverage.tests -m pytest --junitxml=tests.xml .
     # coverage info
     - coverage combine
     - coverage report

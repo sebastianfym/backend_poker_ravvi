@@ -246,17 +246,22 @@ class PokerBase(Game):
         player = self.current_player
         player.bet_type = None
         options, params = self.get_bet_options(player)
-        if player.user.connected:
-            self.bet_event.clear()
-            async with self.DBI(log=self.log) as db:
-                self.bet_timeout_timestamp = int(time.time()) + self.bet_timeout
-                await self.broadcast_PLAYER_MOVE(db, player, options, **params,
-                                                 bet_timeout=self.bet_timeout, player_timeout=self.bet_timeout)
-            self.log.info("wait %ss for player %s ...", self.bet_timeout, player.user_id)
-            try:
-                await asyncio.wait_for(self.wait_for_player_bet(), self.bet_timeout + 2)
-            except asyncio.exceptions.TimeoutError:
-                self.log.info("player timeout: %s", player.user_id)
+        bet_timeout = self.bet_timeout
+        if not player.user.connected:
+            bet_timeout = 5
+        self.bet_event.clear()
+        async with self.DBI(log=self.log) as db:
+            self.bet_timeout_timestamp = int(time.time()) + bet_timeout
+            await self.broadcast_PLAYER_MOVE(db, player, options, **params,
+                                                bet_timeout=bet_timeout, player_timeout=bet_timeout)
+        self.log.info("wait %ss for player %s ...", bet_timeout, player.user_id)
+        try:
+            await asyncio.wait_for(self.wait_for_player_bet(), bet_timeout + 2)
+            player.user.clear_inactive()
+        except asyncio.exceptions.TimeoutError:
+            self.log.info("player timeout: %s", player.user_id)
+            player.user.set_inactive(60)
+
         async with self.DBI() as db:
             if player.bet_type is None:
                 if Bet.CHECK in options:
@@ -332,11 +337,8 @@ class PokerBase(Game):
                                                len(player.cards_open_on_request) != len(player.cards))):
                     player.cards_open_on_request = cards
                     if self.showdown_is_end:
-                        await self.broadcast_with_db_instance(player)
-
-    async def broadcast_with_db_instance(self, player):
-        async with self.DBI() as db:
-            await self.broadcast_PLAYER_CARDS_ON_REQUEST(db, player)
+                        async with self.DBI() as db:
+                            await self.broadcast_PLAYER_CARDS_ON_REQUEST(db, player)
 
     def update_banks(self):
         self.banks, self.bank_total = get_banks(self.players)
@@ -818,7 +820,7 @@ class PokerBase(Game):
             balance = {
                 "user_id": p.user_id,
                 "balance": p.user.balance,
-                "delta": round(p.balance - p.balance_0, 2)
+                "delta": round(p.balance - p.balance_0, 2) #if p.balance else 0
             }
             balances.append(balance)
         # TODO это можно перенести в модуль тестов
