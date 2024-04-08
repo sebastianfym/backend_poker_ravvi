@@ -13,6 +13,24 @@ from .pool import DBIPool
 
 logger = logging.getLogger(__name__)
 
+class DBIError(Exception):
+    def __init__(self, msg: str|psycopg.errors.RaiseException) -> None:
+        self.code = None
+        if isinstance(msg, psycopg.errors.RaiseException):
+            msg = msg.args[0]
+            msg = msg.split('\n')[0]
+            parts = msg.split(':')
+            if parts[0].isdigit():
+                self.code = int(parts[0])
+                msg = ':'.join(parts[1:])
+            else:
+                msg = msg
+        super().__init__(msg)
+
+    @property
+    def msg(self):
+        return self.args[0]
+    
 class DBI:
     DB_HOST = os.getenv("RAVVI_POKER_DB_HOST", "127.0.0.1")
     DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "15432"))
@@ -25,6 +43,7 @@ class DBI:
 
     pool = None
 
+    Error = DBIError
     OperationalError = psycopg.OperationalError
     ForeignKeyViolation = psycopg.errors.ForeignKeyViolation
 
@@ -523,6 +542,12 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def find_member(self, *, user_id, club_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM club_member WHERE club_id=%s AND user_id=%s", (club_id, user_id))
+            row = await cursor.fetchone()
+        return row
+
     async def approve_club_member(self, member_id, approved_by, club_comment, nickname, user_role):
         sql = "UPDATE club_member SET approved_ts=now_utc(), approved_by=%s, club_comment=%s, nickname=%s, user_role=%s WHERE id=%s RETURNING *"
         async with self.cursor() as cursor:
@@ -838,6 +863,96 @@ class DBI:
             await cursor.execute("SELECT * FROM table_msg WHERE id=%s", (id,))
             row = await cursor.fetchone()
         return row
+
+    # CHIPS TXN
+
+    async def get_chips_txn(self, txn_id):
+        """Returns details of chips transaction"""
+        if txn_id is None:
+            return None
+        sql = """
+        SELECT 
+            txn.id txn_id,
+            txn.txn_type,
+            txn.txn_value,
+            txn.created_ts,
+            txn.created_by,
+            txn.club_id club_id,
+            txn.member_id,
+            usr.user_id user_id,
+            txn.ref_member_id,
+            ref.user_id ref_user_id
+        FROM chips_txn txn
+        LEFT JOIN club_member usr ON usr.id=txn.member_id
+        LEFT JOIN club_member ref ON ref.id=txn.ref_member_id
+        WHERE txn.id=%s
+        """
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (txn_id, ))
+            row = await cursor.fetchone()
+        return row
+    
+    async def create_txn_CHIPSIN(self, *, txn_user_id, club_id, txn_value: float|str|Decimal):
+        """Creates CHIPSIN txn for club
+        * txn_user_id: user_id, who executed the operation
+        * club_id: club reference
+        * txn_value: amount of chips to add > 0 
+
+        Returns chips_txn info
+        """
+        if not isinstance(txn_value, decimal.Decimal):
+            txn_value = decimal.Decimal(txn_value)
+#        if txn_value<=0:
+#            raise ValueError('Invalid txn_value')
+        async with self.cursor() as cursor:
+            try:
+                await cursor.execute("call create_txn_CHIPSIN(%s, %s, %s, NULL)", (txn_user_id, club_id, txn_value))
+                result = await cursor.fetchone()
+            except psycopg.errors.RaiseException as e:
+                raise DBIError(e)
+            txn_id = result.txn_id if result else None
+        return await self.get_chips_txn(txn_id)
+        
+    async def create_txn_CHIPSOUT(self, *, txn_user_id, club_id, txn_value: float|str):
+        """Creates CHIPSOUT txn for club
+        * txn_user_id: user_id, who executed the operation
+        * club_id: club reference
+        * txn_value: amount of chips to remove > 0 
+
+        Returns chips_txn info
+        """
+        txn_value = decimal.Decimal(txn_value)
+#        if txn_value<=0:
+#            raise ValueError('Invalid delta')
+        async with self.cursor() as cursor:
+            try:
+                await cursor.execute("call create_txn_CHIPSOUT(%s, %s, %s, NULL)", (txn_user_id, club_id, txn_value))
+                result = await cursor.fetchone()
+            except psycopg.errors.RaiseException as e:
+                raise DBIError(e)
+            txn_id = result.txn_id if result else None
+        return await self.get_chips_txn(txn_id)
+    
+    async def get_club_txns(self, club_id):
+        if club_id is None:
+            return None
+        sql = """
+        select
+            cc.txn_id,
+            cc.id club_txn_id,
+            tx.created_ts,
+            tx.created_by,
+            tx.txn_type,
+            cc.delta,
+            cc.balance 
+        from chips_club cc 
+        join chips_txn tx on tx.id=cc.txn_id
+        where cc.club_id=%s
+        """
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (club_id, ))
+            rows = await cursor.fetchall()
+        return rows
 
     # TXN
     async def check_request_to_replenishment(self, account_id):
