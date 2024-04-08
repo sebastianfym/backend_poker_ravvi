@@ -85,7 +85,7 @@ def test_auth_different_authorization_methods_and_password(api_client: TestClien
     assert response.status_code == 200
 
     params = {
-        "email": "test@mail.ru"
+        "username": "test@mail.ru"
     }
     response = api_client.patch(f'/api/v1/user/profile', json=params)
     assert response.status_code == 200
