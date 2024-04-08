@@ -6,6 +6,8 @@ import copy
 class MessageType(IntEnum):
     TABLE_INFO = 101
     TABLE_ERROR = 102
+    TABLE_WARNING = 103
+    TABLE_JOIN_OFFER = 104
     TABLE_NEXT_LEVEL_INFO = 110
     TABLE_CLOSED = 199
 
@@ -13,6 +15,7 @@ class MessageType(IntEnum):
     PLAYER_SEAT = 202
     PLAYER_CARDS = 203
     PLAYER_BET = 204
+    PLAYER_BALANCE = 205
     PLAYER_EXIT = 299
 
     GAME_BEGIN = 301
@@ -87,8 +90,6 @@ class Message(dict):
         )
 
     def hide_private_info(self, for_user_id):
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        print(f"Прилетел запрос на скрытие карт для пользователя: {for_user_id}")
         def hide_cards(props: dict):
             user_id = props.get("user_id", None)
             cards_open = props.pop("cards_open", None)
@@ -96,8 +97,6 @@ class Message(dict):
             if not cards_open and user_id != for_user_id:
                 cards = props.get("cards", [])
                 # если есть карты которые пользователь захотел показать
-                print(f"Общие карты: {cards}")
-                print(f"Видимые карты: {visible_cards}")
                 if visible_cards:
                     updated_cards = []
                     for card in cards:
@@ -109,16 +108,11 @@ class Message(dict):
                 else:
                     cards = [0 for _ in cards]
                 props.update(cards=cards)
-                print(cards)
                 props.pop("hands", None)
             if cards_open and user_id == for_user_id:
                 cards = props.get("cards", [])
                 props.update(visible_cards=cards, cards=cards)
-                print("____________________")
-                print(props)
             elif user_id == for_user_id:
-                print("_+_+_+_+_+_+_+_+_+_+_")
-                print(visible_cards)
                 props.update(visible_cards=visible_cards)
 
         msg = self.clone()

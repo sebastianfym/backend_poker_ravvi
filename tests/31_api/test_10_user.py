@@ -104,3 +104,4 @@ def test_user(api_client: TestClient, api_guest: UserAccessProfile, api_client_2
     assert user_1.id == api_guest.user.id
     assert user_1.name == username_2
     assert user_1.image_id == 11
+

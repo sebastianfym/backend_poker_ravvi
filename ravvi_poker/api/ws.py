@@ -15,6 +15,7 @@ manager = ClientsManager()
 
 router = APIRouter(tags=["ws"])
 
+
 @router.websocket("/ws")
 async def v1_ws_endpoint(ws: WebSocket, access_token: str = None):
     # get session uuid from access_token

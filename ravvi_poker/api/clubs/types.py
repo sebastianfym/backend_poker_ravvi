@@ -144,10 +144,10 @@ class ChangeMembersData(BaseModel):
     club_comment: str | None = None
     user_role: str | None = None
 
-    @field_validator("user_role")
+    @field_validator("user_role", mode="before")
     def user_role_validate(cls, value):
         if value not in ['O', 'M', 'A', 'P', 'S']:
-            raise ValueError('Operation must be either "approve" or "reject"')
+            raise ValueError('Invalid user role')
         return value
 
 
@@ -187,7 +187,7 @@ class ClubChipsValue(BaseModel):
 
 class UserChipsValue(ClubChipsValue):
     balance: str
-    # ID аккаунта внутри клуба
+    # ID пользователя (user_profile)
     account_id: int
     club_member: Row | None = Field(default=None)
 
@@ -203,7 +203,7 @@ class ChipRequestForm(BaseModel):
     id: int
     operation: str
 
-    @field_validator('operation')
+    @field_validator('operation', mode="before")
     def operation_validate(cls, value):
         if value not in ["approve", "reject"]:
             raise ValueError('Operation must be either "approve" or "reject"')
@@ -253,10 +253,10 @@ class UserRequestsToJoin(BaseModel):
     comment: str | None = None
     user_role: str | None = "P"
 
-    @field_validator("user_role")
+    @field_validator("user_role", mode="before")
     def user_role_validate(cls, value):
         if value not in ['O', 'M', 'A', 'P', 'S']:
-            raise ValueError('Operation must be either "approve" or "reject"')
+            raise ValueError('Invalid user role')
         return value
 
 # TABLES
@@ -450,7 +450,7 @@ class TableProfile(TableParams):
 class TxnHistoryManual(BaseModel):
     username: str | None
     sender_id: int | None
-    txn_time: str | None
+    txn_time: float | None
     txn_type: str | None
     txn_value: float | None
     balance: float | None
@@ -459,9 +459,10 @@ class TxnHistoryManual(BaseModel):
 
 
 class TxnHistoryOnTable(BaseModel):
+    username: str | None
     table_name: str | None
     table_id: int | None
-    txn_time: str | None
+    txn_time: float | None
     min_blind: float | None
     max_blind: float | None
     txn_type: str | None

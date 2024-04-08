@@ -77,13 +77,17 @@ class ClientsManager:
                     self.unsubscribe(client, msg.table_id)
                     self.subscribe(client, msg.table_redirect_id)
             elif msg.msg_type == Message.Type.GAME_PROPOSED_CARD_DROP:
-                # если сообщение не предназначено для клиента, то пропускаем его
+                # если сообщение не предназначено для пользоветеля, то пропускаем его
                 if msg.props["user_id"] != client.user_id:
+                    continue
+            elif msg.msg_type == Message.Type.TABLE_JOIN_OFFER:
+                # оффер отправляет только клиенту, который его запросил
+                if msg.client_id != client.client_id:
                     continue
             cmsg = msg.hide_private_info(client.user_id)
             await client.handle_msg(cmsg)
             counter += 1
-        self.log.info("on_table_msg: %s %s", counter, msg)
+        self.log.debug("on_table_msg: %s %s", counter, msg)
 
     async def on_user_client_closed(self, *, client_id):
         self.log.info("on_user_client_closed %s", client_id)

@@ -3,6 +3,7 @@ import pytest
 from ravvi_poker.engine.user import User
 from ravvi_poker.engine.poker.bet import Bet
 from ravvi_poker.engine.poker.base import PokerBase
+from helpers.mocked_table import MockedTable
 
 
 @pytest.mark.asyncio
@@ -12,9 +13,10 @@ async def test_31_bet_timeout():
     for u in users:
         u.clients.add(u.id)
         u.balance = 1000
-    
+
+    mocked_table = MockedTable()
     # game with random deck
-    game = PokerBase(None, users, blind_small=1, blind_big=2, bet_timeout=0.1)
+    game = PokerBase(mocked_table, users, blind_small=1, blind_big=2, bet_timeout=0.1)
     game.banks =[]
     game.bank_total = 0
     game.setup_players_roles()

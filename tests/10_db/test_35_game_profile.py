@@ -23,7 +23,8 @@ async def test_game_create(table, users_10):
     users = users_10[:9]
 
     async with DBI() as db:
-        game = await db.create_game(table_id=table.id, game_type=table.game_type, game_subtype=table.game_subtype, props=None, players=None)
+        game = await db.create_game(table_id=table.id, game_type=table.game_type, game_subtype=table.game_subtype,
+                                    props={}, players=None)
         assert game.props is not None
 
     async with DBI() as db:
@@ -38,7 +39,8 @@ async def test_game_create(table, users_10):
 
     assert players
     async with DBI() as db:
-        game = await db.create_game(table_id=table.id, game_type=table.game_type, game_subtype=table.game_subtype, props=props, players=players)
+        game = await db.create_game(table_id=table.id, game_type=table.game_type, game_subtype=table.game_subtype,
+                                    props=props, players=players)
         assert game.props
 
     async with DBI() as db:

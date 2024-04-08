@@ -14,7 +14,6 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "psycopg",
-    "psycopg_pool",
     "fastapi",
     "python-multipart",
     "passlib",

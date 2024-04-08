@@ -1,5 +1,7 @@
 import asyncio
 import logging
+from decimal import Decimal
+from typing import Any
 
 from ravvi_poker.engine.user import User
 from ravvi_poker.engine.cards import Card
@@ -42,7 +44,6 @@ class X_CaseMixIn:
         self._check_steps = list(enumerate(_moves, 1))
 
     def setup_boards(self):
-        print(123123)
         super().setup_boards()
         self.deck = X_Deck(self._deck)
 
@@ -55,7 +56,6 @@ class X_CaseMixIn:
         assert self._check_steps
         step_num, step = self._check_steps.pop(0)
         step_msg = f"msg {step_num}"
-        print(step_msg, msg)
         if isinstance(step, dict):
             expected = step
         else:
@@ -126,17 +126,6 @@ class X_CaseMixIn:
                             ev[i]["hand_type"] = HandType.decode(ev[i]["hand_type"])
                             rv[i]["hand_type"] = HandType.decode(rv[i]["hand_type"])
 
-                # elif isinstance(ev, list):
-                #     if self.is_low_hand(ev[1]):
-                #         ev_decode, rv_decode = [], []
-                #         ev_decode.append(HandType.decode(ev[0]))
-                #         rv_decode.append(HandType.decode(rv[0]))
-                #         ev_decode.append(LowHandType.decode(ev[1]))
-                #         rv_decode.append(LowHandType.decode(rv[1]))
-                #         ev, rv = ev_decode, rv_decode
-                #     else:
-                #         ev = [HandType.decode(ev_item) for ev_item in ev]
-                #         rv = [HandType.decode(rv_item) for rv_item in rv]
             assert ev == rv, f"{step_msg} - {k}: {ev} / {rv}"
 
         if task:
@@ -218,4 +207,22 @@ def load_case_data(data_dir, case_file):
     case_data['_users'] = case_data.pop('users', None)
     case_data['_deck'] = case_data.pop('deck', None)
     case_data['_moves'] = case_data.pop('moves', None)
+    # приведем все float к Decimal
+    cast_float_to_decimal(case_data)
+
     return case_data
+
+
+def cast_float_to_decimal(data: Any):
+    if isinstance(data, list):
+        for num, v in enumerate(data):
+            if isinstance(v, float):
+                data[num] = Decimal(v).quantize(Decimal(".01"))
+            else:
+                cast_float_to_decimal(data[num])
+    elif isinstance(data, dict):
+        for k, v in data.items():
+            if isinstance(v, float):
+                data[k] = Decimal(v).quantize(Decimal(".01"))
+            else:
+                cast_float_to_decimal(data[k])

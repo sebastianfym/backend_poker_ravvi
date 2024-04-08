@@ -34,7 +34,9 @@ async def test_table_start_stop_mgr():
 
         # создадим стол
         async with DBI() as db:
-            row = await db.create_table(table_type="RG", table_seats=9, table_name="PUBLIC", game_type="NLH", game_subtype="REGULAR")
+            row = await db.create_table(table_type="RG", table_seats=9, table_name="PUBLIC",
+                                        game_type="NLH", game_subtype="REGULAR",
+                                        props={"buyin_min": 10, "buyin_max": 20})
         await asyncio.sleep(5)
 
         x_table = manager.tables.get(row.id, None)

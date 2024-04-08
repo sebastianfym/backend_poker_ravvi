@@ -132,10 +132,8 @@ class Poker_NLH_3M1(Poker_NLH_X):
                                                           card_code=card_code_for_drop,
                                                           card_index=card_index_for_drop)
 
-                print("Начал спать")
                 # TODO заменить на проверку что все игроки сбросили карты с таймаутом
                 await asyncio.sleep(self.SLEEP_DROP_CARD)
-                print("Закончил спать")
 
                 for player in self.players:
                     if len(player.cards) == self.PLAYER_CARDS_FREFLOP:

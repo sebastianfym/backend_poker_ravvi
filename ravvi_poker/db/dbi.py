@@ -4,6 +4,8 @@ import logging
 import os
 import json
 import base64
+from decimal import Decimal
+
 import psycopg
 from psycopg.rows import namedtuple_row, dict_row
 from psycopg.connection import Notify
@@ -494,6 +496,12 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def get_account(self, member_id: int):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM club_member WHERE id=%s", (member_id,))
+            row = await cursor.fetchone()
+        return row
+
     async def get_account_for_update(self, member_id):
         async with self.cursor() as cursor:
             await cursor.execute("SELECT * FROM club_member WHERE id=%s FOR UPDATE", (member_id,))
@@ -717,9 +725,25 @@ class DBI:
             rows = cursor.fetchall()
         return rows
 
+    async def get_last_table_reward(self, table_id: int, account_id: int, interval_in_hours: int):
+        """
+        Получить последнюю выплату за столом для выбранного игрока.
+        Используется столом для определения buyin если включен ratholing.
+        """
+        sql = ("SELECT txn_value FROM user_account_txn WHERE txn_type = 'REWARD' AND account_id = %s "
+               "AND props->table_id = %s AND created_ts > now() - interval %s hour ORDER BY id DESC LIMIT 1")
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, account_id, table_id, interval_in_hours)
+            row = await cursor.fetchone()
+        return row
+
     # GAMES
 
     async def create_game(self, *, table_id: int, game_type, game_subtype, props, players):
+        # TODO возможно стоит написать JSONCustomDecoder
+        for key, item in props.items():
+            if isinstance(item, Decimal):
+                props[key] = float(item)
         props = json.dumps(props or {})
         async with self.cursor() as cursor:
             sql = "INSERT INTO game_profile (table_id,game_type,game_subtype,props) VALUES (%s,%s,%s,%s) RETURNING *"
@@ -767,6 +791,8 @@ class DBI:
 
     def json_dumps(self, obj):
         def encoder(x):
+            if isinstance(x, Decimal):
+                return float(x)
             if hasattr(x, "__int__"):
                 return int(x)
             if hasattr(x, "__str__"):

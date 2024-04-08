@@ -26,11 +26,11 @@ def perf_log(func):
         t0 = perf_counter()
         response = await func(self, url, **kwargs)
         t1 = perf_counter()
-        logger.info("%s %s %s %s %s", self.user_id, func.__name__, url, response.status, f"{t1 - t0:.3f}")
+        delta = t1-t0
+        self.requests_time += delta
+        logger.info("%s %s %s %s %s", self.user_id, func.__name__, url, response.status, f"{delta:.3f}")
         return response
-
     return wrapper
-
 
 class PokerClient:
     # API_HOST = "poker-st1.ravvi.net"
@@ -46,6 +46,7 @@ class PokerClient:
         self.access_profile = None
         self.table_handlers = {}
         self.device_token = None
+        self.requests_time = 0
         self.rng = SystemRandom()
 
         self.fold = False
@@ -66,7 +67,7 @@ class PokerClient:
         headers = {"Accept": "application/json"}
         if self.access_profile and self.access_profile.access_token:
             headers["Authorization"] = "Bearer " + self.access_profile.access_token
-        connector = aiohttp.TCPConnector(force_close=True, limit=1000)
+        connector = aiohttp.TCPConnector(limit=1000)
         self.session = aiohttp.ClientSession(self.base_url, headers=headers, connector=connector)
         return self
 
@@ -169,10 +170,11 @@ class PokerClient:
         return status, user_profile
 
     async def update_user_profile(self, name=None, image_id=None):
-        data = {
-            "name": name,
-            "image_id": image_id
-        }
+        data = {}
+        if name:
+            data.update(name=name)
+        if image_id:
+            data.update(image_id=image_id)
         response = await self.PATCH('/api/v1/user/profile', json=data)
         status, payload = await self._get_result(response)
         if status == 200:
@@ -234,14 +236,11 @@ class PokerClient:
 
     # CLUBS
 
-    async def create_club(self, name=None, description=None, image_id=None, user_role="O", user_approved=False,
-                          timezone=None):
+    async def create_club(self, name=None, description=None, image_id=None, timezone=None):
         data = {
             "name": name,
             "description": description,
             "image_id": image_id,
-            "user_role": user_role,
-            "user_approved": user_approved,
             "timezone": timezone
         }
         response = await self.POST('/api/v1/clubs', json=data)
@@ -352,7 +351,7 @@ class PokerClient:
             return status, payload
 
     async def approve_req_to_join(self, club_id, user_id, rakeback=None, agent_id=None, nickname=None, comment=None,
-                                  user_role=None):
+                                  user_role="P"):
         data = {
             "rakeback": rakeback,
             "agent_id": agent_id,
@@ -446,9 +445,11 @@ class PokerClient:
 
     # TABLE
 
-    async def create_table(self, club_id=None, table_type=None, table_name=None, table_seats=None, game_type=None,
-                           game_subtype=None, buyin_cost=None, blind_small=None, blind_big=None, buyin_value=None,
-                           buyin_min=None):
+    async def create_table(self, action_time, blind_small, blind_big,
+                           table_type, table_seats,
+                           buyin_min=None, buyin_max=None,
+                           club_id=None, table_name=None, game_type=None,
+                           game_subtype=None, buyin_cost=None):
 
         data = {
             "table_type": table_type,
@@ -457,10 +458,11 @@ class PokerClient:
             "game_type": game_type,
             "game_subtype": game_subtype,
             "buyin_cost": buyin_cost,
+            "buyin_min": buyin_min,
+            "buyin_max": buyin_max,
+            "action_time": action_time,
             "blind_small": blind_small,
-            "blind_big": blind_big,
-            "buyin_value": buyin_value,
-            "buyin_min": buyin_min
+            "blind_big": blind_big
         }
 
         response = await self.POST(f'/api/v1/clubs/{club_id}/tables', json=data)
@@ -790,6 +792,18 @@ class PokerClient:
         self.table_handlers[table_id] = table_msg_handler
         await self.ws_send(cmd_type=CommandType.JOIN, table_id=table_id, take_seat=take_seat, club_id=club_id)
 
+    async def take_seat(self, table_id, seat_idx):
+        await self.ws_send(cmd_type=CommandType.TAKE_SEAT, table_id=table_id, seat_idx=seat_idx)
+
+    async def accept_offer(self, table_id: int, buyin_cost: float | int | None):
+        await self.ws_send(cmd_type=CommandType.OFFER_RESULT, table_id=table_id, buyin_cost=buyin_cost)
+
+    async def decline_offer(self, table_id: int):
+        await self.accept_offer(table_id=table_id, buyin_cost=0)
+
+    async def request_offer(self, table_id: int):
+        await self.accept_offer(table_id=table_id, buyin_cost=None)
+
     async def exit_table(self, table_id):
         if table_id not in self.table_handlers:
             return
@@ -805,56 +819,20 @@ class PokerClient:
             time_for_move = 3
 
         if msg.msg_type == MessageType.GAME_PLAYER_MOVE and msg.user_id == self.user_id:
-            if self.flop: # Логика для флопа и выше
-                await asyncio.sleep(time_for_move)
+            logger.info("%s: bet options %s", msg.table_id, msg.options)
+            if Bet.CHECK in msg.options:
+                await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.CHECK)
+            else:
+                await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.FOLD)
 
-                if self.gray_combo: # При условии серых карт
-                    if self.couple: # Если пара или выше
-                        bet = await after_preflop_gray_combo_couple(Bet, msg)
-                        await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
-
-                    else: # Если старшая
-                        bet = await after_preflop_gray_combo_high_card(Bet, msg)
-                        await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
-
-                else: # При условии синих и желтых карт
-                    if self.couple: # Если пара или выше
-                        bet = await after_preflop_good_combo_couple(Bet, msg)
-                        await self.ws_send(cmd=CommandType.BET, table_id=msg.table_id, bet=bet)
-                    else: # Если старшая
-                        bet = await after_preflop_good_combo_high_card(Bet, msg)
-                        await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
-
-            else: # логика для префлопа
-                await asyncio.sleep(time_for_move)
-                if self.gray_combo:
-                    bet = await preflop_grey_combo(Bet, msg)
-                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
-                else:
-                    bet = await preflop_good_combo(Bet, msg)
-                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
-
-        elif msg.msg_type == MessageType.PLAYER_CARDS and msg.user_id == self.user_id:
-            if card_decoder(msg) is False:  # Если комбинация карт не проходит в валидные - сброс (фолд)
-                self.gray_combo = True
-
-            elif card_decoder(msg) is True:  # Если комбинация карт проходит в валидные проверяем на пару
-                if msg.props['hands'][0]['hand_type'] != "H" and msg.user_id == self.user_id:  # Пара и выше
-                    self.couple = True
-                elif msg.props['hands'][0]['hand_type'] == "H" and msg.user_id == self.user_id:  # Старшая карта = сброс (фолд)
-                    self.couple = False
-
-            elif card_decoder(msg) is None:
-                self.flop = True
-                return
-
-            elif isinstance(card_decoder(msg), list):
-                self.couple = True
-                return
-
-        elif msg.msg_type == MessageType.GAME_BEGIN:
-            self.fold = False
-            self.couple = False
-            self.flop = False
-            self.gray_combo = False
-            self.time_for_move = msg.props['player_move']['bet_timeout']
+    async def play_random_option(self, msg: Message):
+        if msg.msg_type == MessageType.GAME_PLAYER_MOVE and msg.user_id == self.user_id:
+            logger.info("%s: bet options %s", msg.table_id, msg.options)
+            await self.sleep_random(3, 15)
+            bet = self.rng.choice(msg.options)
+            if bet == Bet.RAISE:
+                rnd = self.rng.random()
+                amount = msg.raise_min + (msg.raise_max-msg.raise_min)*rnd
+                await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.RAISE, amount = amount)
+            else:                
+                await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)

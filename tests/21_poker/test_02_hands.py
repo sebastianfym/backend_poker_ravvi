@@ -4,7 +4,7 @@ from ravvi_poker.engine.poker.board import Board, BoardType
 
 from ravvi_poker.engine.cards import Deck
 from ravvi_poker.engine.poker.hands import Hand, HandType
-from ravvi_poker.engine.time import TimeCounter
+from ravvi_poker.utils.timecounter import TimeCounter
 
 logger = logging.getLogger(__name__)
 

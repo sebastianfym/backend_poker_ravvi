@@ -5,16 +5,9 @@ from ravvi_poker.engine.poker.hands import Hand, LowHand
 
 class HiLowMixin:
     def get_best_hand(self, player_cards, board) -> list[Hand, LowHand]:
-        print("______________________________________________________")
-        print("Вызвали команду получения лучшей руки")
-        print(board)
         hi_hand = self.get_best_hand_hi(player_cards, board)
-        print(f"Hi Hand {hi_hand}")
         low_hand = self.get_best_hand_low(player_cards, board)
-        print(f"Low Hand {low_hand}")
-        print("______________________________________________________")
 
-        print(hi_hand, low_hand)
         return [hi_hand, low_hand]
 
     def get_best_hand_hi(self, player_cards, board) -> Hand:
@@ -26,14 +19,9 @@ class HiLowMixin:
             hand = LowHand(h, board)
             hand.rank = self.get_hand_rank(hand)
             results.append(hand)
-        print(results)
-        print([r.rank for r in results])
         if not results or len(results := [r for r in results if r.rank is not None]) == 0:
             return None
 
-
-        print(f"Получил руки для low {results}")
-        print(results)
         results.sort(reverse=True, key=lambda x: x.rank)
         return results[0]
 
@@ -141,11 +129,6 @@ class HiLowMixin:
     def handle_low_winners(self, banks, winners):
         rankKey = lambda x: x.hand[1].rank if x.hand[1] else (0,)
         for amount, bank_players in banks[1]:
-            for p in bank_players:
-                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                print(p)
-                print(p.hand)
-                print(p.hand[1])
             bank_players.sort(key=rankKey)
             bank_winners = []
             for _, g in groupby(bank_players, key=rankKey):
@@ -191,26 +174,3 @@ class HiLowMixin:
                 await self.broadcast_PLAYER_CARDS(db, p)
                 self.log.info("player %s: open cards %s -> %s, %s", p.user_id, p.cards, p.hand,
                               ",".join([str(hand.type) for hand in p.hand]))
-
-    # async def broadcast_PLAYER_CARDS(self, db, player):
-    #     from ravvi_poker.engine.poker.base import PokerBase
-    #
-    #     self.log.info("Broadcasting Player Cards for HiLow")
-    #     hand_type, hand_cards = None, None
-    #     print("__________________________-")
-    #     print(player.hand)
-    #     if player.hand:
-    #         hand_type_high = player.hand[0].type[0]
-    #         print("!!!!!!!!!!!!")
-    #         print(player.hand[1].__dict__ if player.hand[1] is not None else None)
-    #         hand_type_low = player.hand[1].type[0] if player.hand[1] is not None else None
-    #         high_hand_cards = [c.code for c in player.hand[0].cards]
-    #         low_hand_cards = [c.code for c in player.hand[1].cards] if player.hand[1] is not None else []
-    #
-    #     await super(PokerBase, self).broadcast_PLAYER_CARDS(db, player,
-    #                                                         hand_type=[hand_type_high.value, hand_type_low],
-    #                                                         hand_cards=[high_hand_cards, low_hand_cards])
-
-    # async def broadcast_GAME_RESULT(self, db, winners):
-    #     for winner_message in winners:
-    #         await super().broadcast_GAME_RESULT(db, winner_message)
