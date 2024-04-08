@@ -2,6 +2,7 @@ import json
 import random
 import string
 from decimal import Decimal
+from time import monotonic
 
 import pytest
 
@@ -37,7 +38,7 @@ def test_create_club(api_client: TestClient, api_guest: UserAccessProfile, api_c
 
     club1 = ClubProfile(**response.json())
     assert club1.id
-    assert club1.name.startswith("CLUB-")
+    assert club1.name == f"CLUB-{club1.id}"
     assert club1.description is None
     assert club1.image_id is None
     assert club1.user_role == "O"

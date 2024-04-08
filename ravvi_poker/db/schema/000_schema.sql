@@ -181,6 +181,15 @@ CREATE TABLE public.club_member (
     agent_id integer
 );
 
+CREATE SEQUENCE public.club_member_id_seq
+    START WITH 1000
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.club_member_id_seq OWNED BY public.club_member.id;
+
 CREATE TABLE public.club_profile (
     id bigint NOT NULL,
     name character varying(200) DEFAULT NULL::character varying,
@@ -354,15 +363,6 @@ CREATE SEQUENCE public.temp_email_id_seq
 
 ALTER SEQUENCE public.temp_email_id_seq OWNED BY public.temp_email.id;
 
-CREATE SEQUENCE public.club_member_id_seq
-    START WITH 1000
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-ALTER SEQUENCE public.club_member_id_seq OWNED BY public.club_member.id;
-
 CREATE TABLE public.user_account_txn (
     id bigint NOT NULL,
     created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
@@ -387,7 +387,8 @@ CREATE TABLE public.user_client (
     id bigint NOT NULL,
     session_id bigint NOT NULL,
     created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
-    closed_ts timestamp without time zone
+    closed_ts timestamp without time zone,
+    host character varying(255)
 );
 
 CREATE SEQUENCE public.user_client_id_seq
@@ -422,7 +423,8 @@ CREATE TABLE public.user_login (
     user_id bigint NOT NULL,
     device_id bigint NOT NULL,
     created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
-    closed_ts timestamp without time zone
+    closed_ts timestamp without time zone,
+    host character varying(255)
 );
 
 CREATE SEQUENCE public.user_login_id_seq
@@ -461,7 +463,8 @@ CREATE TABLE public.user_session (
     login_id bigint NOT NULL,
     created_ts timestamp without time zone DEFAULT public.now_utc() NOT NULL,
     used_ts timestamp without time zone,
-    closed_ts timestamp without time zone
+    closed_ts timestamp without time zone,
+    host character varying(255)
 );
 
 CREATE SEQUENCE public.user_session_id_seq
@@ -503,6 +506,9 @@ ALTER TABLE ONLY public.user_profile ALTER COLUMN id SET DEFAULT nextval('public
 
 ALTER TABLE ONLY public.user_session ALTER COLUMN id SET DEFAULT nextval('public.user_session_id_seq'::regclass);
 
+ALTER TABLE ONLY public.club_member
+    ADD CONSTRAINT club_member_pkey PRIMARY KEY (id);
+
 ALTER TABLE ONLY public.club_profile
     ADD CONSTRAINT club_pkey PRIMARY KEY (id);
 
@@ -532,9 +538,6 @@ ALTER TABLE ONLY public.temp_email
 
 ALTER TABLE ONLY public.temp_email
     ADD CONSTRAINT temp_email_unq_uuid UNIQUE (uuid);
-
-ALTER TABLE ONLY public.club_member
-    ADD CONSTRAINT club_member_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.user_account_txn
     ADD CONSTRAINT user_account_txn_pkey PRIMARY KEY (id);
@@ -566,13 +569,13 @@ ALTER TABLE ONLY public.user_session
 ALTER TABLE ONLY public.user_session
     ADD CONSTRAINT user_session_uuid_key UNIQUE (uuid);
 
-CREATE INDEX game_profile_idx_type ON public.game_profile USING btree (game_type, game_subtype);
-
-CREATE INDEX game_profile_idx_user ON public.game_player USING btree (user_id);
-
 CREATE INDEX club_member_idx_user ON public.club_member USING btree (user_id);
 
 CREATE UNIQUE INDEX club_member_unq_clubuser ON public.club_member USING btree (club_id, user_id);
+
+CREATE INDEX game_profile_idx_type ON public.game_profile USING btree (game_type, game_subtype);
+
+CREATE INDEX game_profile_idx_user ON public.game_player USING btree (user_id);
 
 CREATE INDEX user_client_idx_closed ON public.user_client USING btree (session_id, closed_ts);
 
@@ -605,6 +608,15 @@ CREATE TRIGGER user_profile_closed_trg AFTER UPDATE OF closed_ts ON public.user_
 CREATE TRIGGER user_profile_name_trg BEFORE INSERT OR UPDATE OF name ON public.user_profile FOR EACH ROW WHEN (((new.name IS NULL) OR (length((new.name)::text) = 0))) EXECUTE FUNCTION public.user_profile_name_trg_proc();
 
 CREATE TRIGGER user_session_closed_trg AFTER UPDATE OF closed_ts ON public.user_session FOR EACH ROW WHEN (((old.closed_ts IS NULL) AND (new.closed_ts IS NOT NULL))) EXECUTE FUNCTION public.user_session_closed_trg_func();
+
+ALTER TABLE ONLY public.club_member
+    ADD CONSTRAINT club_member_fk_approved_by FOREIGN KEY (approved_by) REFERENCES public.user_profile(id);
+
+ALTER TABLE ONLY public.club_member
+    ADD CONSTRAINT club_member_fk_club FOREIGN KEY (club_id) REFERENCES public.club_profile(id);
+
+ALTER TABLE ONLY public.club_member
+    ADD CONSTRAINT club_member_fk_user FOREIGN KEY (user_id) REFERENCES public.user_profile(id);
 
 ALTER TABLE ONLY public.club_profile
     ADD CONSTRAINT club_profile_fk_image FOREIGN KEY (image_id) REFERENCES public.image(id);
@@ -650,15 +662,6 @@ ALTER TABLE ONLY public.table_session
 
 ALTER TABLE ONLY public.temp_email
     ADD CONSTRAINT temp_email_fk_user FOREIGN KEY (user_id) REFERENCES public.user_profile(id);
-
-ALTER TABLE ONLY public.club_member
-    ADD CONSTRAINT club_member_fk_approved_by FOREIGN KEY (approved_by) REFERENCES public.user_profile(id);
-
-ALTER TABLE ONLY public.club_member
-    ADD CONSTRAINT club_member_fk_club FOREIGN KEY (club_id) REFERENCES public.club_profile(id);
-
-ALTER TABLE ONLY public.club_member
-    ADD CONSTRAINT club_member_fk_user FOREIGN KEY (user_id) REFERENCES public.user_profile(id);
 
 ALTER TABLE ONLY public.user_account_txn
     ADD CONSTRAINT user_account_txn_fk_account FOREIGN KEY (account_id) REFERENCES public.club_member(id);
