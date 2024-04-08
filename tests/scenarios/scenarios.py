@@ -86,12 +86,12 @@ async def player_scenario():
             await asyncio.sleep(30)
 
 
-async def evan_bot_scenario():
+async def evan_bot_scenario(username, password, club_id):
     client = PokerClient()
-    club_id = 1004  # Todo тут нужно подставлять  id актуального клуба
+    club_id = club_id  # Todo тут нужно подставлять  id актуального клуба
     strategy = MyVerySmartCustomPokerStrategy(client, club_id=club_id)
     async with client:
-        await client.login_with_username_and_password(username=f'preflop bill', password="Y8G5Qv3b")
+        await client.login_with_username_and_password(username=username, password=password)
         await client.get_user_by_id(id=client.user_id)
         await asyncio.sleep(1)
 
@@ -114,7 +114,7 @@ async def main():
 
     """
     # await asyncio.gather(owner_scenario(), player_scenario(), player_scenario(), return_exceptions=True)
-    await evan_bot_scenario()
+    await evan_bot_scenario(username="preflop bill", password="Y8G5Qv3b", club_id=1004)
 
 
 if __name__ == '__main__':
