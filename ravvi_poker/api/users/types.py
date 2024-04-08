@@ -2,6 +2,12 @@ from uuid import UUID
 
 from pydantic import EmailStr, BaseModel
 
+black_list_symbols = [
+    "卐", "卍", "࿕", "࿖", "ᛋᛋ", "ꖦ", "࿗", "࿘", "U+FEFF", "U+2062", "U+3164", "U+2060", "U+200B", "␀", "␁", "␂",  "␃",
+    "␄", "␅", "␆", "␇", "␈", "␉", "␊", "␋", "␌", "␍", "␎", "␏", "␐", "␑", "␒", "␓", "␔", "␕", "␖", "␗", "␘", "␙", "␚",
+    "␛", "␜", "␝", "␞", "␟", "␠", "␡", "␢", "␣", "␤", "␥", "␦", "ㅤ", "ㅤㅤ", "ㅤㅤㅤ", "ㅤㅤㅤㅤ"
+]
+
 
 class DeviceProps(BaseModel):
     device_token: str | None = None
