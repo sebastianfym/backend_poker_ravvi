@@ -491,9 +491,9 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-    # USER ACCOUNT
+    # CLUB MEMBER
 
-    async def create_club_member(self, club_id, user_id, user_comment, automatic_confirmation):
+    async def create_club_member(self, club_id, user_id, user_comment=None, automatic_confirmation=None):
         # sql = "INSERT INTO club_member (club_id, user_id, user_comment) VALUES (%s,%s,%s) RETURNING *"
         sql = "INSERT INTO club_member (club_id, user_id, user_comment, approved_ts) VALUES (%s,%s,%s,%s) RETURNING *"
         if automatic_confirmation:
@@ -893,13 +893,7 @@ class DBI:
         return row
     
     async def create_txn_CHIPSIN(self, *, txn_user_id, club_id, txn_value: float|str|Decimal):
-        """Creates CHIPSIN txn for club
-        * txn_user_id: user_id, who executed the operation
-        * club_id: club reference
-        * txn_value: amount of chips to add > 0 
-
-        Returns chips_txn info
-        """
+        """Creates CHIPSIN txn for club"""
         if not isinstance(txn_value, decimal.Decimal):
             txn_value = decimal.Decimal(txn_value)
 #        if txn_value<=0:
@@ -910,18 +904,13 @@ class DBI:
                 result = await cursor.fetchone()
             except psycopg.errors.RaiseException as e:
                 raise DBIError(e)
-            txn_id = result.txn_id if result else None
-        return await self.get_chips_txn(txn_id)
-        
-    async def create_txn_CHIPSOUT(self, *, txn_user_id, club_id, txn_value: float|str):
-        """Creates CHIPSOUT txn for club
-        * txn_user_id: user_id, who executed the operation
-        * club_id: club reference
-        * txn_value: amount of chips to remove > 0 
+        return result.txn_id if result else None
 
-        Returns chips_txn info
-        """
-        txn_value = decimal.Decimal(txn_value)
+        
+    async def create_txn_CHIPSOUT(self, *, txn_user_id, club_id, txn_value: float|str|Decimal):
+        """Creates CHIPSOUT txn for club"""
+        if not isinstance(txn_value, decimal.Decimal):
+            txn_value = decimal.Decimal(txn_value)
 #        if txn_value<=0:
 #            raise ValueError('Invalid delta')
         async with self.cursor() as cursor:
@@ -930,8 +919,7 @@ class DBI:
                 result = await cursor.fetchone()
             except psycopg.errors.RaiseException as e:
                 raise DBIError(e)
-            txn_id = result.txn_id if result else None
-        return await self.get_chips_txn(txn_id)
+        return result.txn_id if result else None
     
     async def get_club_txns(self, club_id):
         if club_id is None:
@@ -951,6 +939,110 @@ class DBI:
         """
         async with self.cursor() as cursor:
             await cursor.execute(sql, (club_id, ))
+            rows = await cursor.fetchall()
+        return rows
+
+    async def create_txn_MOVEIN(self, *, txn_user_id, club_id, user_id, txn_value: float|str|Decimal, ref_user_id: int|None):
+        """Creates MOVEIN txn for agent"""
+        if not isinstance(txn_value, decimal.Decimal):
+            txn_value = decimal.Decimal(txn_value)
+#        if txn_value<=0:
+#            raise ValueError('Invalid delta')
+        async with self.cursor() as cursor:
+            try:
+                await cursor.execute("call create_txn_MOVEIN(%s, %s, %s, %s, %s, NULL)", (txn_user_id, club_id, user_id, ref_user_id, txn_value))
+                result = await cursor.fetchone()
+            except psycopg.errors.RaiseException as e:
+                raise DBIError(e)
+        return result.txn_id if result else None
+    
+
+    async def create_txn_MOVEOUT(self, *, txn_user_id, club_id, user_id, txn_value: float|str|Decimal, ref_user_id: int|None):
+        """Creates MOVEOUT txn for agent"""
+        if not isinstance(txn_value, decimal.Decimal):
+            txn_value = decimal.Decimal(txn_value)
+#        if txn_value<=0:
+#            raise ValueError('Invalid delta')
+        async with self.cursor() as cursor:
+            try:
+                await cursor.execute("call create_txn_MOVEOUT(%s, %s, %s, %s, %s, NULL)", (txn_user_id, club_id, user_id, ref_user_id, txn_value))
+                result = await cursor.fetchone()
+            except psycopg.errors.RaiseException as e:
+                raise DBIError(e)
+        return result.txn_id if result else None
+    
+    async def get_agent_txns(self, member_id):
+        if member_id is None:
+            return None
+        sql = """
+        select
+            cc.txn_id,
+            cc.id club_txn_id,
+            tx.created_ts,
+            tx.created_by,
+            tx.txn_type,
+            cc.delta,
+            cc.balance,
+            tx.member_id,
+            tx.ref_member_id
+        from chips_agent cc 
+        join chips_txn tx on tx.id=cc.txn_id
+        where cc.member_id=%s
+        """
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (member_id, ))
+            rows = await cursor.fetchall()
+        return rows
+
+    async def create_txn_CASHIN(self, *, txn_user_id, club_id, user_id, txn_value: float|str|Decimal, ref_user_id: int|None):
+        """Creates CASHIN txn for player"""
+        if not isinstance(txn_value, decimal.Decimal):
+            txn_value = decimal.Decimal(txn_value)
+#        if txn_value<=0:
+#            raise ValueError('Invalid delta')
+        async with self.cursor() as cursor:
+            try:
+                await cursor.execute("call create_txn_CASHIN(%s, %s, %s, %s, %s, NULL)", (txn_user_id, club_id, user_id, ref_user_id, txn_value))
+                result = await cursor.fetchone()
+            except psycopg.errors.RaiseException as e:
+                raise DBIError(e)
+        return result.txn_id if result else None
+    
+
+    async def create_txn_CASHOUT(self, *, txn_user_id, club_id, user_id, txn_value: float|str|Decimal, ref_user_id: int|None):
+        """Creates CASHOUT txn for player"""
+        if not isinstance(txn_value, decimal.Decimal):
+            txn_value = decimal.Decimal(txn_value)
+#        if txn_value<=0:
+#            raise ValueError('Invalid delta')
+        async with self.cursor() as cursor:
+            try:
+                await cursor.execute("call create_txn_CASHOUT(%s, %s, %s, %s, %s, NULL)", (txn_user_id, club_id, user_id, ref_user_id, txn_value))
+                result = await cursor.fetchone()
+            except psycopg.errors.RaiseException as e:
+                raise DBIError(e)
+        return result.txn_id if result else None
+
+    async def get_player_txns(self, member_id):
+        if member_id is None:
+            return None
+        sql = """
+        select
+            cc.txn_id,
+            cc.id club_txn_id,
+            tx.created_ts,
+            tx.created_by,
+            tx.txn_type,
+            cc.delta,
+            cc.balance,
+            tx.member_id,
+            tx.ref_member_id
+        from chips_player cc 
+        join chips_txn tx on tx.id=cc.txn_id
+        where cc.member_id=%s
+        """
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (member_id, ))
             rows = await cursor.fetchall()
         return rows
 

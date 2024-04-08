@@ -6,14 +6,18 @@ declare
 	club_balance_old numeric(20,2);
 	club_balance_new numeric(20,2);
 begin
-	select club_balance, closed_ts into club_balance_old, club_closed_ts from club_profile where id=club_id for update;
 	txn_value := round(txn_value, 2);
     if txn_value<=0 then 
-        RAISE EXCEPTION '400: Invalid txn value %s', txn_value;
+        RAISE EXCEPTION '1000:Invalid txn value %', txn_value;
+    end if;
+    -- get club balance
+	select club_balance, closed_ts into club_balance_old, club_closed_ts from club_profile where id=club_id for update;
+    if club_balance_old is null then
+        RAISE EXCEPTION '1000:Club % not found', club_id;
     end if;
     club_balance_new := club_balance_old - txn_value;
     if club_balance_new<0 then 
-        RAISE EXCEPTION '401: Club balance % is too low for % txn', club_balance_old, -txn_value;
+        RAISE EXCEPTION '1001:Club balance % is too low for % txn', club_balance_old, -txn_value;
     end if;
 	-- create txn
 	insert into chips_txn 

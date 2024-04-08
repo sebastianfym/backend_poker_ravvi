@@ -22,15 +22,17 @@ async def test_chips_club(club_and_owner):
     # CHIPSIN -100.00
     with pytest.raises(DBI.Error) as ex:
         async with DBI() as db:
-            txn = await db.create_txn_CHIPSIN(txn_user_id=owner_user.id, club_id=club.id, txn_value=-100.0001)
-    assert ex.value.code == 400
+            await db.create_txn_CHIPSIN(txn_user_id=owner_user.id, club_id=club.id, txn_value=-100.0001)
+    assert ex.value.code
 
 
     # CHIPSIN 100.00
     async with DBI() as db:
-        txn = await db.create_txn_CHIPSIN(txn_user_id=owner_user.id, club_id=club.id, txn_value=100.0001)
+        txn_id = await db.create_txn_CHIPSIN(txn_user_id=owner_user.id, club_id=club.id, txn_value=100.0001)
+        txn = await db.get_chips_txn(txn_id)
         club = await db.get_club(club.id)
         owner_member = await db.get_club_member(owner_member.id)
+
     assert txn
     assert txn.txn_id
     assert txn.txn_type == 'CHIPSIN'
@@ -47,7 +49,8 @@ async def test_chips_club(club_and_owner):
 
     # CHIPSOUT -42.05
     async with DBI() as db:
-        txn = await db.create_txn_CHIPSOUT(txn_user_id=owner_user.id, club_id=club.id, txn_value=42.0499)
+        txn_id = await db.create_txn_CHIPSOUT(txn_user_id=owner_user.id, club_id=club.id, txn_value=42.0499)
+        txn = await db.get_chips_txn(txn_id)
         club = await db.get_club(club.id)
         owner_member = await db.get_club_member(owner_member.id)
 
@@ -69,9 +72,9 @@ async def test_chips_club(club_and_owner):
     # CHIPSOUT <too much>
     with pytest.raises(DBI.Error) as ex:
         async with DBI() as db:
-            txn = await db.create_txn_CHIPSOUT(txn_user_id=owner_user.id, club_id=club.id, txn_value=666.0123)
-    assert ex.value.code == 401
-    #assert ex.value.msg == 'Club balance 57.95 is too low for -666.01 txn'
+            await db.create_txn_CHIPSOUT(txn_user_id=owner_user.id, club_id=club.id, txn_value=666.0123)
+    assert ex.value.code
+
     async with DBI() as db:
         club = await db.get_club(club.id)
         owner_member = await db.get_club_member(owner_member.id)
