@@ -836,3 +836,65 @@ class PokerClient:
                 await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.RAISE, amount = amount)
             else:                
                 await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
+    
+        async def play_logic_v2(self, msg: Message):
+        try:
+            time_for_move = random.randint(3, self.time_for_move)
+        except ValueError:
+            time_for_move = 3
+
+        if msg.msg_type == MessageType.GAME_PLAYER_MOVE and msg.user_id == self.user_id:
+            if self.flop: # Логика для флопа и выше
+                await asyncio.sleep(time_for_move)
+
+                if self.gray_combo: # При условии серых карт
+                    if self.couple: # Если пара или выше
+                        bet = await after_preflop_gray_combo_couple(Bet, msg)
+                        await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
+
+                    else: # Если старшая
+                        bet = await after_preflop_gray_combo_high_card(Bet, msg)
+                        await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
+
+                else: # При условии синих и желтых карт
+                    if self.couple: # Если пара или выше
+                        bet = await after_preflop_good_combo_couple(Bet, msg)
+                        await self.ws_send(cmd=CommandType.BET, table_id=msg.table_id, bet=bet)
+                    else: # Если старшая
+                        bet = await after_preflop_good_combo_high_card(Bet, msg)
+                        await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
+
+            else: # логика для префлопа
+                await asyncio.sleep(time_for_move)
+                if self.gray_combo:
+                    bet = await preflop_grey_combo(Bet, msg)
+                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
+                else:
+                    bet = await preflop_good_combo(Bet, msg)
+                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
+
+        elif msg.msg_type == MessageType.PLAYER_CARDS and msg.user_id == self.user_id:
+            if card_decoder(msg) is False:  # Если комбинация карт не проходит в валидные - сброс (фолд)
+                self.gray_combo = True
+
+            elif card_decoder(msg) is True:  # Если комбинация карт проходит в валидные проверяем на пару
+                if msg.props['hands'][0]['hand_type'] != "H" and msg.user_id == self.user_id:  # Пара и выше
+                    self.couple = True
+                elif msg.props['hands'][0]['hand_type'] == "H" and msg.user_id == self.user_id:  # Старшая карта = сброс (фолд)
+                    self.couple = False
+
+            elif card_decoder(msg) is None:
+                self.flop = True
+                return
+
+            elif isinstance(card_decoder(msg), list):
+                self.couple = True
+                return
+
+        elif msg.msg_type == MessageType.GAME_BEGIN:
+            self.fold = False
+            self.couple = False
+            self.flop = False
+            self.gray_combo = False
+            self.time_for_move = msg.props['player_move']['bet_timeout']
+
