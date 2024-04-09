@@ -363,7 +363,7 @@ class Table:
     async def wait_ready(self, timeout: float = 0):
         async def _ready():
             while self.status == TableStatus.STARTUP:
-                asyncio.sleep(0.1)
+                await asyncio.sleep(0.1)
 
         if timeout:
             await asyncio.wait_for(_ready(), timeout=timeout)
