@@ -837,7 +837,8 @@ class PokerClient:
             else:                
                 await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
     
-        async def play_logic_v2(self, msg: Message):
+    
+    async def play_logic_v2(self, msg: Message):
         try:
             time_for_move = random.randint(3, self.time_for_move)
         except ValueError:
