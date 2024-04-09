@@ -9,7 +9,7 @@ class MyVerySmartCustomPokerStrategy:
         self.club_id = club_id
 
     async def __call__(self, msg: Message):
-        await self.client.play_logic(msg)
+        await self.client.play_logic_v2(msg)
 
 
 
