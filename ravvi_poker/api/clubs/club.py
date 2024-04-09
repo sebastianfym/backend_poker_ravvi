@@ -22,8 +22,11 @@ async def v1_create_club(params: ClubProps, session_uuid: SessionUUID) -> ClubPr
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         for symbol in black_list_symbols:
-            if symbol in params.name:
-                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You are using forbidden characters")
+            try:
+                if symbol in params.name:
+                    raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You are using forbidden characters")
+            except TypeError:
+                break
         club = await db.create_club(user_id=user.id, name=params.name, description=params.description,
                                     image_id=params.image_id, timezone=params.timezone, )
     club_profile = ClubProfile(
