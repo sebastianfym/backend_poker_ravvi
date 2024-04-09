@@ -205,7 +205,7 @@ async def v1_club_member(club_id: int, user_id: int, session_uuid: SessionUUID, 
         sum_all_buyin = sum(
             [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']])
         sum_all_cashout = sum(
-            [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'CASHOUT']])
+            [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'REWARD']])
         winning = sum_all_cashout - abs(sum_all_buyin)
 
         bb_100_winning = 0
@@ -231,7 +231,7 @@ async def v1_club_member(club_id: int, user_id: int, session_uuid: SessionUUID, 
             if balance_data.balance_end:
                 balance_end = balance_data.balance_end
             game_props_list.append({'game_id': game_id, 'balance_begin': balance_data.balance_begin,
-                                    'balance_end': balance_end,
+                                    'balance_end': balance_data.balance_end,
                                     'big_blind': game_data[0].props['blind_big']})
 
         blind_big_dict = {}
@@ -350,7 +350,7 @@ async def v1_detail_account(club_id: int, session_uuid: SessionUUID) -> AccountD
         sum_all_buyin = sum(
             [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'BUYIN']])
         sum_all_cashout = sum(
-            [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'CASHOUT']])
+            [float(value) for value in [row.txn_value for row in winning_row if row.txn_type == 'REWARD']])
         winning = sum_all_cashout - abs(sum_all_buyin)
 
         bb_100_winning = 0
@@ -368,11 +368,13 @@ async def v1_detail_account(club_id: int, session_uuid: SessionUUID) -> AccountD
         game_props_list = []
         for game_id in access_game_id:
             balance_data = await db.get_balance_begin_and_end_from_game(game_id, user.id)  #
+            print(balance_data)
             game_data = await db.get_game_and_players(game_id)
             if balance_data.balance_end:
                 balance_end = balance_data.balance_end
+            print("balance_end", balance_data.balance_end)
             game_props_list.append({'game_id': game_id, 'balance_begin': balance_data.balance_begin,
-                                    'balance_end': balance_end,
+                                    'balance_end': balance_data.balance_end,
                                     'big_blind': game_data[0].props['blind_big']})
         blind_big_dict = {}
         for item in game_props_list:

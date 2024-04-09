@@ -13,6 +13,7 @@ from .pool import DBIPool
 
 logger = logging.getLogger(__name__)
 
+
 class DBI:
     DB_HOST = os.getenv("RAVVI_POKER_DB_HOST", "127.0.0.1")
     DB_PORT = int(os.getenv("RAVVI_POKER_DB_PORT", "15432"))
@@ -243,7 +244,6 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-
     async def get_login(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
         sql = f"SELECT * FROM user_login WHERE {key}=%s"  # nosec
@@ -260,8 +260,6 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-
-
     async def get_last_user_login(self, user_id=None):
         sql = f"SELECT * FROM user_login WHERE user_id=%s ORDER BY id DESC"
         async with self.cursor() as cursor:
@@ -277,7 +275,6 @@ class DBI:
             await cursor.execute(sql, (login_id, host))
             row = await cursor.fetchone()
         return row
-
 
     async def get_session(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
@@ -314,7 +311,6 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-
     async def get_last_user_session(self, last_login_id):
         sql = "SELECT * FROM user_session WHERE login_id=%s ORDER BY id DESC"
         async with self.cursor() as cursor:
@@ -337,7 +333,6 @@ class DBI:
         sql = "UPDATE user_client SET host=%s WHERE id=%s"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (host, id))
-
 
     async def get_client(self, id=None, *, uuid=None):
         key, value = self.use_id_or_uuid(id, uuid)
@@ -472,15 +467,13 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-
-
     # USER ACCOUNT
 
     async def create_club_member(self, club_id, user_id, user_comment, automatic_confirmation):
         # sql = "INSERT INTO club_member (club_id, user_id, user_comment) VALUES (%s,%s,%s) RETURNING *"
         sql = "INSERT INTO club_member (club_id, user_id, user_comment, approved_ts) VALUES (%s,%s,%s,%s) RETURNING *"
         if automatic_confirmation:
-            approved_ts = datetime.datetime.now()#.strftime("%Y-%m-%d %H:%M:%S.%f")
+            approved_ts = datetime.datetime.now()  # .strftime("%Y-%m-%d %H:%M:%S.%f")
         else:
             approved_ts = None
 
@@ -540,7 +533,7 @@ class DBI:
         return row
 
     async def get_clubs_for_user(self, user_id):
-        sql = "SELECT c.*, m.user_role, m.approved_ts FROM club_member m JOIN club_profile c ON c.id=m.club_id WHERE c.id!=0 and m.user_id=%s and m.closed_ts IS NULL"
+        sql = "SELECT c.*, m.user_role, m.approved_ts FROM club_member m JOIN club_profile c ON c.id=m.club_id WHERE c.id!=0 and m.user_id=%s and m.closed_ts IS NULL and m.approved_ts IS NOT NULL"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (user_id,))
             rows = await cursor.fetchall()
@@ -581,11 +574,15 @@ class DBI:
             rows = await cursor.fetchall()
         return rows
 
-
     async def refresh_member_in_club(self, account_id, user_comment):
         sql = "UPDATE club_member SET approved_ts=%s, approved_by=%s, closed_ts=%s, closed_by=%s, user_comment=%s WHERE id=%s"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (None, None, None, None, user_comment, account_id,))
+
+    async def expel_member_from_club(self, account_id, club_id):
+        sql = "UPDATE club_member SET approved_by=%s, approved_ts=%s, balance=%s, balance_shared=%s WHERE id=%s AND club_id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, (None, None, 0.0000, 0.0000, account_id, club_id,))
 
 
     # TABLE
@@ -789,7 +786,6 @@ class DBI:
             row = await cursor.fetchall()
         return row
 
-
     # EVENTS (TABLE_CMD)
 
     def json_dumps(self, obj):
@@ -866,11 +862,10 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
-
     async def get_all_account_txn(self, account_id):
-        sql = "SELECT * FROM user_account_txn WHERE account_id=%s  ORDER BY id DESC" #AND txn_type=%s or txn_type=%s
+        sql = "SELECT * FROM user_account_txn WHERE account_id=%s  ORDER BY id DESC"  # AND txn_type=%s or txn_type=%s
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (account_id, )) #"CASHIN", "REMOVE"
+            await cursor.execute(sql, (account_id,))  # "CASHIN", "REMOVE"
             row = await cursor.fetchall()
         return row
 
@@ -904,9 +899,9 @@ class DBI:
 
     async def refresh_club_balance(self, club_id, amount, mode):
         if mode == 'pick_up':
-            sql = "UPDATE club_profile SET club_balance = club_balance + %s WHERE id=%s RETURNING *" #club_balance"
+            sql = "UPDATE club_profile SET club_balance = club_balance + %s WHERE id=%s RETURNING *"  # club_balance"
         elif mode == 'give_out':
-            sql = "UPDATE club_profile SET club_balance = club_balance - %s WHERE id=%s  RETURNING *" #club_balance"
+            sql = "UPDATE club_profile SET club_balance = club_balance - %s WHERE id=%s  RETURNING *"  # club_balance"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (amount, club_id))
 
@@ -1058,7 +1053,6 @@ class DBI:
             await cursor.execute(sql, (account_id, "CASHOUT", amount, row.balance, sender_id, props))
         return balance
 
-
     async def get_user_history_trx_in_club(self, user_id, club_id):
         sql_history = "SELECT * FROM user_account_txn WHERE account_id=%s"
         sql_user_account = "SELECT id FROM club_member WHERE user_id=%s AND club_id=%s"
@@ -1080,7 +1074,7 @@ class DBI:
         return row
         # ACCOUNT STATISTICS
 
-    async def statistics_of_games_played(self, table_id, date): #Todo проверить и удалить
+    async def statistics_of_games_played(self, table_id, date):  # Todo проверить и удалить
         date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
         tomorrow = date_now + datetime.timedelta(days=1)
         sql = "SELECT * FROM public.game_profile WHERE table_id = %s AND end_ts >= %s AND end_ts < %s"
@@ -1120,7 +1114,7 @@ class DBI:
             row = await cursor.fetchall()
         return row
 
-    async def get_statistics_about_winning_for_today(self, account_id, date): #Todo проверить и удалить
+    async def get_statistics_about_winning_for_today(self, account_id, date):  # Todo проверить и удалить
         sql = "SELECT * FROM user_account_txn WHERE account_id=%s AND created_ts >= %s AND created_ts < %s"
         date_now = datetime.datetime.strptime(date, "%Y-%m-%d").date()
         tomorrow = date_now + datetime.timedelta(days=1)

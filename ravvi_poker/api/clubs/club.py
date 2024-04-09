@@ -51,24 +51,42 @@ async def v1_list_clubs(session_uuid: SessionUUID) -> List[ClubProfile]:
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
         clubs = await db.get_clubs_for_user(user_id=user.id)
+        list_with_clubs = []
+        for club in clubs:
+            list_with_clubs.append(
+                ClubProfile(
+                    id=club.id,
+                    name=club.name,
+                    description=club.description,
+                    image_id=club.image_id,
+                    user_role=club.user_role,
+                    user_approved=club.approved_ts is not None,
+                    tables_count=club.tables_сount,
+                    players_count=club.players_online,
+                    user_balance=await db.get_user_balance_in_club(club_id=club.id, user_id=user.id),
+                    agents_balance=await db.get_balance_shared_in_club(club_id=club.id, user_id=user.id),
+                    club_balance=club.club_balance,
+                    service_balance=await db.get_service_balance_in_club(club_id=club.id, user_id=user.id)
+                )
+            )
 
-        return list([
-            ClubProfile(
-                id=club.id,
-                name=club.name,
-                description=club.description,
-                image_id=club.image_id,
-                user_role=club.user_role,
-                user_approved=club.approved_ts is not None,
-                tables_count=club.tables_сount,
-                players_count=club.players_online,
-                user_balance=await db.get_user_balance_in_club(club_id=club.id, user_id=user.id),
-                agents_balance=await db.get_balance_shared_in_club(club_id=club.id, user_id=user.id),
-                # TODO почему пользователь видит баланс клуба в независимости от роли?!?!?
-                club_balance=club.club_balance,
-                service_balance=await db.get_service_balance_in_club(club_id=club.id, user_id=user.id)
-            ) for club in clubs
-        ])
+        return list_with_clubs
+        # return list([
+        #     ClubProfile(
+        #         id=club.id,
+        #         name=club.name,
+        #         description=club.description,
+        #         image_id=club.image_id,
+        #         user_role=club.user_role,
+        #         user_approved=club.approved_ts is not None,
+        #         tables_count=club.tables_сount,
+        #         players_count=club.players_online,
+        #         user_balance=await db.get_user_balance_in_club(club_id=club.id, user_id=user.id),
+        #         agents_balance=await db.get_balance_shared_in_club(club_id=club.id, user_id=user.id),
+        #         club_balance=club.club_balance,
+        #         service_balance=await db.get_service_balance_in_club(club_id=club.id, user_id=user.id)
+        #     )
+        # ])
 
 
 @router.get("/{club_id}", summary="Get club by id",
@@ -186,7 +204,6 @@ async def v1_leave_from_club(club_id: int, session_uuid: SessionUUID):
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You can't leave your own club")
         await db.close_club_member(account.id, user.id, None)
         return HTTP_200_OK
-
 
 
 @router.get("/{club_id}/club_balance", status_code=HTTP_200_OK,
