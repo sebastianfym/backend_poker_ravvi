@@ -2,27 +2,29 @@ import datetime
 import logging
 import asyncio
 
-
 import aiohttp
-from random import SystemRandom
+from random import SystemRandom, random
 from time import perf_counter
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
 from ravvi_poker.api.auth.types import UserAccessProfile
 from ravvi_poker.api.clubs.types import ClubProfile, ClubMemberProfile, MemberAccountDetailInfo, AccountDetailInfo, \
     ClubBalance, ChipsTxnItem, TableProfile
 from ravvi_poker.api.images import ImageProfile
-# from ravvi_poker.api.tables import TableProfile
-# from ravvi_poker.api.types import UserPublicProfile
 from ravvi_poker.api.users.types import UserPrivateProfile, UserPublicProfile
+from ravvi_poker.client.utilities import card_decoder, preflop_grey_combo, preflop_good_combo, \
+    after_preflop_gray_combo_high_card, after_preflop_gray_combo_couple, after_preflop_good_combo_high_card, \
+    after_preflop_good_combo_couple
 from ravvi_poker.engine.events import Message, MessageType, CommandType
 from ravvi_poker.engine.poker.bet import Bet
+import random
 
 logger = logging.getLogger(__name__)
+
 
 def perf_log(func):
     async def wrapper(self, url, **kwargs):
         t0 = perf_counter()
-        response =  await func(self, url, **kwargs)
+        response = await func(self, url, **kwargs)
         t1 = perf_counter()
         delta = t1-t0
         self.requests_time += delta
@@ -31,6 +33,9 @@ def perf_log(func):
     return wrapper
 
 class PokerClient:
+    # API_HOST = "poker-st1.ravvi.net"
+    # USE_SSL = True
+
     API_HOST = '127.0.0.1:5001'
     USE_SSL = False
 
@@ -43,6 +48,14 @@ class PokerClient:
         self.device_token = None
         self.requests_time = 0
         self.rng = SystemRandom()
+
+        self.fold = False
+        self.couple = False
+        self.flop = False
+
+        self.gray_combo = False
+
+        self.time_for_move = 0
 
     @property
     def user_id(self):
@@ -151,7 +164,7 @@ class PokerClient:
         response = await self.GET('/api/v1/user/profile')
         status, payload = await self._get_result(response)
         if status == 200:
-            #logger.info(f"Get user profile: {datetime.datetime.now()}")
+            # logger.info(f"Get user profile: {datetime.datetime.now()}")
             user_profile = UserPrivateProfile(**payload)
             self.access_profile.user = user_profile
         return status, user_profile
@@ -165,7 +178,7 @@ class PokerClient:
         response = await self.PATCH('/api/v1/user/profile', json=data)
         status, payload = await self._get_result(response)
         if status == 200:
-            #logger.info(f"User update account: {datetime.datetime.now()}")
+            # logger.info(f"User update account: {datetime.datetime.now()}")
             user_profile = UserPrivateProfile(**payload)
             self.access_profile.user = user_profile
             return status, user_profile
@@ -233,7 +246,7 @@ class PokerClient:
         response = await self.POST('/api/v1/clubs', json=data)
         status, payload = await self._get_result(response)
         if status == 201:
-            #logger.info(f"Owner create club: {datetime.datetime.now()}")
+            # logger.info(f"Owner create club: {datetime.datetime.now()}")
             return status, ClubProfile(**payload)
         else:
             # raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
@@ -243,7 +256,7 @@ class PokerClient:
         response = await self.GET(f'/api/v1/clubs/{club_id}')
         status, payload = await self._get_result(response)
         if status == 200:
-            #logger.info(f"Get club by id: {datetime.datetime.now()}")
+            # logger.info(f"Get club by id: {datetime.datetime.now()}")
             return status, ClubProfile(**payload)
         elif status == 404:
             return status, payload
@@ -300,7 +313,8 @@ class PokerClient:
             # raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club with this id not found")
         else:
             return status, payload
-#             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
+
+    #             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
 
     async def send_req_join_in_club(self, club_id=None, user_comment=None):
         response = await self.POST(f'/api/v1/clubs/{club_id}/members', json={"user_comment": user_comment})
@@ -313,7 +327,8 @@ class PokerClient:
             # raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club with this id not found")
         else:
             return status, payload
-#             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
+
+    #             raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
 
     async def get_request_to_join(self, club_id):
         response = await self.GET(f'/api/v1/clubs/{club_id}/members/requests')
@@ -508,17 +523,12 @@ class PokerClient:
         response = await self.GET(f"/api/v1/clubs/{club_id}/requests_chip_replenishment")
         status, payload = await self._get_result(response)
         if status == 200:
-            # logger.info(f"Owner get requests on chips: {datetime.datetime.now()}")
             return status, payload
         elif status == 403:
-            # raise HTTPException(status_code=HTTP_403_FORBIDDEN,
-            #                     detail="You don't have enough rights to perform this action")
             return status, payload
         elif status == 404:
-            # raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club with this id not found")
             return status, payload
         else:
-            # raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY, detail="Something went wrong")
             return status, payload
 
     async def get_club_txn_history(self, club_id):
@@ -574,7 +584,7 @@ class PokerClient:
 
     async def up_agent_balance(self, club_id, user_id, amount):
         response = await self.POST(f"/api/v1/chips/{club_id}/agents/chips/{user_id}",
-                                           json={"amount": amount, "mode": "give_out"})
+                                   json={"amount": amount, "mode": "give_out"})
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"Owner update agent balance: {datetime.datetime.now()}")
@@ -592,7 +602,7 @@ class PokerClient:
 
     async def down_agent_balance(self, club_id, user_id, amount):
         response = await self.POST(f"/api/v1/chips/{club_id}/agents/chips/{user_id}",
-                                           json={"amount": amount, "mode": "pick_up"})
+                                   json={"amount": amount, "mode": "pick_up"})
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"Owner debited agent balance: {datetime.datetime.now()}")
@@ -653,7 +663,7 @@ class PokerClient:
 
     async def send_req_to_up_user_balance(self, club_id, amount):
         response = await self.POST(f"/api/v1/chips/{club_id}/requests/chips",
-                                           json={"amount": amount, "agent": False})
+                                   json={"amount": amount, "agent": False})
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"member send request to update balance: {datetime.datetime.now()}")
@@ -671,7 +681,7 @@ class PokerClient:
 
     async def send_req_to_up_agent_balance(self, club_id, amount):
         response = await self.POST(f"/api/v1/chips/{club_id}/requests/chips",
-                                           json={"amount": amount, "agent": True})
+                                   json={"amount": amount, "agent": True})
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"member send request to update agent balance: {datetime.datetime.now()}")
@@ -689,7 +699,7 @@ class PokerClient:
 
     async def accept_all_balance_requests(self, club_id):
         response = await self.POST(f"/api/v1/chips/{club_id}/requests/chips/all",
-                                           json={"operation": "approve"})
+                                   json={"operation": "approve"})
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"Owner accept all chips requests: {datetime.datetime.now()}")
@@ -707,7 +717,7 @@ class PokerClient:
 
     async def reject_all_balance_requests(self, club_id):
         response = await self.POST(f"/api/v1/chips/{club_id}/requests/chips/all",
-                                           json={"operation": "reject"})
+                                   json={"operation": "reject"})
         status, payload = await self._get_result(response)
         if status == 201:
             logger.info(f"Owner reject all chips requests: {datetime.datetime.now()}")
@@ -775,7 +785,8 @@ class PokerClient:
 
     # PLAY
 
-    async def join_table(self, table_id, club_id, take_seat, table_msg_handler):
+    async def join_table(self, table_id, take_seat, table_msg_handler, club_id):
+        await asyncio.sleep(1)
         if not self.ws:
             await self.ws_connect()
         self.table_handlers[table_id] = table_msg_handler
@@ -801,12 +812,12 @@ class PokerClient:
 
     # BASIC SIMPLE PLAY STRATEGIES
 
-    async def play_fold_always(self, msg: Message):
-        if msg.msg_type == MessageType.GAME_PLAYER_MOVE and msg.user_id == self.user_id:
-            logger.info("%s: bet options %s", msg.table_id, msg.options)
-            await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=1)
+    async def play_logic(self, msg: Message):
+        try:
+            time_for_move = random.randint(3, self.time_for_move)
+        except ValueError:
+            time_for_move = 3
 
-    async def play_check_or_fold(self, msg: Message):
         if msg.msg_type == MessageType.GAME_PLAYER_MOVE and msg.user_id == self.user_id:
             logger.info("%s: bet options %s", msg.table_id, msg.options)
             if Bet.CHECK in msg.options:
@@ -825,3 +836,66 @@ class PokerClient:
                 await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=Bet.RAISE, amount = amount)
             else:                
                 await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
+    
+    
+    async def play_logic_v2(self, msg: Message):
+        try:
+            time_for_move = random.randint(3, self.time_for_move)
+        except ValueError:
+            time_for_move = 3
+
+        if msg.msg_type == MessageType.GAME_PLAYER_MOVE and msg.user_id == self.user_id:
+            if self.flop: # Логика для флопа и выше
+                await asyncio.sleep(time_for_move)
+
+                if self.gray_combo: # При условии серых карт
+                    if self.couple: # Если пара или выше
+                        bet = await after_preflop_gray_combo_couple(Bet, msg)
+                        await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
+
+                    else: # Если старшая
+                        bet = await after_preflop_gray_combo_high_card(Bet, msg)
+                        await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
+
+                else: # При условии синих и желтых карт
+                    if self.couple: # Если пара или выше
+                        bet = await after_preflop_good_combo_couple(Bet, msg)
+                        await self.ws_send(cmd=CommandType.BET, table_id=msg.table_id, bet=bet)
+                    else: # Если старшая
+                        bet = await after_preflop_good_combo_high_card(Bet, msg)
+                        await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
+
+            else: # логика для префлопа
+                await asyncio.sleep(time_for_move)
+                if self.gray_combo:
+                    bet = await preflop_grey_combo(Bet, msg)
+                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
+                else:
+                    bet = await preflop_good_combo(Bet, msg)
+                    await self.ws_send(cmd_type=CommandType.BET, table_id=msg.table_id, bet=bet)
+
+        elif msg.msg_type == MessageType.PLAYER_CARDS and msg.user_id == self.user_id:
+            if card_decoder(msg) is False:  # Если комбинация карт не проходит в валидные - сброс (фолд)
+                self.gray_combo = True
+
+            elif card_decoder(msg) is True:  # Если комбинация карт проходит в валидные проверяем на пару
+                if msg.props['hands'][0]['hand_type'] != "H" and msg.user_id == self.user_id:  # Пара и выше
+                    self.couple = True
+                elif msg.props['hands'][0]['hand_type'] == "H" and msg.user_id == self.user_id:  # Старшая карта = сброс (фолд)
+                    self.couple = False
+
+            elif card_decoder(msg) is None:
+                self.flop = True
+                return
+
+            elif isinstance(card_decoder(msg), list):
+                self.couple = True
+                return
+
+        elif msg.msg_type == MessageType.GAME_BEGIN:
+            self.fold = False
+            self.couple = False
+            self.flop = False
+            self.gray_combo = False
+            self.time_for_move = msg.props['player_move']['bet_timeout']
+
