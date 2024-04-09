@@ -363,7 +363,7 @@ class Table:
     async def wait_ready(self, timeout: float = 0):
         async def _ready():
             while self.status == TableStatus.STARTUP:
-                asyncio.sleep(0.1)
+                await asyncio.sleep(0.1)
 
         if timeout:
             await asyncio.wait_for(_ready(), timeout=timeout)
@@ -464,7 +464,7 @@ class Table:
     def user_can_play(self, user):
         return isinstance(user.balance, Decimal) and user.balance > 0
 
-    def user_can_stay(self, user: User):
+    async def user_can_stay(self, user: User):
         if user.inactive:
             return False
         if user.balance is None:
@@ -513,7 +513,7 @@ class Table:
         for seat_idx, user in enumerate(self.seats):
             if not user:
                 continue
-            if not force and self.user_can_stay(user):
+            if not force and await self.user_can_stay(user):
                 continue
             self.seats[seat_idx] = None
             await self.on_player_exit(db, user, seat_idx)

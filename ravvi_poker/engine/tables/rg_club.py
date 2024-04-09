@@ -4,11 +4,30 @@ import time
 from decimal import Decimal, ROUND_HALF_DOWN
 from psycopg.rows import Row
 
+from ..poker.bet import Bet
 from ..user import User
 from ...db import DBI
 from .rg import Table_RG
 
+
 class Table_RG_Club(Table_RG):
+
+    async def user_can_stay(self, user: User):
+        if user.inactive:
+            return False
+        if user.balance == 0 and user.buyin_deferred is None:
+            user.balance = None
+            async with DBI() as db:
+                await self.broadcast_PLAYER_BALANCE(db, user.id, user.balance)
+            # TODO вытянуть клиент который последний делал действия(Bet, take_seat), если количество клиентов
+            #  больше одного
+            client_id = list(user.clients)[0]
+            async with DBI() as db:
+                if not (account := await self.prepare_before_offer(db, None, client_id, user)):
+                    return False
+                await self.make_player_offer(db, user, client_id, account.balance)
+            return True
+        return self.user_can_play(user)
 
     async def on_player_enter(self, db: DBI, cmd_id, client_id, user: User, seat_idx):
         # lobby: get user_profile balance
@@ -31,7 +50,7 @@ class Table_RG_Club(Table_RG):
         # если не достаточно денег на балансе, то возвращаем ошибку
         if account.balance < self.buyin_min:
             await self.emit_TABLE_WARNING(db, cmd_id=cmd_id, client_id=client_id,
-                          error_code=1, error_text='Not enough balance')
+                                          error_code=1, error_text='Not enough balance')
             return None
         return account
 
@@ -47,14 +66,20 @@ class Table_RG_Club(Table_RG):
         # если денег на балансе уже больше максимального байина, то возвращаем ошибку
         if user.balance is not None and user.balance >= buyin_max:
             await self.emit_TABLE_WARNING(db, cmd_id=None,
-                          client_id=client_id,
-                          error_code=3, error_text='The maximum balance value has been exceeded')
+                                          client_id=client_id,
+                                          error_code=3, error_text='The maximum balance value has been exceeded')
             return
         # если недостаточно денег на балансе до минимального байина, то возвращаем ошибку
-        if buyin_min > account_balance:
-            await self.emit_TABLE_WARNING(db, cmd_id=None, client_id=client_id,
-                          error_code=1, error_text='Not enough balance')
-            return
+        if user.balance:
+            if buyin_min > account_balance + user.balance:
+                await self.emit_TABLE_WARNING(db, cmd_id=None, client_id=client_id,
+                                              error_code=1, error_text='Not enough balance')
+                return
+        else:
+            if buyin_min > account_balance:
+                await self.emit_TABLE_WARNING(db, cmd_id=None, client_id=client_id,
+                                              error_code=1, error_text='Not enough balance')
+                return
         # если максимальный байин больше чем денег на балансе, то максимальный байин равен балансу
         if buyin_max > account_balance:
             buyin_max = account_balance
@@ -63,7 +88,7 @@ class Table_RG_Club(Table_RG):
             buyin_max -= user.balance
         if user.balance is not None:
             buyin_min -= user.balance
-            if buyin_min < 0:
+            if buyin_min <= 0:
                 buyin_min = min(self.game_props.get("blind_big"), buyin_max)
         elif user.balance is None and (interval_in_hours := getattr(self, "advanced_config").ratholing):
             # получаем последнюю выплату от стола за N часов
@@ -120,13 +145,28 @@ class Table_RG_Club(Table_RG):
             if not await self.check_conditions_for_update_balance(db, cmd_id, client_id, account, user, buyin_value):
                 return
 
-            # TODO проверить что пользователь в игре
-            # если есть игра и пользователь в ней участвует, то моментальное пополнение не возможно
+            # ставим отметку что байин обработан
+            user.buyin_offer_timeout = None
+
+            # если есть игра то проверим на возможность пополения сразу
             if self.game:
+                # если баланс None, то пополняем сразу
+                if user.balance is None:
+                    await self.update_balance(db, user, buyin_value)
+                    return
+                else:
+                    # проверим в игре ли игрок, если нет то пополняем сразу
+                    if len(selected_player := [p for p in self.game.players if p.user.id == user.id]) == 0:
+                        await self.update_balance(db, user, buyin_value)
+                        return
+                    # если игрок в состоянии Fold, то пополняем сразу
+                    elif selected_player[0].bet_type == Bet.FOLD.value:
+                        await self.update_balance(db, user, buyin_value)
+                        return
+                # записываем в отложенный платеж
                 user.buyin_deferred = buyin_value
             else:
                 # обновляем баланс
-                user.buyin_offer_timeout = None
                 await self.update_balance(db, user, buyin_value)
 
     async def on_player_exit(self, db: DBI, user, seat_idx):
@@ -169,14 +209,14 @@ class Table_RG_Club(Table_RG):
         # если не достаточно денег на балансе, то возвращаем ошибку
         if account.balance < buyin_value:
             await self.emit_TABLE_WARNING(db, cmd_id=cmd_id, client_id=client_id,
-                          error_code=1, error_text='Not enough balance')
+                                          error_code=1, error_text='Not enough balance')
             return False
 
         # если баланс игрока уже больше максимального значения байина, то возвращаем ошибку
         if user.balance and user.balance >= self.buyin_max:
             await self.emit_TABLE_WARNING(db, cmd_id=cmd_id,
-                          client_id=client_id,
-                          error_code=3, error_text='The maximum balance value has been exceeded')
+                                          client_id=client_id,
+                                          error_code=3, error_text='The maximum balance value has been exceeded')
             return False
 
         # если выбрана неверная сумма байина
@@ -184,21 +224,21 @@ class Table_RG_Club(Table_RG):
         if user.balance is None and (interval_in_hours := getattr(self, "advanced_config").ratholing):
             if buyin_value != await db.get_last_table_reward(self.table_id, user.account_id, interval_in_hours):
                 await self.emit_TABLE_WARNING(db, cmd_id=cmd_id,
-                              client_id=client_id,
-                              error_code=2, error_text='Incorrect buyin value')
+                                              client_id=client_id,
+                                              error_code=2, error_text='Incorrect buyin value')
                 return False
         # проверка при входе
         elif user.balance is None and not self.buyin_min <= buyin_value <= self.buyin_max:
-            await self.emit_msg(db, cmd_id=cmd_id,
-                          client_id=client_id,
-                          error_code=2, error_text='Incorrect buyin value')
+            await self.emit_TABLE_WARNING(db, cmd_id=cmd_id,
+                                          client_id=client_id,
+                                          error_code=2, error_text='Incorrect buyin value')
             return False
         # пополнение
         elif (user.balance is not None and not self.buyin_min - user.balance <= buyin_value <=
                                                self.buyin_max - user.balance):
             await self.emit_TABLE_WARNING(db, cmd_id=cmd_id,
-                          client_id=client_id,
-                          error_code=2, error_text='Incorrect buyin value')
+                                          client_id=client_id,
+                                          error_code=2, error_text='Incorrect buyin value')
             return False
 
         return True
@@ -219,7 +259,7 @@ class Table_RG_Club(Table_RG):
         # задача проверки buyin
         self.task_secondary = asyncio.create_task(self.run_buyin_timeout())
         return True
-        
+
     async def on_table_continue(self):
         # пополним балансы пользователей, которые ранее это запросили
         async with self.DBI() as db:
@@ -230,5 +270,5 @@ class Table_RG_Club(Table_RG):
                             user.balance + user.buyin_deferred <= self.buyin_max):
                         await self.update_balance(db, user, user.buyin_deferred)
                     user.buyin_deferred = None
-        
-        super().on_table_continue()
+
+        await super().on_table_continue()

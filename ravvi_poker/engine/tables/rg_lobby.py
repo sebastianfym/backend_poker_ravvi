@@ -53,6 +53,6 @@ class Table_RG_Lobby(Table_RG):
                 if not account:
                     return False
                 await self.handle_auto_buyin(db, user, account)
-                self.broadcast_PLAYER_BALANCE(db, user_id=user.id, balance=user.balance)
+                await self.broadcast_PLAYER_BALANCE(db, user_id=user.id, balance=user.balance)
         
         await super().on_table_continue()
