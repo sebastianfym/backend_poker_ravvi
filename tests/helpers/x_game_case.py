@@ -34,6 +34,7 @@ class X_Deck:
 class X_CaseMixIn:
     SLEEP_ROUND_BEGIN = 0
     SLEEP_ROUND_END = 0
+    SLEEP_ROUND_RESULT = 0
     SLEEP_SHOWDOWN_CARDS = 0
     SLEEP_GAME_END = 0
 
