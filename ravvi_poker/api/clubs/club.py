@@ -5,6 +5,7 @@ from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 
 from .utilities import check_rights_user_club_owner_or_manager
+from ..users.types import black_list_symbols
 from ...db import DBI
 from ..utils import SessionUUID, get_session_and_user, check_club_name
 from .router import router
@@ -20,6 +21,12 @@ async def v1_create_club(params: ClubProps, session_uuid: SessionUUID) -> ClubPr
     """
     async with DBI() as db:
         _, user = await get_session_and_user(db, session_uuid)
+        for symbol in black_list_symbols:
+            try:
+                if symbol in params.name:
+                    raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You are using forbidden characters")
+            except TypeError:
+                break
         club = await db.create_club(user_id=user.id, name=params.name, description=params.description,
                                     image_id=params.image_id, timezone=params.timezone, )
     club_profile = ClubProfile(
@@ -133,6 +140,9 @@ async def v1_update_club(club_id: int, params: ClubProps, session_uuid: SessionU
         if club_params:
             if 'name' in club_params.keys() and club_params['name'] is not None:
                 club_name = club_params['name']
+                for symbol in black_list_symbols:
+                    if symbol in club_name:
+                        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You are using forbidden characters")
                 if await db.check_uniq_club_name(club_name) is not None:
                     raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="This name is already taken")
                 check_club_name(club_name, club_id)
