@@ -6,7 +6,7 @@ class CommandType(IntEnum):
     JOIN = 11
     EXIT = 12
     TAKE_SEAT = 13
-    OFFER_RESULT = 14
+    BUYIN = 14
 
     BET = 21
     SHOW_CARDS = 22
