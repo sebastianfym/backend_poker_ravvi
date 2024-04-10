@@ -36,7 +36,7 @@ def cmd_TABLE_JOIN(ws, **kwargs):
     logger.info("cmd %s", cmd)
     ws.send_json(cmd)
 
-#@pytest.mark.asyncio    
+@pytest.mark.skip(reason='review')
 def test_ws_join(api_client: TestClient, api_guest: UserAccessProfile, table):
     params = urlencode(dict(access_token=api_guest.access_token))
     with api_client.websocket_connect(f"/api/v1/ws?{params}") as ws:

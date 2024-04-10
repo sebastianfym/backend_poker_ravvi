@@ -31,7 +31,7 @@ async def test_chips_agent(club_and_owner, users_10):
     # MOVIN 100.00 - not enough balance in club
     with pytest.raises(DBI.Error) as ex:
         async with DBI() as db:
-            await db.create_txn_MOVEIN(txn_user_id=owner_user.id, club_id=club.id, user_id=agent_1.user_id, ref_user_id=None, txn_value=100)
+            await db.create_txn_MOVEIN(txn_user_id=owner_user.id, club_id=club.id, member_id=agent_1.id, ref_member_id=None, txn_value=100)
 
     # add 100 to club
     async with DBI() as db:
@@ -39,7 +39,7 @@ async def test_chips_agent(club_and_owner, users_10):
 
     # try again
     async with DBI() as db:
-        await db.create_txn_MOVEIN(txn_user_id=owner_user.id, club_id=club.id, user_id=agent_1.user_id, ref_user_id=None, txn_value=50)
+        await db.create_txn_MOVEIN(txn_user_id=owner_user.id, club_id=club.id, member_id=agent_1.id, ref_member_id=None, txn_value=50)
         club = await db.get_club(club.id)
         owner_member = await db.get_club_member(owner_member.id)
         agent_1 = await db.get_club_member(agent_1.id)
@@ -56,10 +56,11 @@ async def test_chips_agent(club_and_owner, users_10):
     # MOVIN 100.00 - not enough balance_shared on agent 1
     with pytest.raises(DBI.Error) as ex:
         async with DBI() as db:
-            await db.create_txn_MOVEIN(txn_user_id=owner_user.id, club_id=club.id, user_id=agent_2.user_id, ref_user_id=agent_1.user_id, txn_value=100)
+            await db.create_txn_MOVEIN(txn_user_id=owner_user.id, club_id=club.id, member_id=agent_2.id, ref_member_id=agent_1.id, txn_value=100)
+    #log.error("%s", ex.value.msg)
 
     async with DBI() as db:
-        await db.create_txn_MOVEIN(txn_user_id=owner_user.id, club_id=club.id, user_id=agent_2.user_id, ref_user_id=agent_1.user_id, txn_value=20)
+        await db.create_txn_MOVEIN(txn_user_id=owner_user.id, club_id=club.id, member_id=agent_2.id, ref_member_id=agent_1.id, txn_value=20)
         club = await db.get_club(club.id)
         owner_member = await db.get_club_member(owner_member.id)
         agent_1 = await db.get_club_member(agent_1.id)
@@ -76,10 +77,10 @@ async def test_chips_agent(club_and_owner, users_10):
     # MOVEOUT 100.00 - not enough balance_shared on agent 2
     with pytest.raises(DBI.Error) as ex:
         async with DBI() as db:
-            await db.create_txn_MOVEOUT(txn_user_id=owner_user.id, club_id=club.id, user_id=agent_2.user_id, ref_user_id=agent_1.user_id, txn_value=100)
+            await db.create_txn_MOVEOUT(txn_user_id=owner_user.id, club_id=club.id, member_id=agent_2.id, ref_member_id=agent_1.id, txn_value=100)
 
     async with DBI() as db:
-        await db.create_txn_MOVEOUT(txn_user_id=owner_user.id, club_id=club.id, user_id=agent_2.user_id, ref_user_id=agent_1.user_id, txn_value=15)
+        await db.create_txn_MOVEOUT(txn_user_id=owner_user.id, club_id=club.id, member_id=agent_2.id, ref_member_id=agent_1.id, txn_value=15)
         club = await db.get_club(club.id)
         owner_member = await db.get_club_member(owner_member.id)
         agent_1 = await db.get_club_member(agent_1.id)
@@ -95,10 +96,10 @@ async def test_chips_agent(club_and_owner, users_10):
     # MOVEOUT 100.00 - not enough balance_shared on agent 1
     with pytest.raises(DBI.Error) as ex:
         async with DBI() as db:
-            await db.create_txn_MOVEOUT(txn_user_id=owner_user.id, club_id=club.id, user_id=agent_1.user_id, ref_user_id=None, txn_value=100)
+            await db.create_txn_MOVEOUT(txn_user_id=owner_user.id, club_id=club.id, member_id=agent_1.id, ref_member_id=None, txn_value=100)
 
     async with DBI() as db:
-        await db.create_txn_MOVEOUT(txn_user_id=owner_user.id, club_id=club.id, user_id=agent_1.user_id, ref_user_id=None, txn_value=30)
+        await db.create_txn_MOVEOUT(txn_user_id=owner_user.id, club_id=club.id, member_id=agent_1.id, ref_member_id=None, txn_value=30)
         club = await db.get_club(club.id)
         owner_member = await db.get_club_member(owner_member.id)
         agent_1 = await db.get_club_member(agent_1.id)
@@ -120,29 +121,26 @@ async def test_chips_agent(club_and_owner, users_10):
 
     x = txns[0]
     assert x.txn_id
-    assert x.club_txn_id
     assert x.created_ts
     assert x.created_by == owner_user.id
     assert x.txn_type == 'CHIPSIN'
-    assert x.delta == Decimal('100')
+    assert x.txn_delta == Decimal('100')
     assert x.balance == Decimal('100')
 
     x = txns[1]
     assert x.txn_id
-    assert x.club_txn_id
     assert x.created_ts
     assert x.created_by == owner_user.id
     assert x.txn_type == 'MOVEIN'
-    assert x.delta == Decimal('-50')
+    assert x.txn_delta == Decimal('-50')
     assert x.balance == Decimal('50')
 
     x = txns[2]
     assert x.txn_id
-    assert x.club_txn_id
     assert x.created_ts
     assert x.created_by == owner_user.id
     assert x.txn_type == 'MOVEOUT'
-    assert x.delta == Decimal('30')
+    assert x.txn_delta == Decimal('30')
     assert x.balance == Decimal('80')
 
 

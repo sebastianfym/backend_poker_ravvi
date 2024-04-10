@@ -2,11 +2,12 @@ import json
 import os
 import re
 from typing import Annotated
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 from fastapi import Depends
 from fastapi.exceptions import HTTPException
 from fastapi.security import OAuth2PasswordBearer
 
+from ..db import DBI
 from ..engine.jwt import jwt_get
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login_form")
@@ -30,11 +31,25 @@ SessionUUID = Annotated[str, Depends(get_current_session_uuid)]
 async def get_session_and_user(db, session_uuid):
     session = await db.get_session_info(uuid=session_uuid)
     if not session or session.session_closed_ts or session.login_closed_ts:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid session")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Invalid session")
     user = await db.get_user(id=session.user_id)
     if not user or user.closed_ts:
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Invalid user")
     return session, user
+
+async def get_club_and_member(db: DBI, club_id: int, user_id: int, roles_required: list[str]|None):
+    club = await db.get_club(club_id)
+    if not club:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND,
+                            detail="Club not found")
+    member = await db.find_member(club_id=club_id, user_id=user_id)
+    if not member or member.approved_ts is None or member.closed_ts is not None:
+        raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                            detail="You are not club member")
+    if member.user_role not in roles_required:
+        raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                            detail="No access to function")
+    return club, member
 
 
 def get_country_code(country):

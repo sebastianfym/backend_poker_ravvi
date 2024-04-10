@@ -61,9 +61,9 @@ class DBI_Listener:
             except asyncio.CancelledError:
                 self.log.info("cancelled")
                 break
-            except (DBI.OperationalError, DBI.PoolTimeout) as ex:
-                self.log.error("%s", ex)
-                await asyncio.sleep(1)
+            #except (DBI.OperationalError, DBI.PoolTimeout) as ex:
+            #    self.log.error("%s", ex)
+            #    await asyncio.sleep(1)
             except Exception as ex:
                 self.log.exception("%s", ex)
             finally:

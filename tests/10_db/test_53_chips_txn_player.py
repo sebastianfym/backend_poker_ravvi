@@ -34,15 +34,15 @@ async def test_chips_player(club_and_owner, users_10):
 
     # give some chips to agent
     async with DBI() as db:
-        await db.create_txn_MOVEIN(txn_user_id=owner_user.id, club_id=club.id, user_id=agent_1.user_id, ref_user_id=None, txn_value=100)
+        await db.create_txn_MOVEIN(txn_user_id=owner_user.id, club_id=club.id, member_id=agent_1.id, ref_member_id=None, txn_value=100)
 
     # give some chips to player
     async with DBI() as db:
-        await db.create_txn_CASHIN(txn_user_id=owner_user.id, club_id=club.id, user_id=player_2.user_id, ref_user_id=None, txn_value=200)
+        await db.create_txn_CASHIN(txn_user_id=owner_user.id, club_id=club.id, member_id=player_2.id, ref_member_id=None, txn_value=200)
 
     # give some chips to player from agent
     async with DBI() as db:
-        await db.create_txn_CASHIN(txn_user_id=owner_user.id, club_id=club.id, user_id=player_2.user_id, ref_user_id=agent_1.user_id, txn_value=50)
+        await db.create_txn_CASHIN(txn_user_id=owner_user.id, club_id=club.id, member_id=player_2.id, ref_member_id=agent_1.id, txn_value=50)
 
     async with DBI() as db:
         club = await db.get_club(club.id)
@@ -58,11 +58,11 @@ async def test_chips_player(club_and_owner, users_10):
 
     # take some chips from player
     async with DBI() as db:
-        await db.create_txn_CASHOUT(txn_user_id=owner_user.id, club_id=club.id, user_id=player_2.user_id, ref_user_id=None, txn_value=25)
+        await db.create_txn_CASHOUT(txn_user_id=owner_user.id, club_id=club.id, member_id=player_2.id, ref_member_id=None, txn_value=25)
 
     # take some chips from player by agent
     async with DBI() as db:
-        await db.create_txn_CASHOUT(txn_user_id=owner_user.id, club_id=club.id, user_id=player_2.user_id, ref_user_id=agent_1.user_id, txn_value=100)
+        await db.create_txn_CASHOUT(txn_user_id=owner_user.id, club_id=club.id, member_id=player_2.id, ref_member_id=agent_1.id, txn_value=100)
 
     async with DBI() as db:
         club = await db.get_club(club.id)

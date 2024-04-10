@@ -90,21 +90,19 @@ async def test_chips_club(club_and_owner):
 
     x = txns[0]
     assert x.txn_id
-    assert x.club_txn_id
     assert x.created_ts
     assert x.created_by == owner_user.id
     assert x.txn_type == 'CHIPSIN'
-    assert x.delta == Decimal('100.00')
+    assert x.txn_delta == Decimal('100.00')
     assert x.balance == Decimal('100.00')
 
 
     x = txns[1]
     assert x.txn_id
-    assert x.club_txn_id
     assert x.created_ts
     assert x.created_by == owner_user.id
     assert x.txn_type == 'CHIPSOUT'
-    assert x.delta == Decimal('-42.05')
+    assert x.txn_delta == Decimal('-42.05')
     assert x.balance == Decimal('57.95')
 
 

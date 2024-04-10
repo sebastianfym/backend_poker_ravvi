@@ -8,27 +8,40 @@ from pydantic import BaseModel, Field, field_validator, validator
 
 from .utilities import check_rights_user_club_owner_or_manager
 from ..clubs.utilities import check_rights_user_club_owner
+
 # from ..clubs import check_rights_user_club_owner, check_rights_user_club_owner_or_manager
 from ...db import DBI
 from ..utils import SessionUUID, get_session_and_user
+
 # from ..types import HTTPError
-from .types import ChipsRequestParams, ChipsRequestItem, UserRequest, ChipRequestForm, ErrorException, \
-    ChipsRequestAction
+from .types import (
+    ChipsRequestParams,
+    ChipsRequestItem,
+    UserRequest,
+    ChipRequestForm,
+    ErrorException,
+    ChipsRequestAction,
+)
 
 from .router import router
 
 
 # CREATE CHIPS REQUEST
 
-@router.post("/{club_id}/requests/chips", status_code=HTTP_201_CREATED,
-             responses={
-                 400: {"model": ErrorException, "description": "Your request is still under consideration"},
-                 403: {"model": ErrorException, "description": "You don't have enough permissions"},
-                 404: {"model": ErrorException, "description": "Club or member not found"},
-             },
-             summary="Отправить запрос на пополнение баланса")
-async def v1_chips_requests_post(club_id: int, params: ChipsRequestParams,
-                                 session_uuid: SessionUUID) -> ChipsRequestItem:
+
+@router.post(
+    "/{club_id}/chips/requests",
+    status_code=HTTP_201_CREATED,
+    responses={
+        400: {"model": ErrorException, "description": "Your request is still under consideration"},
+        403: {"model": ErrorException, "description": "You don't have enough permissions"},
+        404: {"model": ErrorException, "description": "Club or member not found"},
+    },
+    summary="Отправить запрос на пополнение баланса",
+)
+async def v1_chips_requests_post(
+    club_id: int, params: ChipsRequestParams, session_uuid: SessionUUID
+) -> ChipsRequestItem:
     """
     Отправляет запрос от лица пользователя в адрес клуба на пополнение баланса.
 
@@ -51,15 +64,15 @@ async def v1_chips_requests_post(club_id: int, params: ChipsRequestParams,
             if account.approved_ts is None or account.approved_ts is False:
                 raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Your account has not been verified")
         except AttributeError as e:
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                detail=f"{e}")
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail=f"{e}")
 
         check_last_request = await db.check_request_to_replenishment(account.id)
 
         try:
-            if check_last_request.props['status'] == 'consider':
-                raise HTTPException(status_code=HTTP_400_BAD_REQUEST,
-                                    detail="Your request is still under consideration")
+            if check_last_request.props["status"] == "consider":
+                raise HTTPException(
+                    status_code=HTTP_400_BAD_REQUEST, detail="Your request is still under consideration"
+                )
         except AttributeError:
             pass
 
@@ -73,28 +86,29 @@ async def v1_chips_requests_post(club_id: int, params: ChipsRequestParams,
         else:
             balance = "balance"
         if account.user_role not in ["A", "S"] and balance == "balance_shared":
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You don't have enough permissions to work "
-                                                                       "with agent balance")
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="You don't have enough permissions to work " "with agent balance"
+            )
 
         row = await db.send_request_for_replenishment_of_chips(account_id=account.id, amount=amount, balance=balance)
 
     return ChipsRequestItem(
-                id=row.id,
-                created_ts=created_ts,
-                created_by=user.id,
-                txn_type=row.txn_type,
-                amount=row.txn_value
-                            )
+        id=row.id, created_ts=created_ts, created_by=user.id, txn_type=row.txn_type, amount=row.txn_value
+    )
 
 
 # GET CHIPS REQUESTS
 
-@router.get("/{club_id}/requests/chips", status_code=HTTP_200_OK,
-            # responses={
-            #     403: {"model": HTTPError, "description": "No access for requested operation"},
-            #     404: {"model": HTTPError, "description": "Club not found"},
-            # },
-            summary="Get open chips requests")
+
+@router.get(
+    "/{club_id}/chips/requests",
+    status_code=HTTP_200_OK,
+    # responses={
+    #     403: {"model": HTTPError, "description": "No access for requested operation"},
+    #     404: {"model": HTTPError, "description": "Club not found"},
+    # },
+    summary="Get open chips requests",
+)
 async def v1_chips_requests_get(club_id: int, users=Depends(check_rights_user_club_owner)) -> dict:
     """
     Страница служит для получения всех запросов от пользователей на пополнение баланса
@@ -136,7 +150,7 @@ async def v1_chips_requests_get(club_id: int, users=Depends(check_rights_user_cl
             try:
                 txn = await db.get_user_requests_to_replenishment(member.id)
                 user = await db.get_user(id=member.user_id)
-                result_dict['users_requests'].append(
+                result_dict["users_requests"].append(
                     UserRequest(
                         id=user.id,  # member.id,
                         txn_id=txn.id,
@@ -149,10 +163,10 @@ async def v1_chips_requests_get(club_id: int, users=Depends(check_rights_user_cl
                         balance_type=txn.props.get("balance"),
                         join_in_club=datetime.datetime.timestamp(member.created_ts),
                         leave_from_club=leave_from_club,
-                        country=user.country
+                        country=user.country,
                     )
                 )
-                result_dict['sum_txn_value'] += txn.txn_value
+                result_dict["sum_txn_value"] += txn.txn_value
 
             except AttributeError:
                 continue
@@ -162,14 +176,20 @@ async def v1_chips_requests_get(club_id: int, users=Depends(check_rights_user_cl
 
 # APPROVE CHIPS REQUEST
 
-@router.put("/{club_id}/requests/chips/{request_id}", status_code=HTTP_200_OK,
-            responses={
-                400: {"model": ErrorException, "detail": "Club balance cannot be less than 0"},
-                403: {"model": ErrorException, "description": "No access for requested operation"},
-                404: {"model": ErrorException, "detail": "Club not found"},
-            },
-            summary="Подтвердить заявку на пополнение баланса")
-async def v1_chips_requests_put(club_id: int, request_id: int, params: ChipsRequestAction, session_uuid: SessionUUID): #-> ChipsRequestItem:
+
+@router.put(
+    "/{club_id}/chips/requests/{request_id}",
+    status_code=HTTP_200_OK,
+    responses={
+        400: {"model": ErrorException, "detail": "Club balance cannot be less than 0"},
+        403: {"model": ErrorException, "description": "No access for requested operation"},
+        404: {"model": ErrorException, "detail": "Club not found"},
+    },
+    summary="Подтвердить заявку на пополнение баланса",
+)
+async def v1_chips_requests_put(
+    club_id: int, request_id: int, params: ChipsRequestAction, session_uuid: SessionUUID
+):  # -> ChipsRequestItem:
     """
     Подтверждает запрос на пополнение баланса клуба
     """
@@ -178,34 +198,43 @@ async def v1_chips_requests_put(club_id: int, request_id: int, params: ChipsRequ
     async with DBI() as db:
         txn = await db.get_specific_txn(request_id)
         if club_balance - txn.txn_value < 0:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail='Club balance cannot be less than 0')
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Club balance cannot be less than 0")
         if params.action == "approve":
-            await db.giving_chips_to_the_user(txn.txn_value, txn.account_id, txn.props["balance"], user.id)# club_owner_account.id)
+            await db.giving_chips_to_the_user(
+                txn.txn_value, txn.account_id, txn.props["balance"], user.id
+            )  # club_owner_account.id)
             mode = "give_out"
         elif params.action == "reject":
             mode = "pick_up"
         txn = await db.update_status_txn(txn.id, params.action)
         await db.refresh_club_balance(club_id, txn.txn_value, mode)
     return ChipsRequestItem(
-                id=txn.id,
-                created_ts=txn.created_ts.utcnow().replace(microsecond=0).timestamp(),
-                created_by=txn.account_id,
-                txn_type=txn.txn_type,
-                amount=txn.txn_value,
-                            )
+        id=txn.id,
+        created_ts=txn.created_ts.utcnow().replace(microsecond=0).timestamp(),
+        created_by=txn.account_id,
+        txn_type=txn.txn_type,
+        amount=txn.txn_value,
+    )
 
 
-@router.post("/{club_id}/requests/chips/all", status_code=HTTP_200_OK,
-            responses={
-                400: {"model": ErrorException, "detail": "Club balance cannot be less than 0"},
-                403: {"model": ErrorException, "description": "No access for requested operation"},
-                404: {"model": ErrorException, "detail": "Club not found"},
-                409: {"model": ErrorException, "detail": "Invalid mode value",
-                      "message": "Invalid value. Operation must be 'approve' or 'reject"}
-
-            },
-            summary="Подтвердить или отклонить ВСЕ запросы")
-async def v1_accept_all_chips_requests(club_id: int, params: ChipRequestForm, users=Depends(check_rights_user_club_owner)):
+@router.post(
+    "/{club_id}/chips/requests/all",
+    status_code=HTTP_200_OK,
+    responses={
+        400: {"model": ErrorException, "detail": "Club balance cannot be less than 0"},
+        403: {"model": ErrorException, "description": "No access for requested operation"},
+        404: {"model": ErrorException, "detail": "Club not found"},
+        409: {
+            "model": ErrorException,
+            "detail": "Invalid mode value",
+            "message": "Invalid value. Operation must be 'approve' or 'reject",
+        },
+    },
+    summary="Подтвердить или отклонить ВСЕ запросы",
+)
+async def v1_accept_all_chips_requests(
+    club_id: int, params: ChipRequestForm, users=Depends(check_rights_user_club_owner)
+):
     """
     Служит для обработки ВСЕХ запросов на пополнение баланса от пользователей
 
@@ -229,14 +258,13 @@ async def v1_accept_all_chips_requests(club_id: int, params: ChipRequestForm, us
         for txn in txn_list:
             if params.operation == "approve":
                 await db.giving_chips_to_the_user(txn.txn_value, txn.account_id, txn.props["balance"], user.id)
-                                                  # club_owner_account.id)
+                # club_owner_account.id)
                 await db.update_status_txn(txn.id, "approve")
                 await db.refresh_club_balance(club_id, txn.txn_value, "give_out")
             elif params.operation == "reject":
                 await db.update_status_txn(txn.id, "reject")
             else:
-                raise HTTPException(status_code=HTTP_409_CONFLICT,
-                                    detail="Invalid value. Operation must be 'approve' or 'reject")
+                raise HTTPException(
+                    status_code=HTTP_409_CONFLICT, detail="Invalid value. Operation must be 'approve' or 'reject"
+                )
     return HTTP_200_OK
-
-

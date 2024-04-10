@@ -1,41 +1,44 @@
-create or replace procedure create_txn_CASHIN(in operator_id bigint, in _club_id bigint, in _user_id bigint, in ref_user_id bigint, in txn_value numeric, out txn_id bigint) 
+create or replace procedure create_txn_CASHIN(operator_id bigint, _club_id bigint, _member_id bigint, in ref_member_id bigint, in txn_value numeric, out txn_id bigint) 
 language plpgsql
 as $body$
 declare
-    member_id bigint;
-    member_role varchar;
+    x_club_id bigint;
     balance_old numeric (20,2);
 	balance_new numeric(20,2);
-    ref_member_id bigint;
 	ref_balance_new numeric(20,2);
 begin
+    -- round and validate txn value
 	txn_value := round(txn_value, 2);
     if txn_value<=0 then 
         RAISE EXCEPTION '1000:Invalid txn value %', txn_value;
     end if;
-    -- get target agent info
-    select id, user_role, balance into member_id, member_role, balance_old from club_member WHERE club_id=_club_id and user_id=_user_id for update;
-    -- check member exists
-    if member_id is null then
-        RAISE EXCEPTION '1002:Club % has no agent %', _club_id, user_id;
+    -- get & lock club
+	select id into x_club_id from club_profile where id=_club_id for update;
+    if x_club_id is null then
+        RAISE EXCEPTION '1000:Club % not found', club_id;
     end if;
+    -- get target member
+    select club_id, balance into x_club_id, balance_old from club_member WHERE id=_member_id for update;
+    -- check member in expected club
+    if x_club_id is NULL or x_club_id!=_club_id then
+        RAISE EXCEPTION '1001:Club % has no member %', _club_id, _member_id;
+    end if;
+    -- calc new balance
     balance_new := balance_old + txn_value;
 
-    -- reference account
-    call _txn_get_ref_balance_for_update(_club_id, ref_user_id, -txn_value, ref_member_id, ref_balance_new);
-	
-    -- create txn
+    call _txn_get_ref_balance_for_update(_club_id, ref_member_id, -txn_value, ref_balance_new);
+    
+	-- create txn
 	insert into chips_txn
         (club_id, created_by, txn_type, txn_value, member_id, ref_member_id) 
 		values 
-        (_club_id, operator_id, 'CASHIN', txn_value, member_id, ref_member_id) returning id into txn_id;
+        (_club_id, operator_id, 'CASHIN', txn_value, _member_id, ref_member_id) returning id into txn_id;
+    -- create target agent txn
+	insert into chips_player (txn_id, member_id, delta, balance)  values (txn_id, _member_id, txn_value, balance_new);
+	-- update agent balance
+	update club_member set balance=balance_new where id=_member_id;
 
-    -- create target txn
-	insert into chips_player (txn_id, member_id, delta, balance)  values (txn_id, member_id, txn_value, balance_new);
-	-- update player balance
-	update club_member set balance=balance_new where id=member_id;
-
-    -- update ref
+    -- create ref txn and update balance
     call _txn_update_ref(_club_id, ref_member_id, txn_id, -txn_value, ref_balance_new);
 end;
 $body$;

@@ -1,50 +1,53 @@
-from decimal import Decimal
-from datetime import datetime as DateTime
-from fastapi import APIRouter, Request, Depends, HTTPException, Response
-from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_418_IM_A_TEAPOT
-from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
-from pydantic import BaseModel, Field, field_validator, validator
+from fastapi import HTTPException
+from starlette.status import HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN
 
-from .utilities import check_rights_user_club_owner_or_manager
 from ...db import DBI
 from ..utils import SessionUUID, get_session_and_user
-# from ..types import HTTPError
-from .types import ChipsParams, ChipsTxnItem, ErrorException
+from .types import ErrorException, ChipsActionParams, ChipsTxnInfo
 
 from .router import router
 
 
-@router.post("/{club_id}/club/chips", status_code=HTTP_201_CREATED,
-             responses={
-                 400: {"model": ErrorException, "description": "Possible amount must be more or less 0"},
-                 403: {"model": ErrorException, "description": "You dont have permissions"},
-                 404: {"model": ErrorException, "description": "Club not found"},
-             },
-             summary="Добавить или списать фишки с баланса клуба")
-async def v1_add_club_chips(club_id: int, params: ChipsParams, session_uuid: SessionUUID) -> ChipsTxnItem:
+@router.post(
+    "/{club_id}/chips",
+    status_code=HTTP_201_CREATED,
+    responses={
+        HTTP_400_BAD_REQUEST: {"model": ErrorException, "description": "Invalid request params"},
+        HTTP_403_FORBIDDEN: {"model": ErrorException, "description": "No permission"},
+        HTTP_404_NOT_FOUND: {"model": ErrorException, "description": "Club not found"},
+    },
+    summary="Добавить или списать фишки с баланса клуба",
+)
+async def v1_chips_club(club_id: int, params: ChipsActionParams, session_uuid: SessionUUID) -> ChipsTxnInfo:
     """
     Добавить или списать определенное значение фишек на баланса клуба.
 
-    - **amount**: number >  0 | number < 0
-
-    Если  число положительное, то произойдет  пополнение баланса, если отрицательное, то произойдет списание
+    - **action**: IN|OUT - добвление/списание
+    - **amount**: number > 0
     """
 
     async with DBI() as db:
-        club_owner_account, user, club = await check_rights_user_club_owner_or_manager(club_id, session_uuid)
-        if params.amount > 0:
-            row = await db.txn_with_chip_on_club_balance(club_id, params.amount, "CHIPSIN", club_owner_account.id, user.id)
-        elif params.amount < 0:
-            row = await db.txn_with_chip_on_club_balance(club_id, params.amount, "CHIPSOUT", club_owner_account.id,user.id)
-        else:
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Possible amount must be more or less 0")
-        created_ts = DateTime.utcnow().replace(microsecond=0).timestamp()
-    return ChipsTxnItem(id=row.id,  #Todo
-                        created_ts=created_ts,
-                        created_by=user.id,
-                        txn_type=row.txn_type,
-                        amount=params.amount,
-                        balance=row.total_balance,
-                        ref_user_id=user.id,
-                        ref_agent_id=None
-                        )
+        _, user = await get_session_and_user(db, session_uuid)
+        club = await db.get_club(club_id)
+        if not club:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+        operator = await db.find_member(club_id=club_id, user_id=user.id)
+        if not operator or operator.approved_ts is None or operator.closed_ts is not None:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You are not club member")
+        if operator.user_role not in ["O", "M"]:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="No access to function")
+        try:
+            if params.action == "IN":
+                txn_id = await db.create_txn_CHIPSIN(
+                    txn_user_id=operator.user_id, club_id=club.id, txn_value=params.amount
+                )
+            elif params.action == "OUT":
+                txn_id = await db.create_txn_CHIPSOUT(
+                    txn_user_id=operator.user_id, club_id=club.id, txn_value=params.amount
+                )
+            else:
+                raise HTTPException(HTTP_400_BAD_REQUEST, detail="Unexpected action")
+        except db.Error as e:
+            raise HTTPException(HTTP_400_BAD_REQUEST, detail="Logic error")
+
+    return ChipsTxnInfo(txn_id=txn_id)
