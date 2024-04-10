@@ -473,8 +473,6 @@ class Table:
 
     def get_game_players(self, *, min_size) -> List[User]:
         players = []
-        print("Вызвали количество необходимых игроков")
-        print(f"Места: {self.seats}")
         for i, user in enumerate(self.seats):
             if user and self.user_can_play(user):
                 players.append((i, user))
