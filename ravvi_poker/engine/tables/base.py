@@ -547,7 +547,7 @@ class Table:
         try:
             await self.game.run()
             # TODO сюда можно перенести обновление параметров счетчика bompot и ante, чтобы игра ничего не знала о столе
-            # UPDATE -> см. close_game() -  все действия по завершении игры там
+            #  UPDATE -> см. close_game() -  все действия по завершении игры там
         except Exception as e:
             self.log.exception("%s", str(e))
 
