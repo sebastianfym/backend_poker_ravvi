@@ -1,3 +1,4 @@
+import time
 from logging import getLogger
 from fastapi import Depends
 from fastapi.exceptions import HTTPException
@@ -54,11 +55,12 @@ async def v1_expel_member(club_id: int, user_id: int, session_uuid: SessionUUID)
         elif member.user_role is "O":
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Member is owner")
 
-        return_balance = member.balance + member.balance_shared
+        # return_balance = member.balance + member.balance_shared
 
-        await db.expel_member_from_club(member.id, club_id)
+        await db.expel_member_from_club(member.id, club_id, user.id)
+        #TODO тут необходимо реализовать транзакцию по списанию средств с участника и ппередачи этих средств на баланс клуба
 
-        await db.refresh_club_balance(club_id, return_balance, 'pick_up')
+        # await db.refresh_club_balance(club_id, return_balance, 'pick_up')
 
         return ClubMemberProfile(
             id=user_member.id,
@@ -68,7 +70,8 @@ async def v1_expel_member(club_id: int, user_id: int, session_uuid: SessionUUID)
             user_role=member.user_role,
             user_approved=member.approved_ts is not None,
             country=user_member.country,
-            balance=0.0000,
-            balance_shared=0.0000,
-            join_in_club=member.created_ts.timestamp()
+            balance=member.balance,
+            balance_shared=member.balance_shared,
+            join_in_club=member.created_ts.timestamp(),
+            leave_from_club=time.mktime(datetime.datetime.now().timetuple())#datetime.datetime.now().utcnow()
         )

@@ -586,6 +586,9 @@ def test_leave_from_club(api_client: TestClient, api_guest: UserAccessProfile, a
     request = api_client_2.post(f"/api/v1/clubs/{club.id}/leave_from_club", json={})
     assert request.status_code == 200
 
+    request = api_client_2.get(f"/api/v1/clubs/{club.id}")
+    assert request.status_code == 403
+
     request = api_client_2.post(f"/api/v1/clubs/{17031788}/leave_from_club", json={})
     assert request.status_code == 404
 
@@ -1064,4 +1067,15 @@ def test_owner_delete_member_from_club(client_new,
     request = api_client.post(f"/api/v1/clubs/{club.id}/expel/{owner_id}", json=data)
     assert request.status_code == 400
 
+    data = {
+        "agent_id": None
+    }
+    request = api_client.put(f"/api/v1/clubs/{club.id}/members/{user_3_id}/agents", json=data)
+    assert request.status_code == 200
+
+    request = api_client.post(f"/api/v1/clubs/{club.id}/expel/{user_3_id}", json={})
+    print(request.json())
+    assert request.json()['balance'] is not None
+    assert request.json()['balance_shared'] is not None
+    assert request.status_code == 200
 
