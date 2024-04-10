@@ -1,5 +1,7 @@
 import asyncio
 import contextlib
+from decimal import Decimal
+
 from .base import Table
 from .status import TableStatus
 from ...utils.timecounter import TimeCounter, timedelta
@@ -52,7 +54,7 @@ class Table_SNG(Table):
     def user_exit_enabled(self):
         return self.time_counter.total_seconds == 0
 
-    async def on_player_enter(self, db: DBI, user, seat_idx):
+    async def on_player_enter(self, db: DBI, cmd_id, client_id, user, seat_idx):
         # lobby: get user_profile balance
         account = await db.get_account_for_update(user.account_id)
         if not account:
@@ -66,7 +68,7 @@ class Table_SNG(Table):
         #if new_balance < 0:
         #    return False
         await db.create_account_txn(user.account_id, "BUYIN", -buyin, sender_id=None, table_id=self.table_id)
-        user.balance = self.buyin_value
+        user.balance = Decimal(self.buyin_value).quantize(Decimal(".01"))
         self.log.info("on_player_enter(%s): done", user.id)
         return True
 
