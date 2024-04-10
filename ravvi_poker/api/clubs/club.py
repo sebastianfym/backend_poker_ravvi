@@ -114,6 +114,8 @@ async def v1_get_club(club_id: int, session_uuid: SessionUUID) -> ClubProfile:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You are not a member in this club")
         if account.approved_ts is None:
             raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Your account not been approved")
+        elif account.closed_ts is not None:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You are not a member of the club")
         return ClubProfile(
             id=club.id,
             name=club.name,

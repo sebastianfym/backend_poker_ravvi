@@ -533,7 +533,7 @@ class DBI:
         return row
 
     async def get_clubs_for_user(self, user_id):
-        sql = "SELECT c.*, m.user_role, m.approved_ts FROM club_member m JOIN club_profile c ON c.id=m.club_id WHERE c.id!=0 and m.user_id=%s and m.closed_ts IS NULL and m.approved_ts IS NOT NULL"
+        sql = "SELECT c.*, m.user_role, m.approved_ts FROM club_member m JOIN club_profile c ON c.id=m.club_id WHERE c.id!=0 and m.user_id=%s and m.closed_ts IS NULL"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (user_id,))
             rows = await cursor.fetchall()
@@ -579,10 +579,11 @@ class DBI:
         async with self.cursor() as cursor:
             await cursor.execute(sql, (None, None, None, None, user_comment, account_id,))
 
-    async def expel_member_from_club(self, account_id, club_id):
-        sql = "UPDATE club_member SET approved_by=%s, approved_ts=%s, balance=%s, balance_shared=%s WHERE id=%s AND club_id=%s"
+    async def expel_member_from_club(self, account_id, club_id, owner_id):
+        sql = "UPDATE club_member SET closed_ts=%s, closed_by=%s WHERE id=%s AND club_id=%s"
+        closed_ts = datetime.datetime.now()
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (None, None, 0.0000, 0.0000, account_id, club_id,))
+            await cursor.execute(sql, (closed_ts, owner_id, account_id, club_id, ))
 
 
     # TABLE
