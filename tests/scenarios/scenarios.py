@@ -22,8 +22,7 @@ async def owner_scenario():
         await client.password_update(None, "password")
         await client.login_with_username_and_password(username=f'OWNER-{client.user_id}', password="password")
         await client.get_user_by_id(id=client.user_id)
-        my_club = await client.create_club(name=None, description=None, image_id=None, user_role="O",
-                                           user_approved=False, timezone=None)
+        my_club = await client.create_club(name=None, description=None, image_id=None, timezone=None)
         my_club_id = my_club[1].id
         await client.update_club(club_id=my_club_id, description='my best club', image_id=12,
                                  timezone="Europe/Moscow", automatic_confirmation=True)

@@ -51,7 +51,7 @@ async def v1_expel_member(club_id: int, user_id: int, session_uuid: SessionUUID)
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club member not found")
         elif member.agent_id is not None:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Member has  agent")
-        elif member.user_role is "O":
+        elif member.user_role == "O":
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Member is owner")
 
         return_balance = member.balance + member.balance_shared
