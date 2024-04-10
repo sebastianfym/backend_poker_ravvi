@@ -1,7 +1,7 @@
 from starlette.status import HTTP_400_BAD_REQUEST
 
 from .router import router
-from .types import UserMutableProps, UserPrivateProfile
+from .types import UserMutableProps, UserPrivateProfile, black_list_symbols
 from ..utils import SessionUUID, get_session_and_user, get_country_code, check_username, check_email
 from fastapi import Request, HTTPException
 
@@ -18,6 +18,9 @@ async def v1_update_user(props: UserMutableProps, session_uuid: SessionUUID, req
             kwargs['country'] = get_country_code(kwargs['country'])
         if "name" in kwargs.keys():
             name = kwargs['name']
+            for symbol in black_list_symbols:
+                if symbol in name:
+                    raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You are using forbidden characters")
             if await db.check_uniq_username(name, user.id) is not None:
                 raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="This name is already taken")
             check_username(name, user.id)
