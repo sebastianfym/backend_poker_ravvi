@@ -80,7 +80,7 @@ class ClientsManager:
                 # если сообщение не предназначено для пользоветеля, то пропускаем его
                 if msg.props["user_id"] != client.user_id:
                     continue
-            elif msg.msg_type == Message.Type.TABLE_JOIN_OFFER:
+            elif msg.msg_type == Message.Type.TABLE_BUYIN_INFO:
                 # оффер отправляет только клиенту, который его запросил
                 if msg.client_id != client.client_id:
                     continue
