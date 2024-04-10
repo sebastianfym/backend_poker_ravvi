@@ -1003,6 +1003,10 @@ def test_new_actions_with_chips(api_client: TestClient, api_guest: UserAccessPro
     response = api_client.post(f"/api/v1/chips/{404}/requests/chips", json=data)
     assert response.status_code == 404
 
+    data = {"amount": 250, "agent": True}
+    response = api_client.post(f"/api/v1/chips/{club.id}/requests/chips", json=data)
+    assert response.status_code == 403
+
     data = {"amount": 250, "agent": False}
     response = api_client.post(f"/api/v1/chips/{club.id}/requests/chips", json=data)
     assert response.status_code == 201
