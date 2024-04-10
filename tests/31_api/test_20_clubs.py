@@ -964,6 +964,10 @@ def test_new_actions_with_chips(api_client: TestClient, api_guest: UserAccessPro
     response = api_client.post("/api/v1/clubs", json=params)
     club = ClubProfile(**response.json())
 
+    data = {"amount": 250, "agent": False}
+    response = api_client_2.post(f"/api/v1/chips/{club.id}/requests/chips", json=data)
+    assert response.status_code == 404
+
     response = api_client_2.post(f"/api/v1/clubs/{club.id}/members", json={})
     assert response.status_code == 200
 
@@ -999,8 +1003,20 @@ def test_new_actions_with_chips(api_client: TestClient, api_guest: UserAccessPro
     assert response.status_code == 201
 
     data = {"amount": 250, "agent": False}
+    response = api_client.post(f"/api/v1/chips/{404}/requests/chips", json=data)
+    assert response.status_code == 404
+
+    data = {"amount": 250, "agent": True}
+    response = api_client.post(f"/api/v1/chips/{club.id}/requests/chips", json=data)
+    assert response.status_code == 403
+
+    data = {"amount": 250, "agent": False}
     response = api_client.post(f"/api/v1/chips/{club.id}/requests/chips", json=data)
     assert response.status_code == 201
+
+    data = {"amAunt": 250, "agent": False}
+    response = api_client.post(f"/api/v1/chips/{club.id}/requests/chips", json=data)
+    assert response.status_code == 422
 
     response = api_client.get(f"/api/v1/chips/{club.id}/requests/chips")
     assert response.status_code == 200
@@ -1008,6 +1024,40 @@ def test_new_actions_with_chips(api_client: TestClient, api_guest: UserAccessPro
     data = {"operation": "approve"}
     response = api_client.post(f"/api/v1/chips/{club.id}/requests/chips/all", json=data)
     assert response.status_code == 200
+
+    data = {"operation": "reject"}
+    response = api_client.post(f"/api/v1/chips/{club.id}/requests/chips/all", json=data)
+    assert response.status_code == 200
+
+    data = {"operation": "ruject"}
+    response = api_client.post(f"/api/v1/chips/{club.id}/requests/chips/all", json=data)
+    assert response.status_code == 422
+
+    data = {"amount": 250000000, "agent": False}
+    response = api_client.post(f"/api/v1/chips/{club.id}/requests/chips", json=data)
+    assert response.status_code == 201
+
+    data = {"operation": "approve"}
+    response = api_client.post(f"/api/v1/chips/{club.id}/requests/chips/all", json=data)
+    assert response.status_code == 400
+
+    params = {
+        "name": "Test club 2",
+        "description": "Test club 1",
+        "image_id": None,
+        "user_role": "O",
+        "user_approved": False,
+        "timezone": "Europe/Moscow"
+    }
+    response = api_client.post("/api/v1/clubs", json=params)
+    club2 = ClubProfile(**response.json())
+
+    response = api_client_2.post(f"/api/v1/clubs/{club2.id}/members", json={})
+    assert response.status_code == 200
+
+    data = {"amount": 250, "agent": False}
+    response = api_client_2.post(f"/api/v1/chips/{club2.id}/requests/chips", json=data)
+    assert response.status_code == 403
 
 
 @pytest.mark.parametrize("client_new",
