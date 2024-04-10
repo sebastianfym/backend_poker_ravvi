@@ -145,6 +145,6 @@ class Table_SNG(Table):
         if len(users) < 2:
             self.status = TableStatus.CLOSING
         
-    def user_can_stay(self, user):
+    async def user_can_stay(self, user):
         return self.user_can_play(user)
             
