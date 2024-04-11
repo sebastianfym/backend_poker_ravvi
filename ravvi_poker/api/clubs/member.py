@@ -82,7 +82,7 @@ async def v1_get_club_members(club_id: int, session_uuid: SessionUUID) -> List[C
         return result_list
 
 
-@router.post("/{club_id}/members", summary="Подтверждает заявку на вступление в клуб", responses={
+@router.post("/{club_id}/members", summary="Отправляет заявку на вступление в клуб", responses={
                 404: {"model": ErrorException, "detail": "Club not found",
                       "message": "Member not found"},
                 403: {"model": ErrorException, "detail": "Permission denied",
@@ -109,7 +109,12 @@ async def v1_join_club(club_id: int, session_uuid: SessionUUID, params: MemberAp
             else:
                 account = await db.create_club_member(club.id, user.id, user_comment, False)
         elif account.closed_ts is not None and account.club_id == club_id:
-            await db.refresh_member_in_club(account.id, user_comment)
+            if club.automatic_confirmation is not True:
+                await db.refresh_member_in_club(account.id, user_comment)
+            else:
+                owners = await db.get_club_owner(club_id)
+                await db.approve_club_member(account.id, owners[0].id, account.club_comment, account.nickname, account.user_role)
+
 
     return ClubProfile(
         id=club.id,
