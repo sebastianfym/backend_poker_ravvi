@@ -178,7 +178,7 @@ class Table_RG(Table):
             return
         # если недостаточно денег на балансе до минимального байина, то возвращаем ошибку
         if user.balance:
-            if buyin_min > account_balance + user.balance:
+            if buyin_min > account_balance + user.balance or account_balance == 0:
                 await self.emit_TABLE_WARNING(db, cmd_id=None, client_id=client_id,
                                               error_code=1, error_text='Not enough balance')
                 return
@@ -187,13 +187,9 @@ class Table_RG(Table):
                 await self.emit_TABLE_WARNING(db, cmd_id=None, client_id=client_id,
                                               error_code=1, error_text='Not enough balance')
                 return
-        # если максимальный байин больше чем денег на балансе, то максимальный байин равен балансу
-        if buyin_max > account_balance:
-            buyin_max = account_balance
-        # иначе вычитаем тот баланс что уже есть
-        elif user.balance is not None:
-            buyin_max -= user.balance
         if user.balance is not None:
+            buyin_max -= user.balance
+            buyin_max = min(buyin_max, account_balance)
             buyin_min -= user.balance
             if buyin_min <= 0:
                 buyin_min = min(self.game_props.get("blind_big"), buyin_max)
@@ -201,6 +197,8 @@ class Table_RG(Table):
             # получаем последнюю выплату от стола за N часов
             # TODO дополнить правило рэтхолинга, если последняя выплата равна байину, то рэтхолинга нет
             buyin_min = buyin_max = await db.get_last_table_reward(self.table_id, user.account_id, interval_in_hours)
+        else:
+            buyin_max = min(buyin_max, account_balance)
         # если пользователь ранее имел офферы, то разошлем сообщения, что они просрочены
         if user.buyin_offer_timeout:
             for client_id_expired_offer in user.clients:
