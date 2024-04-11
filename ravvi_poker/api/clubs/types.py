@@ -151,6 +151,11 @@ class ChangeMembersData(BaseModel):
         return value
 
 
+class MembersDataForExpel(BaseModel):
+    nickname: str | None = None
+    club_comment: str | None = None
+
+
 class ChangeMembersAgent(BaseModel):
     # id: int
     agent_id: int | None = None
