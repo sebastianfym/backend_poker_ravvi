@@ -204,14 +204,14 @@ class Table_RG(Table):
         # если пользователь ранее имел офферы, то разошлем сообщения, что они просрочены
         if user.buyin_offer_timeout:
             for client_id_expired_offer in user.clients:
-                await self.emit_TABLE_JOIN_OFFER(db, client_id=client_id_expired_offer, offer_type="buyin",
+                await self.emit_TABLE_BUYIN_INFO(db, client_id=client_id_expired_offer, buyin_type="BUYIN",
                                                  table_id=self.table_id, balance=account_balance,
-                                                 closed_at=0, buyin_min=buyin_min, buyin_max=buyin_max)
+                                                 timeout=0, cost_min=buyin_min, cost_max=buyin_max)
             await db.commit()
         # отправим действующий оффер
-        await self.emit_TABLE_JOIN_OFFER(db, client_id=client_id, offer_type="buyin",
+        await self.emit_TABLE_BUYIN_INFO(db, client_id=client_id, buyin_type="BUYIN",
                                          table_id=self.table_id, balance=account_balance,
-                                         closed_at=int(offer_closed_at - time.time()),
-                                         buyin_min=buyin_min, buyin_max=buyin_max)
+                                         timeout=int(offer_closed_at - time.time()),
+                                         cost_min=buyin_min, cost_max=buyin_max)
         if user.buyin_offer_timeout is None:
             user.buyin_offer_timeout = offer_closed_at + 5

@@ -163,15 +163,16 @@ class Table:
         await self.emit_msg(db, msg)
 
     async def emit_TABLE_WARNING(self, db, *, cmd_id, client_id, error_code, error_text):
-        msg = Message(msg_type=Message.Type.TABLE_WARNING, cmd_id=cmd_id, client_id=client_id, error_code=error_code, error_text=error_text)
+        msg = Message(msg_type=Message.Type.TABLE_WARNING, cmd_id=cmd_id, client_id=client_id, error_code=error_code,
+                      error_text=error_text)
         await self.emit_msg(db, msg)
 
     async def broadcast_TABLE_NEXT_LEVEL_INFO(self, db, **kwargs):
         msg = Message(msg_type=Message.Type.TABLE_NEXT_LEVEL_INFO, **kwargs)
         await self.emit_msg(db, msg)
 
-    async def emit_TABLE_JOIN_OFFER(self, db, **kwargs):
-        msg = Message(msg_type=Message.Type.TABLE_JOIN_OFFER, **kwargs)
+    async def emit_TABLE_BUYIN_INFO(self, db, **kwargs):
+        msg = Message(msg_type=Message.Type.TABLE_BUYIN_INFO, **kwargs)
         await self.emit_msg(db, msg)
 
     async def broadcast_TABLE_CLOSED(self, db):
@@ -248,7 +249,7 @@ class Table:
                 seat_idx = props.get("seat_idx", None)
                 await self.handle_cmd_take_seat(db, cmd_id=cmd_id, client_id=client_id, user_id=user_id,
                                                 seat_idx=seat_idx)
-            elif cmd_type == Command.Type.OFFER_RESULT:
+            elif cmd_type == Command.Type.BUYIN:
                 buyin_cost = props.get("buyin_cost", 0)
                 await self.handle_cmd_offer_result(db, cmd_id=cmd_id, client_id=client_id, user_id=user_id,
                                                    buyin_cost=buyin_cost)
