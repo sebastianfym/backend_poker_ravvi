@@ -1012,24 +1012,38 @@ class DBI:
                 raise DBIError(e)
         return result.txn_id if result else None
 
+    async def create_txn_BUYIN(self, *, member_id: int, table_session_id: int, txn_value: float|str|Decimal):
+        """Creates BUYIN txn for player"""
+        if not isinstance(txn_value, decimal.Decimal):
+            txn_value = decimal.Decimal(txn_value)
+#        if txn_value<=0:
+#            raise ValueError('Invalid delta')
+        async with self.cursor() as cursor:
+            try:
+                await cursor.execute("call create_txn_BUYIN(%s, %s, %s, NULL)", (member_id, table_session_id, txn_value))
+                result = await cursor.fetchone()
+            except psycopg.errors.RaiseException as e:
+                raise DBIError(e)
+        return result.txn_id if result else None
+
+    async def create_txn_REWARD(self, *, member_id: int, table_session_id: int, txn_value: float|str|Decimal):
+        """Creates REWARD txn for player"""
+        if not isinstance(txn_value, decimal.Decimal):
+            txn_value = decimal.Decimal(txn_value)
+#        if txn_value<=0:
+#            raise ValueError('Invalid delta')
+        async with self.cursor() as cursor:
+            try:
+                await cursor.execute("call create_txn_REWARD(%s, %s, %s, NULL)", (member_id, table_session_id, txn_value))
+                result = await cursor.fetchone()
+            except psycopg.errors.RaiseException as e:
+                raise DBIError(e)
+        return result.txn_id if result else None
+
     async def get_player_txns(self, member_id):
         if member_id is None:
             return None
-        sql = """
-        select
-            cc.txn_id,
-            cc.id club_txn_id,
-            tx.created_ts,
-            tx.created_by,
-            tx.txn_type,
-            cc.delta,
-            cc.balance,
-            tx.member_id,
-            tx.ref_member_id
-        from chips_player cc 
-        join chips_txn tx on tx.id=cc.txn_id
-        where cc.member_id=%s
-        """
+        sql = "select * from chips_player_view where member_id=%s"
         async with self.cursor() as cursor:
             await cursor.execute(sql, (member_id, ))
             rows = await cursor.fetchall()

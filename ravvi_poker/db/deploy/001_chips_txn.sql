@@ -5,7 +5,9 @@ CREATE TYPE chips_txn_enum AS ENUM (
     'MOVEOUT',
     'CASHIN',
     'CASHOUT',
-    'RAKEBACK'
+    'RAKEBACK',
+	'BUYIN',
+	'REWARD'
 );
 
 CREATE TABLE chips_txn (
@@ -17,6 +19,7 @@ CREATE TABLE chips_txn (
 	club_id bigint NOT NULL,
 	member_id bigint NULL,
 	ref_member_id bigint NULL,
+	ref_table_id bigint NULL,
 	CONSTRAINT chips_txn_pk PRIMARY KEY (id)
 );
 

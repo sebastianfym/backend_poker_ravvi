@@ -15,6 +15,7 @@ class ClubTxnItem(BaseModel, extra="forbid"):
     txn_id: int
     txn_type: str
     txn_delta: Decimal
+    balance: Decimal
     created_ts: float
     created_by: int
     user_id: int | None
@@ -71,6 +72,7 @@ async def v1_txns_club(club_id: int, session_uuid: SessionUUID) -> ClubTxnHistor
                 txn_id=x.txn_id,
                 txn_type=x.txn_type,
                 txn_delta=x.txn_delta,
+                balance=x.balance,
                 user_id=x.user_id,
             )
         )

@@ -38,7 +38,7 @@ begin
 		values 
         (_club_id, operator_id, 'CASHOUT', txn_value, _member_id, ref_member_id) returning id into txn_id;
     -- create target agent txn
-	insert into chips_player (txn_id, member_id, delta, balance)  values (txn_id, _member_id, txn_value, balance_new);
+	insert into chips_player (txn_id, member_id, delta, balance)  values (txn_id, _member_id, -txn_value, balance_new);
 	-- update agent balance
 	update club_member set balance=balance_new where id=_member_id;
 
