@@ -1105,17 +1105,17 @@ def test_owner_delete_member_from_club(client_new,
     request = api_client.put(f"/api/v1/clubs/{club.id}/members/{user_3_id}/agents", json=data)
     assert request.status_code == 200
 
-    request = api_client.post(f"/api/v1/clubs/{club.id}/expel/{user_3_id}", json=data)
+    request = api_client.patch(f"/api/v1/clubs/{club.id}/expel/{user_3_id}", json=data)
     assert request.status_code == 400
 
-    request = api_client.post(f"/api/v1/clubs/{club.id}/expel/{5214}", json=data)
+    request = api_client.patch(f"/api/v1/clubs/{club.id}/expel/{5214}", json=data)
     assert request.status_code == 404
 
-    request = api_client_2.post(f"/api/v1/clubs/{club.id}/expel/{user_3_id}", json=data)
+    request = api_client_2.patch(f"/api/v1/clubs/{club.id}/expel/{user_3_id}", json=data)
     assert request.status_code == 403
 
     owner_id = dict(api_guest).get("user").id
-    request = api_client.post(f"/api/v1/clubs/{club.id}/expel/{owner_id}", json=data)
+    request = api_client.patch(f"/api/v1/clubs/{club.id}/expel/{owner_id}", json=data)
     assert request.status_code == 400
 
     data = {
@@ -1124,8 +1124,7 @@ def test_owner_delete_member_from_club(client_new,
     request = api_client.put(f"/api/v1/clubs/{club.id}/members/{user_3_id}/agents", json=data)
     assert request.status_code == 200
 
-    request = api_client.post(f"/api/v1/clubs/{club.id}/expel/{user_3_id}", json={})
-    print(request.json())
+    request = api_client.patch(f"/api/v1/clubs/{club.id}/expel/{user_3_id}", json={})
     assert request.json()['balance'] is not None
     assert request.json()['balance_shared'] is not None
     assert request.status_code == 200

@@ -22,8 +22,6 @@ class Table_RG(Table):
         from ..poker.bomb_pot import BombPotController
         from ..poker.seven_deuce import SevenDeuceController
 
-        if buyin_max is None:
-            buyin_max = buyin_min * 2;
         self.buyin_min = Decimal(buyin_min).quantize(Decimal("0.01"))
         self.buyin_max = Decimal(buyin_max).quantize(Decimal("0.01"))
         self.game_props.update(bet_timeout=action_time,
@@ -127,12 +125,12 @@ class Table_RG(Table):
 
         # если выбрана неверная сумма байина
         # проверим на рэтхолинг
-        if user.balance is None and (interval_in_hours := getattr(self, "advanced_config").ratholing):
-            if buyin_value != await db.get_last_table_reward(self.table_id, user.account_id, interval_in_hours):
-                await self.emit_TABLE_WARNING(db, cmd_id=cmd_id,
-                                              client_id=client_id,
-                                              error_code=2, error_text='Incorrect buyin value')
-                return False
+        # if user.balance is None and (interval_in_hours := getattr(self, "advanced_config").ratholing):
+        #     if buyin_value != await db.get_last_table_reward(self.table_id, user.account_id, interval_in_hours):
+        #         await self.emit_TABLE_WARNING(db, cmd_id=cmd_id,
+        #                                       client_id=client_id,
+        #                                       error_code=2, error_text='Incorrect buyin value')
+        #         return False
         # проверка при входе
         elif user.balance is None and not self.buyin_min <= buyin_value <= self.buyin_max:
             await self.emit_TABLE_WARNING(db, cmd_id=cmd_id,
@@ -167,51 +165,57 @@ class Table_RG(Table):
             offer_closed_at = time.time() + 60
         # игрок уже имеет активный оффер
         else:
-            # TODO обработать отрицательное значение относительно текущего времени
             offer_closed_at = user.buyin_offer_timeout - 5
+            if time.time() > offer_closed_at:
+                await self.emit_TABLE_WARNING(db, cmd_id=None,
+                                              client_id=client_id,
+                                              error_code=4, error_text='Replenishment time has expired')
+                user.buyin_offer_timeout = None
+                return
         buyin_min, buyin_max = self.buyin_min, self.buyin_max
         # если денег на балансе уже больше максимального байина, то возвращаем ошибку
         if user.balance is not None and user.balance >= buyin_max:
             await self.emit_TABLE_WARNING(db, cmd_id=None,
                                           client_id=client_id,
                                           error_code=3, error_text='The maximum balance value has been exceeded')
+            user.buyin_offer_timeout = None
             return
         # если недостаточно денег на балансе до минимального байина, то возвращаем ошибку
         if user.balance:
-            if buyin_min > account_balance + user.balance:
+            if buyin_min > account_balance + user.balance or account_balance == 0:
                 await self.emit_TABLE_WARNING(db, cmd_id=None, client_id=client_id,
                                               error_code=1, error_text='Not enough balance')
+                user.buyin_offer_timeout = None
                 return
         else:
             if buyin_min > account_balance:
                 await self.emit_TABLE_WARNING(db, cmd_id=None, client_id=client_id,
                                               error_code=1, error_text='Not enough balance')
+                user.buyin_offer_timeout = None
                 return
-        # если максимальный байин больше чем денег на балансе, то максимальный байин равен балансу
-        if buyin_max > account_balance:
-            buyin_max = account_balance
-        # иначе вычитаем тот баланс что уже есть
-        elif user.balance is not None:
-            buyin_max -= user.balance
         if user.balance is not None:
+            buyin_max -= user.balance
+            buyin_max = min(buyin_max, account_balance)
             buyin_min -= user.balance
             if buyin_min <= 0:
                 buyin_min = min(self.game_props.get("blind_big"), buyin_max)
-        elif user.balance is None and (interval_in_hours := getattr(self, "advanced_config").ratholing):
-            # получаем последнюю выплату от стола за N часов
-            # TODO дополнить правило рэтхолинга, если последняя выплата равна байину, то рэтхолинга нет
-            buyin_min = buyin_max = await db.get_last_table_reward(self.table_id, user.account_id, interval_in_hours)
+        # elif user.balance is None and (interval_in_hours := getattr(self, "advanced_config").ratholing):
+        #     # получаем последнюю выплату от стола за N часов
+        #     # TODO дополнить правило рэтхолинга, если последняя выплата равна байину, то рэтхолинга нет
+        #     buyin_min = buyin_max = await db.get_last_table_reward(self.table_id, user.account_id, interval_in_hours)
+        else:
+            buyin_max = min(buyin_max, account_balance)
         # если пользователь ранее имел офферы, то разошлем сообщения, что они просрочены
         if user.buyin_offer_timeout:
             for client_id_expired_offer in user.clients:
-                await self.emit_TABLE_JOIN_OFFER(db, client_id=client_id_expired_offer, offer_type="buyin",
+                await self.emit_TABLE_BUYIN_INFO(db, client_id=client_id_expired_offer, buyin_type="BUYIN",
                                                  table_id=self.table_id, balance=account_balance,
-                                                 closed_at=0, buyin_min=buyin_min, buyin_max=buyin_max)
+                                                 timeout=0, cost_min=buyin_min, cost_max=buyin_max)
             await db.commit()
         # отправим действующий оффер
-        await self.emit_TABLE_JOIN_OFFER(db, client_id=client_id, offer_type="buyin",
+        await self.emit_TABLE_BUYIN_INFO(db, client_id=client_id, buyin_type="BUYIN",
                                          table_id=self.table_id, balance=account_balance,
-                                         closed_at=int(offer_closed_at - time.time()),
-                                         buyin_min=buyin_min, buyin_max=buyin_max)
+                                         timeout=int(offer_closed_at - time.time()),
+                                         cost_min=buyin_min, cost_max=buyin_max)
         if user.buyin_offer_timeout is None:
             user.buyin_offer_timeout = offer_closed_at + 5

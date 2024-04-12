@@ -15,7 +15,7 @@ from .types import *
 log = getLogger(__name__)
 
 
-@router.post("/{club_id}/expel/{user_id}", summary="Выгнать пользователя из клуба",
+@router.patch("/{club_id}/expel/{user_id}", summary="Выгнать пользователя из клуба",
              responses={
                  404: {"model": ErrorException, "detail": "Club not found",
                        "message": "Club not found"},
@@ -24,7 +24,7 @@ log = getLogger(__name__)
                  400: {"model": ErrorException, "detail": "Member has  agent",
                        "message": "Member has  agent"}
              })
-async def v1_expel_member(club_id: int, user_id: int, session_uuid: SessionUUID) -> ClubMemberProfile:
+async def v1_expel_member(club_id: int, user_id: int, params: MembersDataForExpel,  session_uuid: SessionUUID) -> ClubMemberProfile:
     """
     Служит для исключение пользователя из клуба
 
@@ -38,6 +38,9 @@ async def v1_expel_member(club_id: int, user_id: int, session_uuid: SessionUUID)
         club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
+
+        nickname = params.nickname
+        club_comment = params.club_comment
 
         account = await db.find_account(user_id=user.id, club_id=club_id)
         member = await db.find_account(user_id=user_id, club_id=club_id)
@@ -57,9 +60,8 @@ async def v1_expel_member(club_id: int, user_id: int, session_uuid: SessionUUID)
 
         # return_balance = member.balance + member.balance_shared
 
-        await db.expel_member_from_club(member.id, club_id, user.id)
+        member = await db.expel_member_from_club(member.id, club_id, user.id,  nickname, club_comment)
         #TODO тут необходимо реализовать транзакцию по списанию средств с участника и ппередачи этих средств на баланс клуба
-
         # await db.refresh_club_balance(club_id, return_balance, 'pick_up')
 
         return ClubMemberProfile(
@@ -75,3 +77,18 @@ async def v1_expel_member(club_id: int, user_id: int, session_uuid: SessionUUID)
             join_in_club=member.created_ts.timestamp(),
             leave_from_club=time.mktime(datetime.datetime.now().timetuple())#datetime.datetime.now().utcnow()
         )
+
+"""
+    async def update_user(self, id, **kwargs):
+        if kwargs:
+            params = ", ".join([f"{key}=%s" for key in kwargs])
+            values = list(kwargs.values()) + [id]
+            sql = f"UPDATE user_profile SET {params} WHERE id=%s RETURNING *"
+        else:
+            values = [id]
+            sql = "SELECT * FROM user_profile WHERE id=%s"
+        async with self.cursor() as cursor:
+            await cursor.execute(sql, values)
+            row = await cursor.fetchone()
+        return row
+"""

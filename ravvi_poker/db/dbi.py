@@ -441,6 +441,12 @@ class DBI:
             row = await cursor.fetchone()
         return row
 
+    async def get_club_owner(self, club_id):
+        async with self.cursor() as cursor:
+            await cursor.execute("SELECT * FROM club_member WHERE club_id=%s AND user_role=%s", (club_id, "O"))
+            rows = await cursor.fetchall()
+        return rows
+
     async def get_club_members(self, club_id):
         async with self.cursor() as cursor:
             await cursor.execute("SELECT * FROM club_member_view WHERE club_id=%s", (club_id,))
@@ -543,9 +549,10 @@ class DBI:
         return row
 
     async def approve_club_member(self, member_id, approved_by, club_comment, nickname, user_role):
-        sql = "UPDATE club_member SET approved_ts=now_utc(), approved_by=%s, club_comment=%s, nickname=%s, user_role=%s WHERE id=%s RETURNING *"
+        sql = ("UPDATE club_member SET approved_ts=now_utc(), approved_by=%s, club_comment=%s, nickname=%s, user_role=%s"
+               ",closed_ts=%s, closed_by=%s WHERE id=%s RETURNING *")
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (approved_by, club_comment, nickname, user_role, member_id))
+            await cursor.execute(sql, (approved_by, club_comment, nickname, user_role, None, None, member_id))
             row = await cursor.fetchone()
         return row
 
@@ -603,11 +610,15 @@ class DBI:
         async with self.cursor() as cursor:
             await cursor.execute(sql, (None, None, None, None, user_comment, account_id,))
 
-    async def expel_member_from_club(self, account_id, club_id, owner_id):
-        sql = "UPDATE club_member SET closed_ts=%s, closed_by=%s WHERE id=%s AND club_id=%s"
+
+    async def expel_member_from_club(self, account_id, club_id, owner_id, nickname, club_comment):
+        sql = ("UPDATE club_member SET closed_ts=%s, closed_by=%s, nickname=%s, club_comment=%s WHERE id=%s AND "
+               "club_id=%s RETURNING *")
         closed_ts = datetime.datetime.now()
         async with self.cursor() as cursor:
-            await cursor.execute(sql, (closed_ts, owner_id, account_id, club_id, ))
+            await cursor.execute(sql, (closed_ts, owner_id, nickname, club_comment, account_id, club_id, ))
+            row = await cursor.fetchone()
+        return row
 
 
     # TABLE
