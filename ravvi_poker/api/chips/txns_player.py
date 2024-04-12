@@ -33,7 +33,7 @@ class MemberInfo(UserPublicProfile):
     nickname: str | None = None
     user_role: str | None = None
 
-class TableInfo():
+class TableInfo(BaseModel, extra="forbid"):
     id: int
     table_name: str|None
     blind_small: Decimal
