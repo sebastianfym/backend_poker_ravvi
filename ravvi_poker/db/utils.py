@@ -18,6 +18,6 @@ def apply_sql_files(db_name, sql_files):
     with psycopg.connect(conninfo, autocommit=False) as dbi:
         for name, sql in sql_files:
             print("===", name, "===")
-            sql = sql.replace("%", "%%")
+            #sql = sql.replace("%", "%%")
             dbi.execute(sql)
         dbi.commit()

@@ -109,13 +109,19 @@ async def v1_get_club(club_id: int, session_uuid: SessionUUID) -> ClubProfile:
         club = await db.get_club(club_id)
         if not club:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Club not found")
-        account = await db.find_account(user_id=user.id, club_id=club_id)
-        if not account:
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You are not a member in this club")
-        if account.approved_ts is None:
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Your account not been approved")
-        elif account.closed_ts is not None:
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You are not a member of the club")
+        account = await db.find_member(user_id=user.id, club_id=club_id)
+#        if not account:
+#            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="You are not a member in this club")
+#        if account.approved_ts is None:
+#            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Your account not been approved")
+        member_attributes = {}
+        if account and account.approved_ts and not account.closed_ts:
+            member_attributes = dict(
+                club_balance=club.club_balance,
+                user_balance=await db.get_user_balance_in_club(club_id=club.id, user_id=user.id),
+                agents_balance=await db.get_balance_shared_in_club(club_id=club.id, user_id=user.id),
+                service_balance=await db.get_service_balance_in_club(club_id=club.id, user_id=user.id),
+            )
         return ClubProfile(
             id=club.id,
             name=club.name,
@@ -123,14 +129,11 @@ async def v1_get_club(club_id: int, session_uuid: SessionUUID) -> ClubProfile:
             image_id=club.image_id,
             user_role=account.user_role if account else None,
             user_approved=account.approved_ts is not None if account else None,
-            club_balance=club.club_balance,
             tables_count=club.tables_сount,
             players_count=club.players_online,
-            user_balance=await db.get_user_balance_in_club(club_id=club.id, user_id=user.id),
-            agents_balance=await db.get_balance_shared_in_club(club_id=club.id, user_id=user.id),
-            service_balance=await db.get_service_balance_in_club(club_id=club.id, user_id=user.id),
             timezone=club.timezone,
-            automatic_confirmation=club.automatic_confirmation
+            automatic_confirmation=club.automatic_confirmation,
+            **member_attributes
         )
 
 

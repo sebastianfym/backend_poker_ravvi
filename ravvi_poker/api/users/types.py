@@ -27,13 +27,15 @@ class UserPublicProfile(BaseModel):
     id: int
     name: str | None = None
     image_id: int | None = None
+    country: str | None = None
 
     @classmethod
     def from_row(cls, row):
         return cls(
             id=row.id,
             name=row.name,
-            image_id=row.image_id
+            image_id=row.image_id,
+            country=row.country
         )
 
 

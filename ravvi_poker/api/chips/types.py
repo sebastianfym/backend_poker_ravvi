@@ -15,11 +15,36 @@ class ErrorException(Exception):
     message: str
 
 
+class ChipsActionParams(BaseModel, extra="forbid"):
+    action: str
+    amount: float | Decimal
+
+    @field_validator("action", mode="before")
+    @classmethod
+    def valid_action(cls, value: str) -> str:
+        if not isinstance(value, str):
+            raise ValueError("no action provided")
+        value = value.upper()
+        return value
+
+    @field_validator("amount", mode="before")
+    @classmethod
+    def not_zero(cls, value) -> Decimal:
+        value = Decimal(value)
+        if value <= 0:
+            raise ValueError("invalid value")
+        return value
+
+
+class ChipsTxnInfo(BaseModel, extra="forbid"):
+    txn_id: int
+
+
 class ChipsParams(BaseModel):
     amount: Decimal | str
 
     @field_validator("amount", mode="after")
-    def not_zero(cls, value: Decimal | str) -> Decimal | str:
+    def not_zero(cls, value: float | Decimal | str) -> Decimal | str:
         if value == "all":
             return value
         else:
@@ -47,6 +72,7 @@ class BalanceMode(str, Enum):
 #             case _:
 #                 raise ValueError(f'Possible options: pick_up | give_out')
 
+
 class ChipsParamsForMembers(ChipsParams):
     # mode: str
     club_member: list
@@ -63,14 +89,12 @@ class ChipsParamsForMembers(ChipsParams):
 
 
 class ChipsTxnItem(BaseModel):
-    id: int
+    txn_id: int
+    txn_type: str
     created_ts: float
     created_by: int
-    txn_type: str
-    amount: Decimal
-    balance: Decimal | None = None
-    ref_user_id: int | None = None
-    ref_agent_id: int | None = None
+    delta: Decimal
+    balance: Decimal
 
 
 class ChipsRequestParams(ChipsParams):
@@ -121,7 +145,7 @@ class UserRequest(BaseModel):
 class ChipRequestForm(BaseModel):
     operation: str
 
-    @field_validator('operation')
+    @field_validator("operation")
     def operation_validate(cls, value):
         if value not in ["approve", "reject"]:
             raise ValueError('Operation must be either "approve" or "reject"')
