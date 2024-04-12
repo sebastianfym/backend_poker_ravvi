@@ -193,10 +193,10 @@ class Table_RG(Table):
             buyin_min -= user.balance
             if buyin_min <= 0:
                 buyin_min = min(self.game_props.get("blind_big"), buyin_max)
-        elif user.balance is None and (interval_in_hours := getattr(self, "advanced_config").ratholing):
-            # получаем последнюю выплату от стола за N часов
-            # TODO дополнить правило рэтхолинга, если последняя выплата равна байину, то рэтхолинга нет
-            buyin_min = buyin_max = await db.get_last_table_reward(self.table_id, user.account_id, interval_in_hours)
+        # elif user.balance is None and (interval_in_hours := getattr(self, "advanced_config").ratholing):
+        #     # получаем последнюю выплату от стола за N часов
+        #     # TODO дополнить правило рэтхолинга, если последняя выплата равна байину, то рэтхолинга нет
+        #     buyin_min = buyin_max = await db.get_last_table_reward(self.table_id, user.account_id, interval_in_hours)
         else:
             buyin_max = min(buyin_max, account_balance)
         # если пользователь ранее имел офферы, то разошлем сообщения, что они просрочены
