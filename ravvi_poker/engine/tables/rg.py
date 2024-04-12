@@ -22,8 +22,6 @@ class Table_RG(Table):
         from ..poker.bomb_pot import BombPotController
         from ..poker.seven_deuce import SevenDeuceController
 
-        if buyin_max is None:
-            buyin_max = buyin_min * 2;
         self.buyin_min = Decimal(buyin_min).quantize(Decimal("0.01"))
         self.buyin_max = Decimal(buyin_max).quantize(Decimal("0.01"))
         self.game_props.update(bet_timeout=action_time,
@@ -127,12 +125,12 @@ class Table_RG(Table):
 
         # если выбрана неверная сумма байина
         # проверим на рэтхолинг
-        if user.balance is None and (interval_in_hours := getattr(self, "advanced_config").ratholing):
-            if buyin_value != await db.get_last_table_reward(self.table_id, user.account_id, interval_in_hours):
-                await self.emit_TABLE_WARNING(db, cmd_id=cmd_id,
-                                              client_id=client_id,
-                                              error_code=2, error_text='Incorrect buyin value')
-                return False
+        # if user.balance is None and (interval_in_hours := getattr(self, "advanced_config").ratholing):
+        #     if buyin_value != await db.get_last_table_reward(self.table_id, user.account_id, interval_in_hours):
+        #         await self.emit_TABLE_WARNING(db, cmd_id=cmd_id,
+        #                                       client_id=client_id,
+        #                                       error_code=2, error_text='Incorrect buyin value')
+        #         return False
         # проверка при входе
         elif user.balance is None and not self.buyin_min <= buyin_value <= self.buyin_max:
             await self.emit_TABLE_WARNING(db, cmd_id=cmd_id,
@@ -164,28 +162,36 @@ class Table_RG(Table):
     async def make_player_offer(self, db, user: User, client_id: int, account_balance: decimal.Decimal):
         # игрок ранее не запрашивал оффер за этот стол
         if user.buyin_offer_timeout is None:
-            offer_closed_at = time.time() + 60
+            offer_closed_at = time.time() + 10
         # игрок уже имеет активный оффер
         else:
-            # TODO обработать отрицательное значение относительно текущего времени
             offer_closed_at = user.buyin_offer_timeout - 5
+            if time.time() > offer_closed_at:
+                await self.emit_TABLE_WARNING(db, cmd_id=None,
+                                              client_id=client_id,
+                                              error_code=4, error_text='Replenishment time has expired')
+                user.buyin_offer_timeout = None
+                return
         buyin_min, buyin_max = self.buyin_min, self.buyin_max
         # если денег на балансе уже больше максимального байина, то возвращаем ошибку
         if user.balance is not None and user.balance >= buyin_max:
             await self.emit_TABLE_WARNING(db, cmd_id=None,
                                           client_id=client_id,
                                           error_code=3, error_text='The maximum balance value has been exceeded')
+            user.buyin_offer_timeout = None
             return
         # если недостаточно денег на балансе до минимального байина, то возвращаем ошибку
         if user.balance:
             if buyin_min > account_balance + user.balance or account_balance == 0:
                 await self.emit_TABLE_WARNING(db, cmd_id=None, client_id=client_id,
                                               error_code=1, error_text='Not enough balance')
+                user.buyin_offer_timeout = None
                 return
         else:
             if buyin_min > account_balance:
                 await self.emit_TABLE_WARNING(db, cmd_id=None, client_id=client_id,
                                               error_code=1, error_text='Not enough balance')
+                user.buyin_offer_timeout = None
                 return
         if user.balance is not None:
             buyin_max -= user.balance
