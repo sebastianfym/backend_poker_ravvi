@@ -86,6 +86,7 @@ class Game:
                     if p.user.is_new_player_on_table and num != 2:
                         continue
                     else:
+                        p.user.is_new_player_on_table = False
                         cleared_players_list.append(p)
                 self.players = cleared_players_list
 
