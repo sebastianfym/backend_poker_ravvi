@@ -159,13 +159,14 @@ def test_create_table_with_validation(api_client: TestClient, api_guest: UserAcc
 
     params = {
         "table_name": "TEST",
-        "table_type": "RG",
+        "table_type": "SNG",
         "table_seats": 6,
         "game_type": "NLH",
         "game_subtype": "REGULAR"
     }
 
     successfully_created_table_response = api_client.post(f"/api/v1/clubs/{club.id}/tables", json=params)
+    table_id = successfully_created_table_response.json()["id"]
     assert successfully_created_table_response.status_code == 201
 
     params = {
@@ -313,5 +314,10 @@ def test_create_table_with_validation(api_client: TestClient, api_guest: UserAcc
     }
     validate_in_table_type_response = api_client.post(f"/api/v1/clubs/{club.id}/tables", json=params)
     assert validate_in_table_type_response.status_code == 422
+
+    # request = api_client.get(f"/api/v1/clubs/{table_id}/result")
+    # print(request.json())
+    # assert request.status_code == 200
+
 
 

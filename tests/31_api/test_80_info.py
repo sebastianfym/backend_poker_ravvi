@@ -120,12 +120,14 @@ async def test_clubs_history(api_client: TestClient, api_guest: UserAccessProfil
             "INSERT INTO user_account_txn (created_ts, account_id, txn_type, txn_value, total_balance, props, sender_id) "
             "VALUES (%s, %s, 'CASHIN', 250, 250, %s, %s)")
         await db.cursor().execute(sql, (current_time, owner_account.id, props, owner_account.user_id))
+        await db.commit()
 
         replenishment_props = json.dumps({"status": "approve", "balance": "balance"})
         sql = (
             "INSERT INTO user_account_txn (created_ts, account_id, txn_type, txn_value, total_balance, props, sender_id) "
             "VALUES (%s, %s, 'REPLENISHMENT', 250, 0, %s, %s)")
         await db.cursor().execute(sql, (current_time, owner_account.id, replenishment_props, owner_account.user_id))
+        await db.commit()
 
         replenishment_error_props = json.dumps({"status": "approve", "balance": "balance"})
 
@@ -138,7 +140,7 @@ async def test_clubs_history(api_client: TestClient, api_guest: UserAccessProfil
             "INSERT INTO user_account_txn (created_ts, account_id, txn_type, txn_value, total_balance, props, sender_id) "
             "VALUES (%s, %s, 'CASHIN', 00.00, 00.00, %s, %s)")
         await db.cursor().execute(sql, (current_time, owner_account.id, props, owner_account.user_id))
+        await db.commit()
 
     response = api_client.get(f"/api/v1/info/{club.id}/history")
-    print(response.json())
     assert response.status_code == 200

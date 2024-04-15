@@ -363,3 +363,23 @@ def test_txns_in_club(api_client: TestClient, api_guest: UserAccessProfile, api_
 
     response = api_client.post(f"/api/v1/chips/{1}/players/rakeback/{1}", json=data)
     assert response.status_code == 404
+
+    response = api_client.post(f"/api/v1/chips/{404}/chips", json={})
+    assert response.status_code == 404
+
+
+def test_member_history_txns_in_club(api_client: TestClient, api_guest: UserAccessProfile, api_client_2: TestClient,
+                            api_guest_2: UserAccessProfile):
+    api_client.headers = {"Authorization": "Bearer " + api_guest.access_token}
+    api_client_2.headers = {"Authorization": "Bearer " + api_guest_2.access_token}
+
+    # create club without props (defaults)
+    params = {}
+    response = api_client.post("/api/v1/clubs", json=params)
+    assert response.status_code == 201
+
+    club1 = ClubProfile(**response.json())
+    assert club1.id
+
+    request = api_client.get(f"/api/v1/clubs/{club1.id}/txns/player")
+    assert request.status_code == 200
